@@ -6,7 +6,6 @@ import { ChevronDown, Globe, MapPin, MapPinned } from 'lucide-react'
 type FilterItem = {
   id: string
   icon: 'globe' | 'pin' | 'map'
-  label: string
   defaultValue: string
   options: Array<{ value: string; label: string }>
 }
@@ -15,16 +14,16 @@ const filterData: FilterItem[] = [
   {
     id: 'cakupan',
     icon: 'globe',
-    label: 'Nasional',
     defaultValue: 'nasional',
     options: [
       { value: 'nasional', label: 'Nasional' },
+      { value: 'provinsi', label: 'Provinsi' },
+      { value: 'kabupaten-kota', label: 'Kabupaten/Kota' },
     ],
   },
   {
     id: 'provinsi',
     icon: 'pin',
-    label: 'Provinsi',
     defaultValue: 'semua-provinsi',
     options: [
       { value: 'semua-provinsi', label: 'Semua Provinsi' },
@@ -36,7 +35,6 @@ const filterData: FilterItem[] = [
   {
     id: 'kabkota',
     icon: 'map',
-    label: 'Kabupaten/Kota',
     defaultValue: 'semua-kabkota',
     options: [
       { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
@@ -79,7 +77,7 @@ export default function FilterDropdownBar() {
         return (
           <div key={filter.id} className="relative">
             <label className="mb-2 block text-[12px] font-semibold text-[#1f1f1f] sm:text-[13px]">
-              {filter.label}
+              Filter
             </label>
             <button
               type="button"
