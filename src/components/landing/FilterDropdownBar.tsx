@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Globe, MapPin, Building2, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Globe, MapPin, Building2, ChevronDown, Info } from 'lucide-react'
+import { useAuthStore, type WilayahScope } from '@/lib/authStore'
 
 type FilterItem = {
   id: string
@@ -9,6 +10,17 @@ type FilterItem = {
   sublabel: string
   defaultValue: string
   options: Array<{ value: string; label: string }>
+  locked?: boolean
+}
+
+export type FilterSummary = {
+  cakupan: string
+  provinsi: string
+  kabkota: string
+}
+
+type FilterDropdownBarProps = {
+  onSummaryChange?: (summary: FilterSummary) => void
 }
 
 const filterData: FilterItem[] = [
@@ -55,18 +67,87 @@ const iconStyles: Record<FilterItem['icon'], { bg: string; color: string }> = {
   building: { bg: 'bg-[#EEEDFE]', color: 'text-[#534AB7]' },
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function scopedFilterData(scope?: WilayahScope): FilterItem[] {
+  if (!scope || scope.mode === 'all') {
+    return filterData
+  }
+
+  const cakupanValue = scope.cakupan.value || scope.mode
+  const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
+  const kabupatenValue = scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label)
+  const kabupatenOptions =
+    scope.mode === 'kabupaten'
+      ? [
+          {
+            value: kabupatenValue,
+            label: scope.kabupaten.label,
+          },
+        ]
+      : [
+          { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+          ...(scope.kabupaten.options || []).map((item) => ({
+            value: String(item.id),
+            label: item.label,
+          })),
+        ]
+
+  return [
+    {
+      id: 'cakupan',
+      icon: 'globe',
+      sublabel: 'Cakupan',
+      defaultValue: cakupanValue,
+      locked: scope.cakupan.locked,
+      options: [{ value: cakupanValue, label: scope.cakupan.label }],
+    },
+    {
+      id: 'provinsi',
+      icon: 'pin',
+      sublabel: 'Provinsi',
+      defaultValue: provinsiValue,
+      locked: scope.provinsi.locked,
+      options: [{ value: provinsiValue, label: scope.provinsi.label }],
+    },
+    {
+      id: 'kabkota',
+      icon: 'building',
+      sublabel: 'Kab/Kota',
+      defaultValue: scope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
+      locked: scope.kabupaten.locked,
+      options: kabupatenOptions,
+    },
+  ]
+}
+
 function FilterIcon({ icon, className }: { icon: FilterItem['icon']; className?: string }) {
   if (icon === 'globe')    return <Globe    className={className} />
   if (icon === 'pin')      return <MapPin   className={className} />
   return                          <Building2 className={className} />
 }
 
-export default function FilterDropdownBar() {
-  const [selected, setSelected] = useState<Record<string, string>>(
-    Object.fromEntries(filterData.map((f) => [f.id, f.defaultValue]))
+export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBarProps = {}) {
+  const userScope = useAuthStore((state) => state.user?.wilayah_scope)
+  const activeFilterData = useMemo(() => scopedFilterData(userScope), [userScope])
+  const defaultSelected = useMemo(
+    () => Object.fromEntries(activeFilterData.map((f) => [f.id, f.defaultValue])),
+    [activeFilterData]
   )
+  const [selected, setSelected] = useState<Record<string, string>>(defaultSelected)
   const [openId, setOpenId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setSelected(defaultSelected)
+    setOpenId(null)
+  }, [defaultSelected])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -78,6 +159,34 @@ export default function FilterDropdownBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const summaryItems = useMemo(
+    () =>
+      activeFilterData.map((filter) => {
+        const activeOption =
+          filter.options.find((option) => option.value === selected[filter.id]) ?? filter.options[0]
+
+        return {
+          id: filter.id,
+          label: filter.sublabel,
+          value: activeOption.label,
+        }
+      }),
+    [activeFilterData, selected]
+  )
+
+  const summary = useMemo<FilterSummary>(
+    () => ({
+      cakupan: summaryItems.find((item) => item.id === 'cakupan')?.value || 'Nasional',
+      provinsi: summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi',
+      kabkota: summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota',
+    }),
+    [summaryItems]
+  )
+
+  useEffect(() => {
+    onSummaryChange?.(summary)
+  }, [onSummaryChange, summary])
+
   return (
     <div ref={rootRef}>
       {/* Single unified label */}
@@ -87,11 +196,12 @@ export default function FilterDropdownBar() {
 
       {/* Unified pill bar */}
       <div className="flex items-center rounded-2xl border border-[#e5e7eb] bg-white p-1.5">
-        {filterData.map((filter, idx) => {
+        {activeFilterData.map((filter, idx) => {
           const activeOption =
             filter.options.find((o) => o.value === selected[filter.id]) ?? filter.options[0]
           const isOpen = openId === filter.id
           const { bg, color } = iconStyles[filter.icon]
+          const locked = Boolean(filter.locked)
 
           return (
             <div key={filter.id} className="relative flex flex-1 items-center">
@@ -102,15 +212,19 @@ export default function FilterDropdownBar() {
 
               <button
                 type="button"
-                onClick={() => setOpenId(isOpen ? null : filter.id)}
+                onClick={() => {
+                  if (!locked) setOpenId(isOpen ? null : filter.id)
+                }}
+                disabled={locked}
                 aria-expanded={isOpen}
                 aria-haspopup="listbox"
+                title={locked ? 'Filter dikunci sesuai wilayah akun' : undefined}
                 className={`
                   group flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2
                   transition-colors duration-150
-                  hover:bg-[#f9fafb]
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17b7b2]
                   ${isOpen ? 'bg-[#f3f4f6]' : ''}
+                  ${locked ? 'cursor-not-allowed bg-[#f8fafc] opacity-80' : 'hover:bg-[#f9fafb]'}
                 `}
               >
                 {/* Colored icon badge */}
@@ -136,6 +250,7 @@ export default function FilterDropdownBar() {
                     ml-auto h-4 w-4 flex-shrink-0 text-[#9ca3af]
                     transition-transform duration-200
                     ${isOpen ? 'rotate-180' : ''}
+                    ${locked ? 'opacity-30' : ''}
                   `}
                 />
               </button>
@@ -186,6 +301,27 @@ export default function FilterDropdownBar() {
             </div>
           )
         })}
+      </div>
+
+      <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-teal-100 bg-[#f6fffd] px-3.5 py-2.5 text-[12px] shadow-[0_6px_18px_rgba(20,120,116,0.04)] sm:flex-row sm:flex-wrap sm:items-center">
+        <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.08em] text-[#0f766e]">
+          <Info className="h-3.5 w-3.5" />
+          Info Filter
+        </span>
+        <span className="hidden h-4 w-px bg-teal-200 sm:inline-block" aria-hidden="true" />
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600">
+          {summaryItems.map((item, index) => (
+            <span key={item.label} className="inline-flex items-center gap-1">
+              <span className="font-medium text-slate-500">{item.label}:</span>
+              <span className="font-bold text-slate-800">{item.value}</span>
+              {index < summaryItems.length - 1 ? (
+                <span className="ml-1 text-teal-400" aria-hidden="true">
+                  |
+                </span>
+              ) : null}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   )

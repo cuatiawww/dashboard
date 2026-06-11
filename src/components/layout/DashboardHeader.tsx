@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { useAuthStore } from '@/lib/authStore'
 import {
   BarChart3,
   Bell,
@@ -133,6 +134,17 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
 export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  
+  const { user, logout } = useAuthStore()
+  const initialName = user?.nama_lengkap || user?.username || 'Admin Pusat'
+  const roleName = user?.level_name || (user?.level_user_id === 1 ? 'Super Administrator' : 'Admin')
+  const userEmail = user?.email || `${user?.username || 'admin'}@faskes.go.id`
+  const accessLabel = user?.wilayah_scope?.access_label || 'Pusat pemantauan nasional fasilitas kesehatan'
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
+  }
+  const initials = getInitials(initialName)
 
   useEffect(() => {
     const onClickOutside = (event: MouseEvent) => {
@@ -207,11 +219,11 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                   className="inline-flex h-12 items-center gap-2.5 rounded-xl border border-slate-200 bg-white/95 px-2.5 pr-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
                 >
                   <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 text-xs font-extrabold text-white shadow-sm">
-                    AP
+                    {initials}
                   </div>
                   <div className="hidden sm:block">
-                    <p className="text-xs font-bold uppercase tracking-[0.04em] leading-4 text-slate-900">Admin Pusat</p>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-teal-700">Super Admin</p>
+                    <p className="text-xs font-bold uppercase tracking-[0.04em] leading-4 text-slate-900">{initialName}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-teal-700">{roleName}</p>
                   </div>
                   <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition ${profileOpen ? 'rotate-180' : ''}`} />
                 </button>
@@ -220,11 +232,11 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 text-sm font-extrabold text-white">
-                          AP
+                          {initials}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-800">Admin Pusat</p>
-                          <p className="text-xs text-slate-500">admin.pusat@faskes.go.id</p>
+                          <p className="text-sm font-semibold text-slate-800">{initialName}</p>
+                          <p className="text-xs text-slate-500">{userEmail}</p>
                         </div>
                       </div>
                       <button
@@ -238,7 +250,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                     </div>
                     <div className="mt-4 rounded-lg border border-teal-100 bg-teal-50 px-3 py-2">
                       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-teal-700">Akses</p>
-                      <p className="mt-0.5 text-xs text-slate-600">Pusat pemantauan nasional fasilitas kesehatan</p>
+                      <p className="mt-0.5 text-xs text-slate-600">{accessLabel}</p>
                     </div>
                     <div className="mt-3 space-y-2">
                       <button type="button" className="flex w-full items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-left text-[13px] font-bold uppercase tracking-[0.03em] text-slate-700 transition hover:bg-slate-50">
@@ -249,7 +261,14 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                         <Settings className="h-4 w-4 text-teal-600" />
                         Pengaturan Akun
                       </button>
-                      <button type="button" className="flex w-full items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-left text-[13px] font-bold uppercase tracking-[0.03em] text-red-600 transition hover:bg-red-50">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          logout()
+                          setProfileOpen(false)
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-left text-[13px] font-bold uppercase tracking-[0.03em] text-red-600 transition hover:bg-red-50"
+                      >
                         <LogOut className="h-4 w-4" />
                         Keluar
                       </button>

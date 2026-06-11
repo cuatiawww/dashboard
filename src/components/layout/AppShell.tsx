@@ -1,8 +1,11 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuthStore } from '@/lib/authStore'
 import DashboardHeader, { DashboardSidebar } from './DashboardHeader'
 import Footer from './Footer'
+import { Loader2 } from 'lucide-react'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -11,6 +14,36 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+
+  const pathname = usePathname()
+  const router = useRouter()
+  const { isAuthenticated, isInitialized, initialize } = useAuthStore()
+
+  useEffect(() => {
+    initialize()
+  }, [initialize])
+
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated && pathname !== '/login') {
+      router.push('/login')
+    }
+  }, [isInitialized, isAuthenticated, pathname, router])
+
+  if (!isInitialized) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fbffff]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#047D78]" />
+      </div>
+    )
+  }
+
+  if (pathname === '/login') {
+    return <main className="min-h-screen bg-slate-50">{children}</main>
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return (
     <main className="min-h-screen">
@@ -21,3 +54,4 @@ export default function AppShell({ children }: AppShellProps) {
     </main>
   )
 }
+

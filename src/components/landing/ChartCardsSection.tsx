@@ -294,7 +294,13 @@ const PROVINSI_LABELS = ['Siap Penuh', 'Siap Parsial', 'Belum Siap', 'Perlu Vali
 
 const PROVINSI_BASE_COLORS = ['#1dc7bf', '#4d90d0', '#fbbf24', '#c9dcdc']
 
-function CapaianProvinsiCard() {
+function CapaianProvinsiCard({
+  title = 'Capaian Per Provinsi',
+  description = 'Menyajikan rincian data dan perbandingan progres pencapaian target program secara spesifik untuk masing-masing provinsi.',
+}: {
+  title?: string
+  description?: string
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<ChartInstance | null>(null)
   const [activeIdx, setActiveIdx] = useState<number | null>(null)
@@ -382,8 +388,8 @@ function CapaianProvinsiCard() {
 
   return (
     <Card
-      title="Capaian Per Provinsi"
-      description="Menyajikan rincian data dan perbandingan progres pencapaian target program secara spesifik untuk masing-masing provinsi."
+      title={title}
+      description={description}
       footer={
         <Legend
           items={PROVINSI_LABELS.map((l, i) => ({ color: PROVINSI_COLORS[i], label: l }))}
@@ -580,13 +586,19 @@ function KesiapanLayananCard() {
 
 // ─── Section Export ───────────────────────────────────────────────────────────
 
-export default function ChartCardsSection() {
+export default function ChartCardsSection({
+  capaianTitle,
+  capaianDescription,
+}: {
+  capaianTitle?: string
+  capaianDescription?: string
+}) {
   return (
     <section className="w-full bg-[#f4fafa] py-6 border-t border-[#e0eeee]">
       <div className="w-full px-4 sm:px-5 lg:px-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <DliStatusCard />
-          <CapaianProvinsiCard />
+          <CapaianProvinsiCard title={capaianTitle} description={capaianDescription} />
           <TopGapAlatCard />
           <KesiapanLayananCard />
         </div>

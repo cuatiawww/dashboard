@@ -8,7 +8,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import IndonesiaStatusMapClient from '@/components/landing/IndonesiaStatusMapClient'
-import FilterDropdownBar from '@/components/landing/FilterDropdownBar'
+import FilterDropdownBar, { type FilterSummary } from '@/components/landing/FilterDropdownBar'
 import ChartCardsSection from '@/components/landing/ChartCardsSection'
 import FacilityProvinceSection, { type FacilityKey } from '@/components/landing/FacilityProvinceSection'
 import InsightModal, { type ModalTab, type InsightData } from '@/components/landing/InsightModal'
@@ -24,10 +24,97 @@ const summaryCards = [
   { id: 'total-posyandu', facility: 'posyandu', title: 'TOTAL POSYANDU', value: '2.123', icon: '/posyandu.svg' },
 ] as const
 
+const defaultFilterSummary: FilterSummary = {
+  cakupan: 'Nasional',
+  provinsi: 'Semua Provinsi',
+  kabkota: 'Semua Kab/Kota',
+}
+
+function isAllValue(value: string) {
+  return value.toLowerCase().startsWith('semua')
+}
+
+function buildRegionSuffix(summary: FilterSummary) {
+  const cakupan = summary.cakupan.toLowerCase()
+  const province = summary.provinsi
+  const district = summary.kabkota
+
+  let suffix = 'Nasional'
+
+  if (cakupan.includes('kabupaten') && !isAllValue(district)) {
+    suffix = `${district}, Prov. ${province}`
+  } else if (!isAllValue(province)) {
+    suffix = `Prov. ${province} (${isAllValue(district) ? 'Semua Kab' : district})`
+  }
+
+  return suffix
+}
+
+function buildFacilityDistributionTitle(summary: FilterSummary) {
+  const province = summary.provinsi
+  const district = summary.kabkota
+
+  if (!isAllValue(district)) {
+    return `Sebaran Fasilitas Kesehatan di ${district}`
+  }
+
+  if (!isAllValue(province)) {
+    return `Sebaran Fasilitas Kesehatan per Kab/Kota di Prov. ${province}`
+  }
+
+  return 'Sebaran Fasilitas Kesehatan per Provinsi'
+}
+
+function buildFacilityDistributionDescription(summary: FilterSummary) {
+  const province = summary.provinsi
+  const district = summary.kabkota
+
+  if (!isAllValue(district)) {
+    return `Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan pada wilayah ${district}.`
+  }
+
+  if (!isAllValue(province)) {
+    return `Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan per kabupaten/kota di Prov. ${province}.`
+  }
+
+  return 'Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan yang tersebar di setiap provinsi.'
+}
+
+function buildCapaianTitle(summary: FilterSummary) {
+  const province = summary.provinsi
+  const district = summary.kabkota
+
+  if (!isAllValue(district)) {
+    return `Capaian Wilayah ${district}`
+  }
+
+  if (!isAllValue(province)) {
+    return `Capaian Per Kab/Kota di Prov. ${province}`
+  }
+
+  return 'Capaian Per Provinsi'
+}
+
+function buildCapaianDescription(summary: FilterSummary) {
+  const province = summary.provinsi
+  const district = summary.kabkota
+
+  if (!isAllValue(district)) {
+    return `Menyajikan rincian data dan perbandingan progres pencapaian target program pada wilayah ${district}.`
+  }
+
+  if (!isAllValue(province)) {
+    return `Menyajikan rincian data dan perbandingan progres pencapaian target program per kabupaten/kota di Prov. ${province}.`
+  }
+
+  return 'Menyajikan rincian data dan perbandingan progres pencapaian target program secara spesifik untuk masing-masing provinsi.'
+}
+
 export default function HomePage() {
   const activeFacility: FacilityKey = 'puskesmas'
   const [aiInsight, setAiInsight] = useState<InsightData | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
+  const [filterSummary, setFilterSummary] = useState<FilterSummary>(defaultFilterSummary)
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
@@ -80,6 +167,12 @@ export default function HomePage() {
   const insightPreviewText =
     aiInsight?.summary ??
     'GAP terbesar nasional berada pada alat kesehatan, layanan anak, dan ketersediaan tenaga gizi di wilayah terpencil.'
+  const regionSuffix = buildRegionSuffix(filterSummary)
+  const regionSuffixText = buildRegionSuffix(filterSummary)
+  const facilityDistributionTitle = buildFacilityDistributionTitle(filterSummary)
+  const facilityDistributionDescription = buildFacilityDistributionDescription(filterSummary)
+  const capaianTitle = buildCapaianTitle(filterSummary)
+  const capaianDescription = buildCapaianDescription(filterSummary)
 
   return (
     <div className="min-h-screen bg-[#fbffff] text-slate-800">
@@ -87,7 +180,7 @@ export default function HomePage() {
       {/* ── Summary Cards ────────────────────────────────────────────────────── */}
       <section className="w-full bg-[#fbffff] py-3">
         <div className="w-full px-4 sm:px-5 lg:px-6">
-          <FilterDropdownBar />
+          <FilterDropdownBar onSummaryChange={setFilterSummary} />
 
           <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => (
@@ -105,8 +198,8 @@ export default function HomePage() {
                   <Image src={card.icon} alt={card.title} width={44} height={44} className="h-11 w-11" />
                 </div>
                 <div>
-                  <p className="text-[12px] font-bold leading-none text-[#4f4f4f] sm:text-[13px]">
-                    {card.title}
+                  <p className="text-[12px] font-bold leading-tight text-[#4f4f4f] sm:text-[13px]">
+                    {card.title} {regionSuffix}
                   </p>
                   <p className="mt-2 text-[42px] font-bold leading-[0.92] tracking-[-0.02em] text-[#454545] sm:text-[52px]">
                     {card.value}
@@ -219,11 +312,11 @@ export default function HomePage() {
             }}
           >
             <h3 className="text-[22px] font-bold leading-tight text-[#2f2f2f] sm:text-[30px]">
-              SEBARAN SPASIAL STATUS FASILITAS KESEHATAN NASIONAL
+              SEBARAN SPASIAL STATUS FASILITAS KESEHATAN {regionSuffix}
             </h3>
             <p className="mt-1 text-[14px] leading-relaxed text-[#4b4b4b] sm:text-[16px]">
               Pemetaan ini menyajikan gambaran komprehensif mengenai distribusi geografis dan
-              klasifikasi status Fasilitas Kesehatan di seluruh wilayah Indonesia.
+              klasifikasi status Fasilitas Kesehatan pada cakupan {regionSuffixText}.
             </p>
             <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
               <IndonesiaStatusMapClient />
@@ -233,8 +326,13 @@ export default function HomePage() {
       </section>
 
       {/* ── Chart Cards ──────────────────────────────────────────────────────── */}
-      <ChartCardsSection />
-      <FacilityProvinceSection key={activeFacility} activeFacility={activeFacility} />
+      <ChartCardsSection capaianTitle={capaianTitle} capaianDescription={capaianDescription} />
+      <FacilityProvinceSection
+        key={activeFacility}
+        activeFacility={activeFacility}
+        title={facilityDistributionTitle}
+        description={facilityDistributionDescription}
+      />
 
       {/* ── Insight Modal ────────────────────────────────────────────────────── */}
       <InsightModal
