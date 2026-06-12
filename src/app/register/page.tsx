@@ -63,7 +63,7 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [resendingOtp, setResendingOtp] = useState(false)
-  
+
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [successMessage, setSuccessMessage] = useState('')
@@ -75,10 +75,28 @@ export default function RegisterPage() {
       hasUpper: /[A-Z]/.test(password),
       hasLower: /[a-z]/.test(password),
       hasNumber: /\d/.test(password),
+      hasSpecial: /[@$!%*?&]/.test(password),
     }
   }, [password])
 
-  const isPasswordValid = pwdChecks.minLength && pwdChecks.hasUpper && pwdChecks.hasLower && pwdChecks.hasNumber
+  const isPasswordValid =
+    pwdChecks.minLength &&
+    pwdChecks.hasUpper &&
+    pwdChecks.hasLower &&
+    pwdChecks.hasNumber &&
+    pwdChecks.hasSpecial
+
+  // Strength score: 0 to 5 based on checklist
+  const strengthScore = useMemo(() => {
+    if (!password) return 0
+    let score = 0
+    if (pwdChecks.minLength) score++
+    if (pwdChecks.hasUpper) score++
+    if (pwdChecks.hasLower) score++
+    if (pwdChecks.hasNumber) score++
+    if (pwdChecks.hasSpecial) score++
+    return score
+  }, [password, pwdChecks])
 
   // Fetch provinces on mount
   useEffect(() => {
@@ -196,7 +214,7 @@ export default function RegisterPage() {
   const handleVerifyOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
-    
+
     if (otpCode.length !== 4 || isNaN(Number(otpCode))) {
       setError('Kode OTP harus berupa 4 digit angka.')
       return
@@ -263,17 +281,31 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#f0f7f7] py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      {/* Background decoration */}
-      <div className="absolute inset-0 z-0 opacity-[0.04]"
+    <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      {/* Background image */}
+      <Image
+        src="/pkk.png"
+        alt="Background"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center z-0"
+      />
+
+      {/* Overlay gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-950/85 via-teal-900/70 to-[#0e6b65]/60 z-0" />
+
+      {/* Subtle grid texture overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.05] z-0"
         style={{
           backgroundImage:
-            'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,128,128,1) 39px,rgba(0,128,128,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,128,128,1) 39px,rgba(0,128,128,1) 40px)',
+            'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px)',
         }}
       />
 
-      <div className="relative z-10 w-full max-w-[800px] bg-white rounded-3xl border border-[#c8dedd] shadow-[0_20px_60px_rgba(15,118,110,0.08)] p-6 sm:p-10">
-        
+      <div className="relative z-10 w-full max-w-[800px] bg-white rounded-3xl border border-[#c8dedd] shadow-[0_25px_70px_rgba(0,0,0,0.25)] p-6 sm:p-10">
+
         {/* Back Link (Visible only on Form or Success Step) */}
         {step !== 'otp' && (
           <Link href="/login" className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold text-sm mb-6 transition-colors">
@@ -287,9 +319,6 @@ export default function RegisterPage() {
           <div>
             {/* Header */}
             <div className="mb-8">
-              <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
-                Pendaftaran Akun
-              </span>
               <h2 className="mt-3 text-[32px] font-extrabold leading-tight tracking-tight text-slate-900">
                 Daftar sebagai Masyarakat
               </h2>
@@ -299,7 +328,7 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              
+
               {error && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
                   <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -490,206 +519,240 @@ export default function RegisterPage() {
                     {regencies.map((reg) => (
                       <option key={reg.id} value={reg.id}>
                         {reg.name}
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.kabupaten_id && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.kabupaten_id}</p>}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.kabupaten_id && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.kabupaten_id}</p>}
+                </div>
               </div>
-            </div>
 
-            {/* Alamat User */}
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-slate-700">Alamat Rumah Lengkap</label>
-              <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
-                <MapPin className="h-[18px] w-[18px] text-slate-450 mt-1" />
-                <textarea
-                  value={alamatUser}
-                  onChange={(e) => setAlamatUser(e.target.value)}
-                  required
-                  placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan"
-                  rows={3}
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none resize-none"
-                />
-              </div>
-              {fieldErrors.alamat_user && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.alamat_user}</p>}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Password */}
+              {/* Alamat User */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">Password</label>
-                <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
-                  <LockKeyhole className="h-[18px] w-[18px] text-slate-450" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                <label className="mb-1.5 block text-xs font-bold text-slate-700">Alamat Rumah Lengkap</label>
+                <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
+                  <MapPin className="h-[18px] w-[18px] text-slate-450 mt-1" />
+                  <textarea
+                    value={alamatUser}
+                    onChange={(e) => setAlamatUser(e.target.value)}
                     required
-                    placeholder="Minimal 8 karakter"
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                    placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan"
+                    rows={3}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none resize-none"
                   />
                 </div>
-                {/* Realtime Checklist */}
-                {password.length > 0 && (
-                  <div className="mt-2.5 space-y-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Kriteria Keamanan Sandi:</p>
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        {pwdChecks.minLength ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
-                        <span className={pwdChecks.minLength ? 'text-teal-700 font-medium' : 'text-slate-500'}>Min. 8 karakter</span>
+                {fieldErrors.alamat_user && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.alamat_user}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">Password</label>
+                  <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
+                    <LockKeyhole className="h-[18px] w-[18px] text-slate-450" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="Minimal 8 karakter"
+                      className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                    />
+                  </div>
+                  {/* Realtime Checklist */}
+                  {password.length > 0 && (
+                    <div className="mt-2.5 space-y-2.5 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                      {/* Strength Bar */}
+                      <div>
+                        <div className="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                          <span>Kekuatan Sandi:</span>
+                          <span className={
+                            strengthScore === 1 ? 'text-red-500 font-extrabold' :
+                              strengthScore === 2 ? 'text-orange-500 font-extrabold' :
+                                strengthScore === 3 ? 'text-yellow-600 font-extrabold' :
+                                  strengthScore === 4 ? 'text-blue-600 font-extrabold' :
+                                    strengthScore === 5 ? 'text-emerald-600 font-extrabold' : 'text-slate-400'
+                          }>
+                            {strengthScore === 1 && 'Sangat Lemah'}
+                            {strengthScore === 2 && 'Lemah'}
+                            {strengthScore === 3 && 'Cukup Kuat'}
+                            {strengthScore === 4 && 'Kuat'}
+                            {strengthScore === 5 && 'Sangat Kuat'}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${strengthScore === 1 ? 'bg-red-500 w-1/5' :
+                              strengthScore === 2 ? 'bg-orange-500 w-2/5' :
+                                strengthScore === 3 ? 'bg-yellow-500 w-3/5' :
+                                  strengthScore === 4 ? 'bg-blue-500 w-4/5' :
+                                    strengthScore === 5 ? 'bg-emerald-500 w-full' : 'w-0'
+                              }`}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        {pwdChecks.hasUpper ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
-                        <span className={pwdChecks.hasUpper ? 'text-teal-700 font-medium' : 'text-slate-500'}>Huruf Besar (A-Z)</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {pwdChecks.hasLower ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
-                        <span className={pwdChecks.hasLower ? 'text-teal-700 font-medium' : 'text-slate-500'}>Huruf Kecil (a-z)</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {pwdChecks.hasNumber ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
-                        <span className={pwdChecks.hasNumber ? 'text-teal-700 font-medium' : 'text-slate-500'}>Angka (0-9)</span>
+
+                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kriteria Keamanan Sandi:</p>
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          {pwdChecks.minLength ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
+                          <span className={pwdChecks.minLength ? 'text-teal-700 font-medium' : 'text-slate-500'}>Min. 8 karakter</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {pwdChecks.hasUpper ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
+                          <span className={pwdChecks.hasUpper ? 'text-teal-700 font-medium' : 'text-slate-500'}>Huruf Besar (A-Z)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {pwdChecks.hasLower ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
+                          <span className={pwdChecks.hasLower ? 'text-teal-700 font-medium' : 'text-slate-500'}>Huruf Kecil (a-z)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {pwdChecks.hasNumber ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
+                          <span className={pwdChecks.hasNumber ? 'text-teal-700 font-medium' : 'text-slate-500'}>Angka (0-9)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 col-span-2">
+                          {pwdChecks.hasSpecial ? <Check className="h-3.5 w-3.5 text-teal-600" /> : <X className="h-3.5 w-3.5 text-red-500" />}
+                          <span className={pwdChecks.hasSpecial ? 'text-teal-700 font-medium' : 'text-slate-500'}>Karakter Khusus (@$!%*?&)</span>
+                        </div>
                       </div>
                     </div>
+                  )}
+                  {fieldErrors.password && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.password}</p>}
+                </div>
+
+                {/* Confirm Password */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">Konfirmasi Password</label>
+                  <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
+                    <LockKeyhole className="h-[18px] w-[18px] text-slate-450" />
+                    <input
+                      type="password"
+                      value={rePassword}
+                      onChange={(e) => setRePassword(e.target.value)}
+                      required
+                      placeholder="Ulangi password"
+                      className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                    />
                   </div>
-                )}
-                {fieldErrors.password && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.password}</p>}
+                  {/* Password Match Check */}
+                  {rePassword.length > 0 && (
+                    <div className="mt-2.5 flex items-center gap-1.5 text-xs">
+                      {password === rePassword ? (
+                        <span className="flex items-center gap-1.5 text-teal-700 font-medium">
+                          <Check className="h-3.5 w-3.5 text-teal-600" /> Password cocok
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-red-600 font-medium">
+                          <X className="h-3.5 w-3.5 text-red-500" /> Password tidak cocok
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {fieldErrors.re_password && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.re_password}</p>}
+                </div>
               </div>
 
-              {/* Confirm Password */}
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={submitting || !isPasswordValid || password !== rePassword}
+                className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md hover:bg-teal-800 transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <UserPlus className="h-5 w-5" />
+                )}
+                {submitting ? 'Mengajukan Pendaftaran...' : 'Kirim Pendaftaran'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* OTP Step */}
+        {step === 'otp' && (
+          <div className="w-full max-w-[450px] mx-auto">
+            {/* Header */}
+            <div className="mb-7">
+              <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
+                Verifikasi Email
+              </span>
+              <h2 className="mt-3 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900">
+                Masukkan Kode OTP
+              </h2>
+              <p className="mt-1 text-slate-500 text-sm">
+                Kode OTP 4-digit telah dikirim ke email <span className="font-semibold text-slate-800">{email}</span>.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              {error && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[13px] font-medium text-red-700">
+                  <AlertCircle className="mt-px h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <div>
-                <label className="mb-1.5 block text-xs font-bold text-slate-700">Konfirmasi Password</label>
-                <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 transition-all focus-within:border-teal-500 focus-within:bg-white">
-                  <LockKeyhole className="h-[18px] w-[18px] text-slate-450" />
+                <label className="mb-1.5 block text-[13px] font-bold text-slate-700">Kode OTP (4 Digit)</label>
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all focus-within:border-teal-500 focus-within:bg-white">
+                  <KeyRound className="h-[18px] w-[18px] text-slate-450" />
                   <input
-                    type="password"
-                    value={rePassword}
-                    onChange={(e) => setRePassword(e.target.value)}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
                     required
-                    placeholder="Ulangi password"
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none"
+                    placeholder="Masukkan 4 digit OTP"
+                    maxLength={4}
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm tracking-widest text-slate-900 outline-none"
                   />
                 </div>
-                {/* Password Match Check */}
-                {rePassword.length > 0 && (
-                  <div className="mt-2.5 flex items-center gap-1.5 text-xs">
-                    {password === rePassword ? (
-                      <span className="flex items-center gap-1.5 text-teal-700 font-medium">
-                        <Check className="h-3.5 w-3.5 text-teal-600" /> Password cocok
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-red-600 font-medium">
-                        <X className="h-3.5 w-3.5 text-red-500" /> Password tidak cocok
-                      </span>
-                    )}
-                  </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifyingOtp}
+                className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-teal-800 transition-all shadow-md disabled:opacity-75 disabled:cursor-wait"
+              >
+                {verifyingOtp ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Check className="h-5 w-5" />
                 )}
-                {fieldErrors.re_password && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.re_password}</p>}
-              </div>
+                {verifyingOtp ? 'Memverifikasi...' : 'Verifikasi OTP'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resendCooldown > 0 || resendingOtp}
+                className="w-full text-center text-xs font-semibold text-teal-600 hover:text-teal-700 mt-2 disabled:opacity-55 disabled:cursor-not-allowed hover:underline"
+              >
+                {resendCooldown > 0 ? `Kirim Ulang OTP dalam ${resendCooldown}s` : 'Kirim Ulang OTP'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Success Step */}
+        {step === 'success' && (
+          <div className="w-full max-w-[500px] mx-auto text-center space-y-6">
+            <CheckCircle2 className="h-16 w-16 text-teal-600 mx-auto" />
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-slate-900">Email Terverifikasi</h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto">
+                {successMessage} Akun Anda saat ini berstatus pending dan sedang menunggu persetujuan (approval) oleh Admin Pusat.
+              </p>
             </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={submitting || !isPasswordValid || password !== rePassword}
-              className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md hover:bg-teal-800 transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <UserPlus className="h-5 w-5" />
-              )}
-              {submitting ? 'Mengajukan Pendaftaran...' : 'Kirim Pendaftaran'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* OTP Step */}
-      {step === 'otp' && (
-        <div className="w-full max-w-[450px] mx-auto">
-          {/* Header */}
-          <div className="mb-7">
-            <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
-              Verifikasi Email
-            </span>
-            <h2 className="mt-3 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900">
-              Masukkan Kode OTP
-            </h2>
-            <p className="mt-1 text-slate-500 text-sm">
-              Kode OTP 4-digit telah dikirim ke email <span className="font-semibold text-slate-800">{email}</span>.
-            </p>
-          </div>
-
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            {error && (
-              <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[13px] font-medium text-red-700">
-                <AlertCircle className="mt-px h-4 w-4 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <div>
-              <label className="mb-1.5 block text-[13px] font-bold text-slate-700">Kode OTP (4 Digit)</label>
-              <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all focus-within:border-teal-500 focus-within:bg-white">
-                <KeyRound className="h-[18px] w-[18px] text-slate-450" />
-                <input
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  required
-                  placeholder="Masukkan 4 digit OTP"
-                  maxLength={4}
-                  className="h-full min-w-0 flex-1 bg-transparent text-sm tracking-widest text-slate-900 outline-none"
-                />
-              </div>
+            <div className="pt-2">
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-teal-700 px-8 text-xs font-bold uppercase tracking-wider text-white hover:bg-teal-800 transition-colors shadow-md"
+              >
+                Kembali ke Login
+              </Link>
             </div>
-
-            <button
-              type="submit"
-              disabled={verifyingOtp}
-              className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-teal-800 transition-all shadow-md disabled:opacity-75 disabled:cursor-wait"
-            >
-              {verifyingOtp ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Check className="h-5 w-5" />
-              )}
-              {verifyingOtp ? 'Memverifikasi...' : 'Verifikasi OTP'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleResendOtp}
-              disabled={resendCooldown > 0 || resendingOtp}
-              className="w-full text-center text-xs font-semibold text-teal-600 hover:text-teal-700 mt-2 disabled:opacity-55 disabled:cursor-not-allowed hover:underline"
-            >
-              {resendCooldown > 0 ? `Kirim Ulang OTP dalam ${resendCooldown}s` : 'Kirim Ulang OTP'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Success Step */}
-      {step === 'success' && (
-        <div className="w-full max-w-[500px] mx-auto text-center space-y-6">
-          <CheckCircle2 className="h-16 w-16 text-teal-600 mx-auto" />
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-slate-900">Email Terverifikasi</h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">
-              {successMessage} Akun Anda saat ini berstatus pending dan sedang menunggu persetujuan (approval) oleh Admin Pusat.
-            </p>
           </div>
-          <div className="pt-2">
-            <Link
-              href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-teal-700 px-8 text-xs font-bold uppercase tracking-wider text-white hover:bg-teal-800 transition-colors shadow-md"
-            >
-              Kembali ke Login
-            </Link>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  </div>
   )
 }

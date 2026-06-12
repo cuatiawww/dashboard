@@ -53,6 +53,18 @@ export default function ForgotPasswordPage() {
 
   const isPasswordValid = pwdChecks.minLength && pwdChecks.hasUpper && pwdChecks.hasLower && pwdChecks.hasNumber && pwdChecks.hasSpecial
 
+  // Strength score: 0 to 5 based on checklist
+  const strengthScore = useMemo(() => {
+    if (!password) return 0
+    let score = 0
+    if (pwdChecks.minLength) score++
+    if (pwdChecks.hasUpper) score++
+    if (pwdChecks.hasLower) score++
+    if (pwdChecks.hasNumber) score++
+    if (pwdChecks.hasSpecial) score++
+    return score
+  }, [password, pwdChecks])
+
   // Handle request OTP (Step 1)
   const handleRequestOtp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -138,16 +150,30 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#f0f7f7] py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      {/* Background decoration */}
-      <div className="absolute inset-0 z-0 opacity-[0.04]"
+    <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      {/* Background image */}
+      <Image
+        src="/pkk.png"
+        alt="Background"
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-center z-0"
+      />
+
+      {/* Overlay gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-teal-950/85 via-teal-900/70 to-[#0e6b65]/60 z-0" />
+
+      {/* Subtle grid texture overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.05] z-0"
         style={{
           backgroundImage:
-            'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,128,128,1) 39px,rgba(0,128,128,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,128,128,1) 39px,rgba(0,128,128,1) 40px)',
+            'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px)',
         }}
       />
 
-      <div className="relative z-10 w-full max-w-[450px] bg-white rounded-3xl border border-[#c8dedd] shadow-[0_20px_60px_rgba(15,118,110,0.08)] p-7 sm:p-10">
+      <div className="relative z-10 w-full max-w-[450px] bg-white rounded-3xl border border-[#c8dedd] shadow-[0_25px_70px_rgba(0,0,0,0.25)] p-7 sm:p-10">
         
         {/* Back Link */}
         <Link href="/login" className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold text-sm mb-6 transition-colors">
@@ -266,8 +292,39 @@ export default function ForgotPasswordPage() {
                 </div>
                 {/* Realtime Password Checklist */}
                 {password.length > 0 && (
-                  <div className="mt-2.5 space-y-1.5 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Kriteria Keamanan Sandi:</p>
+                  <div className="mt-2.5 space-y-2.5 rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                    {/* Strength Bar */}
+                    <div>
+                      <div className="flex justify-between items-center mb-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <span>Kekuatan Sandi:</span>
+                        <span className={
+                          strengthScore === 1 ? 'text-red-500 font-extrabold' :
+                          strengthScore === 2 ? 'text-orange-500 font-extrabold' :
+                          strengthScore === 3 ? 'text-yellow-600 font-extrabold' :
+                          strengthScore === 4 ? 'text-blue-600 font-extrabold' :
+                          strengthScore === 5 ? 'text-emerald-600 font-extrabold' : 'text-slate-400'
+                        }>
+                          {strengthScore === 1 && 'Sangat Lemah'}
+                          {strengthScore === 2 && 'Lemah'}
+                          {strengthScore === 3 && 'Cukup Kuat'}
+                          {strengthScore === 4 && 'Kuat'}
+                          {strengthScore === 5 && 'Sangat Kuat'}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            strengthScore === 1 ? 'bg-red-500 w-1/5' :
+                            strengthScore === 2 ? 'bg-orange-500 w-2/5' :
+                            strengthScore === 3 ? 'bg-yellow-500 w-3/5' :
+                            strengthScore === 4 ? 'bg-blue-500 w-4/5' :
+                            strengthScore === 5 ? 'bg-emerald-500 w-full' : 'w-0'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kriteria Keamanan Sandi:</p>
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                       <div className="flex items-center gap-1.5">
                         {pwdChecks.minLength ? <Check className="h-3.5 w-3.5 text-teal-650" /> : <X className="h-3.5 w-3.5 text-red-500" />}
