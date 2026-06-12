@@ -19,15 +19,18 @@ export default function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const { isAuthenticated, isInitialized, initialize } = useAuthStore()
 
+  const publicRoutes = ['/login', '/register', '/forgot-password']
+  const isPublicRoute = publicRoutes.includes(pathname)
+
   useEffect(() => {
     initialize()
   }, [initialize])
 
   useEffect(() => {
-    if (isInitialized && !isAuthenticated && pathname !== '/login') {
+    if (isInitialized && !isAuthenticated && !isPublicRoute) {
       router.push('/login')
     }
-  }, [isInitialized, isAuthenticated, pathname, router])
+  }, [isInitialized, isAuthenticated, isPublicRoute, router])
 
   if (!isInitialized) {
     return (
@@ -37,7 +40,7 @@ export default function AppShell({ children }: AppShellProps) {
     )
   }
 
-  if (pathname === '/login') {
+  if (isPublicRoute) {
     return <main className="min-h-screen bg-slate-50">{children}</main>
   }
 

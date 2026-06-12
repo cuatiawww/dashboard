@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
 
@@ -223,9 +224,17 @@ export default function LoginPage() {
 
               {/* Password */}
               <div>
-                <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[13px] font-bold text-slate-700">
+                    Password
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-[12px] font-semibold text-teal-600 hover:text-teal-750 transition-colors hover:underline"
+                  >
+                    Lupa password?
+                  </Link>
+                </div>
                 <div
                   className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
                 >
@@ -272,6 +281,17 @@ export default function LoginPage() {
                 )}
                 {loading ? 'Memproses...' : 'Masuk'}
               </button>
+
+              {/* Register Link */}
+              <div className="mt-4 text-center text-[13px] text-slate-500">
+                Belum punya akun?{' '}
+                <Link
+                  href="/register"
+                  className="font-bold text-teal-600 hover:text-teal-700 transition-colors hover:underline"
+                >
+                  Daftar sebagai Masyarakat
+                </Link>
+              </div>
             </form>
           </div>
 
