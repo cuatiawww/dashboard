@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
 
 type LoginResponse = {
@@ -33,6 +33,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const [captchaKey, setCaptchaKey] = useState('')
+  const [captchaQuestion, setCaptchaQuestion] = useState('')
+  const [captchaImage, setCaptchaImage] = useState('')
+  const [captchaValue, setCaptchaValue] = useState('')
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+
+  const fetchCaptcha = async () => {
+    setLoadingCaptcha(true)
+    try {
+      const baseUrl = normalizeBaseUrl(
+        process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
+      )
+      const res = await fetch(`${baseUrl}/auth/captcha-api`)
+      const payload = await res.json()
+      if (payload?.success) {
+        setCaptchaKey(payload.captcha_key)
+        setCaptchaImage(payload.captcha_image || '')
+        setCaptchaQuestion(payload.captcha_question || '')
+        setCaptchaValue('')
+      }
+    } catch (err) {
+      console.error('Gagal mengambil captcha', err)
+    } finally {
+      setLoadingCaptcha(false)
+    }
+  }
+
   const loginEndpoint = useMemo(() => {
     const baseUrl = normalizeBaseUrl(
       process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
@@ -50,6 +77,10 @@ export default function LoginPage() {
     }
   }, [isInitialized, isAuthenticated, router])
 
+  useEffect(() => {
+    fetchCaptcha()
+  }, [])
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
@@ -57,6 +88,11 @@ export default function LoginPage() {
     const cleanUsername = username.trim()
     if (!cleanUsername || !password) {
       setError('Username dan password wajib diisi.')
+      return
+    }
+
+    if (!captchaValue) {
+      setError('Captcha wajib diisi.')
       return
     }
 
@@ -68,12 +104,18 @@ export default function LoginPage() {
           'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
           Accept: 'application/json',
         },
-        body: new URLSearchParams({ username: cleanUsername, password }).toString(),
+        body: new URLSearchParams({
+          username: cleanUsername,
+          password,
+          captcha_key: captchaKey,
+          captcha_value: captchaValue.trim(),
+        }).toString(),
       })
 
       const payload = (await response.json().catch(() => null)) as LoginResponse | null
 
       if (!response.ok || !payload?.success || !payload.token || !payload.user) {
+        fetchCaptcha()
         throw new Error(payload?.message || 'Login gagal. Periksa kembali username dan password.')
       }
 
@@ -257,6 +299,47 @@ export default function LoginPage() {
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
+                </div>
+              </div>
+
+              {/* Captcha */}
+              <div className="space-y-2">
+                <label className="block text-[13px] font-bold text-slate-700">
+                  Keamanan (Captcha)
+                </label>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-12 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-teal-50/50 px-3 font-bold text-slate-700 shadow-inner overflow-hidden">
+                    {loadingCaptcha ? (
+                      <span className="text-xs font-normal text-slate-400 animate-pulse">Memuat...</span>
+                    ) : captchaImage ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={captchaImage}
+                        alt="Captcha"
+                        className="h-9 w-[110px] rounded object-cover select-none pointer-events-none"
+                      />
+                    ) : (
+                      <span className="text-[15px] tracking-wide text-teal-800 font-extrabold">{captchaQuestion}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={fetchCaptcha}
+                      disabled={loading || loadingCaptcha}
+                      className="rounded-lg p-1.5 text-slate-450 hover:bg-teal-50 hover:text-teal-700 transition"
+                      title="Segarkan Captcha"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingCaptcha ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={captchaValue}
+                    onChange={(e) => setCaptchaValue(e.target.value)}
+                    required
+                    placeholder="Jawaban"
+                    disabled={loading}
+                    className="h-12 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-center text-[15px] font-extrabold text-slate-900 outline-none transition duration-150 placeholder:font-normal placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
+                  />
                 </div>
               </div>
 

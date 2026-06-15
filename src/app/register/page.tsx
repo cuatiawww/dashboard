@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X, RefreshCw } from 'lucide-react'
 
 type Region = {
   id: string
@@ -38,6 +38,29 @@ export default function RegisterPage() {
 
   // Form states
   const [namaLengkap, setNamaLengkap] = useState('')
+  const [captchaKey, setCaptchaKey] = useState('')
+  const [captchaQuestion, setCaptchaQuestion] = useState('')
+  const [captchaImage, setCaptchaImage] = useState('')
+  const [captchaValue, setCaptchaValue] = useState('')
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+
+  const fetchCaptcha = async () => {
+    setLoadingCaptcha(true)
+    try {
+      const res = await fetch(`${baseApiUrl}/auth/captcha-api`)
+      const payload = await res.json()
+      if (payload?.success) {
+        setCaptchaKey(payload.captcha_key)
+        setCaptchaImage(payload.captcha_image || '')
+        setCaptchaQuestion(payload.captcha_question || '')
+        setCaptchaValue('')
+      }
+    } catch (err) {
+      console.error('Gagal mengambil captcha', err)
+    } finally {
+      setLoadingCaptcha(false)
+    }
+  }
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [telp, setTelp] = useState('')
@@ -123,6 +146,10 @@ export default function RegisterPage() {
     }
     fetchProvinces()
   }, [baseApiUrl])
+
+  useEffect(() => {
+    fetchCaptcha()
+  }, [])
 
   // Fetch regencies when province changes
   useEffect(() => {
@@ -224,6 +251,11 @@ export default function RegisterPage() {
       return
     }
 
+    if (!captchaValue) {
+      setError('Captcha wajib diisi.')
+      return
+    }
+
     setSubmitting(true)
     try {
       const response = await fetch(`${baseApiUrl}/auth/register-api`, {
@@ -249,12 +281,15 @@ export default function RegisterPage() {
           desa_id: desaId,
           tujuan_akses: tujuanAkses,
           tujuan_akses_lainnya: tujuanAksesLainnya,
+          captcha_key: captchaKey,
+          captcha_value: captchaValue.trim(),
         }),
       })
 
       const payload = (await response.json().catch(() => null)) as RegisterResponse | null
 
       if (!response.ok || !payload?.success || !payload.registration_id) {
+        fetchCaptcha()
         if (payload?.errors) {
           setFieldErrors(payload.errors)
         }
@@ -756,10 +791,51 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Captcha */}
+              <div className="space-y-2 max-w-[320px]">
+                <label className="block text-xs font-bold text-slate-700">
+                  Keamanan (Captcha)
+                </label>
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-11 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-teal-50/50 px-3 font-bold text-slate-700 shadow-inner overflow-hidden">
+                    {loadingCaptcha ? (
+                      <span className="text-xs font-normal text-slate-400 animate-pulse">Memuat...</span>
+                    ) : captchaImage ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={captchaImage}
+                        alt="Captcha"
+                        className="h-8 w-[110px] rounded object-cover select-none pointer-events-none"
+                      />
+                    ) : (
+                      <span className="text-sm tracking-wide text-teal-800 font-extrabold">{captchaQuestion}</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={fetchCaptcha}
+                      disabled={submitting || loadingCaptcha}
+                      className="rounded-lg p-1.5 text-slate-450 hover:bg-teal-50 hover:text-teal-700 transition"
+                      title="Segarkan Captcha"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingCaptcha ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={captchaValue}
+                    onChange={(e) => setCaptchaValue(e.target.value)}
+                    required
+                    placeholder="Jawaban"
+                    disabled={submitting}
+                    className="h-11 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 text-center text-sm font-extrabold text-slate-900 outline-none transition duration-150 placeholder:font-normal placeholder:text-slate-400 focus:border-teal-500 focus:bg-white"
+                  />
+                </div>
+              </div>
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={submitting || !isPasswordValid || password !== rePassword}
+                disabled={submitting || !isPasswordValid || password !== rePassword || !captchaValue}
                 className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md hover:bg-teal-800 transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
