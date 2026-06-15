@@ -375,6 +375,23 @@ export default function LoginPage() {
                   Daftar sebagai Masyarakat
                 </Link>
               </div>
+
+              {/* Divider */}
+              <div className="my-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-450">Atau</span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+
+              {/* Guest Login */}
+              <div className="text-center">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 hover:text-teal-800 transition-colors hover:underline"
+                >
+                  Masuk sebagai Tamu (Akses Publik)
+                </Link>
+              </div>
             </form>
           </div>
 
