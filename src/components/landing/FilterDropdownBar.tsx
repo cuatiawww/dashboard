@@ -135,7 +135,96 @@ function FilterIcon({ icon, className }: { icon: FilterItem['icon']; className?:
 
 export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
-  const activeFilterData = useMemo(() => scopedFilterData(userScope), [userScope])
+  
+  const [dynamicProvinces, setDynamicProvinces] = useState<Array<{ value: string; label: string }>>([
+    { value: 'semua-provinsi', label: 'Semua Provinsi' },
+    { value: 'jawa-barat', label: 'Jawa Barat' },
+    { value: 'dki-jakarta', label: 'DKI Jakarta' },
+    { value: 'jawa-tengah', label: 'Jawa Tengah' },
+  ])
+
+  const [dynamicKabkota, setDynamicKabkota] = useState<Array<{ value: string; label: string }>>([
+    { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+  ])
+
+  const activeFilterData = useMemo(() => {
+    if (!userScope || userScope.mode === 'all') {
+      return [
+        {
+          id: 'cakupan',
+          icon: 'globe' as const,
+          sublabel: 'Cakupan',
+          defaultValue: 'nasional',
+          options: [
+            { value: 'nasional', label: 'Nasional' },
+            { value: 'provinsi', label: 'Provinsi' },
+            { value: 'kabupaten-kota', label: 'Kabupaten/Kota' },
+          ],
+        },
+        {
+          id: 'provinsi',
+          icon: 'pin' as const,
+          sublabel: 'Provinsi',
+          defaultValue: 'semua-provinsi',
+          options: dynamicProvinces,
+        },
+        {
+          id: 'kabkota',
+          icon: 'building' as const,
+          sublabel: 'Kab/Kota',
+          defaultValue: 'semua-kabkota',
+          options: dynamicKabkota,
+        },
+      ]
+    }
+
+    const cakupanValue = userScope.cakupan.value || userScope.mode
+    const provinsiValue = userScope.provinsi.id ? String(userScope.provinsi.id) : slugify(userScope.provinsi.label)
+    const kabupatenValue = userScope.kabupaten.id ? String(userScope.kabupaten.id) : slugify(userScope.kabupaten.label)
+    const kabupatenOptions =
+      userScope.mode === 'kabupaten'
+        ? [
+            {
+              value: kabupatenValue,
+              label: userScope.kabupaten.label,
+            },
+          ]
+        : [
+            { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+            ...(userScope.kabupaten.options || []).map((item) => ({
+              value: String(item.id),
+              label: item.label,
+            })),
+          ]
+
+    return [
+      {
+        id: 'cakupan',
+        icon: 'globe' as const,
+        sublabel: 'Cakupan',
+        defaultValue: cakupanValue,
+        locked: userScope.cakupan.locked,
+        options: [{ value: cakupanValue, label: userScope.cakupan.label }],
+      },
+      {
+        id: 'provinsi',
+        icon: 'pin' as const,
+        sublabel: 'Provinsi',
+        defaultValue: provinsiValue,
+        locked: userScope.provinsi.locked,
+        options: [{ value: provinsiValue, label: userScope.provinsi.label }],
+      },
+      {
+        id: 'kabkota',
+        icon: 'building' as const,
+        sublabel: 'Kab/Kota',
+        defaultValue: userScope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
+        locked: userScope.kabupaten.locked,
+        options: kabupatenOptions,
+      },
+    ]
+  }, [userScope, dynamicProvinces, dynamicKabkota])
+
   const defaultSelected = useMemo(
     () => Object.fromEntries(activeFilterData.map((f) => [f.id, f.defaultValue])),
     [activeFilterData]
@@ -158,6 +247,63 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!userScope || userScope.mode === 'all') {
+      const fetchProvinces = async () => {
+        try {
+          const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
+          const res = await fetch(`${baseUrl}/auth/regions-api`)
+          const payload = await res.json()
+          if (payload?.success && Array.isArray(payload?.data)) {
+            const list = [
+              { value: 'semua-provinsi', label: 'Semua Provinsi' },
+              ...payload.data.map((item: any) => ({
+                value: String(item.code || item.id),
+                label: item.name,
+              })),
+            ]
+            setDynamicProvinces(list)
+          }
+        } catch (err) {
+          console.error('Gagal mengambil data provinsi', err)
+        }
+      }
+      fetchProvinces()
+    }
+  }, [userScope])
+
+  const selectedProvince = selected['provinsi']
+
+  useEffect(() => {
+    if (!userScope || userScope.mode === 'all') {
+      if (!selectedProvince || selectedProvince === 'semua-provinsi') {
+        setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+        return
+      }
+
+      const fetchKabkota = async () => {
+        try {
+          const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
+          const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
+          const payload = await res.json()
+          if (payload?.success && Array.isArray(payload?.data)) {
+            const list = [
+              { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+              ...payload.data.map((item: any) => ({
+                value: String(item.code || item.id),
+                label: item.name,
+              })),
+            ]
+            setDynamicKabkota(list)
+          }
+        } catch (err) {
+          console.error('Gagal mengambil data kabkota', err)
+        }
+      }
+      fetchKabkota()
+    }
+  }, [selectedProvince, userScope])
 
   const summaryItems = useMemo(
     () =>
@@ -193,7 +339,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
       <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[#6b7280]">
         Filter Wilayah
       </p>
-
+ 
       {/* Unified pill bar */}
       <div className="flex items-center rounded-2xl border border-[#e5e7eb] bg-white p-1.5">
         {activeFilterData.map((filter, idx) => {
@@ -202,14 +348,14 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
           const isOpen = openId === filter.id
           const { bg, color } = iconStyles[filter.icon]
           const locked = Boolean(filter.locked)
-
+ 
           return (
             <div key={filter.id} className="relative flex flex-1 items-center">
               {/* Divider between segments */}
               {idx > 0 && (
                 <span className="h-7 w-px flex-shrink-0 bg-[#e5e7eb]" aria-hidden="true" />
               )}
-
+ 
               <button
                 type="button"
                 onClick={() => {
@@ -234,7 +380,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                 >
                   <FilterIcon icon={filter.icon} className={`h-4 w-4 ${color}`} />
                 </span>
-
+ 
                 {/* Sublabel + value stacked */}
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
                   <span className="text-[10px] font-medium leading-none text-[#9ca3af]">
@@ -244,7 +390,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                     {activeOption.label}
                   </span>
                 </span>
-
+ 
                 <ChevronDown
                   className={`
                     ml-auto h-4 w-4 flex-shrink-0 text-[#9ca3af]
@@ -254,7 +400,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                   `}
                 />
               </button>
-
+ 
               {/* Dropdown */}
               {isOpen && (
                 <div
@@ -263,6 +409,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                     absolute left-0 top-[calc(100%+8px)] z-30 min-w-[180px]
                     overflow-hidden rounded-2xl border border-[#e5e7eb]
                     bg-white shadow-[0_8px_24px_rgba(0,0,0,0.10)]
+                    max-h-[300px] overflow-y-auto scrollbar-thin
                   "
                 >
                   {filter.options.map((opt) => {
@@ -274,7 +421,13 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                         role="option"
                         aria-selected={isSelected}
                         onClick={() => {
-                          setSelected((prev) => ({ ...prev, [filter.id]: opt.value }))
+                          setSelected((prev) => {
+                            const next = { ...prev, [filter.id]: opt.value }
+                            if (filter.id === 'provinsi') {
+                              next['kabkota'] = 'semua-kabkota'
+                            }
+                            return next
+                          })
                           setOpenId(null)
                         }}
                         className={`
