@@ -23,48 +23,16 @@ type FilterDropdownBarProps = {
   onSummaryChange?: (summary: FilterSummary) => void
 }
 
-const filterData: FilterItem[] = [
-  {
-    id: 'cakupan',
-    icon: 'globe',
-    sublabel: 'Cakupan',
-    defaultValue: 'nasional',
-    options: [
-      { value: 'nasional', label: 'Nasional' },
-      { value: 'provinsi', label: 'Provinsi' },
-      { value: 'kabupaten-kota', label: 'Kabupaten/Kota' },
-    ],
-  },
-  {
-    id: 'provinsi',
-    icon: 'pin',
-    sublabel: 'Provinsi',
-    defaultValue: 'semua-provinsi',
-    options: [
-      { value: 'semua-provinsi', label: 'Semua Provinsi' },
-      { value: 'jawa-barat', label: 'Jawa Barat' },
-      { value: 'dki-jakarta', label: 'DKI Jakarta' },
-      { value: 'jawa-tengah', label: 'Jawa Tengah' },
-    ],
-  },
-  {
-    id: 'kabkota',
-    icon: 'building',
-    sublabel: 'Kab/Kota',
-    defaultValue: 'semua-kabkota',
-    options: [
-      { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-      { value: 'kota-bandung', label: 'Kota Bandung' },
-      { value: 'kota-bekasi', label: 'Kota Bekasi' },
-      { value: 'kota-semarang', label: 'Kota Semarang' },
-    ],
-  },
-]
-
 const iconStyles: Record<FilterItem['icon'], { bg: string; color: string }> = {
-  globe:    { bg: 'bg-[#E1F5EE]', color: 'text-[#0F6E56]' },
-  pin:      { bg: 'bg-[#E6F1FB]', color: 'text-[#185FA5]' },
+  globe: { bg: 'bg-[#E1F5EE]', color: 'text-[#0F6E56]' },
+  pin: { bg: 'bg-[#E6F1FB]', color: 'text-[#185FA5]' },
   building: { bg: 'bg-[#EEEDFE]', color: 'text-[#534AB7]' },
+}
+
+function FilterIcon({ icon, className }: { icon: FilterItem['icon']; className?: string }) {
+  if (icon === 'globe') return <Globe className={className} />
+  if (icon === 'pin') return <MapPin className={className} />
+  return <Building2 className={className} />
 }
 
 function slugify(value: string) {
@@ -75,84 +43,26 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-function scopedFilterData(scope?: WilayahScope): FilterItem[] {
-  if (!scope || scope.mode === 'all') {
-    return filterData
-  }
-
-  const cakupanValue = scope.cakupan.value || scope.mode
-  const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
-  const kabupatenValue = scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label)
-  const kabupatenOptions =
-    scope.mode === 'kabupaten'
-      ? [
-          {
-            value: kabupatenValue,
-            label: scope.kabupaten.label,
-          },
-        ]
-      : [
-          { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-          ...(scope.kabupaten.options || []).map((item) => ({
-            value: String(item.id),
-            label: item.label,
-          })),
-        ]
-
-  return [
-    {
-      id: 'cakupan',
-      icon: 'globe',
-      sublabel: 'Cakupan',
-      defaultValue: cakupanValue,
-      locked: scope.cakupan.locked,
-      options: [{ value: cakupanValue, label: scope.cakupan.label }],
-    },
-    {
-      id: 'provinsi',
-      icon: 'pin',
-      sublabel: 'Provinsi',
-      defaultValue: provinsiValue,
-      locked: scope.provinsi.locked,
-      options: [{ value: provinsiValue, label: scope.provinsi.label }],
-    },
-    {
-      id: 'kabkota',
-      icon: 'building',
-      sublabel: 'Kab/Kota',
-      defaultValue: scope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
-      locked: scope.kabupaten.locked,
-      options: kabupatenOptions,
-    },
-  ]
-}
-
-function FilterIcon({ icon, className }: { icon: FilterItem['icon']; className?: string }) {
-  if (icon === 'globe')    return <Globe    className={className} />
-  if (icon === 'pin')      return <MapPin   className={className} />
-  return                          <Building2 className={className} />
-}
-
 export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
-  
+
+  // Mulai KOSONG, bukan array statis fallback.
   const [dynamicProvinces, setDynamicProvinces] = useState<Array<{ value: string; label: string }>>([
     { value: 'semua-provinsi', label: 'Semua Provinsi' },
-    { value: 'jawa-barat', label: 'Jawa Barat' },
-    { value: 'dki-jakarta', label: 'DKI Jakarta' },
-    { value: 'jawa-tengah', label: 'Jawa Tengah' },
   ])
-
   const [dynamicKabkota, setDynamicKabkota] = useState<Array<{ value: string; label: string }>>([
     { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
   ])
 
-  const activeFilterData = useMemo(() => {
+  const [loadingProvinces, setLoadingProvinces] = useState(true)
+  const [loadingKabkota, setLoadingKabkota] = useState(false)
+
+  const activeFilterData = useMemo<FilterItem[]>(() => {
     if (!userScope || userScope.mode === 'all') {
       return [
         {
           id: 'cakupan',
-          icon: 'globe' as const,
+          icon: 'globe',
           sublabel: 'Cakupan',
           defaultValue: 'nasional',
           options: [
@@ -163,17 +73,21 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
         },
         {
           id: 'provinsi',
-          icon: 'pin' as const,
+          icon: 'pin',
           sublabel: 'Provinsi',
           defaultValue: 'semua-provinsi',
-          options: dynamicProvinces,
+          options: loadingProvinces
+            ? [{ value: 'semua-provinsi', label: 'Memuat...' }]
+            : dynamicProvinces,
         },
         {
           id: 'kabkota',
-          icon: 'building' as const,
+          icon: 'building',
           sublabel: 'Kab/Kota',
           defaultValue: 'semua-kabkota',
-          options: dynamicKabkota,
+          options: loadingKabkota
+            ? [{ value: 'semua-kabkota', label: 'Memuat...' }]
+            : dynamicKabkota,
         },
       ]
     }
@@ -184,23 +98,23 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const kabupatenOptions =
       userScope.mode === 'kabupaten'
         ? [
-            {
-              value: kabupatenValue,
-              label: userScope.kabupaten.label,
-            },
-          ]
+          {
+            value: kabupatenValue,
+            label: userScope.kabupaten.label,
+          },
+        ]
         : [
-            { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-            ...(userScope.kabupaten.options || []).map((item) => ({
-              value: String(item.id),
-              label: item.label,
-            })),
-          ]
+          { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+          ...(userScope.kabupaten.options || []).map((item) => ({
+            value: String(item.id),
+            label: item.label,
+          })),
+        ]
 
     return [
       {
         id: 'cakupan',
-        icon: 'globe' as const,
+        icon: 'globe',
         sublabel: 'Cakupan',
         defaultValue: cakupanValue,
         locked: userScope.cakupan.locked,
@@ -208,7 +122,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
       },
       {
         id: 'provinsi',
-        icon: 'pin' as const,
+        icon: 'pin',
         sublabel: 'Provinsi',
         defaultValue: provinsiValue,
         locked: userScope.provinsi.locked,
@@ -216,14 +130,14 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
       },
       {
         id: 'kabkota',
-        icon: 'building' as const,
+        icon: 'building',
         sublabel: 'Kab/Kota',
         defaultValue: userScope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
         locked: userScope.kabupaten.locked,
         options: kabupatenOptions,
       },
     ]
-  }, [userScope, dynamicProvinces, dynamicKabkota])
+  }, [userScope, dynamicProvinces, dynamicKabkota, loadingProvinces, loadingKabkota])
 
   const defaultSelected = useMemo(
     () => Object.fromEntries(activeFilterData.map((f) => [f.id, f.defaultValue])),
@@ -251,6 +165,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
   useEffect(() => {
     if (!userScope || userScope.mode === 'all') {
       const fetchProvinces = async () => {
+        setLoadingProvinces(true)
         try {
           const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
           const res = await fetch(`${baseUrl}/auth/regions-api`)
@@ -264,9 +179,14 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
               })),
             ]
             setDynamicProvinces(list)
+          } else {
+            setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
           }
         } catch (err) {
           console.error('Gagal mengambil data provinsi', err)
+          setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
+        } finally {
+          setLoadingProvinces(false)
         }
       }
       fetchProvinces()
@@ -279,10 +199,12 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     if (!userScope || userScope.mode === 'all') {
       if (!selectedProvince || selectedProvince === 'semua-provinsi') {
         setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+        setLoadingKabkota(false)
         return
       }
 
       const fetchKabkota = async () => {
+        setLoadingKabkota(true)
         try {
           const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
           const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
@@ -296,9 +218,14 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
               })),
             ]
             setDynamicKabkota(list)
+          } else {
+            setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
           }
         } catch (err) {
           console.error('Gagal mengambil data kabkota', err)
+          setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+        } finally {
+          setLoadingKabkota(false)
         }
       }
       fetchKabkota()
@@ -339,7 +266,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
       <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[#6b7280]">
         Filter Wilayah
       </p>
- 
+
       {/* Unified pill bar */}
       <div className="flex items-center rounded-2xl border border-[#e5e7eb] bg-white p-1.5">
         {activeFilterData.map((filter, idx) => {
@@ -348,14 +275,14 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
           const isOpen = openId === filter.id
           const { bg, color } = iconStyles[filter.icon]
           const locked = Boolean(filter.locked)
- 
+
           return (
             <div key={filter.id} className="relative flex flex-1 items-center">
               {/* Divider between segments */}
               {idx > 0 && (
                 <span className="h-7 w-px flex-shrink-0 bg-[#e5e7eb]" aria-hidden="true" />
               )}
- 
+
               <button
                 type="button"
                 onClick={() => {
@@ -380,7 +307,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                 >
                   <FilterIcon icon={filter.icon} className={`h-4 w-4 ${color}`} />
                 </span>
- 
+
                 {/* Sublabel + value stacked */}
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
                   <span className="text-[10px] font-medium leading-none text-[#9ca3af]">
@@ -390,7 +317,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                     {activeOption.label}
                   </span>
                 </span>
- 
+
                 <ChevronDown
                   className={`
                     ml-auto h-4 w-4 flex-shrink-0 text-[#9ca3af]
@@ -400,7 +327,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                   `}
                 />
               </button>
- 
+
               {/* Dropdown */}
               {isOpen && (
                 <div
