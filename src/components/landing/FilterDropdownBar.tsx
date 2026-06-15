@@ -43,10 +43,21 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
+// Mode-mode scope yang dianggap valid & terkunci ke wilayah tertentu.
+const SCOPED_MODES: WilayahScope['mode'][] = ['provinsi', 'kabupaten']
+
+function hasValidScopedMode(scope?: WilayahScope): scope is WilayahScope {
+  return !!scope && SCOPED_MODES.includes(scope.mode)
+}
+
 export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
 
-  // Mulai KOSONG, bukan array statis fallback.
+  // Hanya benar-benar "scoped" jika mode dikenal (provinsi/kabupaten).
+  // Selain itu (termasuk 'all' atau mode tak terduga/aneh) -> treat sebagai nasional.
+  const isScoped = hasValidScopedMode(userScope)
+
+  // Mulai KOSONG (selain "Semua ..."), bukan array statis fallback.
   const [dynamicProvinces, setDynamicProvinces] = useState<Array<{ value: string; label: string }>>([
     { value: 'semua-provinsi', label: 'Semua Provinsi' },
   ])
@@ -58,7 +69,8 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
   const [loadingKabkota, setLoadingKabkota] = useState(false)
 
   const activeFilterData = useMemo<FilterItem[]>(() => {
-    if (!userScope || userScope.mode === 'all') {
+    if (!isScoped) {
+      // Nasional / tamu / mode tidak dikenal -> dropdown aktif & dinamis dari API.
       return [
         {
           id: 'cakupan',
@@ -92,20 +104,23 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
       ]
     }
 
-    const cakupanValue = userScope.cakupan.value || userScope.mode
-    const provinsiValue = userScope.provinsi.id ? String(userScope.provinsi.id) : slugify(userScope.provinsi.label)
-    const kabupatenValue = userScope.kabupaten.id ? String(userScope.kabupaten.id) : slugify(userScope.kabupaten.label)
+    // userScope dipastikan ada & mode-nya valid (provinsi/kabupaten) di sini.
+    const scope = userScope as WilayahScope
+
+    const cakupanValue = scope.cakupan.value || scope.mode
+    const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
+    const kabupatenValue = scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label)
     const kabupatenOptions =
-      userScope.mode === 'kabupaten'
+      scope.mode === 'kabupaten'
         ? [
           {
             value: kabupatenValue,
-            label: userScope.kabupaten.label,
+            label: scope.kabupaten.label,
           },
         ]
         : [
           { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-          ...(userScope.kabupaten.options || []).map((item) => ({
+          ...(scope.kabupaten.options || []).map((item) => ({
             value: String(item.id),
             label: item.label,
           })),
@@ -117,27 +132,27 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
         icon: 'globe',
         sublabel: 'Cakupan',
         defaultValue: cakupanValue,
-        locked: userScope.cakupan.locked,
-        options: [{ value: cakupanValue, label: userScope.cakupan.label }],
+        locked: scope.cakupan.locked,
+        options: [{ value: cakupanValue, label: scope.cakupan.label }],
       },
       {
         id: 'provinsi',
         icon: 'pin',
         sublabel: 'Provinsi',
         defaultValue: provinsiValue,
-        locked: userScope.provinsi.locked,
-        options: [{ value: provinsiValue, label: userScope.provinsi.label }],
+        locked: scope.provinsi.locked,
+        options: [{ value: provinsiValue, label: scope.provinsi.label }],
       },
       {
         id: 'kabkota',
         icon: 'building',
         sublabel: 'Kab/Kota',
-        defaultValue: userScope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
-        locked: userScope.kabupaten.locked,
+        defaultValue: scope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
+        locked: scope.kabupaten.locked,
         options: kabupatenOptions,
       },
     ]
-  }, [userScope, dynamicProvinces, dynamicKabkota, loadingProvinces, loadingKabkota])
+  }, [isScoped, userScope, dynamicProvinces, dynamicKabkota, loadingProvinces, loadingKabkota])
 
   const defaultSelected = useMemo(
     () => Object.fromEntries(activeFilterData.map((f) => [f.id, f.defaultValue])),
@@ -162,75 +177,77 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Fetch provinsi hanya jika TIDAK scoped (nasional/tamu/mode tak dikenal).
   useEffect(() => {
-    if (!userScope || userScope.mode === 'all') {
-      const fetchProvinces = async () => {
-        setLoadingProvinces(true)
-        try {
-          const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
-          const res = await fetch(`${baseUrl}/auth/regions-api`)
-          const payload = await res.json()
-          if (payload?.success && Array.isArray(payload?.data)) {
-            const list = [
-              { value: 'semua-provinsi', label: 'Semua Provinsi' },
-              ...payload.data.map((item: any) => ({
-                value: String(item.code || item.id),
-                label: item.name,
-              })),
-            ]
-            setDynamicProvinces(list)
-          } else {
-            setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
-          }
-        } catch (err) {
-          console.error('Gagal mengambil data provinsi', err)
+    if (isScoped) return
+
+    const fetchProvinces = async () => {
+      setLoadingProvinces(true)
+      try {
+        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
+        const res = await fetch(`${baseUrl}/auth/regions-api`)
+        const payload = await res.json()
+        if (payload?.success && Array.isArray(payload?.data)) {
+          const list = [
+            { value: 'semua-provinsi', label: 'Semua Provinsi' },
+            ...payload.data.map((item: any) => ({
+              value: String(item.code || item.id),
+              label: item.name,
+            })),
+          ]
+          setDynamicProvinces(list)
+        } else {
           setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
-        } finally {
-          setLoadingProvinces(false)
         }
+      } catch (err) {
+        console.error('Gagal mengambil data provinsi', err)
+        setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
+      } finally {
+        setLoadingProvinces(false)
       }
-      fetchProvinces()
     }
-  }, [userScope])
+    fetchProvinces()
+  }, [isScoped])
 
   const selectedProvince = selected['provinsi']
 
+  // Fetch kab/kota cascade hanya jika TIDAK scoped.
   useEffect(() => {
-    if (!userScope || userScope.mode === 'all') {
-      if (!selectedProvince || selectedProvince === 'semua-provinsi') {
-        setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
-        setLoadingKabkota(false)
-        return
-      }
+    if (isScoped) return
 
-      const fetchKabkota = async () => {
-        setLoadingKabkota(true)
-        try {
-          const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
-          const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
-          const payload = await res.json()
-          if (payload?.success && Array.isArray(payload?.data)) {
-            const list = [
-              { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-              ...payload.data.map((item: any) => ({
-                value: String(item.code || item.id),
-                label: item.name,
-              })),
-            ]
-            setDynamicKabkota(list)
-          } else {
-            setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
-          }
-        } catch (err) {
-          console.error('Gagal mengambil data kabkota', err)
-          setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
-        } finally {
-          setLoadingKabkota(false)
-        }
-      }
-      fetchKabkota()
+    if (!selectedProvince || selectedProvince === 'semua-provinsi') {
+      setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+      setLoadingKabkota(false)
+      return
     }
-  }, [selectedProvince, userScope])
+
+    const fetchKabkota = async () => {
+      setLoadingKabkota(true)
+      try {
+        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
+        const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
+        const payload = await res.json()
+        if (payload?.success && Array.isArray(payload?.data)) {
+          const list = [
+            { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+            ...payload.data.map((item: any) => ({
+              value: String(item.code || item.id),
+              label: item.name,
+            })),
+          ]
+          setDynamicKabkota(list)
+        } else {
+          setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+        }
+      } catch (err) {
+        console.error('Gagal mengambil data kabkota', err)
+        setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+      } finally {
+        setLoadingKabkota(false)
+      }
+    }
+    fetchKabkota()
+  }, [selectedProvince, isScoped])
 
   const summaryItems = useMemo(
     () =>
