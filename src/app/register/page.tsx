@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X } from 'lucide-react'
 
 type Region = {
-  id: number
+  id: string
+  code?: string
   name: string
 }
 
@@ -44,6 +45,8 @@ export default function RegisterPage() {
   const [alamatUser, setAlamatUser] = useState('')
   const [provinsiId, setProvinsiId] = useState('')
   const [kabupatenId, setKabupatenId] = useState('')
+  const [kecamatanId, setKecamatanId] = useState('')
+  const [desaId, setDesaId] = useState('')
   const [tujuanAkses, setTujuanAkses] = useState('riset_analisa')
   const [tujuanAksesLainnya, setTujuanAksesLainnya] = useState('')
   const [namaInstitusi, setNamaInstitusi] = useState('')
@@ -58,8 +61,12 @@ export default function RegisterPage() {
   // UI States
   const [provinces, setProvinces] = useState<Region[]>([])
   const [regencies, setRegencies] = useState<Region[]>([])
+  const [districts, setDistricts] = useState<Region[]>([])
+  const [villages, setVillages] = useState<Region[]>([])
   const [loadingProvinces, setLoadingProvinces] = useState(false)
   const [loadingRegencies, setLoadingRegencies] = useState(false)
+  const [loadingDistricts, setLoadingDistricts] = useState(false)
+  const [loadingVillages, setLoadingVillages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [verifyingOtp, setVerifyingOtp] = useState(false)
   const [resendingOtp, setResendingOtp] = useState(false)
@@ -120,7 +127,11 @@ export default function RegisterPage() {
   // Fetch regencies when province changes
   useEffect(() => {
     setKabupatenId('')
+    setKecamatanId('')
+    setDesaId('')
     setRegencies([])
+    setDistricts([])
+    setVillages([])
     if (!provinsiId) return
 
     async function fetchRegencies() {
@@ -139,6 +150,54 @@ export default function RegisterPage() {
     }
     fetchRegencies()
   }, [provinsiId, baseApiUrl])
+
+  // Fetch districts when regency changes
+  useEffect(() => {
+    setKecamatanId('')
+    setDesaId('')
+    setDistricts([])
+    setVillages([])
+    if (!kabupatenId) return
+
+    async function fetchDistricts() {
+      setLoadingDistricts(true)
+      try {
+        const res = await fetch(`${baseApiUrl}/auth/regions-api?kabupaten_id=${kabupatenId}`)
+        const payload = await res.json()
+        if (payload?.success && Array.isArray(payload?.data)) {
+          setDistricts(payload.data)
+        }
+      } catch (err) {
+        console.error('Failed to load districts', err)
+      } finally {
+        setLoadingDistricts(false)
+      }
+    }
+    fetchDistricts()
+  }, [kabupatenId, baseApiUrl])
+
+  // Fetch villages when district changes
+  useEffect(() => {
+    setDesaId('')
+    setVillages([])
+    if (!kecamatanId) return
+
+    async function fetchVillages() {
+      setLoadingVillages(true)
+      try {
+        const res = await fetch(`${baseApiUrl}/auth/regions-api?kecamatan_id=${kecamatanId}`)
+        const payload = await res.json()
+        if (payload?.success && Array.isArray(payload?.data)) {
+          setVillages(payload.data)
+        }
+      } catch (err) {
+        console.error('Failed to load villages', err)
+      } finally {
+        setLoadingVillages(false)
+      }
+    }
+    fetchVillages()
+  }, [kecamatanId, baseApiUrl])
 
   // Countdown timer for Resend OTP
   useEffect(() => {
@@ -184,8 +243,10 @@ export default function RegisterPage() {
           nama_institusi: namaInstitusi,
           pekerjaan_posisi: pekerjaanPosisi,
           alamat_user: alamatUser,
-          provinsi_id: parseInt(provinsiId),
-          kabupaten_id: parseInt(kabupatenId),
+          provinsi_id: provinsiId,
+          kabupaten_id: kabupatenId,
+          kecamatan_id: kecamatanId,
+          desa_id: desaId,
           tujuan_akses: tujuanAkses,
           tujuan_akses_lainnya: tujuanAksesLainnya,
         }),
@@ -523,6 +584,50 @@ export default function RegisterPage() {
                     ))}
                   </select>
                   {fieldErrors.kabupaten_id && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.kabupaten_id}</p>}
+                </div>
+
+                {/* Kecamatan */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Kecamatan {loadingDistricts && <span className="text-teal-600 animate-pulse">(Memuat...)</span>}
+                  </label>
+                  <select
+                    value={kecamatanId}
+                    onChange={(e) => setKecamatanId(e.target.value)}
+                    required
+                    disabled={!kabupatenId}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-all focus:border-teal-500 focus:bg-white disabled:opacity-50"
+                  >
+                    <option value="">{kabupatenId ? 'Pilih Kecamatan' : 'Pilih Kabupaten / Kota dahulu'}</option>
+                    {districts.map((district) => (
+                      <option key={district.id} value={district.id}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.kecamatan_id && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.kecamatan_id}</p>}
+                </div>
+
+                {/* Desa / Kelurahan */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-slate-700">
+                    Desa / Kelurahan {loadingVillages && <span className="text-teal-600 animate-pulse">(Memuat...)</span>}
+                  </label>
+                  <select
+                    value={desaId}
+                    onChange={(e) => setDesaId(e.target.value)}
+                    required
+                    disabled={!kecamatanId}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition-all focus:border-teal-500 focus:bg-white disabled:opacity-50"
+                  >
+                    <option value="">{kecamatanId ? 'Pilih Desa / Kelurahan' : 'Pilih Kecamatan dahulu'}</option>
+                    {villages.map((village) => (
+                      <option key={village.id} value={village.id}>
+                        {village.name}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldErrors.desa_id && <p className="mt-1 text-xs text-red-650 font-medium">{fieldErrors.desa_id}</p>}
                 </div>
               </div>
 

@@ -13,12 +13,12 @@ export interface User {
 export type WilayahScopeMode = 'all' | 'provinsi' | 'kabupaten'
 
 export interface WilayahScopeOption {
-  id?: number | null
+  id?: string | number | null
   value?: string
   label: string
   locked: boolean
   options?: Array<{
-    id: number
+    id: string | number
     label: string
   }>
 }
