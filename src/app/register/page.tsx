@@ -43,6 +43,8 @@ export default function RegisterPage() {
   const [captchaImage, setCaptchaImage] = useState('')
   const [captchaValue, setCaptchaValue] = useState('')
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   const fetchCaptcha = async () => {
     setLoadingCaptcha(true)
@@ -832,10 +834,33 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {/* Syarat & Ketentuan Checkbox */}
+              <div className="flex items-start gap-3 pt-2">
+                <input
+                  type="checkbox"
+                  id="acceptTerms"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-500 cursor-pointer"
+                  disabled={submitting}
+                />
+                <label htmlFor="acceptTerms" className="text-xs font-semibold text-slate-650 leading-normal cursor-pointer select-none">
+                  Saya menyetujui seluruh{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="text-teal-600 hover:text-teal-700 hover:underline font-bold"
+                  >
+                    Syarat & Ketentuan
+                  </button>{' '}
+                  yang berlaku untuk pendaftaran dan penggunaan akun Dashboard Faskes.
+                </label>
+              </div>
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={submitting || !isPasswordValid || password !== rePassword || !captchaValue}
+                disabled={submitting || !isPasswordValid || password !== rePassword || !captchaValue || !acceptTerms}
                 className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-extrabold uppercase tracking-wider text-white shadow-md hover:bg-teal-800 transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
@@ -934,6 +959,83 @@ export default function RegisterPage() {
           </div>
         )}
       </div>
+
+      {/* Syarat & Ketentuan Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#c8dedd] flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+              <h3 className="text-lg font-extrabold text-slate-900">
+                Syarat & Ketentuan Pengguna
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition"
+                aria-label="Tutup"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 text-sm text-slate-600 space-y-4 leading-relaxed scrollbar-thin">
+              <p>
+                Selamat datang di <strong>Dashboard Fasilitas Kesehatan (Dashboard Faskes)</strong>. Dengan mendaftar dan menggunakan sistem ini, Anda setuju untuk mematuhi ketentuan di bawah ini:
+              </p>
+
+              <h4 className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">1. Hak Akses & Akun</h4>
+              <p className="pl-3 border-l-2 border-teal-500 text-slate-600">
+                Penggunaan akun ini terbatas untuk tujuan penelitian, riset, pemantauan nasional, dan keperluan kedinasan/lintas sektor resmi. Anda bertanggung jawab penuh atas kerahasiaan kata sandi dan aktivitas akun Anda.
+              </p>
+
+              <h4 className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">2. Penggunaan Data</h4>
+              <p className="pl-3 border-l-2 border-teal-500 text-slate-600">
+                Data sarana fasilitas kesehatan, wilayah BPS, dan laporan bencana yang diperoleh melalui sistem ini hanya boleh digunakan sesuai tujuan akses yang diajukan. Dilarang menyebarkan, memanipulasi, atau menyalahgunakan data yang dapat membahayakan privasi atau operasional fasilitas kesehatan.
+              </p>
+
+              <h4 className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">3. Verifikasi & Validasi</h4>
+              <p className="pl-3 border-l-2 border-teal-500 text-slate-600">
+                Pendaftaran akun Anda memerlukan verifikasi email melalui OTP dan persetujuan manual oleh Administrator Pusat. Kami berhak menangguhkan atau menghapus akun jika ditemukan pelanggaran atau pemalsuan data diri.
+              </p>
+
+              <h4 className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">4. Keamanan Sistem</h4>
+              <p className="pl-3 border-l-2 border-teal-500 text-slate-600">
+                Sistem ini dilindungi oleh mekanisme keamanan berlapis, termasuk captcha dan verifikasi akses. Setiap percobaan akses ilegal, peretasan, atau aktivitas mencurigakan lainnya akan diproses sesuai hukum yang berlaku di Republik Indonesia.
+              </p>
+
+              <p className="text-[12px] text-slate-400 pt-2 border-t border-slate-100">
+                Terakhir diperbarui: 15 Juni 2026<br />
+                Kementerian Kesehatan Republik Indonesia.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 rounded-b-3xl border-t border-slate-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAcceptTerms(true)
+                  setShowTermsModal(false)
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-teal-700 px-4 text-xs font-bold text-white hover:bg-teal-800 transition"
+              >
+                Setuju & Lanjutkan
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-650 hover:bg-slate-50 transition"
+              >
+                Tutup
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
