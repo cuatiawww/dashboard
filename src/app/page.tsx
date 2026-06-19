@@ -36,75 +36,75 @@ function isAllValue(value: string) {
 
 function buildRegionSuffix(summary: FilterSummary) {
   const cakupan = summary.cakupan.toLowerCase()
-  const province = summary.provinsi
-  const district = summary.kabkota
+  const province = summary.provinsi.toUpperCase()
+  const district = summary.kabkota.toUpperCase()
 
-  let suffix = 'Nasional'
+  let suffix = 'NASIONAL'
 
   if (cakupan.includes('kabupaten') && !isAllValue(district)) {
-    suffix = `${district}, Prov. ${province}`
+    suffix = `${district}, PROV. ${province}`
   } else if (!isAllValue(province)) {
-    suffix = `Prov. ${province} (${isAllValue(district) ? 'Semua Kab' : district})`
+    suffix = `PROV. ${province} (${isAllValue(district) ? 'SEMUA KAB' : district})`
   }
 
   return suffix
 }
 
 function buildFacilityDistributionTitle(summary: FilterSummary) {
-  const province = summary.provinsi
-  const district = summary.kabkota
+  const province = summary.provinsi.toUpperCase()
+  const district = summary.kabkota.toUpperCase()
 
   if (!isAllValue(district)) {
-    return `Sebaran Fasilitas Kesehatan di ${district}`
+    return `SEBARAN FASILITAS KESEHATAN DI ${district}`
   }
 
   if (!isAllValue(province)) {
-    return `Sebaran Fasilitas Kesehatan per Kab/Kota di Prov. ${province}`
+    return `SEBARAN FASILITAS KESEHATAN PER KAB/KOTA DI PROV. ${province}`
   }
 
-  return 'Sebaran Fasilitas Kesehatan per Provinsi'
+  return 'SEBARAN FASILITAS KESEHATAN PER PROVINSI'
 }
 
 function buildFacilityDistributionDescription(summary: FilterSummary) {
-  const province = summary.provinsi
-  const district = summary.kabkota
+  const province = summary.provinsi.toUpperCase()
+  const district = summary.kabkota.toUpperCase()
 
   if (!isAllValue(district)) {
     return `Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan pada wilayah ${district}.`
   }
 
   if (!isAllValue(province)) {
-    return `Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan per kabupaten/kota di Prov. ${province}.`
+    return `Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan per kabupaten/kota di PROV. ${province}.`
   }
 
   return 'Menampilkan pemetaan distribusi dan jumlah fasilitas kesehatan yang tersebar di setiap provinsi.'
 }
 
 function buildCapaianTitle(summary: FilterSummary) {
-  const province = summary.provinsi
-  const district = summary.kabkota
+  const province = summary.provinsi.toUpperCase()
+  const district = summary.kabkota.toUpperCase()
 
   if (!isAllValue(district)) {
-    return `Capaian Wilayah ${district}`
+    return `CAPAIAN WILAYAH ${district}`
   }
 
   if (!isAllValue(province)) {
-    return `Capaian Per Kab/Kota di Prov. ${province}`
+    return `CAPAIAN PER KAB/KOTA DI PROV. ${province}`
   }
 
-  return 'Capaian Per Provinsi'
+  return 'CAPAIAN PER PROVINSI'
 }
 
 function buildCapaianDescription(summary: FilterSummary) {
-  const province = summary.provinsi
-  const district = summary.kabkota
+  const province = summary.provinsi.toUpperCase()
+  const district = summary.kabkota.toUpperCase()
 
   if (!isAllValue(district)) {
     return `Menyajikan rincian data dan perbandingan progres pencapaian target program pada wilayah ${district}.`
   }
 
   if (!isAllValue(province)) {
-    return `Menyajikan rincian data dan perbandingan progres pencapaian target program per kabupaten/kota di Prov. ${province}.`
+    return `Menyajikan rincian data dan perbandingan progres pencapaian target program per kabupaten/kota di PROV. ${province}.`
   }
 
   return 'Menyajikan rincian data dan perbandingan progres pencapaian target program secara spesifik untuk masing-masing provinsi.'

@@ -69,9 +69,10 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
   const [loadingKabkota, setLoadingKabkota] = useState(false)
 
   const activeFilterData = useMemo<FilterItem[]>(() => {
+    let result: FilterItem[] = []
     if (!isScoped) {
       // Nasional / tamu / mode tidak dikenal -> dropdown aktif & dinamis dari API.
-      return [
+      result = [
         {
           id: 'cakupan',
           icon: 'globe',
@@ -102,56 +103,64 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
             : dynamicKabkota,
         },
       ]
+    } else {
+      // userScope dipastikan ada & mode-nya valid (provinsi/kabupaten) di sini.
+      const scope = userScope as WilayahScope
+
+      const cakupanValue = scope.cakupan.value || scope.mode
+      const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
+      const kabupatenValue = scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label)
+      const kabupatenOptions =
+        scope.mode === 'kabupaten'
+          ? [
+            {
+              value: kabupatenValue,
+              label: scope.kabupaten.label,
+            },
+          ]
+          : [
+            { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
+            ...(scope.kabupaten.options || []).map((item) => ({
+              value: String(item.id),
+              label: item.label,
+            })),
+          ]
+
+      result = [
+        {
+          id: 'cakupan',
+          icon: 'globe',
+          sublabel: 'Cakupan',
+          defaultValue: cakupanValue,
+          locked: scope.cakupan.locked,
+          options: [{ value: cakupanValue, label: scope.cakupan.label }],
+        },
+        {
+          id: 'provinsi',
+          icon: 'pin',
+          sublabel: 'Provinsi',
+          defaultValue: provinsiValue,
+          locked: scope.provinsi.locked,
+          options: [{ value: provinsiValue, label: scope.provinsi.label }],
+        },
+        {
+          id: 'kabkota',
+          icon: 'building',
+          sublabel: 'Kab/Kota',
+          defaultValue: scope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
+          locked: scope.kabupaten.locked,
+          options: kabupatenOptions,
+        },
+      ]
     }
 
-    // userScope dipastikan ada & mode-nya valid (provinsi/kabupaten) di sini.
-    const scope = userScope as WilayahScope
-
-    const cakupanValue = scope.cakupan.value || scope.mode
-    const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
-    const kabupatenValue = scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label)
-    const kabupatenOptions =
-      scope.mode === 'kabupaten'
-        ? [
-          {
-            value: kabupatenValue,
-            label: scope.kabupaten.label,
-          },
-        ]
-        : [
-          { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-          ...(scope.kabupaten.options || []).map((item) => ({
-            value: String(item.id),
-            label: item.label,
-          })),
-        ]
-
-    return [
-      {
-        id: 'cakupan',
-        icon: 'globe',
-        sublabel: 'Cakupan',
-        defaultValue: cakupanValue,
-        locked: scope.cakupan.locked,
-        options: [{ value: cakupanValue, label: scope.cakupan.label }],
-      },
-      {
-        id: 'provinsi',
-        icon: 'pin',
-        sublabel: 'Provinsi',
-        defaultValue: provinsiValue,
-        locked: scope.provinsi.locked,
-        options: [{ value: provinsiValue, label: scope.provinsi.label }],
-      },
-      {
-        id: 'kabkota',
-        icon: 'building',
-        sublabel: 'Kab/Kota',
-        defaultValue: scope.mode === 'kabupaten' ? kabupatenValue : 'semua-kabkota',
-        locked: scope.kabupaten.locked,
-        options: kabupatenOptions,
-      },
-    ]
+    return result.map(item => ({
+      ...item,
+      options: item.options.map(opt => ({
+        ...opt,
+        label: opt.label.toUpperCase()
+      }))
+    }))
   }, [isScoped, userScope, dynamicProvinces, dynamicKabkota, loadingProvinces, loadingKabkota])
 
   const defaultSelected = useMemo(

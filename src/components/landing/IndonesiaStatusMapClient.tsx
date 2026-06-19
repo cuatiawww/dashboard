@@ -213,7 +213,7 @@ export default function IndonesiaStatusMapClient() {
       {selectedProvince && (
         <div className="absolute right-5 top-5 min-w-[240px] max-w-[260px] rounded-2xl border border-[#bfe3e2] bg-[#f3fffe]/95 p-4 shadow-[0_10px_30px_rgba(9,88,89,0.15)]">
           <p className="text-[12px] font-bold uppercase tracking-wide text-[#2a4040]">Provinsi Dipilih</p>
-          <p className="mt-1 text-[20px] font-bold leading-tight text-[#223333]">{selectedProvince.name}</p>
+          <p className="mt-1 text-[20px] font-bold leading-tight text-[#223333]">{selectedProvince.name.toUpperCase()}</p>
           <p className="mt-2 text-[13px] text-[#4a6060]">
             Status:{' '}
             <span className="font-semibold" style={{ color: statusColor[selectedProvince.status], fontSize: '14px' }}>
