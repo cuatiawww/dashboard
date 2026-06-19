@@ -315,6 +315,7 @@ export default function RegisterPage() {
       return
     }
 
+
     setVerifyingOtp(true)
     try {
       const res = await fetch(`${baseApiUrl}/auth/verify-register-otp-api`, {
@@ -961,7 +962,7 @@ export default function RegisterPage() {
       {showTermsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#c8dedd] flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <h3 className="text-lg font-extrabold text-slate-900">
