@@ -12,17 +12,14 @@ type ResetResponse = {
   errors?: Record<string, string>
 }
 
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
+import { getApiBaseUrl } from '@/lib/utils/api'
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
 
   // Base API configuration
   const baseApiUrl = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
-    )
-    return baseUrl
+    return getApiBaseUrl()
   }, [])
 
   // UI Flow State: 'request' | 'reset' | 'success'

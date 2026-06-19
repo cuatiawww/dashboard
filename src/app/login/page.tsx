@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
+import { getApiBaseUrl } from '@/lib/utils/api'
 
 type LoginResponse = {
   success?: boolean
@@ -42,9 +43,7 @@ export default function LoginPage() {
   const fetchCaptcha = async () => {
     setLoadingCaptcha(true)
     try {
-      const baseUrl = normalizeBaseUrl(
-        process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
-      )
+      const baseUrl = getApiBaseUrl()
       const res = await fetch(`${baseUrl}/auth/captcha-api`)
       const payload = await res.json()
       if (payload?.success) {
@@ -61,9 +60,7 @@ export default function LoginPage() {
   }
 
   const loginEndpoint = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
-    )
+    const baseUrl = getApiBaseUrl()
     return `${baseUrl}/auth/login-api`
   }, [])
 
