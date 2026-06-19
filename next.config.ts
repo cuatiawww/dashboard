@@ -1,7 +1,13 @@
-import type { NextConfig } from "next";
+// next.config.ts
+const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/backend/:path*',
+        destination: 'https://sipkk-new.mediaciptainformasi.co.id/:path*',
+      },
+    ]
+  },
+}
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
+export default nextConfig
