@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Globe, MapPin, Building2, ChevronDown, Info } from 'lucide-react'
 import { useAuthStore, type WilayahScope } from '@/lib/authStore'
-import { getApiBaseUrl } from '@/lib/utils/api'
 
 type FilterItem = {
   id: string
@@ -194,7 +193,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchProvinces = async () => {
       setLoadingProvinces(true)
       try {
-        const baseUrl = getApiBaseUrl()
+        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
         const res = await fetch(`${baseUrl}/auth/regions-api`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
@@ -234,7 +233,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchKabkota = async () => {
       setLoadingKabkota(true)
       try {
-        const baseUrl = getApiBaseUrl()
+        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
         const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {

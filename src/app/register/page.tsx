@@ -19,14 +19,17 @@ type RegisterResponse = {
   errors?: Record<string, string>
 }
 
-import { getApiBaseUrl } from '@/lib/utils/api'
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
 
 export default function RegisterPage() {
   const router = useRouter()
 
   // Base API configuration
   const baseApiUrl = useMemo(() => {
-    return getApiBaseUrl()
+    const baseUrl = normalizeBaseUrl(
+      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
+    )
+    return baseUrl
   }, [])
 
   // Flow State: 'form' | 'otp' | 'success'
@@ -314,7 +317,6 @@ export default function RegisterPage() {
       setError('Kode OTP harus berupa 4 digit angka.')
       return
     }
-
 
     setVerifyingOtp(true)
     try {
@@ -962,7 +964,7 @@ export default function RegisterPage() {
       {showTermsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#c8dedd] flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-
+            
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
               <h3 className="text-lg font-extrabold text-slate-900">
