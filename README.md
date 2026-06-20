@@ -17,7 +17,6 @@ Install dependency berikut jika belum ada:
 
 ```bash
 npm install svg-captcha uuid @upstash/redis
-npm install -D @types/svg-captcha
 ```
 
 ## Struktur Folder CAPTCHA
