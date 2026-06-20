@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/backend/:path*',
-        destination: `${process.env.LEGACY_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id/sipkk-baru'}/:path*`,
+        destination: `${process.env.LEGACY_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id/sipkk-baru'}/web_api/v1/:path*`,
       },
     ];
   },
