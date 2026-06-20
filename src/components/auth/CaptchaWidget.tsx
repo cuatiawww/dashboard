@@ -112,7 +112,7 @@ export default function CaptchaWidget({ onVerifyChange }: CaptchaWidgetProps) {
           className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition hover:border-teal-500 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          Muat ulang
         </button>
       </div>
 
@@ -157,7 +157,7 @@ export default function CaptchaWidget({ onVerifyChange }: CaptchaWidgetProps) {
           className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <ShieldCheck className="h-4 w-4" />
-          {verifying ? 'Memverifikasi...' : verified ? 'CAPTCHA Terverifikasi' : 'Verify CAPTCHA'}
+          {verifying ? 'Memverifikasi...' : verified ? 'Captcha terverifikasi' : 'Verifikasi Captcha'}
         </button>
       </div>
 

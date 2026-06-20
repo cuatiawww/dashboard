@@ -1,4 +1,3 @@
-import svgCaptcha from 'svg-captcha'
 import { v4 as uuidv4 } from 'uuid'
 
 import {
@@ -16,6 +15,8 @@ export interface GeneratedCaptcha {
 }
 
 export const generateCaptcha = async (): Promise<GeneratedCaptcha> => {
+  const { default: svgCaptcha } = await import('svg-captcha')
+
   const challenge = svgCaptcha.create({
     size: CAPTCHA_LENGTH,
     noise: 4,

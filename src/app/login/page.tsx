@@ -84,99 +84,103 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen overflow-hidden bg-[#eff7f6] lg:grid-cols-[minmax(0,1fr)_540px]">
-      <section className="relative hidden overflow-hidden lg:flex">
+    <div className="relative grid min-h-screen overflow-hidden bg-[#f0f7f7] lg:grid-cols-[minmax(0,1fr)_520px]">
+      <section className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         <Image
           src="/pkk.png"
-          alt="Latar sistem dashboard kesehatan"
+          alt="Dashboard fasilitas kesehatan"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,47,73,0.92),rgba(15,118,110,0.78),rgba(16,185,129,0.38))]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-950/80 via-teal-900/65 to-[#0e6b65]/50" />
         <div
-          className="absolute inset-0 opacity-[0.09]"
+          className="absolute inset-0 opacity-[0.04]"
           style={{
             backgroundImage:
-              'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-            backgroundSize: '26px 26px',
+              'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px)',
           }}
         />
 
-        <div className="relative z-10 flex h-full max-w-2xl flex-col justify-between px-12 py-14 text-white">
-          <div className="flex items-center gap-4">
+        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12 text-white">
+          <div className="flex items-center gap-3">
             <Image
               src="/Logo-Kemenkes.png"
               alt="Logo Kementerian Kesehatan"
-              width={178}
-              height={62}
-              className="h-auto w-[178px] brightness-0 invert"
+              width={160}
+              height={58}
+              className="h-auto w-[160px] brightness-0 invert"
               priority
             />
           </div>
 
-          <div className="space-y-6">
-            <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-teal-100">
-              Internal Login
-            </span>
-            <div className="space-y-4">
-              <h1 className="max-w-xl text-5xl font-extrabold leading-[1.02] tracking-tight">
-                CAPTCHA internal Next.js untuk proses login yang lebih aman.
-              </h1>
-              <p className="max-w-lg text-base leading-7 text-teal-50/86">
-                CAPTCHA digenerate sebagai SVG, berlaku 2 menit, case-insensitive,
-                dan otomatis dihapus setelah divalidasi agar tidak bisa dipakai ulang.
-              </p>
-            </div>
+          <div className="max-w-xl pb-4">
+            <h1 className="mt-4 text-[42px] font-extrabold leading-[1.1] tracking-tight text-white xl:text-[52px]">
+              Indikator Penilaian
+              <br />
+              <span className="text-teal-300">Kinerja Faskes</span>
+            </h1>
+            <p className="mt-4 text-[15px] leading-relaxed text-teal-100/80 xl:text-[16px]">
+              Sistem pemantauan terpadu untuk melihat capaian, sebaran, dan
+              perkembangan fasilitas kesehatan di seluruh wilayah Indonesia.
+            </p>
 
-            <div className="grid max-w-lg grid-cols-3 gap-3">
+            <div className="mt-8 grid grid-cols-3 gap-3">
               {[
-                'SVG via svg-captcha',
-                'UUID per challenge',
-                'One-time use + TTL',
+                { value: '10.123', label: 'Faskes Terdaftar' },
+                { value: '34', label: 'Provinsi Terevaluasi' },
+                { value: '72%', label: 'Tingkat Kepatuhan' },
               ].map((item) => (
                 <div
-                  key={item}
-                  className="rounded-2xl border border-white/15 bg-white/10 p-4 text-sm font-semibold text-white backdrop-blur-sm"
+                  key={item.label}
+                  className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"
+                  style={{ background: 'rgba(255,255,255,0.07)' }}
                 >
-                  {item}
+                  <p className="text-[22px] font-extrabold leading-none text-white xl:text-[26px]">
+                    {item.value}
+                  </p>
+                  <p className="mt-1 text-[11px] font-medium leading-tight text-teal-200/70">
+                    {item.label}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-sm text-teal-50/72">
-            Mode demo login. Ganti endpoint `/api/login` dengan autentikasi database Anda.
+          <p className="text-[12px] text-teal-300/50">
+            © {new Date().getFullYear()} Kementerian Kesehatan Republik Indonesia
           </p>
         </div>
       </section>
 
-      <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:bg-white">
-        <div className="w-full max-w-[430px]">
+      <section className="flex min-h-screen items-center justify-center bg-[#f0f7f7] px-5 py-8 sm:px-8 lg:bg-white">
+        <div className="w-full max-w-[420px]">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
               src="/Logo-Kemenkes.png"
               alt="Logo Kementerian Kesehatan"
-              width={150}
-              height={52}
-              className="h-auto w-[150px]"
+              width={140}
+              height={50}
+              className="h-auto w-[140px]"
               priority
             />
           </div>
 
-          <div className="rounded-[28px] border border-[#d9ebe9] bg-white p-7 shadow-[0_24px_80px_rgba(15,118,110,0.12)] sm:p-8">
-            <div className="mb-6">
-              <span className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-teal-700">
-                Sign In
+          <div className="w-full rounded-[20px] border border-[#c8dedd] bg-white p-7 shadow-[0_20px_60px_rgba(15,118,110,0.10)] sm:p-8 lg:border-0 lg:shadow-none">
+            <div className="mb-7">
+              <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
+                Masuk Akun
               </span>
-              <h2 className="mt-3 text-[30px] font-extrabold leading-tight tracking-tight text-slate-900">
+              <h2 className="mt-3 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[32px]">
                 Dashboard Faskes
               </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                Login contoh dengan CAPTCHA internal App Router.
+              <p className="mt-1.5 text-[14px] text-slate-500">
+                Silakan masuk untuk mengakses data fasilitas kesehatan.
               </p>
             </div>
+
+            <div className="mb-6 h-px bg-slate-100" />
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -235,14 +239,13 @@ export default function LoginPage() {
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <LogIn className="h-4 w-4" />
-                {loading ? 'Memproses login...' : 'Login'}
+                {loading ? 'Memproses login...' : 'Masuk'}
               </button>
             </form>
 
             <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              <p className="font-semibold text-slate-700">Kredensial demo</p>
-              <p>Username: `admin`</p>
-              <p>Password: `demo12345`</p>
+              <p className="font-semibold text-slate-700">Informasi demo</p>
+              <p>CAPTCHA diverifikasi di Next.js App Router sebelum login diproses.</p>
             </div>
 
             <div className="mt-6 text-sm text-slate-500">
