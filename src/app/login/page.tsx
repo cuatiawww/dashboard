@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertCircle, Eye, EyeOff, LockKeyhole, LogIn, UserRound } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -187,44 +187,60 @@ export default function LoginPage() {
                 <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
                   Username
                 </label>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
                   <UserRound className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     autoComplete="username"
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                    disabled={loading}
+                    className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan username"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
-                  Password
-                </label>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-slate-700">
+                    Password
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-[12px] font-semibold text-teal-600 transition-colors hover:text-teal-700 hover:underline"
+                  >
+                    Lupa password?
+                  </Link>
+                </div>
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
                   <LockKeyhole className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     autoComplete="current-password"
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                    disabled={loading}
+                    className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
-                    className="text-slate-400 transition hover:text-teal-700"
+                    disabled={loading}
+                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
                   >
-                    {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
-              <CaptchaWidget onVerifyChange={setCaptchaVerified} />
+              <div className="space-y-2">
+                <label className="block text-[13px] font-bold text-slate-700">
+                  Keamanan (Captcha)
+                </label>
+                <CaptchaWidget onVerifyChange={setCaptchaVerified} />
+              </div>
 
               {error ? (
                 <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -236,24 +252,50 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-teal-700 px-4 text-[13px] font-extrabold uppercase tracking-[0.1em] text-white shadow-[0_8px_24px_rgba(15,118,110,0.28)] transition-all hover:bg-teal-800 hover:shadow-[0_10px_28px_rgba(15,118,110,0.36)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
               >
-                <LogIn className="h-4 w-4" />
-                {loading ? 'Memproses login...' : 'Masuk'}
+                {loading ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : (
+                  <LogIn className="h-[18px] w-[18px]" />
+                )}
+                {loading ? 'Memproses...' : 'Masuk'}
               </button>
             </form>
 
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              <p className="font-semibold text-slate-700">Informasi demo</p>
-              <p>CAPTCHA diverifikasi di Next.js App Router sebelum login diproses.</p>
+            <div className="mt-4 text-center text-[13px] text-slate-500">
+              Belum punya akun?{' '}
+              <Link
+                href="/register"
+                className="font-bold text-teal-600 transition-colors hover:text-teal-700 hover:underline"
+              >
+                Daftar sebagai Masyarakat
+              </Link>
             </div>
 
-            <div className="mt-6 text-sm text-slate-500">
-              <Link href="/" className="font-semibold text-teal-700 hover:text-teal-800">
-                Kembali ke beranda
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-100" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Atau
+              </span>
+              <div className="h-px flex-1 bg-slate-100" />
+            </div>
+
+            <div className="text-center">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 transition-colors hover:text-teal-800 hover:underline"
+              >
+                Masuk sebagai Tamu (Akses Publik)
               </Link>
             </div>
           </div>
+
+          <p className="mt-5 text-center text-[12px] text-slate-400">
+            Akses terbatas untuk pengguna yang berwenang.
+            <br />
+            Hubungi admin jika mengalami kendala masuk.
+          </p>
         </div>
       </section>
     </div>
