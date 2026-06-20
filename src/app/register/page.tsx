@@ -49,7 +49,7 @@ export default function RegisterPage() {
   const fetchCaptcha = async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch(`${baseApiUrl}/auth/captcha-api`)
+      const res = await fetch(`${baseApiUrl}/api/captcha`)
       const payload = await res.json()
       if (payload?.success) {
         setCaptchaKey(payload.captcha_key)
@@ -135,7 +135,7 @@ export default function RegisterPage() {
     async function fetchProvinces() {
       setLoadingProvinces(true)
       try {
-        const res = await fetch(`${baseApiUrl}/auth/regions-api`)
+        const res = await fetch(`${baseApiUrl}/api/regions`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setProvinces(payload.data)
@@ -166,7 +166,7 @@ export default function RegisterPage() {
     async function fetchRegencies() {
       setLoadingRegencies(true)
       try {
-        const res = await fetch(`${baseApiUrl}/auth/regions-api?province_id=${provinsiId}`)
+        const res = await fetch(`${baseApiUrl}/api/regions?province_id=${provinsiId}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setRegencies(payload.data)
@@ -191,7 +191,7 @@ export default function RegisterPage() {
     async function fetchDistricts() {
       setLoadingDistricts(true)
       try {
-        const res = await fetch(`${baseApiUrl}/auth/regions-api?kabupaten_id=${kabupatenId}`)
+        const res = await fetch(`${baseApiUrl}/api/regions?kabupaten_id=${kabupatenId}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setDistricts(payload.data)
@@ -214,7 +214,7 @@ export default function RegisterPage() {
     async function fetchVillages() {
       setLoadingVillages(true)
       try {
-        const res = await fetch(`${baseApiUrl}/auth/regions-api?kecamatan_id=${kecamatanId}`)
+        const res = await fetch(`${baseApiUrl}/api/regions?kecamatan_id=${kecamatanId}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setVillages(payload.data)
@@ -260,7 +260,7 @@ export default function RegisterPage() {
 
     setSubmitting(true)
     try {
-      const response = await fetch(`${baseApiUrl}/auth/register-api`, {
+      const response = await fetch(`${baseApiUrl}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -320,7 +320,7 @@ export default function RegisterPage() {
 
     setVerifyingOtp(true)
     try {
-      const res = await fetch(`${baseApiUrl}/auth/verify-register-otp-api`, {
+      const res = await fetch(`${baseApiUrl}/api/verify-register-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -353,7 +353,7 @@ export default function RegisterPage() {
     setResendingOtp(true)
 
     try {
-      const res = await fetch(`${baseApiUrl}/auth/resend-register-otp-api`, {
+      const res = await fetch(`${baseApiUrl}/api/resend-register-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

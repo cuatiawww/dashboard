@@ -49,7 +49,7 @@ export default function LoginPage() {
   const fetchCaptcha = async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch(`${baseApiUrl}/auth/captcha-api`, {
+      const res = await fetch(`${baseApiUrl}/api/captcha`, {
         method: 'GET',
         cache: 'no-store',
       })
@@ -104,7 +104,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const response = await fetch(`${baseApiUrl}/auth/login-api`, {
+      const response = await fetch(`${baseApiUrl}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

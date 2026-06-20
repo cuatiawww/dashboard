@@ -202,7 +202,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
           return
         }
 
-        const res = await fetch(`${legacyApiBaseUrl}/auth/regions-api`)
+        const res = await fetch(`${legacyApiBaseUrl}/api/regions`)
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {
@@ -252,7 +252,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
           return
         }
 
-        const res = await fetch(`${legacyApiBaseUrl}/auth/regions-api?province_id=${selectedProvince}`)
+        const res = await fetch(`${legacyApiBaseUrl}/api/regions?province_id=${selectedProvince}`)
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {

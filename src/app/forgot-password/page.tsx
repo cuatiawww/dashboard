@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch(`${baseApiUrl}/auth/forgot-password-request-api`, {
+      const response = await fetch(`${baseApiUrl}/api/forgot-password-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ export default function ForgotPasswordPage() {
 
     setSubmitting(true)
     try {
-      const response = await fetch(`${baseApiUrl}/auth/forgot-password-verify-api`, {
+      const response = await fetch(`${baseApiUrl}/api/forgot-password-verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
