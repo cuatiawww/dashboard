@@ -1,10 +1,12 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { AlertCircle, Eye, EyeOff, LockKeyhole, LogIn, UserRound } from 'lucide-react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { FormEvent, useEffect, useState } from 'react'
+
+import CaptchaWidget from '@/components/auth/CaptchaWidget'
 import { useAuthStore, type User } from '@/lib/authStore'
 
 type LoginResponse = {
@@ -14,58 +16,16 @@ type LoginResponse = {
   user?: User
 }
 
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
-
-// Stat items shown on the left hero panel
-const heroStats = [
-  { value: '10.123', label: 'Faskes Terdaftar', icon: Activity },
-  { value: '34', label: 'Provinsi Terevaluasi', icon: MapPin },
-  { value: '72%', label: 'Tingkat Kepatuhan', icon: ShieldCheck },
-]
-
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, isInitialized, initialize, login } = useAuthStore()
+  const { initialize, isAuthenticated, isInitialized, login } = useAuthStore()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [captchaVerified, setCaptchaVerified] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  const [captchaKey, setCaptchaKey] = useState('')
-  const [captchaQuestion, setCaptchaQuestion] = useState('')
-  const [captchaImage, setCaptchaImage] = useState('')
-  const [captchaValue, setCaptchaValue] = useState('')
-  const [loadingCaptcha, setLoadingCaptcha] = useState(false)
-
-  const fetchCaptcha = async () => {
-    setLoadingCaptcha(true)
-    try {
-      const baseUrl = normalizeBaseUrl(
-        process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
-      )
-      const res = await fetch(`${baseUrl}/auth/captcha-api`)
-      const payload = await res.json()
-      if (payload?.success) {
-        setCaptchaKey(payload.captcha_key)
-        setCaptchaImage(payload.captcha_image || '')
-        setCaptchaQuestion(payload.captcha_question || '')
-        setCaptchaValue('')
-      }
-    } catch (err) {
-      console.error('Gagal mengambil captcha', err)
-    } finally {
-      setLoadingCaptcha(false)
-    }
-  }
-
-  const loginEndpoint = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
-    )
-    return `${baseUrl}/auth/login-api`
-  }, [])
 
   useEffect(() => {
     initialize()
@@ -75,48 +35,43 @@ export default function LoginPage() {
     if (isInitialized && isAuthenticated) {
       router.replace('/')
     }
-  }, [isInitialized, isAuthenticated, router])
-
-  useEffect(() => {
-    fetchCaptcha()
-  }, [])
+  }, [isAuthenticated, isInitialized, router])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
 
     const cleanUsername = username.trim()
+
     if (!cleanUsername || !password) {
       setError('Username dan password wajib diisi.')
       return
     }
 
-    if (!captchaValue) {
-      setError('Captcha wajib diisi.')
+    if (!captchaVerified) {
+      setError('Verifikasi CAPTCHA terlebih dahulu sebelum login.')
       return
     }
 
     setLoading(true)
+
     try {
-      const response = await fetch(loginEndpoint, {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-          Accept: 'application/json',
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
+        body: JSON.stringify({
           username: cleanUsername,
           password,
-          captcha_key: captchaKey,
-          captcha_value: captchaValue.trim(),
-        }).toString(),
+        }),
       })
 
-      const payload = (await response.json().catch(() => null)) as LoginResponse | null
+      const payload = (await response.json()) as LoginResponse
 
-      if (!response.ok || !payload?.success || !payload.token || !payload.user) {
-        fetchCaptcha()
-        throw new Error(payload?.message || 'Login gagal. Periksa kembali username dan password.')
+      if (!response.ok || !payload.success || !payload.token || !payload.user) {
+        setCaptchaVerified(false)
+        throw new Error(payload.message || 'Login gagal.')
       }
 
       login(payload.token, payload.user)
@@ -129,277 +84,173 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative grid min-h-screen overflow-hidden bg-[#f0f7f7] lg:grid-cols-[minmax(0,1fr)_520px]">
-
-      {/* ── LEFT: Hero Panel ──────────────────────────────────────────────── */}
-      <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
-        {/* Background image */}
+    <div className="grid min-h-screen overflow-hidden bg-[#eff7f6] lg:grid-cols-[minmax(0,1fr)_540px]">
+      <section className="relative hidden overflow-hidden lg:flex">
         <Image
           src="/pkk.png"
-          alt="Dashboard fasilitas kesehatan"
+          alt="Latar sistem dashboard kesehatan"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
         />
-
-        {/* Overlay gradient — matches dashboard's teal palette */}
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-950/80 via-teal-900/65 to-[#0e6b65]/50" />
-
-        {/* Subtle grid texture overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(8,47,73,0.92),rgba(15,118,110,0.78),rgba(16,185,129,0.38))]" />
         <div
-          className="absolute inset-0 opacity-[0.04]"
+          className="absolute inset-0 opacity-[0.09]"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,1) 39px,rgba(255,255,255,1) 40px)',
+              'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+            backgroundSize: '26px 26px',
           }}
         />
 
-        {/* Content */}
-        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
+        <div className="relative z-10 flex h-full max-w-2xl flex-col justify-between px-12 py-14 text-white">
+          <div className="flex items-center gap-4">
             <Image
               src="/Logo-Kemenkes.png"
               alt="Logo Kementerian Kesehatan"
-              width={160}
-              height={58}
-              className="h-auto w-[160px] brightness-0 invert"
+              width={178}
+              height={62}
+              className="h-auto w-[178px] brightness-0 invert"
               priority
             />
           </div>
 
-          {/* Main copy */}
-          <div className="max-w-xl pb-4">
-            <h1 className="mt-4 text-[42px] font-extrabold leading-[1.1] tracking-tight text-white xl:text-[52px]">
-              Indikator Penilaian<br />
-              <span className="text-teal-300">Kinerja Faskes</span>
-            </h1>
-            <p className="mt-4 text-[15px] leading-relaxed text-teal-100/80 xl:text-[16px]">
-              Sistem pemantauan terpadu untuk melihat capaian, sebaran, dan
-              perkembangan fasilitas kesehatan di seluruh wilayah Indonesia.
-            </p>
+          <div className="space-y-6">
+            <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-teal-100">
+              Internal Login
+            </span>
+            <div className="space-y-4">
+              <h1 className="max-w-xl text-5xl font-extrabold leading-[1.02] tracking-tight">
+                CAPTCHA internal Next.js untuk proses login yang lebih aman.
+              </h1>
+              <p className="max-w-lg text-base leading-7 text-teal-50/86">
+                CAPTCHA digenerate sebagai SVG, berlaku 2 menit, case-insensitive,
+                dan otomatis dihapus setelah divalidasi agar tidak bisa dipakai ulang.
+              </p>
+            </div>
 
-            {/* Stats row */}
-            <div className="mt-8 grid grid-cols-3 gap-3">
-              {heroStats.map(({ value, label, icon: Icon }) => (
+            <div className="grid max-w-lg grid-cols-3 gap-3">
+              {[
+                'SVG via svg-captcha',
+                'UUID per challenge',
+                'One-time use + TTL',
+              ].map((item) => (
                 <div
-                  key={label}
-                  className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"
-                  style={{ background: 'rgba(255,255,255,0.07)' }}
+                  key={item}
+                  className="rounded-2xl border border-white/15 bg-white/10 p-4 text-sm font-semibold text-white backdrop-blur-sm"
                 >
-                  <Icon className="mb-2 h-5 w-5 text-teal-300" strokeWidth={1.8} />
-                  <p className="text-[22px] font-extrabold leading-none text-white xl:text-[26px]">
-                    {value}
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium leading-tight text-teal-200/70">
-                    {label}
-                  </p>
+                  {item}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Footer credit */}
-          <p className="text-[12px] text-teal-300/50">
-            © {new Date().getFullYear()} Kementerian Kesehatan Republik Indonesia
+          <p className="text-sm text-teal-50/72">
+            Mode demo login. Ganti endpoint `/api/login` dengan autentikasi database Anda.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* ── RIGHT: Login Panel ────────────────────────────────────────────── */}
-      <section className="flex min-h-screen items-center justify-center bg-[#f0f7f7] px-5 py-8 sm:px-8 lg:bg-white">
-        <div className="w-full max-w-[420px]">
-
-          {/* Mobile-only logo */}
+      <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:bg-white">
+        <div className="w-full max-w-[430px]">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
               src="/Logo-Kemenkes.png"
               alt="Logo Kementerian Kesehatan"
-              width={140}
-              height={50}
-              className="h-auto w-[140px]"
+              width={150}
+              height={52}
+              className="h-auto w-[150px]"
               priority
             />
           </div>
 
-          {/* Card */}
-          <div
-            className="w-full rounded-[20px] border border-[#c8dedd] bg-white p-7 shadow-[0_20px_60px_rgba(15,118,110,0.10)] sm:p-8 lg:border-0 lg:shadow-none"
-          >
-            {/* Header */}
-            <div className="mb-7">
-              <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
-                Masuk Akun
+          <div className="rounded-[28px] border border-[#d9ebe9] bg-white p-7 shadow-[0_24px_80px_rgba(15,118,110,0.12)] sm:p-8">
+            <div className="mb-6">
+              <span className="inline-flex rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-teal-700">
+                Sign In
               </span>
-              <h2 className="mt-3 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[32px]">
+              <h2 className="mt-3 text-[30px] font-extrabold leading-tight tracking-tight text-slate-900">
                 Dashboard Faskes
               </h2>
-              <p className="mt-1.5 text-[14px] text-slate-500">
-                Silakan masuk untuk mengakses data fasilitas kesehatan.
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Login contoh dengan CAPTCHA internal App Router.
               </p>
             </div>
 
-            {/* Divider */}
-            <div className="mb-6 h-px bg-slate-100" />
-
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Username */}
               <div>
                 <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
                   Username
                 </label>
-                <div
-                  className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
-                >
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
                   <UserRound className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={(event) => setUsername(event.target.value)}
                     autoComplete="username"
-                    className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan username"
-                    disabled={loading}
                   />
                 </div>
               </div>
 
-              {/* Password */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[13px] font-bold text-slate-700">
-                    Password
-                  </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-[12px] font-semibold text-teal-600 hover:text-teal-750 transition-colors hover:underline"
-                  >
-                    Lupa password?
-                  </Link>
-                </div>
-                <div
-                  className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
-                >
+                <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
+                  Password
+                </label>
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
                   <LockKeyhole className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(event) => setPassword(event.target.value)}
                     autoComplete="current-password"
-                    className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan password"
-                    disabled={loading}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="text-slate-400 transition hover:text-teal-700"
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
-                    disabled={loading}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                   </button>
                 </div>
               </div>
 
-              {/* Captcha */}
-              <div className="space-y-2">
-                <label className="block text-[13px] font-bold text-slate-700">
-                  Keamanan (Captcha)
-                </label>
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-12 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-teal-50/50 px-3 font-bold text-slate-700 shadow-inner overflow-hidden">
-                    {loadingCaptcha ? (
-                      <span className="text-xs font-normal text-slate-400 animate-pulse">Memuat...</span>
-                    ) : captchaImage ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={captchaImage}
-                        alt="Captcha"
-                        className="h-9 w-[110px] rounded object-cover select-none pointer-events-none"
-                      />
-                    ) : (
-                      <span className="text-[15px] tracking-wide text-teal-800 font-extrabold">{captchaQuestion}</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={fetchCaptcha}
-                      disabled={loading || loadingCaptcha}
-                      className="rounded-lg p-1.5 text-slate-450 hover:bg-teal-50 hover:text-teal-700 transition"
-                      title="Segarkan Captcha"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${loadingCaptcha ? 'animate-spin' : ''}`} />
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={captchaValue}
-                    onChange={(e) => setCaptchaValue(e.target.value)}
-                    required
-                    placeholder="Jawaban"
-                    disabled={loading}
-                    className="h-12 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-center text-[15px] font-extrabold text-slate-900 outline-none transition duration-150 placeholder:font-normal placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
-                  />
-                </div>
-              </div>
+              <CaptchaWidget onVerifyChange={setCaptchaVerified} />
 
-              {/* Error */}
-              {error && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[13px] font-medium text-red-700">
-                  <AlertCircle className="mt-px h-4 w-4 flex-shrink-0" />
-                  <span>{error}</span>
+              {error ? (
+                <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <p>{error}</p>
                 </div>
-              )}
+              ) : null}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-teal-700 px-4 text-[13px] font-extrabold uppercase tracking-[0.1em] text-white shadow-[0_8px_24px_rgba(15,118,110,0.28)] transition-all hover:bg-teal-800 hover:shadow-[0_10px_28px_rgba(15,118,110,0.36)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? (
-                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
-                ) : (
-                  <LogIn className="h-[18px] w-[18px]" />
-                )}
-                {loading ? 'Memproses...' : 'Masuk'}
+                <LogIn className="h-4 w-4" />
+                {loading ? 'Memproses login...' : 'Login'}
               </button>
-
-              {/* Register Link */}
-              <div className="mt-4 text-center text-[13px] text-slate-500">
-                Belum punya akun?{' '}
-                <Link
-                  href="/register"
-                  className="font-bold text-teal-600 hover:text-teal-700 transition-colors hover:underline"
-                >
-                  Daftar sebagai Masyarakat
-                </Link>
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-100" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-450">Atau</span>
-                <div className="h-px flex-1 bg-slate-100" />
-              </div>
-
-              {/* Guest Login */}
-              <div className="text-center">
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 hover:text-teal-800 transition-colors hover:underline"
-                >
-                  Masuk sebagai Tamu (Akses Publik)
-                </Link>
-              </div>
             </form>
-          </div>
 
-          {/* Footer note */}
-          <p className="mt-5 text-center text-[12px] text-slate-400">
-            Akses terbatas untuk pengguna yang berwenang.
-            <br />Hubungi admin jika mengalami kendala masuk.
-          </p>
+            <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <p className="font-semibold text-slate-700">Kredensial demo</p>
+              <p>Username: `admin`</p>
+              <p>Password: `demo12345`</p>
+            </div>
+
+            <div className="mt-6 text-sm text-slate-500">
+              <Link href="/" className="font-semibold text-teal-700 hover:text-teal-800">
+                Kembali ke beranda
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </div>
