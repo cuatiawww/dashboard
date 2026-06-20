@@ -4,6 +4,7 @@ const useLegacyBackendProxy =
   !!process.env.LEGACY_BACKEND_BASE_URL
 
 const nextConfig = {
+  serverExternalPackages: ['svg-captcha'],
   async rewrites() {
     if (!useLegacyBackendProxy) {
       return []
