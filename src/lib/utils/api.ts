@@ -8,6 +8,6 @@ export function getApiBaseUrl(): string {
     }
   }
   return normalizeBaseUrl(
-    process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
+    process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
   )
 }

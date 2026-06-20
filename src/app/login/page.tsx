@@ -21,6 +21,8 @@ const heroStats = [
   { value: '72%', label: 'Tingkat Kepatuhan', icon: ShieldCheck },
 ]
 
+const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
+
 export default function LoginPage() {
   const router = useRouter()
   const { isAuthenticated, isInitialized, initialize, login } = useAuthStore()
@@ -32,30 +34,40 @@ export default function LoginPage() {
   const [error, setError] = useState('')
 
   const [captchaKey, setCaptchaKey] = useState('')
-  const [captchaSvg, setCaptchaSvg] = useState('')
+  const [captchaImage, setCaptchaImage] = useState('')
+  const [captchaQuestion, setCaptchaQuestion] = useState('')
   const [captchaValue, setCaptchaValue] = useState('')
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+
+  const baseApiUrl = useMemo(() => {
+    const baseUrl = normalizeBaseUrl(
+      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
+    )
+    return baseUrl
+  }, [])
 
   const fetchCaptcha = async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch('/api/captcha', {
+      const res = await fetch(`${baseApiUrl}/auth/captcha-api`, {
         method: 'GET',
         cache: 'no-store',
       })
-      const payload = (await res.json()) as { id?: string; svg?: string }
+      const payload = await res.json()
 
-      if (!res.ok || !payload.id || !payload.svg) {
+      if (!res.ok || !payload?.success) {
         throw new Error('Gagal memuat captcha')
       }
 
-      setCaptchaKey(payload.id)
-      setCaptchaSvg(payload.svg)
+      setCaptchaKey(payload.captcha_key)
+      setCaptchaImage(payload.captcha_image || '')
+      setCaptchaQuestion(payload.captcha_question || '')
       setCaptchaValue('')
     } catch (err) {
       console.error('Gagal mengambil captcha', err)
       setCaptchaKey('')
-      setCaptchaSvg('')
+      setCaptchaImage('')
+      setCaptchaQuestion('')
     } finally {
       setLoadingCaptcha(false)
     }
@@ -92,26 +104,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const captchaResponse = await fetch('/api/captcha/validate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: captchaKey,
-          text: captchaValue.trim(),
-        }),
-      })
-      const captchaPayload = (await captchaResponse.json().catch(() => null)) as
-        | { success?: boolean }
-        | null
-
-      if (!captchaResponse.ok || !captchaPayload?.success) {
-        fetchCaptcha()
-        throw new Error('Captcha tidak valid atau sudah kedaluwarsa.')
-      }
-
-      const response = await fetch('/api/login', {
+      const response = await fetch(`${baseApiUrl}/auth/login-api`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,6 +113,8 @@ export default function LoginPage() {
         body: JSON.stringify({
           username: cleanUsername,
           password,
+          captcha_key: captchaKey,
+          captcha_value: captchaValue.trim(),
         }),
       })
 
@@ -127,7 +122,7 @@ export default function LoginPage() {
 
       if (!response.ok || !payload?.success || !payload.token || !payload.user) {
         fetchCaptcha()
-        throw new Error(payload?.message || 'Login gagal. Periksa kembali username dan password.')
+        throw new Error(payload?.message || 'Login gagal. Periksa kembali username, password, dan captcha.')
       }
 
       login(payload.token, payload.user)
@@ -322,11 +317,16 @@ export default function LoginPage() {
                   <div className="flex h-12 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-teal-50/50 px-3 font-bold text-slate-700 shadow-inner overflow-hidden">
                     {loadingCaptcha ? (
                       <span className="text-xs font-normal text-slate-400 animate-pulse">Memuat...</span>
-                    ) : captchaSvg ? (
-                      <div
-                        className="flex h-9 w-[110px] items-center justify-center overflow-hidden rounded bg-white [&_svg]:h-9 [&_svg]:w-[110px]"
-                        dangerouslySetInnerHTML={{ __html: captchaSvg }}
+                    ) : captchaImage ? (
+                      <img
+                        src={captchaImage}
+                        alt="CAPTCHA"
+                        className="h-9 w-[110px] rounded border border-slate-200 object-cover"
                       />
+                    ) : captchaQuestion ? (
+                      <span className="text-sm font-semibold tracking-widest text-slate-700 select-none">
+                        {captchaQuestion}
+                      </span>
                     ) : (
                       <span className="text-xs font-normal text-slate-400">Captcha tidak tersedia</span>
                     )}

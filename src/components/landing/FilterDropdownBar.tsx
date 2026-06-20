@@ -43,8 +43,8 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-const legacyApiBaseUrl = process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL
-  ?.trim()
+const legacyApiBaseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend')
+  .trim()
   .replace(/\/+$/, '')
 
 // Mode-mode scope yang dianggap valid & terkunci ke wilayah tertentu.

@@ -27,7 +27,7 @@ export default function RegisterPage() {
   // Base API configuration
   const baseApiUrl = useMemo(() => {
     const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru'
+      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
     )
     return baseUrl
   }, [])
