@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // next.config.ts
 const useLegacyBackendProxy =
   process.env.ENABLE_LEGACY_BACKEND_PROXY === 'true' &&
@@ -20,3 +21,12 @@ const nextConfig = {
 }
 
 export default nextConfig
+=======
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+>>>>>>> parent of 6ce4452 (up)

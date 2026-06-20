@@ -1,12 +1,10 @@
 'use client'
 
-import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { FormEvent, useEffect, useState } from 'react'
-
-import CaptchaWidget from '@/components/auth/CaptchaWidget'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
 
 type LoginResponse = {
@@ -16,16 +14,52 @@ type LoginResponse = {
   user?: User
 }
 
+// Stat items shown on the left hero panel
+const heroStats = [
+  { value: '10.123', label: 'Faskes Terdaftar', icon: Activity },
+  { value: '34', label: 'Provinsi Terevaluasi', icon: MapPin },
+  { value: '72%', label: 'Tingkat Kepatuhan', icon: ShieldCheck },
+]
+
 export default function LoginPage() {
   const router = useRouter()
-  const { initialize, isAuthenticated, isInitialized, login } = useAuthStore()
+  const { isAuthenticated, isInitialized, initialize, login } = useAuthStore()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [captchaVerified, setCaptchaVerified] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const [captchaKey, setCaptchaKey] = useState('')
+  const [captchaSvg, setCaptchaSvg] = useState('')
+  const [captchaValue, setCaptchaValue] = useState('')
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+
+  const fetchCaptcha = async () => {
+    setLoadingCaptcha(true)
+    try {
+      const res = await fetch('/api/captcha', {
+        method: 'GET',
+        cache: 'no-store',
+      })
+      const payload = (await res.json()) as { id?: string; svg?: string }
+
+      if (!res.ok || !payload.id || !payload.svg) {
+        throw new Error('Gagal memuat captcha')
+      }
+
+      setCaptchaKey(payload.id)
+      setCaptchaSvg(payload.svg)
+      setCaptchaValue('')
+    } catch (err) {
+      console.error('Gagal mengambil captcha', err)
+      setCaptchaKey('')
+      setCaptchaSvg('')
+    } finally {
+      setLoadingCaptcha(false)
+    }
+  }
 
   useEffect(() => {
     initialize()
@@ -35,31 +69,53 @@ export default function LoginPage() {
     if (isInitialized && isAuthenticated) {
       router.replace('/')
     }
-  }, [isAuthenticated, isInitialized, router])
+  }, [isInitialized, isAuthenticated, router])
+
+  useEffect(() => {
+    fetchCaptcha()
+  }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
 
     const cleanUsername = username.trim()
-
     if (!cleanUsername || !password) {
       setError('Username dan password wajib diisi.')
       return
     }
 
-    if (!captchaVerified) {
-      setError('Verifikasi CAPTCHA terlebih dahulu sebelum login.')
+    if (!captchaValue) {
+      setError('Captcha wajib diisi.')
       return
     }
 
     setLoading(true)
-
     try {
+      const captchaResponse = await fetch('/api/captcha/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: captchaKey,
+          text: captchaValue.trim(),
+        }),
+      })
+      const captchaPayload = (await captchaResponse.json().catch(() => null)) as
+        | { success?: boolean }
+        | null
+
+      if (!captchaResponse.ok || !captchaPayload?.success) {
+        fetchCaptcha()
+        throw new Error('Captcha tidak valid atau sudah kedaluwarsa.')
+      }
+
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           username: cleanUsername,
@@ -67,11 +123,11 @@ export default function LoginPage() {
         }),
       })
 
-      const payload = (await response.json()) as LoginResponse
+      const payload = (await response.json().catch(() => null)) as LoginResponse | null
 
-      if (!response.ok || !payload.success || !payload.token || !payload.user) {
-        setCaptchaVerified(false)
-        throw new Error(payload.message || 'Login gagal.')
+      if (!response.ok || !payload?.success || !payload.token || !payload.user) {
+        fetchCaptcha()
+        throw new Error(payload?.message || 'Login gagal. Periksa kembali username dan password.')
       }
 
       login(payload.token, payload.user)
@@ -85,7 +141,10 @@ export default function LoginPage() {
 
   return (
     <div className="relative grid min-h-screen overflow-hidden bg-[#f0f7f7] lg:grid-cols-[minmax(0,1fr)_520px]">
-      <section className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
+
+      {/* â”€â”€ LEFT: Hero Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
+        {/* Background image */}
         <Image
           src="/pkk.png"
           alt="Dashboard fasilitas kesehatan"
@@ -94,7 +153,11 @@ export default function LoginPage() {
           sizes="60vw"
           className="object-cover object-center"
         />
+
+        {/* Overlay gradient â€” matches dashboard's teal palette */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-950/80 via-teal-900/65 to-[#0e6b65]/50" />
+
+        {/* Subtle grid texture overlay */}
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -103,7 +166,9 @@ export default function LoginPage() {
           }}
         />
 
-        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12 text-white">
+        {/* Content */}
+        <div className="relative z-10 flex h-full flex-col justify-between p-10 xl:p-12">
+          {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
               src="/Logo-Kemenkes.png"
@@ -115,10 +180,10 @@ export default function LoginPage() {
             />
           </div>
 
+          {/* Main copy */}
           <div className="max-w-xl pb-4">
             <h1 className="mt-4 text-[42px] font-extrabold leading-[1.1] tracking-tight text-white xl:text-[52px]">
-              Indikator Penilaian
-              <br />
+              Indikator Penilaian<br />
               <span className="text-teal-300">Kinerja Faskes</span>
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-teal-100/80 xl:text-[16px]">
@@ -126,36 +191,38 @@ export default function LoginPage() {
               perkembangan fasilitas kesehatan di seluruh wilayah Indonesia.
             </p>
 
+            {/* Stats row */}
             <div className="mt-8 grid grid-cols-3 gap-3">
-              {[
-                { value: '10.123', label: 'Faskes Terdaftar' },
-                { value: '34', label: 'Provinsi Terevaluasi' },
-                { value: '72%', label: 'Tingkat Kepatuhan' },
-              ].map((item) => (
+              {heroStats.map(({ value, label, icon: Icon }) => (
                 <div
-                  key={item.label}
+                  key={label}
                   className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"
                   style={{ background: 'rgba(255,255,255,0.07)' }}
                 >
+                  <Icon className="mb-2 h-5 w-5 text-teal-300" strokeWidth={1.8} />
                   <p className="text-[22px] font-extrabold leading-none text-white xl:text-[26px]">
-                    {item.value}
+                    {value}
                   </p>
                   <p className="mt-1 text-[11px] font-medium leading-tight text-teal-200/70">
-                    {item.label}
+                    {label}
                   </p>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Footer credit */}
           <p className="text-[12px] text-teal-300/50">
-            © {new Date().getFullYear()} Kementerian Kesehatan Republik Indonesia
+            Â© {new Date().getFullYear()} Kementerian Kesehatan Republik Indonesia
           </p>
         </div>
-      </section>
+      </div>
 
+      {/* â”€â”€ RIGHT: Login Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <section className="flex min-h-screen items-center justify-center bg-[#f0f7f7] px-5 py-8 sm:px-8 lg:bg-white">
         <div className="w-full max-w-[420px]">
+
+          {/* Mobile-only logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
               src="/Logo-Kemenkes.png"
@@ -167,7 +234,11 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="w-full rounded-[20px] border border-[#c8dedd] bg-white p-7 shadow-[0_20px_60px_rgba(15,118,110,0.10)] sm:p-8 lg:border-0 lg:shadow-none">
+          {/* Card */}
+          <div
+            className="w-full rounded-[20px] border border-[#c8dedd] bg-white p-7 shadow-[0_20px_60px_rgba(15,118,110,0.10)] sm:p-8 lg:border-0 lg:shadow-none"
+          >
+            {/* Header */}
             <div className="mb-7">
               <span className="inline-block rounded-full bg-teal-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-700">
                 Masuk Akun
@@ -180,75 +251,116 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Divider */}
             <div className="mb-6 h-px bg-slate-100" />
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Username */}
               <div>
                 <label className="mb-1.5 block text-[13px] font-bold text-slate-700">
                   Username
                 </label>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
+                <div
+                  className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
+                >
                   <UserRound className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     value={username}
-                    onChange={(event) => setUsername(event.target.value)}
+                    onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
-                    disabled={loading}
                     className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan username"
+                    disabled={loading}
                   />
                 </div>
               </div>
 
+              {/* Password */}
               <div>
-                <div className="mb-1.5 flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-[13px] font-bold text-slate-700">
                     Password
                   </label>
                   <Link
                     href="/forgot-password"
-                    className="text-[12px] font-semibold text-teal-600 transition-colors hover:text-teal-700 hover:underline"
+                    className="text-[12px] font-semibold text-teal-600 hover:text-teal-750 transition-colors hover:underline"
                   >
                     Lupa password?
                   </Link>
                 </div>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]">
+                <div
+                  className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3.5 transition-all duration-150 focus-within:border-teal-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
+                >
                   <LockKeyhole className="h-[18px] w-[18px] flex-shrink-0 text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
-                    disabled={loading}
                     className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
                     placeholder="Masukkan password"
+                    disabled={loading}
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((value) => !value)}
-                    disabled={loading}
+                    onClick={() => setShowPassword((v) => !v)}
                     className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
                     aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                    disabled={loading}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
 
+              {/* Captcha */}
               <div className="space-y-2">
                 <label className="block text-[13px] font-bold text-slate-700">
                   Keamanan (Captcha)
                 </label>
-                <CaptchaWidget onVerifyChange={setCaptchaVerified} />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-12 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-teal-50/50 px-3 font-bold text-slate-700 shadow-inner overflow-hidden">
+                    {loadingCaptcha ? (
+                      <span className="text-xs font-normal text-slate-400 animate-pulse">Memuat...</span>
+                    ) : captchaSvg ? (
+                      <div
+                        className="flex h-9 w-[110px] items-center justify-center overflow-hidden rounded bg-white [&_svg]:h-9 [&_svg]:w-[110px]"
+                        dangerouslySetInnerHTML={{ __html: captchaSvg }}
+                      />
+                    ) : (
+                      <span className="text-xs font-normal text-slate-400">Captcha tidak tersedia</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={fetchCaptcha}
+                      disabled={loading || loadingCaptcha}
+                      className="rounded-lg p-1.5 text-slate-450 hover:bg-teal-50 hover:text-teal-700 transition"
+                      title="Segarkan Captcha"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${loadingCaptcha ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={captchaValue}
+                    onChange={(e) => setCaptchaValue(e.target.value)}
+                    required
+                    placeholder="Jawaban"
+                    disabled={loading}
+                    className="h-12 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-center text-[15px] font-extrabold text-slate-900 outline-none transition duration-150 placeholder:font-normal placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:shadow-[0_0_0_3px_rgba(20,184,166,0.12)]"
+                  />
+                </div>
               </div>
 
-              {error ? (
-                <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  <p>{error}</p>
+              {/* Error */}
+              {error && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[13px] font-medium text-red-700">
+                  <AlertCircle className="mt-px h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
-              ) : null}
+              )}
 
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={loading}
@@ -261,40 +373,41 @@ export default function LoginPage() {
                 )}
                 {loading ? 'Memproses...' : 'Masuk'}
               </button>
+
+              {/* Register Link */}
+              <div className="mt-4 text-center text-[13px] text-slate-500">
+                Belum punya akun?{' '}
+                <Link
+                  href="/register"
+                  className="font-bold text-teal-600 hover:text-teal-700 transition-colors hover:underline"
+                >
+                  Daftar sebagai Masyarakat
+                </Link>
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-450">Atau</span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+
+              {/* Guest Login */}
+              <div className="text-center">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 hover:text-teal-800 transition-colors hover:underline"
+                >
+                  Masuk sebagai Tamu (Akses Publik)
+                </Link>
+              </div>
             </form>
-
-            <div className="mt-4 text-center text-[13px] text-slate-500">
-              Belum punya akun?{' '}
-              <Link
-                href="/register"
-                className="font-bold text-teal-600 transition-colors hover:text-teal-700 hover:underline"
-              >
-                Daftar sebagai Masyarakat
-              </Link>
-            </div>
-
-            <div className="my-4 flex items-center gap-3">
-              <div className="h-px flex-1 bg-slate-100" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Atau
-              </span>
-              <div className="h-px flex-1 bg-slate-100" />
-            </div>
-
-            <div className="text-center">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 transition-colors hover:text-teal-800 hover:underline"
-              >
-                Masuk sebagai Tamu (Akses Publik)
-              </Link>
-            </div>
           </div>
 
+          {/* Footer note */}
           <p className="mt-5 text-center text-[12px] text-slate-400">
             Akses terbatas untuk pengguna yang berwenang.
-            <br />
-            Hubungi admin jika mengalami kendala masuk.
+            <br />Hubungi admin jika mengalami kendala masuk.
           </p>
         </div>
       </section>

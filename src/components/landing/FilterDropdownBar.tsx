@@ -43,6 +43,10 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
+const legacyApiBaseUrl = process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL
+  ?.trim()
+  .replace(/\/+$/, '')
+
 // Mode-mode scope yang dianggap valid & terkunci ke wilayah tertentu.
 const SCOPED_MODES: WilayahScope['mode'][] = ['provinsi', 'kabupaten']
 
@@ -193,8 +197,18 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchProvinces = async () => {
       setLoadingProvinces(true)
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
-        const res = await fetch(`${baseUrl}/auth/regions-api`)
+        if (!legacyApiBaseUrl) {
+          setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
+          return
+        }
+
+        const res = await fetch(`${legacyApiBaseUrl}/auth/regions-api`)
+        const contentType = res.headers.get('content-type') || ''
+
+        if (!res.ok || !contentType.includes('application/json')) {
+          throw new Error(`Unexpected response while loading provinces: ${res.status}`)
+        }
+
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           const list = [
@@ -233,8 +247,18 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchKabkota = async () => {
       setLoadingKabkota(true)
       try {
-        const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || 'http://localhost/sipkk-baru').replace(/\/+$/, '')
-        const res = await fetch(`${baseUrl}/auth/regions-api?province_id=${selectedProvince}`)
+        if (!legacyApiBaseUrl) {
+          setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
+          return
+        }
+
+        const res = await fetch(`${legacyApiBaseUrl}/auth/regions-api?province_id=${selectedProvince}`)
+        const contentType = res.headers.get('content-type') || ''
+
+        if (!res.ok || !contentType.includes('application/json')) {
+          throw new Error(`Unexpected response while loading kabkota: ${res.status}`)
+        }
+
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           const list = [
