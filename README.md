@@ -17,24 +17,25 @@ Buat file `.env.local` berdasarkan `.env.example`.
 
 ```env
 SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
 ```
 
-Variabel ini dipakai oleh route proxy Next.js seperti:
+`NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL` dipakai oleh browser supaya request frontend langsung mengarah ke backend `sipkk-new`, seperti:
 
-- `/api/backend/api/captcha`
-- `/api/backend/api/login`
-- `/api/regions`
+- `https://sipkk-new.mediaciptainformasi.co.id/api/captcha`
+- `https://sipkk-new.mediaciptainformasi.co.id/api/login`
+- `https://sipkk-new.mediaciptainformasi.co.id/api/register`
 
 Jika deploy ke Vercel, pastikan `SIPKK_BACKEND_BASE_URL` juga diisi di project settings lalu lakukan redeploy.
 
 ## Catatan CAPTCHA
 
-Halaman login utama saat ini mengambil captcha dan login ke backend Yii melalui proxy Next.js, bukan memakai demo login lokal.
+Halaman login utama saat ini mengambil captcha dan login langsung ke backend Yii, bukan melalui API route Vercel.
 
 Endpoint yang dipakai halaman login:
 
-- `GET /api/backend/api/captcha`
-- `POST /api/backend/api/login`
+- `GET https://sipkk-new.mediaciptainformasi.co.id/api/captcha`
+- `POST https://sipkk-new.mediaciptainformasi.co.id/api/login`
 
 Masih ada route lokal `/api/captcha`, `/api/captcha/validate`, dan `/api/login` untuk kebutuhan demo/eksperimen lama.
 

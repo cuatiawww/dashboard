@@ -1,12 +1,27 @@
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
+const BACKEND_BASE_URL = (
+  process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL ||
+  'https://sipkk-new.mediaciptainformasi.co.id'
+).replace(/\/+$/, '')
 
 export function getApiBaseUrl(): string {
-  // Menggunakan proxy routing Next.js internal (/api/backend) untuk menyembunyikan CORS
-  return '/api/backend'
+  return `${BACKEND_BASE_URL}/api`
 }
 
 export function buildApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  if (normalizedPath === '/api') {
+    return getApiBaseUrl()
+  }
+
+  if (normalizedPath.startsWith('/api/')) {
+    return `${BACKEND_BASE_URL}${normalizedPath}`
+  }
+
+  if (normalizedPath.startsWith('/web_api/')) {
+    return `${BACKEND_BASE_URL}${normalizedPath}`
+  }
+
   return `${getApiBaseUrl()}${normalizedPath}`
 }
 

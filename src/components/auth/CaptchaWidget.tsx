@@ -2,6 +2,7 @@
 
 import { RefreshCw, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { buildApiUrl } from '@/lib/utils/api'
 
 interface CaptchaWidgetProps {
   onVerifyChange: (verified: boolean) => void
@@ -28,7 +29,7 @@ export default function CaptchaWidget({ onVerifyChange }: CaptchaWidgetProps) {
     onVerifyChange(false)
 
     try {
-      const response = await fetch('/api/captcha', {
+      const response = await fetch(buildApiUrl('/api/captcha'), {
         method: 'GET',
         cache: 'no-store',
       })
@@ -65,7 +66,7 @@ export default function CaptchaWidget({ onVerifyChange }: CaptchaWidgetProps) {
     setError('')
 
     try {
-      const response = await fetch('/api/captcha/validate', {
+      const response = await fetch(buildApiUrl('/api/captcha/validate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

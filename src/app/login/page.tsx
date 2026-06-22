@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
+import { buildApiUrl } from '@/lib/utils/api'
 
 type LoginResponse = {
   success?: boolean
@@ -40,7 +41,7 @@ export default function LoginPage() {
   const fetchCaptcha = useCallback(async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch('/api/captcha', {
+      const res = await fetch(buildApiUrl('/api/captcha'), {
         method: 'GET',
         cache: 'no-store',
       })
@@ -95,7 +96,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch(buildApiUrl('/api/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
