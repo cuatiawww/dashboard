@@ -17,7 +17,6 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { buildApiUrl } from '@/lib/utils/api'
 import { useAuthStore } from '@/lib/authStore'
 
 // Dynamically import map component to completely bypass SSR/window issues in Next.js
@@ -119,7 +118,10 @@ export default function DashboardKejadianPage() {
           headers['Authorization'] = `Bearer ${token}`
         }
 
-        const response = await fetch(buildApiUrl(`/web_api/v1/bencana-stats?token=${encodeURIComponent(token || '')}`), {
+        // Gunakan dedicated Next.js API route /api/bencana-stats
+        // yang mem-proxy ke web_api/v1/bencana-stats di server-side (tidak ada CORS)
+        const url = `/api/bencana-stats${token ? `?token=${encodeURIComponent(token)}` : ''}`
+        const response = await fetch(url, {
           method: 'GET',
           headers,
           cache: 'no-store',
