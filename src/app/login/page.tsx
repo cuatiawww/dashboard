@@ -1,12 +1,11 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
-import { buildApiUrl } from '@/lib/utils/api'
 
 type LoginResponse = {
   success?: boolean
@@ -38,12 +37,10 @@ export default function LoginPage() {
   const [captchaValue, setCaptchaValue] = useState('')
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
 
-  const baseApiUrl = useMemo(() => buildApiUrl('/api'), [])
-
   const fetchCaptcha = useCallback(async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch(`${baseApiUrl}/captcha`, {
+      const res = await fetch('/api/captcha', {
         method: 'GET',
         cache: 'no-store',
       })
@@ -65,7 +62,7 @@ export default function LoginPage() {
     } finally {
       setLoadingCaptcha(false)
     }
-  }, [baseApiUrl])
+  }, [])
 
   useEffect(() => {
     initialize()
@@ -98,7 +95,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const response = await fetch(`${baseApiUrl}/login`, {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

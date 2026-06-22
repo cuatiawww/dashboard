@@ -11,15 +11,42 @@ npm run dev
 
 Lalu buka `http://localhost:3000`.
 
-## Dependency CAPTCHA
+## Env Wajib
 
-Install dependency berikut jika belum ada:
+Buat file `.env.local` berdasarkan `.env.example`.
+
+```env
+SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+```
+
+Variabel ini dipakai oleh route proxy Next.js seperti:
+
+- `/api/backend/api/captcha`
+- `/api/backend/api/login`
+- `/api/regions`
+
+Jika deploy ke Vercel, pastikan `SIPKK_BACKEND_BASE_URL` juga diisi di project settings lalu lakukan redeploy.
+
+## Catatan CAPTCHA
+
+Halaman login utama saat ini mengambil captcha dan login ke backend Yii melalui proxy Next.js, bukan memakai demo login lokal.
+
+Endpoint yang dipakai halaman login:
+
+- `GET /api/backend/api/captcha`
+- `POST /api/backend/api/login`
+
+Masih ada route lokal `/api/captcha`, `/api/captcha/validate`, dan `/api/login` untuk kebutuhan demo/eksperimen lama.
+
+## Dependency CAPTCHA Demo Lokal
+
+Install dependency berikut jika route demo lokal masih ingin dipakai:
 
 ```bash
 npm install svg-captcha uuid @upstash/redis
 ```
 
-## Struktur Folder CAPTCHA
+## Struktur Folder CAPTCHA Demo Lokal
 
 ```text
 src/
@@ -46,7 +73,7 @@ src/
       upstash-store.ts
 ```
 
-## Cara Kerja
+## Cara Kerja Route Demo Lokal
 
 - `GET /api/captcha` membuat CAPTCHA SVG baru dan mengembalikan `{ id, svg }`.
 - `POST /api/captcha/validate` menerima `{ id, text }`, mencocokkan secara case-insensitive, lalu menghapus challenge setelah divalidasi.
@@ -58,9 +85,7 @@ src/
   - verify via `fetch`
 - Halaman login contoh memaksa CAPTCHA tervalidasi lebih dulu sebelum `POST /api/login` diproses.
 
-## Env Local dan Production
-
-Buat file `.env.local` berdasarkan `.env.example`.
+## Env Demo Lokal
 
 ### Development
 
