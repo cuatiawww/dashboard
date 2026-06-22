@@ -10,6 +10,7 @@ import {
   Bell,
   ChevronDown,
   Download,
+  Flame,
   Home,
   LogOut,
   MapPinned,
@@ -35,6 +36,7 @@ const sidebarMenu = [
     items: [
       { label: 'Dashboard Nasional', href: '/', icon: Home },
       { label: 'Dashboard PSC 119', href: '/psc119', icon: BarChart3 },
+      { label: 'Dashboard Kejadian', href: '/dashboard-kejadian', icon: Flame },
       { label: 'Sebaran Provinsi', href: '/psc119/jawa-barat', icon: MapPinned },
     ],
   },
