@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Globe, MapPin, Building2, ChevronDown, Info } from 'lucide-react'
 import { useAuthStore, type WilayahScope } from '@/lib/authStore'
+import { buildApiUrl } from '@/lib/utils/api'
 
 type FilterItem = {
   id: string
@@ -21,6 +22,12 @@ export type FilterSummary = {
 
 type FilterDropdownBarProps = {
   onSummaryChange?: (summary: FilterSummary) => void
+}
+
+type RegionOption = {
+  id?: string | number
+  code?: string | number
+  name: string
 }
 
 const iconStyles: Record<FilterItem['icon'], { bg: string; color: string }> = {
@@ -42,10 +49,6 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
-
-const legacyApiBaseUrl = (process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend')
-  .trim()
-  .replace(/\/+$/, '')
 
 // Mode-mode scope yang dianggap valid & terkunci ke wilayah tertentu.
 const SCOPED_MODES: WilayahScope['mode'][] = ['provinsi', 'kabupaten']
@@ -197,12 +200,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchProvinces = async () => {
       setLoadingProvinces(true)
       try {
-        if (!legacyApiBaseUrl) {
-          setDynamicProvinces([{ value: 'semua-provinsi', label: 'Semua Provinsi' }])
-          return
-        }
-
-        const res = await fetch(`${legacyApiBaseUrl}/api/regions`)
+        const res = await fetch(buildApiUrl('/api/regions'))
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {
@@ -213,7 +211,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
         if (payload?.success && Array.isArray(payload?.data)) {
           const list = [
             { value: 'semua-provinsi', label: 'Semua Provinsi' },
-            ...payload.data.map((item: any) => ({
+            ...payload.data.map((item: RegionOption) => ({
               value: String(item.code || item.id),
               label: item.name,
             })),
@@ -247,12 +245,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchKabkota = async () => {
       setLoadingKabkota(true)
       try {
-        if (!legacyApiBaseUrl) {
-          setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
-          return
-        }
-
-        const res = await fetch(`${legacyApiBaseUrl}/api/regions?province_id=${selectedProvince}`)
+        const res = await fetch(buildApiUrl(`/api/regions?province_id=${encodeURIComponent(selectedProvince)}`))
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {
@@ -263,7 +256,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
         if (payload?.success && Array.isArray(payload?.data)) {
           const list = [
             { value: 'semua-kabkota', label: 'Semua Kab/Kota' },
-            ...payload.data.map((item: any) => ({
+            ...payload.data.map((item: RegionOption) => ({
               value: String(item.code || item.id),
               label: item.name,
             })),

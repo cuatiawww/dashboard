@@ -1,10 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X, RefreshCw } from 'lucide-react'
+import { buildApiUrl } from '@/lib/utils/api'
 
 type Region = {
   id: string
@@ -19,18 +19,8 @@ type RegisterResponse = {
   errors?: Record<string, string>
 }
 
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
-
 export default function RegisterPage() {
-  const router = useRouter()
-
-  // Base API configuration
-  const baseApiUrl = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
-    )
-    return baseUrl
-  }, [])
+  const baseApiUrl = useMemo(() => buildApiUrl('/api'), [])
 
   // Flow State: 'form' | 'otp' | 'success'
   const [step, setStep] = useState<'form' | 'otp' | 'success'>('form')
@@ -46,10 +36,10 @@ export default function RegisterPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
 
-  const fetchCaptcha = async () => {
+  const fetchCaptcha = useCallback(async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch(`${baseApiUrl}/api/captcha`)
+      const res = await fetch(`${baseApiUrl}/captcha`)
       const payload = await res.json()
       if (payload?.success) {
         setCaptchaKey(payload.captcha_key)
@@ -62,7 +52,7 @@ export default function RegisterPage() {
     } finally {
       setLoadingCaptcha(false)
     }
-  }
+  }, [baseApiUrl])
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [telp, setTelp] = useState('')
@@ -135,7 +125,7 @@ export default function RegisterPage() {
     async function fetchProvinces() {
       setLoadingProvinces(true)
       try {
-        const res = await fetch(`${baseApiUrl}/api/regions`)
+        const res = await fetch(`${baseApiUrl}/regions`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setProvinces(payload.data)
@@ -151,7 +141,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     fetchCaptcha()
-  }, [])
+  }, [fetchCaptcha])
 
   // Fetch regencies when province changes
   useEffect(() => {
@@ -166,7 +156,7 @@ export default function RegisterPage() {
     async function fetchRegencies() {
       setLoadingRegencies(true)
       try {
-        const res = await fetch(`${baseApiUrl}/api/regions?province_id=${provinsiId}`)
+        const res = await fetch(`${baseApiUrl}/regions?province_id=${encodeURIComponent(provinsiId)}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setRegencies(payload.data)
@@ -191,7 +181,7 @@ export default function RegisterPage() {
     async function fetchDistricts() {
       setLoadingDistricts(true)
       try {
-        const res = await fetch(`${baseApiUrl}/api/regions?kabupaten_id=${kabupatenId}`)
+        const res = await fetch(`${baseApiUrl}/regions?kabupaten_id=${encodeURIComponent(kabupatenId)}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setDistricts(payload.data)
@@ -214,7 +204,7 @@ export default function RegisterPage() {
     async function fetchVillages() {
       setLoadingVillages(true)
       try {
-        const res = await fetch(`${baseApiUrl}/api/regions?kecamatan_id=${kecamatanId}`)
+        const res = await fetch(`${baseApiUrl}/regions?kecamatan_id=${encodeURIComponent(kecamatanId)}`)
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setVillages(payload.data)
@@ -260,7 +250,7 @@ export default function RegisterPage() {
 
     setSubmitting(true)
     try {
-      const response = await fetch(`${baseApiUrl}/api/register`, {
+      const response = await fetch(`${baseApiUrl}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -320,7 +310,7 @@ export default function RegisterPage() {
 
     setVerifyingOtp(true)
     try {
-      const res = await fetch(`${baseApiUrl}/api/verify-register-otp`, {
+      const res = await fetch(`${baseApiUrl}/verify-register-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -353,7 +343,7 @@ export default function RegisterPage() {
     setResendingOtp(true)
 
     try {
-      const res = await fetch(`${baseApiUrl}/api/resend-register-otp`, {
+      const res = await fetch(`${baseApiUrl}/resend-register-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

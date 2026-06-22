@@ -3,8 +3,8 @@
 import { FormEvent, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft, Mail, KeyRound, LockKeyhole, Check, X } from 'lucide-react'
+import { buildApiUrl } from '@/lib/utils/api'
 
 type ResetResponse = {
   success?: boolean
@@ -12,18 +12,8 @@ type ResetResponse = {
   errors?: Record<string, string>
 }
 
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
-
 export default function ForgotPasswordPage() {
-  const router = useRouter()
-
-  // Base API configuration
-  const baseApiUrl = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
-    )
-    return baseUrl
-  }, [])
+  const baseApiUrl = useMemo(() => buildApiUrl('/api'), [])
 
   // UI Flow State: 'request' | 'reset' | 'success'
   const [step, setStep] = useState<'request' | 'reset' | 'success'>('request')
@@ -38,7 +28,7 @@ export default function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [message, setMessage] = useState('')
+  const [, setMessage] = useState('')
 
   // Realtime password checks
   const pwdChecks = useMemo(() => {
@@ -73,7 +63,7 @@ export default function ForgotPasswordPage() {
     setSubmitting(true)
 
     try {
-      const response = await fetch(`${baseApiUrl}/api/forgot-password-request`, {
+      const response = await fetch(`${baseApiUrl}/forgot-password-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +108,7 @@ export default function ForgotPasswordPage() {
 
     setSubmitting(true)
     try {
-      const response = await fetch(`${baseApiUrl}/api/forgot-password-verify`, {
+      const response = await fetch(`${baseApiUrl}/forgot-password-verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

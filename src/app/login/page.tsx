@@ -1,11 +1,12 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
+import { buildApiUrl } from '@/lib/utils/api'
 
 type LoginResponse = {
   success?: boolean
@@ -20,8 +21,6 @@ const heroStats = [
   { value: '34', label: 'Provinsi Terevaluasi', icon: MapPin },
   { value: '72%', label: 'Tingkat Kepatuhan', icon: ShieldCheck },
 ]
-
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
 
 export default function LoginPage() {
   const router = useRouter()
@@ -39,17 +38,12 @@ export default function LoginPage() {
   const [captchaValue, setCaptchaValue] = useState('')
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
 
-  const baseApiUrl = useMemo(() => {
-    const baseUrl = normalizeBaseUrl(
-      process.env.NEXT_PUBLIC_SIPKK_API_BASE_URL || '/api/backend'
-    )
-    return baseUrl
-  }, [])
+  const baseApiUrl = useMemo(() => buildApiUrl('/api'), [])
 
-  const fetchCaptcha = async () => {
+  const fetchCaptcha = useCallback(async () => {
     setLoadingCaptcha(true)
     try {
-      const res = await fetch(`${baseApiUrl}/api/captcha`, {
+      const res = await fetch(`${baseApiUrl}/captcha`, {
         method: 'GET',
         cache: 'no-store',
       })
@@ -71,7 +65,7 @@ export default function LoginPage() {
     } finally {
       setLoadingCaptcha(false)
     }
-  }
+  }, [baseApiUrl])
 
   useEffect(() => {
     initialize()
@@ -85,7 +79,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     fetchCaptcha()
-  }, [])
+  }, [fetchCaptcha])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -104,7 +98,7 @@ export default function LoginPage() {
 
     setLoading(true)
     try {
-      const response = await fetch(`${baseApiUrl}/api/login`, {
+      const response = await fetch(`${baseApiUrl}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
