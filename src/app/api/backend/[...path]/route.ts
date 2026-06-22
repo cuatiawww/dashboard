@@ -14,7 +14,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_BASE_URL = (
-  process.env.SIPKK_BACKEND_BASE_URL || 'http://sipkk-baru.test'
+  process.env.SIPKK_BACKEND_BASE_URL ||
+  'https://sipkk-new.mediaciptainformasi.co.id'
 ).replace(/\/+$/, '')
 
 const CORS_HEADERS = {
