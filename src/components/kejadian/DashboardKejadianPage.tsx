@@ -47,6 +47,12 @@ type PieChartItem = {
   jumlah: number
 }
 
+type NearestFaskesItem = {
+  nama: string
+  jenis: string
+  jarak_meter: number
+}
+
 type MarkerItem = {
   kode_trans: string
   tgl_kejadian: string
@@ -56,6 +62,16 @@ type MarkerItem = {
   nama_desa?: string
   kecamatan?: string
   total_korban: number
+  nearest_faskes?: NearestFaskesItem | null
+}
+
+type FaskesItem = {
+  id: number
+  nama: string
+  jenis: string
+  lat: number
+  lng: number
+  alamat?: string
 }
 
 type ApiResponse = {
@@ -64,6 +80,7 @@ type ApiResponse = {
   jenis_bencana: PieChartItem[]
   wilayah: PieChartItem[]
   markers: MarkerItem[]
+  faskes?: FaskesItem[]
 }
 
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
@@ -363,7 +380,7 @@ ${guidelines}`)
               lokasi kejadian bencana yang dilaporkan.
             </p>
             <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
-              <DisasterMap markers={data.markers} />
+              <DisasterMap markers={data.markers} faskes={data.faskes} userScope={user?.wilayah_scope} />
             </div>
           </article>
 
