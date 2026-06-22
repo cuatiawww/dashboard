@@ -19,7 +19,7 @@ export default function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const { isAuthenticated, isInitialized, initialize } = useAuthStore()
 
-  const publicRoutes = ['/login', '/register', '/forgot-password']
+  const publicRoutes = ['/login', '/register', '/forgot-password', '/sso']
   const isPublicRoute = publicRoutes.includes(pathname)
 
   useEffect(() => {
