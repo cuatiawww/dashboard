@@ -37,8 +37,27 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   const searchParams = req.nextUrl.searchParams.toString()
   const queryString = searchParams ? `?${searchParams}` : ''
 
+  /**
+   * Remapping path: api/* → web_api/v1/*
+   *
+   * Mengapa? Aplikasi utama Yii2 (ApiController) di server production
+   * masih menggunakan konfigurasi lama yang memblokir request publik.
+   * Sub-aplikasi web_api (V1Controller) memiliki konfigurasi akses
+   * publik yang terpisah dan sudah benar. Semua endpoint yang sama tersedia
+   * di kedua controller (captcha, login, register, regions, dll).
+   *
+   * Mapping contoh:
+   *   /api/backend/api/regions  →  BACKEND/web_api/v1/regions  ✓
+   *   /api/backend/api/login    →  BACKEND/web_api/v1/login    ✓
+   *   /api/backend/web_api/...  →  BACKEND/web_api/...  (tidak berubah) ✓
+   */
+  let targetPath = pathStr
+  if (pathStr.startsWith('api/')) {
+    targetPath = `web_api/v1/${pathStr.slice(4)}`
+  }
+
   // Bangun URL tujuan ke backend
-  const targetUrl = `${BACKEND_BASE_URL}/${pathStr}${queryString}`
+  const targetUrl = `${BACKEND_BASE_URL}/${targetPath}${queryString}`
 
   // Salin headers dari request asli (hapus host agar tidak konflik)
   const forwardHeaders = new Headers()
