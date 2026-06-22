@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Globe, MapPin, Building2, ChevronDown, Info } from 'lucide-react'
 import { useAuthStore, type WilayahScope } from '@/lib/authStore'
-import { buildApiUrl } from '@/lib/utils/api'
+import { buildRegionsUrl } from '@/lib/utils/api'
 
 type FilterItem = {
   id: string
@@ -200,7 +200,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchProvinces = async () => {
       setLoadingProvinces(true)
       try {
-        const res = await fetch(buildApiUrl('/api/regions'))
+        const res = await fetch(buildRegionsUrl())
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {
@@ -245,7 +245,7 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     const fetchKabkota = async () => {
       setLoadingKabkota(true)
       try {
-        const res = await fetch(buildApiUrl(`/api/regions?province_id=${encodeURIComponent(selectedProvince)}`))
+        const res = await fetch(buildRegionsUrl({ province_id: selectedProvince }))
         const contentType = res.headers.get('content-type') || ''
 
         if (!res.ok || !contentType.includes('application/json')) {

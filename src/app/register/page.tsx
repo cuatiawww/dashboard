@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X, RefreshCw } from 'lucide-react'
-import { buildApiUrl } from '@/lib/utils/api'
+import { buildApiUrl, buildRegionsUrl } from '@/lib/utils/api'
 
 type Region = {
   id: string
@@ -125,7 +125,7 @@ export default function RegisterPage() {
     async function fetchProvinces() {
       setLoadingProvinces(true)
       try {
-        const res = await fetch(`${baseApiUrl}/regions`)
+        const res = await fetch(buildRegionsUrl())
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setProvinces(payload.data)
@@ -156,7 +156,7 @@ export default function RegisterPage() {
     async function fetchRegencies() {
       setLoadingRegencies(true)
       try {
-        const res = await fetch(`${baseApiUrl}/regions?province_id=${encodeURIComponent(provinsiId)}`)
+        const res = await fetch(buildRegionsUrl({ province_id: provinsiId }))
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setRegencies(payload.data)
@@ -181,7 +181,7 @@ export default function RegisterPage() {
     async function fetchDistricts() {
       setLoadingDistricts(true)
       try {
-        const res = await fetch(`${baseApiUrl}/regions?kabupaten_id=${encodeURIComponent(kabupatenId)}`)
+        const res = await fetch(buildRegionsUrl({ kabupaten_id: kabupatenId }))
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setDistricts(payload.data)
@@ -204,7 +204,7 @@ export default function RegisterPage() {
     async function fetchVillages() {
       setLoadingVillages(true)
       try {
-        const res = await fetch(`${baseApiUrl}/regions?kecamatan_id=${encodeURIComponent(kecamatanId)}`)
+        const res = await fetch(buildRegionsUrl({ kecamatan_id: kecamatanId }))
         const payload = await res.json()
         if (payload?.success && Array.isArray(payload?.data)) {
           setVillages(payload.data)
