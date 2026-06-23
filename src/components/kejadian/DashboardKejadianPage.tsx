@@ -249,7 +249,7 @@ ${guidelines}`)
   }
 
   const getCardValue = (val: number | null | undefined) => {
-    if (val === null || val === undefined || isDbEmpty) return 'N/A'
+    if (val === null || val === undefined) return '0'
     return val.toLocaleString('id-ID')
   }
 

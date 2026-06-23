@@ -32,7 +32,8 @@ const EMPTY_RESPONSE = {
 }
 
 export async function GET(request: NextRequest) {
-  const targetUrl = `${BACKEND_BASE_URL}/api/bencana-stats`
+  const search = request.nextUrl.searchParams.toString()
+  const targetUrl = `${BACKEND_BASE_URL}/api/bencana-stats${search ? `?${search}` : ''}`
 
   // Teruskan Authorization header dari client ke backend
   // agar getRequestWilayahScope() bisa apply filter berdasarkan wilayah_scope user
