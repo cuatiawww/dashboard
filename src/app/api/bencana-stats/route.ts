@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * Proxy server-side untuk /api/bencana-stats
- *
- * Meneruskan request ke ApiController::actionBencanaStats() di backend utama
- * via web.php. Endpoint ini PUBLIC — tidak butuh token/auth.
- *
  * Backend endpoint: BACKEND_BASE_URL/api/bencana-stats
+ * Endpoint ini PUBLIC — tidak butuh token/auth.
  */
 
 const BACKEND_BASE_URL = (
@@ -16,70 +13,56 @@ const BACKEND_BASE_URL = (
 
 export const runtime = 'nodejs'
 
+const EMPTY_RESPONSE = {
+  success: true,
+  summary: {
+    total_bencana: 0,
+    total_meninggal: 0,
+    total_luka: 0,
+    total_hilang: 0,
+    total_pengungsi: 0,
+    total_terdampak: 0,
+  },
+  jenis_bencana: [],
+  wilayah: [],
+  markers: [],
+  faskes: [],
+}
+
 export async function GET(_request: NextRequest) {
   const targetUrl = `${BACKEND_BASE_URL}/api/bencana-stats`
 
   try {
-    let backendRes: Response
-    try {
-      backendRes = await fetch(targetUrl, {
-        method: 'GET',
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
-        },
-        cache: 'no-store',
-        redirect: 'manual',
-        signal: AbortSignal.timeout(8000),
-      })
-    } catch (fetchErr: any) {
-      const isTimeout = fetchErr?.name === 'TimeoutError' || fetchErr?.name === 'AbortError'
-      console.error('[bencana-stats proxy] Gagal menghubungi backend:', fetchErr?.message)
-      return NextResponse.json(
-        {
-          success: false,
-          message: isTimeout
-            ? 'Server backend tidak merespons (timeout). Silakan coba lagi.'
-            : 'Tidak dapat menghubungi server backend.',
-        },
-        { status: 503 },
-      )
-    }
+    const backendRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
+      },
+      cache: 'no-store',
+      // Ikuti redirect otomatis — mencegah 502 akibat Apache canonical/HTTPS redirect
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    })
 
-    // Jika backend redirect — ini berarti backend tidak mengenali endpoint ini sebagai public.
-    // Kembalikan 502 (bukan 401) agar frontend tidak menganggap ini masalah sesi.
-    if ([301, 302, 303, 307, 308].includes(backendRes.status)) {
-      const location = backendRes.headers.get('location') || ''
-      console.warn('[bencana-stats proxy] Backend redirect ke:', location, '| target:', targetUrl)
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Endpoint bencana-stats tidak dapat diakses. Periksa konfigurasi backend.',
-        },
-        { status: 502 },
-      )
-    }
-
-    // Parse JSON dari backend
     const payload = await backendRes.json().catch(() => null)
 
-    if (backendRes.ok && payload !== null) {
+    // Jika dapat JSON valid dari backend, teruskan ke frontend
+    if (payload !== null) {
       return NextResponse.json(payload, { status: 200 })
     }
 
-    // Backend error
+    // Backend tidak return JSON (mungkin HTML error page)
+    console.warn('[bencana-stats proxy] Backend tidak return JSON. Status:', backendRes.status)
+    return NextResponse.json(EMPTY_RESPONSE, { status: 200 })
+
+  } catch (error: any) {
+    const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError'
+    console.error('[bencana-stats proxy] Error:', error?.message)
+    // Return data kosong agar dashboard tetap tampil (bukan error)
     return NextResponse.json(
-      {
-        success: false,
-        message: payload?.message || 'Gagal mengambil data statistik bencana dari server.',
-      },
-      { status: backendRes.status >= 400 ? backendRes.status : 502 },
-    )
-  } catch (error) {
-    console.error('[bencana-stats proxy error]', error)
-    return NextResponse.json(
-      { success: false, message: 'Terjadi kesalahan internal pada proxy.' },
-      { status: 500 },
+      { ...EMPTY_RESPONSE, _error: isTimeout ? 'timeout' : 'network_error' },
+      { status: 200 },
     )
   }
 }

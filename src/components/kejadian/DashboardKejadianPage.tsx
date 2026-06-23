@@ -108,7 +108,7 @@ export default function DashboardKejadianPage() {
   }
 
   const fetchData = useCallback(async () => {
-    if (!isInitialized) return
+    // public endpoint — tidak perlu tunggu auth
     try {
       setLoading(true)
       setError(null)
@@ -121,28 +121,19 @@ export default function DashboardKejadianPage() {
         cache: 'no-store',
       })
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => null)
-        // 401 = backend minta auth; 502 = backend sedang bermasalah
-        // Keduanya BUKAN berarti sesi user expired → jangan logout
-        const friendlyMsg =
-          response.status === 401
-            ? 'Akses ditolak oleh server. Pastikan Anda sudah login dengan benar.'
-            : response.status >= 500
-            ? 'Server backend sedang bermasalah. Silakan coba beberapa saat lagi.'
-            : errData?.message || 'Gagal mengambil data statistik bencana.'
-        throw new Error(friendlyMsg)
+      const json = await response.json().catch(() => null)
+      if (json !== null) {
+        setData(json)
+        return
       }
-
-      const json = await response.json()
-      setData(json)
+      throw new Error('Response tidak valid dari server.')
     } catch (err) {
       console.error('[bencana-stats]', err)
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem.')
     } finally {
       setLoading(false)
     }
-  }, [isInitialized])
+  }, [])
 
   useEffect(() => {
     fetchData()
