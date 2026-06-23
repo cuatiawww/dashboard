@@ -170,18 +170,37 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     }))
   }, [isScoped, userScope, dynamicProvinces, dynamicKabkota, loadingProvinces, loadingKabkota])
 
-  const defaultSelected = useMemo(
-    () => Object.fromEntries(activeFilterData.map((f) => [f.id, f.defaultValue])),
-    [activeFilterData]
-  )
+  const defaultSelected = useMemo(() => {
+    if (!isScoped) {
+      return {
+        cakupan: 'nasional',
+        provinsi: 'semua-provinsi',
+        kabkota: 'semua-kabkota',
+      }
+    }
+    const scope = userScope as WilayahScope
+    const cakupanValue = scope.cakupan.value || scope.mode
+    const provinsiValue = scope.provinsi.id ? String(scope.provinsi.id) : slugify(scope.provinsi.label)
+    const kabupatenValue = scope.mode === 'kabupaten'
+      ? (scope.kabupaten.id ? String(scope.kabupaten.id) : slugify(scope.kabupaten.label))
+      : 'semua-kabkota'
+    return {
+      cakupan: cakupanValue,
+      provinsi: provinsiValue,
+      kabkota: kabupatenValue,
+    }
+  }, [isScoped, userScope])
+
   const [selected, setSelected] = useState<Record<string, string>>(defaultSelected)
   const [openId, setOpenId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
+  // Only update selected values when the default values change (e.g., user scope loads or changes)
+  const defaultSelectedStr = JSON.stringify(defaultSelected)
   useEffect(() => {
-    setSelected(defaultSelected)
+    setSelected(JSON.parse(defaultSelectedStr))
     setOpenId(null)
-  }, [defaultSelected])
+  }, [defaultSelectedStr])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -395,6 +414,28 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
                             const next = { ...prev, [filter.id]: opt.value }
                             if (filter.id === 'provinsi') {
                               next['kabkota'] = 'semua-kabkota'
+                              if (opt.value === 'semua-provinsi') {
+                                next['cakupan'] = 'nasional'
+                              } else {
+                                next['cakupan'] = 'provinsi'
+                              }
+                            } else if (filter.id === 'kabkota') {
+                              if (opt.value === 'semua-kabkota') {
+                                if (prev['provinsi'] === 'semua-provinsi') {
+                                  next['cakupan'] = 'nasional'
+                                } else {
+                                  next['cakupan'] = 'provinsi'
+                                }
+                              } else {
+                                next['cakupan'] = 'kabupaten-kota'
+                              }
+                            } else if (filter.id === 'cakupan') {
+                              if (opt.value === 'nasional') {
+                                next['provinsi'] = 'semua-provinsi'
+                                next['kabkota'] = 'semua-kabkota'
+                              } else if (opt.value === 'provinsi') {
+                                next['kabkota'] = 'semua-kabkota'
+                              }
                             }
                             return next
                           })
