@@ -196,50 +196,44 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   const [openId, setOpenId] = useState<string | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
+  const lastProvinceNameRef = useRef<string | null | undefined>(undefined)
+
   // Only update selected values when the default values change (e.g., user scope loads or changes)
   const defaultSelectedStr = JSON.stringify(defaultSelected)
   useEffect(() => {
     const parsed = JSON.parse(defaultSelectedStr)
-    let hasDifference = false
-    for (const key in parsed) {
-      if (parsed[key] !== selected[key]) {
-        hasDifference = true
-        break
-      }
-    }
-    if (hasDifference) {
-      setSelected(parsed)
-      setOpenId(null)
-    }
-  }, [defaultSelectedStr, selected])
+    setSelected(parsed)
+    setOpenId(null)
+  }, [defaultSelectedStr])
 
+  // Synchronize external selectedProvinceName changes (e.g., map clicks or reset filters)
   useEffect(() => {
-    if (selectedProvinceName) {
-      const cleanName = selectedProvinceName.toUpperCase().trim()
-      const found = dynamicProvinces.find(
-        (p) => p.label.toUpperCase().trim() === cleanName
-      )
-      if (found) {
-        const nextProv = found.value
-        if (selected.provinsi !== nextProv || selected.cakupan !== 'provinsi' || selected.kabkota !== 'semua-kabkota') {
-          setSelected((prev) => ({
-            ...prev,
-            provinsi: nextProv,
-            cakupan: 'provinsi',
-            kabkota: 'semua-kabkota',
-          }))
+    if (lastProvinceNameRef.current === undefined) {
+      lastProvinceNameRef.current = selectedProvinceName
+      return
+    }
+
+    if (selectedProvinceName !== lastProvinceNameRef.current) {
+      lastProvinceNameRef.current = selectedProvinceName
+
+      if (selectedProvinceName) {
+        const cleanName = selectedProvinceName.toUpperCase().trim()
+        const found = dynamicProvinces.find(
+          (p) => p.label.toUpperCase().trim() === cleanName
+        )
+        if (found) {
+          const nextProv = found.value
+          if (selected.provinsi !== nextProv || selected.cakupan !== 'provinsi' || selected.kabkota !== 'semua-kabkota') {
+            setSelected((prev) => ({
+              ...prev,
+              provinsi: nextProv,
+              cakupan: 'provinsi',
+              kabkota: 'semua-kabkota',
+            }))
+          }
         }
-      }
-    } else {
-      const parsed = JSON.parse(defaultSelectedStr)
-      let hasDifference = false
-      for (const key in parsed) {
-        if (parsed[key] !== selected[key]) {
-          hasDifference = true
-          break
-        }
-      }
-      if (hasDifference) {
+      } else {
+        const parsed = JSON.parse(defaultSelectedStr)
         setSelected(parsed)
       }
     }

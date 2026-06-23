@@ -30,11 +30,21 @@ interface DisasterMapProps {
   onSelectProvince?: (prov: string) => void
 }
 
+const cleanKey = (name?: string | null) => {
+  if (!name) return ''
+  return name
+    .toUpperCase()
+    .replace(/^(KAB\.|KABUPATEN|KOTA|PROVINSI|PROV|PRO|DAERAH ISTIMEWA|DI)\s+/gi, '')
+    .replace(/[^A-Z0-9]/g, '')
+    .trim()
+}
+
 export default function DisasterMap({ markers, userScope, onSelectProvince }: DisasterMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<OlMap | null>(null)
   const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const kabupatenLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const lastFetchedProvinceRef = useRef<string | null>(null)
 
   const onSelectProvinceRef = useRef(onSelectProvince)
   const userScopeRef = useRef(userScope)
@@ -47,15 +57,6 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
   const { provinceCounts, kabupatenCounts } = useMemo(() => {
     const provinceCounts = new Map<string, number>()
     const kabupatenCounts = new Map<string, number>()
-
-    const cleanKey = (name?: string | null) => {
-      if (!name) return ''
-      return name
-        .toUpperCase()
-        .replace(/^(KAB\.|KABUPATEN|KOTA|PROVINSI|PROV|PRO|DAERAH ISTIMEWA|DI)\s+/gi, '')
-        .replace(/[^A-Z0-9]/g, '')
-        .trim()
-    }
 
     markers.forEach((marker) => {
       if (marker.provinsi) {
@@ -95,7 +96,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
   }
 
   const getMarkerTitle = () => {
-    if (userScope?.mode === 'provinsi') return 'SEBARAN KEJADIAN PER KABUPATEN/KOTA'
+    if (userScope?.mode === 'provinsi' || userScope?.mode === 'kabupaten') return 'SEBARAN KEJADIAN PER KABUPATEN/KOTA'
     return 'SEBARAN KEJADIAN PER PROVINSI'
   }
 
@@ -181,21 +182,28 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
     if (!kabSource) return
 
     const isProvMode = userScope?.mode === 'provinsi'
+    const isKabMode = userScope?.mode === 'kabupaten'
     const provinceName = userScope?.provinsi?.label || ''
+    const kabupatenName = userScope?.kabupaten?.label || ''
 
-    if (isProvMode && provinceName) {
-      fetch(`/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.success && data.geojson) {
-            kabSource.clear()
-            const format = new GeoJSON()
-            const features = format.readFeatures(data.geojson, {
-              dataProjection: 'EPSG:4326',
-              featureProjection: map.getView().getProjection(),
-            })
-            kabSource.addFeatures(features)
+    if ((isProvMode || isKabMode) && provinceName) {
+      const performZoomAndFocus = (features: any[]) => {
+        if (isKabMode && kabupatenName) {
+          const targetKabCleaned = cleanKey(kabupatenName)
+          const matchedFeature = features.find((f) => {
+            const name = f.get('nama_kab') || f.get('kabupaten')
+            return cleanKey(name) === targetKabCleaned
+          })
 
+          if (matchedFeature) {
+            const geometry = matchedFeature.getGeometry()
+            if (geometry) {
+              map.getView().fit(geometry.getExtent(), {
+                padding: [100, 100, 100, 100],
+                duration: 500,
+              })
+            }
+          } else {
             const extent = kabSource.getExtent()
             if (extent && features.length > 0) {
               map.getView().fit(extent, {
@@ -204,9 +212,39 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
               })
             }
           }
-        })
-        .catch((err) => console.error('Gagal memuat GeoJSON kabupaten:', err))
+        } else {
+          const extent = kabSource.getExtent()
+          if (extent && features.length > 0) {
+            map.getView().fit(extent, {
+              padding: [40, 40, 40, 40],
+              duration: 500,
+            })
+          }
+        }
+      }
+
+      if (lastFetchedProvinceRef.current !== provinceName) {
+        lastFetchedProvinceRef.current = provinceName
+        fetch(`/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.success && data.geojson) {
+              kabSource.clear()
+              const format = new GeoJSON()
+              const features = format.readFeatures(data.geojson, {
+                dataProjection: 'EPSG:4326',
+                featureProjection: map.getView().getProjection(),
+              })
+              kabSource.addFeatures(features)
+              performZoomAndFocus(features)
+            }
+          })
+          .catch((err) => console.error('Gagal memuat GeoJSON kabupaten:', err))
+      } else {
+        performZoomAndFocus(kabSource.getFeatures())
+      }
     } else {
+      lastFetchedProvinceRef.current = null
       kabSource.clear()
       map.getView().animate({
         center: fromLonLat([118, -2.5]),
@@ -222,24 +260,18 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
     const kabupatenLayer = kabupatenLayerRef.current
     if (!provinceLayer || !kabupatenLayer) return
 
-    const cleanKey = (name?: string | null) => {
-      if (!name) return ''
-      return name
-        .toUpperCase()
-        .replace(/^(KAB\.|KABUPATEN|KOTA|PROVINSI|PROV|PRO|DAERAH ISTIMEWA|DI)\s+/gi, '')
-        .replace(/[^A-Z0-9]/g, '')
-        .trim()
-    }
-
     const selectedProvName = userScope?.provinsi?.label || ''
+    const selectedKabName = userScope?.kabupaten?.label || ''
     const isProvMode = userScope?.mode === 'provinsi'
+    const isKabMode = userScope?.mode === 'kabupaten'
     const targetProvCleaned = cleanKey(selectedProvName)
+    const targetKabCleaned = cleanKey(selectedKabName)
 
     provinceLayer.setStyle((feature: any) => {
       const provName = feature.get('provinsi')
       const provCleaned = cleanKey(provName)
 
-      if (isProvMode) {
+      if (isProvMode || isKabMode) {
         if (provCleaned === targetProvCleaned) {
           // Transparent for selected province to let kabupaten layer shine through
           return new Style({
@@ -274,7 +306,26 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
       const kabName = feature.get('nama_kab') || feature.get('kabupaten')
       const kabCleaned = cleanKey(kabName)
       const count = kabupatenCounts.get(kabCleaned) || 0
-      return getChoroplethStyle(count)
+
+      if (isKabMode) {
+        if (kabCleaned === targetKabCleaned) {
+          return getChoroplethStyle(count)
+        } else {
+          // Gray out other kabupaten in the same province
+          return new Style({
+            fill: new Fill({
+              color: 'rgba(226, 232, 240, 0.5)',
+            }),
+            stroke: new Stroke({
+              color: 'rgba(203, 213, 225, 0.4)',
+              width: 0.8,
+            }),
+          })
+        }
+      } else {
+        // Provinsi mode
+        return getChoroplethStyle(count)
+      }
     })
 
     // Force style application

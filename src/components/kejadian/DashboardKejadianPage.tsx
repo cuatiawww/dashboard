@@ -80,76 +80,50 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [selectedProvince, setSelectedProvince] = useState<string | null>(null)
-  const [filterSummary, setFilterSummary] = useState<FilterSummary | null>(null)
+
+  // Primitive string states to avoid reference comparison bugs causing infinite loops
+  const [cakupan, setCakupan] = useState('nasional')
+  const [province, setProvince] = useState('')
+  const [kabupaten, setKabupaten] = useState('')
 
   const isDbEmpty = !data || data.summary.total_bencana === 0
 
   const activeUserScope = useMemo(() => {
-    if (filterSummary) {
-      const prov = filterSummary.provinsi !== 'SEMUA PROVINSI' ? filterSummary.provinsi : null
-      const kab = filterSummary.kabkota !== 'SEMUA KAB/KOTA' ? filterSummary.kabkota : null
-
-      if (kab) {
+    if (province || kabupaten) {
+      if (kabupaten) {
         return {
           mode: 'kabupaten',
-          provinsi: { label: prov },
-          kabupaten: { label: kab },
+          provinsi: { label: province },
+          kabupaten: { label: kabupaten },
         }
       }
-      if (prov) {
-        return {
-          mode: 'provinsi',
-          provinsi: { label: prov },
-        }
-      }
-      return {
-        mode: 'nasional',
-      }
-    }
-
-    if (selectedProvince) {
       return {
         mode: 'provinsi',
-        provinsi: { label: selectedProvince },
+        provinsi: { label: province },
       }
     }
     return user?.wilayah_scope
-  }, [selectedProvince, filterSummary, user])
+  }, [province, kabupaten, user])
 
   const getRegionLabel = () => {
-    if (filterSummary) {
-      const prov = filterSummary.provinsi.toUpperCase()
-      const kab = filterSummary.kabkota.toUpperCase()
-      if (kab !== 'SEMUA KAB/KOTA') {
-        return `${kab}, PROV. ${prov}`
-      }
-      if (prov !== 'SEMUA PROVINSI') {
-        return `PROV. ${prov}`
-      }
-      return filterSummary.cakupan.toUpperCase()
+    if (kabupaten) {
+      return `${kabupaten.toUpperCase()}, PROV. ${province.toUpperCase()}`
     }
-    if (selectedProvince) {
-      return selectedProvince.toUpperCase()
+    if (province) {
+      return `PROV. ${province.toUpperCase()}`
     }
-    const scope = user?.wilayah_scope
-    if (!scope) return 'NASIONAL'
-
-    if (scope.mode === 'kabupaten') {
-      return scope.kabupaten?.label?.toUpperCase() || 'KAB/KOTA'
-    } else if (scope.mode === 'provinsi') {
-      return scope.provinsi?.label?.toUpperCase() || 'PROVINSI'
-    }
-    return 'NASIONAL'
+    return cakupan.toUpperCase()
   }
 
   const handleSummaryChange = useCallback((summary: FilterSummary) => {
-    setFilterSummary(summary)
-    const prov = summary.provinsi !== 'SEMUA PROVINSI' ? summary.provinsi : null
-    if (prov !== selectedProvince) {
-      setSelectedProvince(prov)
-    }
-  }, [selectedProvince])
+    const prov = summary.provinsi !== 'SEMUA PROVINSI' ? summary.provinsi : ''
+    const kab = summary.kabkota !== 'SEMUA KAB/KOTA' ? summary.kabkota : ''
+    const cak = summary.cakupan.toLowerCase()
+
+    setCakupan(cak)
+    setProvince(prov)
+    setKabupaten(kab)
+  }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -159,15 +133,11 @@ export default function DashboardKejadianPage() {
       let url = buildBencanaStatsUrl()
       const queryParams: string[] = []
 
-      if (filterSummary) {
-        if (filterSummary.provinsi && filterSummary.provinsi !== 'SEMUA PROVINSI') {
-          queryParams.push(`province=${encodeURIComponent(filterSummary.provinsi)}`)
-        }
-        if (filterSummary.kabkota && filterSummary.kabkota !== 'SEMUA KAB/KOTA') {
-          queryParams.push(`kabupaten=${encodeURIComponent(filterSummary.kabkota)}`)
-        }
-      } else if (selectedProvince) {
-        queryParams.push(`province=${encodeURIComponent(selectedProvince)}`)
+      if (province) {
+        queryParams.push(`province=${encodeURIComponent(province)}`)
+      }
+      if (kabupaten) {
+        queryParams.push(`kabupaten=${encodeURIComponent(kabupaten)}`)
       }
 
       if (queryParams.length > 0) {
@@ -195,7 +165,7 @@ export default function DashboardKejadianPage() {
     } finally {
       setLoading(false)
     }
-  }, [token, selectedProvince, filterSummary])
+  }, [token, province, kabupaten])
 
   useEffect(() => {
     fetchData()
@@ -250,7 +220,7 @@ ${guidelines}`)
     }
   }, [data])
 
-  if (loading || !isInitialized) {
+  if (!isInitialized || (loading && !data)) {
     return (
       <div className="flex min-h-[500px] w-full items-center justify-center">
         <div className="text-center space-y-4">
@@ -298,10 +268,14 @@ ${guidelines}`)
             Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah {getRegionLabel()}.
           </p>
         </div>
-        {selectedProvince && (
+        {province && (
           <div>
             <button
-              onClick={() => setSelectedProvince(null)}
+              onClick={() => {
+                setProvince('')
+                setKabupaten('')
+                setCakupan('nasional')
+              }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-bold text-teal-800 shadow-sm transition hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -315,7 +289,7 @@ ${guidelines}`)
       <section className="w-full bg-[#fbffff]">
         <FilterDropdownBar
           onSummaryChange={handleSummaryChange}
-          selectedProvinceName={selectedProvince}
+          selectedProvinceName={province}
         />
       </section>
 
@@ -460,7 +434,7 @@ ${guidelines}`)
               <DisasterMap
                 markers={data.markers}
                 userScope={activeUserScope}
-                onSelectProvince={(prov) => setSelectedProvince(prov)}
+                onSelectProvince={(prov) => setProvince(prov)}
               />
             </div>
           </article>
