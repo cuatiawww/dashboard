@@ -77,9 +77,10 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
 /** Warna choropleth berdasarkan jumlah kejadian */
 const choroplethColor = (count: number) => {
   if (count === 0) return 'rgba(241, 245, 249, 0.15)'
-  if (count <= 2) return '#facc15'
-  if (count <= 5) return '#f97316'
-  return '#dc2626'
+  if (count <= 10) return '#facc15' // Kuning (1 - 10)
+  if (count <= 30) return '#f97316' // Oranye (11 - 30)
+  if (count <= 50) return '#ef4444' // Coral Red (31 - 50)
+  return '#991b1b' // Deep Crimson (> 50)
 }
 
 /** Style choropleth OL */
@@ -511,9 +512,10 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
   const choroplethLegend = [
     { label: '0 kejadian', color: 'rgba(241, 245, 249, 0.8)' },
-    { label: '1 – 2 kejadian', color: '#facc15' },
-    { label: '3 – 5 kejadian', color: '#f97316' },
-    { label: '> 5 kejadian', color: '#dc2626' },
+    { label: '1 – 10 kejadian', color: '#facc15' },
+    { label: '11 – 30 kejadian', color: '#f97316' },
+    { label: '31 – 50 kejadian', color: '#ef4444' },
+    { label: '> 50 kejadian', color: '#991b1b' },
   ]
 
 
