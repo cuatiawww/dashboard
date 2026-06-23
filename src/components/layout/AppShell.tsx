@@ -26,6 +26,12 @@ export default function AppShell({ children }: AppShellProps) {
     initialize()
   }, [initialize])
 
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated && !isPublicRoute) {
+      router.push('/login')
+    }
+  }, [isInitialized, isAuthenticated, isPublicRoute, router])
+
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#fbffff]">

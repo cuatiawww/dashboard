@@ -5,18 +5,24 @@ const BACKEND_BASE_URL = (
   'https://sipkk-new.mediaciptainformasi.co.id'
 ).replace(/\/+$/, '')
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+function getCorsHeaders(req: NextRequest) {
+  const origin = req.headers.get('origin') || '*'
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 async function handler(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
+  const corsHeaders = getCorsHeaders(req)
+
   if (req.method === 'OPTIONS') {
-    return new NextResponse(null, { status: 200, headers: CORS_HEADERS })
+    return new NextResponse(null, { status: 200, headers: corsHeaders })
   }
 
   const { path } = await params
@@ -61,17 +67,17 @@ async function handler(
             success: false,
             message: 'Sesi tidak valid atau akses ditolak. Silakan login kembali.',
           },
-          { status: 401, headers: CORS_HEADERS },
+          { status: 401, headers: corsHeaders },
         )
       }
 
       return NextResponse.redirect(location, {
         status: backendRes.status,
-        headers: CORS_HEADERS,
+        headers: corsHeaders,
       })
     }
 
-    const responseHeaders = new Headers(CORS_HEADERS)
+    const responseHeaders = new Headers(corsHeaders)
     backendRes.headers.forEach((value, key) => {
       if (!['transfer-encoding', 'connection'].includes(key.toLowerCase())) {
         responseHeaders.set(key, value)
@@ -90,7 +96,7 @@ async function handler(
         success: false,
         message: 'Tidak dapat menghubungi server backend. Pastikan server aktif.',
       },
-      { status: 503, headers: CORS_HEADERS },
+      { status: 503, headers: corsHeaders },
     )
   }
 }

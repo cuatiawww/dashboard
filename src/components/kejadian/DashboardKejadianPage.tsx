@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import {
@@ -86,6 +87,7 @@ type ApiResponse = {
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
 
 export default function DashboardKejadianPage() {
+  const router = useRouter()
   const { token, isInitialized, user } = useAuthStore()
 
   const [data, setData] = useState<ApiResponse | null>(null)
@@ -114,14 +116,27 @@ export default function DashboardKejadianPage() {
         setLoading(true)
         setError(null)
 
-        // Kirim token HANYA via ?token= query param (bukan Authorization header)
-        // agar request menjadi simple GET (tidak trigger CORS preflight OPTIONS).
-        // V1Controller::getRequestWilayahScope() sudah mendukung pembacaan dari query param.
         const url = buildBencanaStatsUrl(token)
+        const headers: HeadersInit = {
+          'Accept': 'application/json',
+        }
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+
         const response = await fetch(url, {
           method: 'GET',
+          headers: headers,
           cache: 'no-store',
+          credentials: 'include',
         })
+
+        if (response.status === 401) {
+          useAuthStore.getState().logout()
+          router.push('/login')
+          return
+        }
+
         if (!response.ok) {
           const errData = await response.json().catch(() => null)
           throw new Error(errData?.message || 'Gagal mengambil data statistik bencana.')
@@ -136,7 +151,7 @@ export default function DashboardKejadianPage() {
       }
     }
     fetchData()
-  }, [isInitialized, token])
+  }, [isInitialized, token, router])
 
   const generateAiInsight = () => {
     if (!data) return
