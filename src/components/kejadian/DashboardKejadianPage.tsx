@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import {
@@ -11,6 +10,7 @@ import {
   Heart,
   HelpCircle,
   Loader2,
+  RefreshCw,
   Users,
   ShieldAlert,
   Sparkles,
@@ -87,7 +87,6 @@ type ApiResponse = {
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
 
 export default function DashboardKejadianPage() {
-  const router = useRouter()
   const { token, isInitialized, user } = useAuthStore()
 
   const [data, setData] = useState<ApiResponse | null>(null)
@@ -108,50 +107,50 @@ export default function DashboardKejadianPage() {
     return 'NASIONAL'
   }
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!isInitialized) return
+    try {
+      setLoading(true)
+      setError(null)
 
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const url = buildBencanaStatsUrl(token)
-        const headers: HeadersInit = {
-          'Accept': 'application/json',
-        }
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`
-        }
-
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: headers,
-          cache: 'no-store',
-          credentials: 'include',
-        })
-
-        if (response.status === 401) {
-          useAuthStore.getState().logout()
-          router.push('/login')
-          return
-        }
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => null)
-          throw new Error(errData?.message || 'Gagal mengambil data statistik bencana.')
-        }
-        const json = await response.json()
-        setData(json)
-      } catch (err) {
-        console.error(err)
-        setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem.')
-      } finally {
-        setLoading(false)
+      const url = buildBencanaStatsUrl(token)
+      const headers: HeadersInit = { Accept: 'application/json' }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
       }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        cache: 'no-store',
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null)
+        // 401 = backend minta auth; 502 = backend sedang bermasalah
+        // Keduanya BUKAN berarti sesi user expired → jangan logout
+        const friendlyMsg =
+          response.status === 401
+            ? 'Akses ditolak oleh server. Pastikan Anda sudah login dengan benar.'
+            : response.status >= 500
+            ? 'Server backend sedang bermasalah. Silakan coba beberapa saat lagi.'
+            : errData?.message || 'Gagal mengambil data statistik bencana.'
+        throw new Error(friendlyMsg)
+      }
+
+      const json = await response.json()
+      setData(json)
+    } catch (err) {
+      console.error('[bencana-stats]', err)
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem.')
+    } finally {
+      setLoading(false)
     }
+  }, [isInitialized, token])
+
+  useEffect(() => {
     fetchData()
-  }, [isInitialized, token, router])
+  }, [fetchData])
 
   const generateAiInsight = () => {
     if (!data) return
@@ -215,10 +214,17 @@ ${guidelines}`)
 
   if (error || !data) {
     return (
-      <div className="mx-auto my-8 max-w-[500px] rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+      <div className="mx-auto my-8 max-w-[520px] rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
         <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
-        <h3 className="mt-3 text-lg font-bold text-slate-900">Gagal Sinkronisasi</h3>
-        <p className="mt-2 text-sm text-slate-600">{error || 'Gagal memuat data.'}</p>
+        <h3 className="mt-3 text-lg font-bold text-slate-900">Gagal Memuat Data</h3>
+        <p className="mt-2 text-sm text-slate-600">{error || 'Gagal memuat data statistik bencana.'}</p>
+        <button
+          onClick={() => fetchData()}
+          className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-teal-800"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Coba Lagi
+        </button>
       </div>
     )
   }

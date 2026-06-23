@@ -10,10 +10,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return {
       fallback: [
-        {
-          source: '/api/web_api/:path*',
-          destination: `${backendBaseUrl}/web_api/:path*`,
-        },
+        // Semua /api/* yang tidak ada dedicated route.ts → proxy ke backend utama (web.php)
         {
           source: '/api/:path*',
           destination: `${backendBaseUrl}/api/:path*`,
