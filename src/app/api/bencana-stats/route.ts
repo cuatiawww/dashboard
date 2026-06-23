@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from 'next/server'
 /**
  * Proxy server-side untuk /api/bencana-stats
  * Backend endpoint: BACKEND_BASE_URL/api/bencana-stats
- * Endpoint ini PUBLIC — tidak butuh token/auth.
+ *
+ * Meneruskan Authorization header dari frontend ke backend
+ * agar backend bisa apply wilayah_scope filter dari JWT token user.
+ * Endpoint ini bisa diakses tanpa token (national scope) maupun dengan token (filtered scope).
  */
 
 const BACKEND_BASE_URL = (
@@ -29,37 +32,42 @@ const EMPTY_RESPONSE = {
   faskes: [],
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   const targetUrl = `${BACKEND_BASE_URL}/api/bencana-stats`
+
+  // Teruskan Authorization header dari client ke backend
+  // agar getRequestWilayahScope() bisa apply filter berdasarkan wilayah_scope user
+  const authHeader = request.headers.get('authorization') || ''
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
+  }
+  if (authHeader) {
+    headers['Authorization'] = authHeader
+  }
 
   try {
     const backendRes = await fetch(targetUrl, {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
-      },
+      headers,
       cache: 'no-store',
-      // Ikuti redirect otomatis — mencegah 502 akibat Apache canonical/HTTPS redirect
       redirect: 'follow',
       signal: AbortSignal.timeout(10000),
     })
 
     const payload = await backendRes.json().catch(() => null)
 
-    // Jika dapat JSON valid dari backend, teruskan ke frontend
     if (payload !== null) {
       return NextResponse.json(payload, { status: 200 })
     }
 
-    // Backend tidak return JSON (mungkin HTML error page)
     console.warn('[bencana-stats proxy] Backend tidak return JSON. Status:', backendRes.status)
     return NextResponse.json(EMPTY_RESPONSE, { status: 200 })
 
   } catch (error: any) {
     const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError'
     console.error('[bencana-stats proxy] Error:', error?.message)
-    // Return data kosong agar dashboard tetap tampil (bukan error)
     return NextResponse.json(
       { ...EMPTY_RESPONSE, _error: isTimeout ? 'timeout' : 'network_error' },
       { status: 200 },

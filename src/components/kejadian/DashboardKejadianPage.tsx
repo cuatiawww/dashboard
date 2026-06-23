@@ -113,11 +113,14 @@ export default function DashboardKejadianPage() {
       setLoading(true)
       setError(null)
 
-      // bencana-stats adalah public endpoint — tidak perlu token/auth
+      // Kirim token agar backend apply wilayah_scope filter (Gorontalo, Nasional, dll)
       const url = buildBencanaStatsUrl()
+      const headers: Record<string, string> = { Accept: 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
       const response = await fetch(url, {
         method: 'GET',
-        headers: { Accept: 'application/json' },
+        headers,
         cache: 'no-store',
       })
 
@@ -133,7 +136,7 @@ export default function DashboardKejadianPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [token])
 
   useEffect(() => {
     fetchData()
@@ -216,12 +219,7 @@ ${guidelines}`)
     )
   }
 
-  const isDbEmpty = data.summary.total_bencana === 0
-
-  const getCardValue = (val: number) => {
-    if (isDbEmpty) return 'N/A'
-    return val.toLocaleString()
-  }
+  const getCardValue = (val: number) => val.toLocaleString('id-ID')
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
