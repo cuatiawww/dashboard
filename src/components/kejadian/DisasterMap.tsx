@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { useAuthStore } from '@/lib/authStore'
 import OlMap from 'ol/Map'
 import View from 'ol/View'
 import GeoJSON from 'ol/format/GeoJSON'
@@ -65,7 +66,10 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
   return ''
 }
 
-export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest }: DisasterMapProps) {
+export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest }: DisasterMapProps) {
+  const { token, user, isGuest: storeIsGuest } = useAuthStore()
+  const isGuest = propIsGuest || storeIsGuest || !token || !user
+
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<OlMap | null>(null)
   const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
