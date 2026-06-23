@@ -513,12 +513,6 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     { label: '> 5 kejadian', color: '#dc2626' },
   ]
 
-  const pinLegend = [
-    { label: '0 korban', color: '#94a3b8' },
-    { label: '1 – 5 korban', color: '#facc15' },
-    { label: '6 – 20 korban', color: '#f97316' },
-    { label: '> 20 korban', color: '#dc2626' },
-  ]
 
   // ─────────────────────────────────────────────
   // Render
@@ -585,7 +579,10 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                 </p>
 
                 {/* Toggle marker pins */}
-                <label className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all">
+                <div
+                  onClick={() => setShowMarkers((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                >
                   <div className="flex items-center gap-2.5">
                     <MapPin className="h-4 w-4 text-teal-600" />
                     <div>
@@ -593,15 +590,14 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                       <p className="text-[10px] text-slate-400">Titik lokasi kejadian bencana</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowMarkers((v) => !v)}
+                  <div
                     className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showMarkers ? 'bg-teal-600' : 'bg-slate-300'}`}
                   >
                     <span
-                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showMarkers ? 'translate-x-4' : 'translate-x-0.5'}`}
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showMarkers ? 'translate-x-4' : 'translate-x-0'}`}
                     />
-                  </button>
-                </label>
+                  </div>
+                </div>
               </div>
 
               {/* ── Placeholder sections for future features ── */}
@@ -847,25 +843,6 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
             </div>
           ))}
         </div>
-
-        {/* Pin legend */}
-        {showMarkers && (
-          <>
-            <div className="border-t border-slate-100 pt-2.5 mb-2">
-              <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
-                <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" /> Pin Korban</span>
-              </p>
-              <div className="space-y-1.5">
-                {pinLegend.map((b, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="h-3 w-3 shrink-0 rounded-full border-2 border-white shadow-sm" style={{ background: b.color }} />
-                    <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </div>
   )
