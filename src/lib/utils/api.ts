@@ -1,16 +1,19 @@
 /**
  * buildApiUrl — URL builder untuk semua request ke backend SIPKK.
  *
- * Endpoint mapping (semua ke backend: sipkk-new.mediaciptainformasi.co.id):
- *   /api/captcha             → BACKEND/api/captcha       (ApiController::actionCaptcha)
- *   /api/login               → BACKEND/api/login         (ApiController::actionLogin)
- *   /api/register            → BACKEND/api/register      (ApiController::actionRegister)
- *   /api/regions             → BACKEND/api/regions       (ApiController::actionRegions)
- *   /api/forgot-password-*   → BACKEND/api/...           (ApiController)
- *   /web_api/v1/bencana-*    → Next.js proxy /api/backend/web_api/... (menghindari CORS preflight)
+ * SEMUA endpoint langsung ke BACKEND URL (bukan proxy Next.js),
+ * karena Backend (ApiController & V1Controller) sudah set CORS header.
  *
- * Catatan: Backend (ApiController) sudah set CORS header di setiap action,
- * sehingga request dari browser ke backend aman (tidak diblokir CORS).
+ * Endpoint mapping:
+ *   /api/captcha             → BACKEND/api/captcha       (ApiController, CORS ✅)
+ *   /api/login               → BACKEND/api/login         (ApiController, CORS ✅)
+ *   /api/register            → BACKEND/api/register      (ApiController, CORS ✅)
+ *   /api/regions             → BACKEND/api/regions       (ApiController, CORS ✅)
+ *   /web_api/v1/bencana-*    → BACKEND/web_api/v1/...    (V1Controller, CORS ✅)
+ *
+ * PENTING: Untuk menghindari CORS preflight pada request ke web_api,
+ * jangan kirim Authorization header — cukup gunakan ?token=... di URL.
+ * Simple GET tanpa custom header TIDAK trigger preflight OPTIONS.
  */
 
 const BACKEND_BASE_URL = (
@@ -25,31 +28,29 @@ export function getApiBaseUrl(): string {
 export function buildApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
-  // /web_api/v1/bencana-stats dan endpoint web_api lain yang perlu Auth header
-  // → lewat Next.js proxy untuk menghindari CORS preflight issue
-  if (normalizedPath.startsWith('/web_api/')) {
-    return `/api/backend${normalizedPath}`
-  }
-
-  // /api/captcha, /api/login, /api/register, dll
-  // → langsung ke backend (ApiController sudah ada CORS header)
-  if (normalizedPath.startsWith('/api/')) {
-    return `${BACKEND_BASE_URL}${normalizedPath}`
-  }
-
   if (normalizedPath === '/api') {
     return getApiBaseUrl()
+  }
+
+  // /api/... dan /web_api/... → semua langsung ke backend
+  if (normalizedPath.startsWith('/api/') || normalizedPath.startsWith('/web_api/')) {
+    return `${BACKEND_BASE_URL}${normalizedPath}`
   }
 
   // Fallback
   return `${getApiBaseUrl()}${normalizedPath}`
 }
 
+export function buildBencanaStatsUrl(token?: string | null): string {
+  const query = token ? `?token=${encodeURIComponent(token)}` : ''
+  return `${BACKEND_BASE_URL}/web_api/v1/bencana-stats${query}`
+}
+
 /**
- * Khusus untuk endpoint regions: gunakan Next.js API route /api/regions
- * yang memiliki fallback otomatis jika backend belum mendukung endpoint publik.
+ * Endpoint wilayah juga langsung ke backend agar tidak tergantung route Vercel.
  */
 export function buildRegionsUrl(query?: Record<string, string>): string {
   const params = query ? new URLSearchParams(query).toString() : ''
-  return params ? `/api/regions?${params}` : '/api/regions'
+  const queryString = params ? `?${params}` : ''
+  return `${BACKEND_BASE_URL}/api/regions${queryString}`
 }
