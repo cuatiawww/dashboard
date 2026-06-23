@@ -101,6 +101,48 @@ export default function DashboardKejadianPage() {
 
   const isDbEmpty = !data || data.summary.total_bencana === 0
 
+  const isProvLocked = user?.wilayah_scope?.mode === 'provinsi'
+  const isKabLocked = user?.wilayah_scope?.mode === 'kabupaten'
+
+  // Sync state with user's locked scope on init
+  useEffect(() => {
+    if (isInitialized && user?.wilayah_scope) {
+      const scope = user.wilayah_scope
+      if (scope.mode === 'kabupaten') {
+        setCakupan('kabupaten')
+        setProvince(scope.provinsi.label || '')
+        setKabupaten(scope.kabupaten.label || '')
+      } else if (scope.mode === 'provinsi') {
+        setCakupan('provinsi')
+        setProvince(scope.provinsi.label || '')
+        setKabupaten('')
+      }
+    }
+  }, [isInitialized, user])
+
+  // When should the reset button show?
+  const showResetButton = useMemo(() => {
+    if (isKabLocked) return false
+    if (isProvLocked) return kabupaten !== ''
+    return province !== ''
+  }, [isKabLocked, isProvLocked, province, kabupaten])
+
+  const handleResetFilter = () => {
+    if (isProvLocked && user?.wilayah_scope?.provinsi?.label) {
+      setKabupaten('')
+      setCakupan('provinsi')
+    } else {
+      setProvince('')
+      setKabupaten('')
+      setCakupan('nasional')
+    }
+  }
+
+  const getResetButtonLabel = () => {
+    if (isProvLocked) return 'Reset Filter Provinsi'
+    return 'Reset Filter Nasional'
+  }
+
   const activeUserScope = useMemo(() => {
     if (province || kabupaten) {
       if (kabupaten) {
@@ -300,18 +342,14 @@ ${guidelines}`)
             Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah {getRegionLabel()}.
           </p>
         </div>
-        {province && (
+        {showResetButton && (
           <div>
             <button
-              onClick={() => {
-                setProvince('')
-                setKabupaten('')
-                setCakupan('nasional')
-              }}
+              onClick={handleResetFilter}
               className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-bold text-teal-800 shadow-sm transition hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Reset Filter Nasional
+              {getResetButtonLabel()}
             </button>
           </div>
         )}
