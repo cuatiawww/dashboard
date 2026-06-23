@@ -35,8 +35,10 @@ interface AuthState {
   token: string | null
   user: User | null
   isAuthenticated: boolean
+  isGuest: boolean
   isInitialized: boolean
   login: (token: string, user: User) => void
+  loginAsGuest: () => void
   logout: () => void
   initialize: () => void
 }
@@ -45,32 +47,44 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   user: null,
   isAuthenticated: false,
+  isGuest: false,
   isInitialized: false,
   login: (token, user) => {
     localStorage.setItem('auth_token', token)
     localStorage.setItem('auth_user', JSON.stringify(user))
-    set({ token, user, isAuthenticated: true })
+    localStorage.removeItem('auth_guest')
+    set({ token, user, isAuthenticated: true, isGuest: false })
+  },
+  loginAsGuest: () => {
+    localStorage.setItem('auth_guest', 'true')
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+    set({ token: null, user: null, isAuthenticated: false, isGuest: true })
   },
   logout: () => {
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
-    set({ token: null, user: null, isAuthenticated: false })
+    localStorage.removeItem('auth_guest')
+    set({ token: null, user: null, isAuthenticated: false, isGuest: false })
   },
   initialize: () => {
     if (typeof window === 'undefined') return
     const token = localStorage.getItem('auth_token')
     const userStr = localStorage.getItem('auth_user')
+    const isGuestStr = localStorage.getItem('auth_guest')
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr)
-        set({ token, user, isAuthenticated: true, isInitialized: true })
+        set({ token, user, isAuthenticated: true, isGuest: false, isInitialized: true })
       } catch (e) {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
-        set({ token: null, user: null, isAuthenticated: false, isInitialized: true })
+        set({ token: null, user: null, isAuthenticated: false, isGuest: false, isInitialized: true })
       }
+    } else if (isGuestStr === 'true') {
+      set({ token: null, user: null, isAuthenticated: false, isGuest: true, isInitialized: true })
     } else {
-      set({ isInitialized: true })
+      set({ isInitialized: true, isGuest: false })
     }
   }
 }))

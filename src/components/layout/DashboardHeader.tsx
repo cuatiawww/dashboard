@@ -298,18 +298,34 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                       <div className="mt-4 space-y-2">
                         <Link 
                           href="/login" 
-                          onClick={() => setProfileOpen(false)}
+                          onClick={() => {
+                            logout()
+                            setProfileOpen(false)
+                          }}
                           className="flex w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-teal-800"
                         >
                           Masuk (Login)
                         </Link>
                         <Link 
                           href="/register" 
-                          onClick={() => setProfileOpen(false)}
+                          onClick={() => {
+                            logout()
+                            setProfileOpen(false)
+                          }}
                           className="flex w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-teal-700 shadow-sm transition hover:bg-teal-50"
                         >
                           Daftar Sekarang
                         </Link>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            logout()
+                            setProfileOpen(false)
+                          }}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-red-600 shadow-sm transition hover:bg-red-50"
+                        >
+                          Keluar Akses Tamu
+                        </button>
                       </div>
                     </div>
                   )

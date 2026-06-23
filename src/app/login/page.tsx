@@ -24,7 +24,7 @@ const heroStats = [
 
 export default function LoginPage() {
   const router = useRouter()
-  const { isAuthenticated, isInitialized, initialize, login } = useAuthStore()
+  const { isAuthenticated, isInitialized, initialize, login, loginAsGuest } = useAuthStore()
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -386,12 +386,16 @@ export default function LoginPage() {
 
               {/* Guest Login */}
               <div className="text-center">
-                <Link
-                  href="/"
+                <button
+                  type="button"
+                  onClick={() => {
+                    loginAsGuest()
+                    router.replace('/')
+                  }}
                   className="inline-flex items-center gap-2 text-[13px] font-extrabold text-teal-700 hover:text-teal-800 transition-colors hover:underline"
                 >
                   Masuk sebagai Tamu (Akses Publik)
-                </Link>
+                </button>
               </div>
             </form>
           </div>

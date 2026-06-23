@@ -17,7 +17,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   const pathname = usePathname()
   const router = useRouter()
-  const { isAuthenticated, isInitialized, initialize } = useAuthStore()
+  const { isAuthenticated, isGuest, isInitialized, initialize } = useAuthStore()
 
   const publicRoutes = ['/login', '/register', '/forgot-password', '/sso']
   const isPublicRoute = publicRoutes.includes(pathname)
@@ -27,10 +27,10 @@ export default function AppShell({ children }: AppShellProps) {
   }, [initialize])
 
   useEffect(() => {
-    if (isInitialized && !isAuthenticated && !isPublicRoute) {
+    if (isInitialized && !isAuthenticated && !isGuest && !isPublicRoute) {
       router.push('/login')
     }
-  }, [isInitialized, isAuthenticated, isPublicRoute, router])
+  }, [isInitialized, isAuthenticated, isGuest, isPublicRoute, router])
 
   if (!isInitialized) {
     return (
@@ -42,6 +42,14 @@ export default function AppShell({ children }: AppShellProps) {
 
   if (isPublicRoute) {
     return <main className="min-h-screen bg-slate-50">{children}</main>
+  }
+
+  if (!isAuthenticated && !isGuest) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fbffff]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#047D78]" />
+      </div>
+    )
   }
 
   return (
