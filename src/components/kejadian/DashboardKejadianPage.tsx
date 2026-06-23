@@ -210,7 +210,6 @@ ${guidelines}`)
     if (val === null || val === undefined || isDbEmpty) return 'N/A'
     return val.toLocaleString('id-ID')
   }
-  const isDbEmpty = data.summary.total_bencana === 0
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
