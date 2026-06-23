@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import {
@@ -20,6 +20,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { buildBencanaStatsUrl } from '@/lib/utils/api'
 import { useAuthStore } from '@/lib/authStore'
+import FilterDropdownBar, { type FilterSummary } from '@/components/landing/FilterDropdownBar'
 
 // Dynamically import map component to completely bypass SSR/window issues in Next.js
 const DisasterMap = dynamic(() => import('./DisasterMap'), {
@@ -79,10 +80,58 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [selectedProvince, setSelectedProvince] = useState<string | null>(null)
+  const [filterSummary, setFilterSummary] = useState<FilterSummary | null>(null)
 
   const isDbEmpty = !data || data.summary.total_bencana === 0
 
+  const activeUserScope = useMemo(() => {
+    if (filterSummary) {
+      const prov = filterSummary.provinsi !== 'SEMUA PROVINSI' ? filterSummary.provinsi : null
+      const kab = filterSummary.kabkota !== 'SEMUA KAB/KOTA' ? filterSummary.kabkota : null
+
+      if (kab) {
+        return {
+          mode: 'kabupaten',
+          provinsi: { label: prov },
+          kabupaten: { label: kab },
+        }
+      }
+      if (prov) {
+        return {
+          mode: 'provinsi',
+          provinsi: { label: prov },
+        }
+      }
+      return {
+        mode: 'nasional',
+      }
+    }
+
+    if (selectedProvince) {
+      return {
+        mode: 'provinsi',
+        provinsi: { label: selectedProvince },
+      }
+    }
+    return user?.wilayah_scope
+  }, [selectedProvince, filterSummary, user])
+
   const getRegionLabel = () => {
+    if (filterSummary) {
+      const prov = filterSummary.provinsi.toUpperCase()
+      const kab = filterSummary.kabkota.toUpperCase()
+      if (kab !== 'SEMUA KAB/KOTA') {
+        return `${kab}, PROV. ${prov}`
+      }
+      if (prov !== 'SEMUA PROVINSI') {
+        return `PROV. ${prov}`
+      }
+      return filterSummary.cakupan.toUpperCase()
+    }
+    if (selectedProvince) {
+      return selectedProvince.toUpperCase()
+    }
     const scope = user?.wilayah_scope
     if (!scope) return 'NASIONAL'
 
@@ -94,14 +143,37 @@ export default function DashboardKejadianPage() {
     return 'NASIONAL'
   }
 
+  const handleSummaryChange = useCallback((summary: FilterSummary) => {
+    setFilterSummary(summary)
+    const prov = summary.provinsi !== 'SEMUA PROVINSI' ? summary.provinsi : null
+    if (prov !== selectedProvince) {
+      setSelectedProvince(prov)
+    }
+  }, [selectedProvince])
+
   const fetchData = useCallback(async () => {
-    // public endpoint — tidak perlu tunggu auth
     try {
       setLoading(true)
       setError(null)
 
-      // Kirim token agar backend apply wilayah_scope filter (Gorontalo, Nasional, dll)
-      const url = buildBencanaStatsUrl()
+      let url = buildBencanaStatsUrl()
+      const queryParams: string[] = []
+
+      if (filterSummary) {
+        if (filterSummary.provinsi && filterSummary.provinsi !== 'SEMUA PROVINSI') {
+          queryParams.push(`province=${encodeURIComponent(filterSummary.provinsi)}`)
+        }
+        if (filterSummary.kabkota && filterSummary.kabkota !== 'SEMUA KAB/KOTA') {
+          queryParams.push(`kabupaten=${encodeURIComponent(filterSummary.kabkota)}`)
+        }
+      } else if (selectedProvince) {
+        queryParams.push(`province=${encodeURIComponent(selectedProvince)}`)
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`
+      }
+
       const headers: Record<string, string> = { Accept: 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
@@ -123,7 +195,7 @@ export default function DashboardKejadianPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, selectedProvince, filterSummary])
 
   useEffect(() => {
     fetchData()
@@ -226,15 +298,25 @@ ${guidelines}`)
             Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah {getRegionLabel()}.
           </p>
         </div>
-        {/* <div>
-          <div className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50/50 px-4 py-2 text-xs font-semibold text-teal-800">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-500 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-600"></span>
-            </span>
-            Koneksi Region Terfilter
+        {selectedProvince && (
+          <div>
+            <button
+              onClick={() => setSelectedProvince(null)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-bold text-teal-800 shadow-sm transition hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reset Filter Nasional
+            </button>
           </div>
-        </div> */}
+        )}
+      </section>
+
+      {/* Filter Wilayah Section */}
+      <section className="w-full bg-[#fbffff]">
+        <FilterDropdownBar
+          onSummaryChange={handleSummaryChange}
+          selectedProvinceName={selectedProvince}
+        />
       </section>
 
       {/* Summary Cards Grid */}
@@ -375,7 +457,11 @@ ${guidelines}`)
               lokasi kejadian bencana yang dilaporkan.
             </p>
             <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
-              <DisasterMap markers={data.markers} userScope={user?.wilayah_scope} />
+              <DisasterMap
+                markers={data.markers}
+                userScope={activeUserScope}
+                onSelectProvince={(prov) => setSelectedProvince(prov)}
+              />
             </div>
           </article>
 

@@ -22,6 +22,7 @@ export type FilterSummary = {
 
 type FilterDropdownBarProps = {
   onSummaryChange?: (summary: FilterSummary) => void
+  selectedProvinceName?: string | null
 }
 
 type RegionOption = {
@@ -57,7 +58,7 @@ function hasValidScopedMode(scope?: WilayahScope): scope is WilayahScope {
   return !!scope && SCOPED_MODES.includes(scope.mode)
 }
 
-export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBarProps = {}) {
+export default function FilterDropdownBar({ onSummaryChange, selectedProvinceName }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
 
   // Hanya benar-benar "scoped" jika mode dikenal (provinsi/kabupaten).
@@ -198,9 +199,51 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
   // Only update selected values when the default values change (e.g., user scope loads or changes)
   const defaultSelectedStr = JSON.stringify(defaultSelected)
   useEffect(() => {
-    setSelected(JSON.parse(defaultSelectedStr))
-    setOpenId(null)
-  }, [defaultSelectedStr])
+    const parsed = JSON.parse(defaultSelectedStr)
+    let hasDifference = false
+    for (const key in parsed) {
+      if (parsed[key] !== selected[key]) {
+        hasDifference = true
+        break
+      }
+    }
+    if (hasDifference) {
+      setSelected(parsed)
+      setOpenId(null)
+    }
+  }, [defaultSelectedStr, selected])
+
+  useEffect(() => {
+    if (selectedProvinceName) {
+      const cleanName = selectedProvinceName.toUpperCase().trim()
+      const found = dynamicProvinces.find(
+        (p) => p.label.toUpperCase().trim() === cleanName
+      )
+      if (found) {
+        const nextProv = found.value
+        if (selected.provinsi !== nextProv || selected.cakupan !== 'provinsi' || selected.kabkota !== 'semua-kabkota') {
+          setSelected((prev) => ({
+            ...prev,
+            provinsi: nextProv,
+            cakupan: 'provinsi',
+            kabkota: 'semua-kabkota',
+          }))
+        }
+      }
+    } else {
+      const parsed = JSON.parse(defaultSelectedStr)
+      let hasDifference = false
+      for (const key in parsed) {
+        if (parsed[key] !== selected[key]) {
+          hasDifference = true
+          break
+        }
+      }
+      if (hasDifference) {
+        setSelected(parsed)
+      }
+    }
+  }, [selectedProvinceName, dynamicProvinces, defaultSelectedStr, selected])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -318,8 +361,15 @@ export default function FilterDropdownBar({ onSummaryChange }: FilterDropdownBar
     [summaryItems]
   )
 
+  // Keep track of the last emitted summary to prevent infinite loops
+  const lastSummaryRef = useRef<string>('')
+
   useEffect(() => {
-    onSummaryChange?.(summary)
+    const summaryStr = JSON.stringify(summary)
+    if (summaryStr !== lastSummaryRef.current) {
+      lastSummaryRef.current = summaryStr
+      onSummaryChange?.(summary)
+    }
   }, [onSummaryChange, summary])
 
   return (
