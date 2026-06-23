@@ -5,62 +5,66 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore, type User } from '@/lib/authStore'
 import { Loader2, AlertCircle } from 'lucide-react'
 
+/**
+ * SSO Landing Page — menerima token + user dari backend Yii2.
+ *
+ * Alur:
+ *   1. Backend redirect ke /sso?token=<JWT>&user=<base64>
+ *   2. Halaman ini decode, simpan ke localStorage, lalu redirect ke /
+ */
 export default function SsoPage() {
   const router = useRouter()
   const { login } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Parse params manually on mount to avoid Next.js Suspense de-opts
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    const userBase64 = params.get('user')
+    const params    = new URLSearchParams(window.location.search)
+    const token     = params.get('token')
+    const userB64   = params.get('user')   // URLSearchParams.get() sudah URL-decode otomatis
 
-    if (!token || !userBase64) {
-      setError('Parameter autentikasi SSO tidak lengkap atau salah.')
+    // Validasi params wajib ada
+    if (!token || !userB64) {
+      setError('Parameter SSO tidak lengkap. Silakan kembali dan coba lagi.')
       return
     }
 
     try {
-      // Safely decode UTF-8 JSON from base64
-      let decodedUserStr
-      try {
-        decodedUserStr = decodeURIComponent(escape(window.atob(userBase64)))
-      } catch (e) {
-        decodedUserStr = window.atob(userBase64)
-      }
-      
-      const user = JSON.parse(decodedUserStr) as User
-      
-      // Perform login
+      // Decode base64 → UTF-8 JSON (pakai TextDecoder untuk handle karakter Unicode)
+      const binary  = window.atob(userB64)
+      const bytes   = Uint8Array.from(binary, (c) => c.charCodeAt(0))
+      const jsonStr = new TextDecoder('utf-8').decode(bytes)
+      const user    = JSON.parse(jsonStr) as User
+
+      // Simpan ke store (localStorage + Zustand)
       login(token, user)
-      
-      // Redirect to home
+
+      // Redirect ke dashboard setelah localStorage committed
       router.replace('/')
     } catch (err) {
-      console.error('SSO parsing error:', err)
-      setError('Gagal membaca data sesi SSO. Silakan login manual.')
+      console.error('[SSO] Gagal memproses token:', err)
+      setError('Gagal memproses sesi SSO. Silakan login manual.')
     }
   }, [login, router])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#f0f7f7] p-4 text-center">
-      <div className="w-full max-w-[420px] rounded-3xl border border-[#c8dedd] bg-white p-8 shadow-[0_20px_60px_rgba(15,118,110,0.10)]">
+      <div className="w-full max-w-sm rounded-3xl border border-[#c8dedd] bg-white p-8 shadow-[0_20px_60px_rgba(15,118,110,0.10)]">
+
         {error ? (
+          /* ── Error State ── */
           <div className="space-y-4">
             <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
             <h2 className="text-xl font-bold text-slate-900">Autentikasi Gagal</h2>
             <p className="text-sm text-slate-500">{error}</p>
-            <div className="pt-2">
-              <a
-                href="/login"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-teal-700 px-6 text-sm font-bold text-white hover:bg-teal-800 transition"
-              >
-                Kembali ke Login
-              </a>
-            </div>
+            <a
+              href="/login"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-teal-700 px-6 text-sm font-bold text-white transition hover:bg-teal-800"
+            >
+              Kembali ke Login
+            </a>
           </div>
         ) : (
+          /* ── Loading State ── */
           <div className="space-y-4">
             <Loader2 className="mx-auto h-12 w-12 animate-spin text-teal-700" />
             <h2 className="text-xl font-bold text-slate-900">Menghubungkan Sesi...</h2>
@@ -69,6 +73,7 @@ export default function SsoPage() {
             </p>
           </div>
         )}
+
       </div>
     </div>
   )
