@@ -460,6 +460,7 @@ ${guidelines}`)
                 markers={data.markers}
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
+                isGuest={!token || !user}
               />
             </div>
           </article>

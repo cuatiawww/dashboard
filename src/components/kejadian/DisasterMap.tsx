@@ -29,6 +29,7 @@ interface DisasterMapProps {
   markers: MarkerData[]
   userScope?: any
   onSelectProvince?: (prov: string) => void
+  isGuest?: boolean
 }
 
 const cleanKey = (name?: string | null) => {
@@ -42,7 +43,29 @@ const cleanKey = (name?: string | null) => {
 
 const geojsonCache: Record<string, any> = {}
 
-export default function DisasterMap({ markers, userScope, onSelectProvince }: DisasterMapProps) {
+const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
+  if (!feature) return ''
+  const props = feature.getProperties() || {}
+
+  if (level === 'provinsi') {
+    const keys = ['provinsi', 'PROVINSI', 'Propinsi', 'nama_prov', 'nama', 'prov_single', 'prov_multi']
+    for (const key of keys) {
+      if (props[key] !== undefined && props[key] !== null) {
+        return String(props[key]).trim()
+      }
+    }
+  } else {
+    const keys = ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'kab_single', 'kab_multi', 'nama']
+    for (const key of keys) {
+      if (props[key] !== undefined && props[key] !== null) {
+        return String(props[key]).trim()
+      }
+    }
+  }
+  return ''
+}
+
+export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest }: DisasterMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef = useRef<OlMap | null>(null)
   const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
@@ -150,8 +173,13 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
       }),
     })
 
-    map.on('click', (evt) => {
+    map.on('singleclick', (evt) => {
       const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f)
+
+      if (feature) {
+        console.log('[DisasterMap] Clicked feature properties:', feature.getProperties())
+      }
+
       if (!feature) {
         setActivePopup(null)
         return
@@ -163,7 +191,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
 
       if (!isProvMode && !isKabMode) {
         // National Mode -> Clicked a Province
-        const provName = feature.get('provinsi')
+        const provName = getFeatureName(feature, 'provinsi')
         if (!provName) return
 
         const provCleaned = cleanKey(provName)
@@ -200,7 +228,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
         })
       } else {
         // Province/Kabupaten Mode -> Clicked a Kabupaten
-        const kabName = feature.get('nama_kab') || feature.get('kabupaten')
+        const kabName = getFeatureName(feature, 'kabupaten')
         if (!kabName) return
 
         const kabCleaned = cleanKey(kabName)
@@ -489,85 +517,117 @@ export default function DisasterMap({ markers, userScope, onSelectProvince }: Di
             </button>
           </div>
 
-          {/* Quick stats badges */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="rounded-xl bg-teal-50/70 p-2 border border-teal-100/50">
-              <p className="text-[9px] font-bold text-teal-700/80 uppercase">Kejadian</p>
-              <p className="text-lg font-extrabold text-teal-700">{activePopup.stats.totalEvents}</p>
-            </div>
-            <div className="rounded-xl bg-red-50/70 p-2 border border-red-100/50">
-              <p className="text-[9px] font-bold text-red-700/80 uppercase">Total Korban</p>
-              <p className="text-lg font-extrabold text-red-600">{activePopup.stats.totalKorban.toLocaleString('id-ID')}</p>
-            </div>
-          </div>
-
-          {/* Scrollable breakdown or events list */}
-          <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[220px]">
-            {activePopup.type === 'provinsi' ? (
-              <>
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Sebaran per Kab/Kota:</p>
-                {activePopup.stats.breakdown.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {activePopup.stats.breakdown.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center rounded-lg bg-slate-50/50 p-2 text-xs border border-slate-100">
-                        <span className="font-semibold text-slate-700 truncate max-w-[180px]">{item.name}</span>
-                        <span className="font-extrabold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md">
-                          {item.count} kejadian
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Daftar Kejadian:</p>
-                {(!activePopup.stats.eventsList || activePopup.stats.eventsList.length === 0) ? (
-                  <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {activePopup.stats.eventsList.map((item, idx) => (
-                      <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/30 p-2.5 text-xs">
-                        <div className="flex justify-between items-start">
-                          <span className="font-bold text-teal-800">{item.jenis_bencana}</span>
-                          <span className="text-[10px] text-slate-400">{item.tgl_kejadian}</span>
-                        </div>
-                        <div className="mt-1 text-[11px] text-slate-500">
-                          {item.kecamatan && <span>Kec. {item.kecamatan}</span>}
-                          {item.nama_desa && <span>, Desa {item.nama_desa}</span>}
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between border-t border-dashed border-slate-200/60 pt-1.5">
-                          <span className="text-[10px] text-slate-400">Korban Jiwa/Luka:</span>
-                          <span className="font-bold text-red-600">{item.total_korban} orang</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Footer actions */}
-          {activePopup.type === 'provinsi' && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  if (onSelectProvinceRef.current) {
-                    onSelectProvinceRef.current(activePopup.name)
-                  }
-                  setActivePopup(null)
-                }}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800"
-              >
-                <span>LIHAT DETAIL PROVINSI</span>
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          {isGuest ? (
+            /* Restricted UI for Guest Users */
+            <div className="flex flex-col items-center py-5 text-center flex-1 justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500 mb-3 border border-red-100">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-              </button>
+              </div>
+              <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Data Terkunci</h5>
+              <p className="mt-2 text-xs text-slate-500 leading-relaxed px-2">
+                Statistik kejadian krisis dan detail korban wilayah ini tidak dapat diakses publik. Silakan masuk atau daftar terlebih dahulu.
+              </p>
+              <div className="mt-5 flex w-full flex-col gap-2">
+                <a
+                  href="/login"
+                  className="flex w-full items-center justify-center rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800"
+                >
+                  MASUK / LOGIN
+                </a>
+                <a
+                  href="/register"
+                  className="flex w-full items-center justify-center rounded-xl border border-teal-200 bg-white py-2.5 text-xs font-bold text-teal-800 shadow-sm transition hover:bg-teal-50"
+                >
+                  REGISTRASI MASYARAKAT
+                </a>
+              </div>
             </div>
+          ) : (
+            /* Allowed UI for Authenticated Users */
+            <>
+              {/* Quick stats badges */}
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="rounded-xl bg-teal-50/70 p-2 border border-teal-100/50">
+                  <p className="text-[9px] font-bold text-teal-700/80 uppercase">Kejadian</p>
+                  <p className="text-lg font-extrabold text-teal-700">{activePopup.stats.totalEvents}</p>
+                </div>
+                <div className="rounded-xl bg-red-50/70 p-2 border border-red-100/50">
+                  <p className="text-[9px] font-bold text-red-700/80 uppercase">Total Korban</p>
+                  <p className="text-lg font-extrabold text-red-600">{activePopup.stats.totalKorban.toLocaleString('id-ID')}</p>
+                </div>
+              </div>
+
+              {/* Scrollable breakdown or events list */}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[220px]">
+                {activePopup.type === 'provinsi' ? (
+                  <>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Sebaran per Kab/Kota:</p>
+                    {activePopup.stats.breakdown.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {activePopup.stats.breakdown.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center rounded-lg bg-slate-50/50 p-2 text-xs border border-slate-100">
+                            <span className="font-semibold text-slate-700 truncate max-w-[180px]">{item.name}</span>
+                            <span className="font-extrabold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md">
+                              {item.count} kejadian
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Daftar Kejadian:</p>
+                    {(!activePopup.stats.eventsList || activePopup.stats.eventsList.length === 0) ? (
+                      <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {activePopup.stats.eventsList.map((item, idx) => (
+                          <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/30 p-2.5 text-xs">
+                            <div className="flex justify-between items-start">
+                              <span className="font-bold text-teal-800">{item.jenis_bencana}</span>
+                              <span className="text-[10px] text-slate-400">{item.tgl_kejadian}</span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-500">
+                              {item.kecamatan && <span>Kec. {item.kecamatan}</span>}
+                              {item.nama_desa && <span>, Desa {item.nama_desa}</span>}
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between border-t border-dashed border-slate-200/60 pt-1.5">
+                              <span className="text-[10px] text-slate-400">Korban Jiwa/Luka:</span>
+                              <span className="font-bold text-red-600">{item.total_korban} orang</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              {activePopup.type === 'provinsi' && (
+                <div className="mt-3 pt-3 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      if (onSelectProvinceRef.current) {
+                        onSelectProvinceRef.current(activePopup.name)
+                      }
+                      setActivePopup(null)
+                    }}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800"
+                  >
+                    <span>LIHAT DETAIL PROVINSI</span>
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
