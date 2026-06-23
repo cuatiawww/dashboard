@@ -123,7 +123,8 @@ export default function DashboardKejadianPage() {
           cache: 'no-store',
         })
         if (!response.ok) {
-          throw new Error('Gagal mengambil data statistik bencana.')
+          const errData = await response.json().catch(() => null)
+          throw new Error(errData?.message || 'Gagal mengambil data statistik bencana.')
         }
         const json = await response.json()
         setData(json)

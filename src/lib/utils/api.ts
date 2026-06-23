@@ -1,19 +1,8 @@
 /**
- * buildApiUrl — URL builder untuk semua request ke backend SIPKK.
+ * URL builder untuk request frontend.
  *
- * SEMUA endpoint langsung ke BACKEND URL (bukan proxy Next.js),
- * karena Backend (ApiController & V1Controller) sudah set CORS header.
- *
- * Endpoint mapping:
- *   /api/captcha             → BACKEND/api/captcha       (ApiController, CORS ✅)
- *   /api/login               → BACKEND/api/login         (ApiController, CORS ✅)
- *   /api/register            → BACKEND/api/register      (ApiController, CORS ✅)
- *   /api/regions             → BACKEND/api/regions       (ApiController, CORS ✅)
- *   /web_api/v1/bencana-*    → BACKEND/web_api/v1/...    (V1Controller, CORS ✅)
- *
- * PENTING: Untuk menghindari CORS preflight pada request ke web_api,
- * jangan kirim Authorization header — cukup gunakan ?token=... di URL.
- * Simple GET tanpa custom header TIDAK trigger preflight OPTIONS.
+ * Untuk endpoint yang sensitif terhadap CORS, gunakan route internal Next.js
+ * agar browser tetap request ke origin aplikasi sendiri.
  */
 
 const BACKEND_BASE_URL = (
@@ -43,7 +32,7 @@ export function buildApiUrl(path: string): string {
 
 export function buildBencanaStatsUrl(token?: string | null): string {
   const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return `${BACKEND_BASE_URL}/web_api/v1/bencana-stats${query}`
+  return `/api/bencana-stats${query}`
 }
 
 /**
