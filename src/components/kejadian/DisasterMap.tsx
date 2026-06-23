@@ -137,6 +137,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
   // ── UI state ──
   const [isLoading, setIsLoading]         = useState(false)
+  const [mapInstance, setMapInstance]     = useState<OlMap | null>(null)
   const [showSettings, setShowSettings]   = useState(false)
   const [showMarkers, setShowMarkers]     = useState(true)  // toggle pin visibility
   const [markerPopup, setMarkerPopup]     = useState<MarkerPopupState | null>(null)
@@ -305,10 +306,12 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     })
 
     mapInstanceRef.current = map
+    setMapInstance(map)
 
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
+      setMapInstance(null)
     }
   }, [])
 
@@ -317,7 +320,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const map          = mapInstanceRef.current
+    const map          = mapInstance
     const provinceLayer = provinceLayerRef.current
     if (!map || !provinceLayer) return
 
@@ -348,14 +351,14 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
         .catch((e) => console.error('GeoJSON provinsi gagal:', e))
         .finally(() => setIsLoading(false))
     }
-  }, [])
+  }, [mapInstance])
 
   // ─────────────────────────────────────────────
   // Load/Clear Kabupaten GeoJSON based on scope
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const map           = mapInstanceRef.current
+    const map           = mapInstance
     const kabupatenLayer = kabupatenLayerRef.current
     if (!map || !kabupatenLayer) return
 
@@ -416,7 +419,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       kabSource.clear()
       map.getView().animate({ center: fromLonLat([118, -2.5]), zoom: 4.8, duration: 500 })
     }
-  }, [userScope])
+  }, [mapInstance, userScope])
 
   // ─────────────────────────────────────────────
   // Re-style choropleth layers when data changes

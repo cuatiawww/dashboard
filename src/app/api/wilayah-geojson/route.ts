@@ -25,7 +25,12 @@ export async function GET(request: NextRequest) {
 
     const payload = await backendRes.json().catch(() => null)
     if (payload !== null) {
-      return NextResponse.json(payload, { status: backendRes.status || 200 })
+      return NextResponse.json(payload, {
+        status: backendRes.status || 200,
+        headers: {
+          'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=600',
+        },
+      })
     }
 
     return NextResponse.json(
