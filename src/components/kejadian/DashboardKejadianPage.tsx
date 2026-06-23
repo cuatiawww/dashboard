@@ -113,15 +113,11 @@ export default function DashboardKejadianPage() {
       setLoading(true)
       setError(null)
 
-      const url = buildBencanaStatsUrl(token)
-      const headers: HeadersInit = { Accept: 'application/json' }
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-
+      // bencana-stats adalah public endpoint — tidak perlu token/auth
+      const url = buildBencanaStatsUrl()
       const response = await fetch(url, {
         method: 'GET',
-        headers,
+        headers: { Accept: 'application/json' },
         cache: 'no-store',
       })
 
@@ -146,7 +142,7 @@ export default function DashboardKejadianPage() {
     } finally {
       setLoading(false)
     }
-  }, [isInitialized, token])
+  }, [isInitialized])
 
   useEffect(() => {
     fetchData()

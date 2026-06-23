@@ -42,11 +42,11 @@ export function buildApiUrl(path: string): string {
 
 /**
  * URL untuk bencana-stats — selalu via proxy Next.js (server-side)
- * agar tidak ada CORS. Token dikirim di query string DAN Authorization header.
+ * agar tidak ada CORS. Endpoint ini PUBLIC — tidak perlu token.
+ * Wilayah scope dikirim terpisah jika diperlukan.
  */
-export function buildBencanaStatsUrl(token?: string | null): string {
-  const query = token ? `?token=${encodeURIComponent(token)}` : ''
-  return `/api/bencana-stats${query}`
+export function buildBencanaStatsUrl(): string {
+  return `/api/bencana-stats`
 }
 
 /**
