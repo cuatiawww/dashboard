@@ -58,8 +58,8 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
    *   /api/backend/web_api/...  →  BACKEND/web_api/...  (tidak berubah) ✓
    */
   let targetPath = pathStr
-  if (pathStr.startsWith('api/')) {
-    targetPath = `web_api/v1/${pathStr.slice(4)}`
+  if (!pathStr.startsWith('api/')) {
+    targetPath = `api/${pathStr}`
   }
 
   // Bangun URL tujuan ke backend

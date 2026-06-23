@@ -30,9 +30,9 @@ async function handler(
   const searchParams = req.nextUrl.searchParams.toString()
   const queryString = searchParams ? `?${searchParams}` : ''
 
-  const targetPath = pathStr.startsWith('web_api/')
+  const targetPath = pathStr.startsWith('api/')
     ? pathStr
-    : `web_api/v1/${pathStr}`
+    : `api/${pathStr}`
   const targetUrl = `${BACKEND_BASE_URL}/${targetPath}${queryString}`
 
   const forwardHeaders = new Headers()

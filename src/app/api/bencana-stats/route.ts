@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams ? `?${searchParams}` : ''
 
     const endpoints = [
-      `${BACKEND_BASE_URL}/web_api/v1/bencana-stats${queryString}`,
       `${BACKEND_BASE_URL}/api/bencana-stats${queryString}`,
     ]
 
