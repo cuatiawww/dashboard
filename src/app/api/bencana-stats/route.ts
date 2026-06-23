@@ -29,7 +29,6 @@ const EMPTY_RESPONSE = {
   jenis_bencana: [],
   wilayah: [],
   markers: [],
-  faskes: [],
 }
 
 export async function GET(request: NextRequest) {

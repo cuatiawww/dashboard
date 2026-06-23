@@ -48,31 +48,17 @@ type PieChartItem = {
   jumlah: number
 }
 
-type NearestFaskesItem = {
-  nama: string
-  jenis: string
-  jarak_meter: number
-}
-
 type MarkerItem = {
   kode_trans: string
   tgl_kejadian: string
   jenis_bencana: string
   lat: number
   lng: number
+  provinsi?: string
+  kabupaten?: string
   nama_desa?: string
   kecamatan?: string
   total_korban: number
-  nearest_faskes?: NearestFaskesItem | null
-}
-
-type FaskesItem = {
-  id: number
-  nama: string
-  jenis: string
-  lat: number
-  lng: number
-  alamat?: string
 }
 
 type ApiResponse = {
@@ -81,7 +67,6 @@ type ApiResponse = {
   jenis_bencana: PieChartItem[]
   wilayah: PieChartItem[]
   markers: MarkerItem[]
-  faskes?: FaskesItem[]
 }
 
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
@@ -94,6 +79,8 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+
+  const isDbEmpty = !data || data.summary.total_bencana === 0
 
   const getRegionLabel = () => {
     const scope = user?.wilayah_scope
@@ -219,7 +206,11 @@ ${guidelines}`)
     )
   }
 
-  const getCardValue = (val: number) => val.toLocaleString('id-ID')
+  const getCardValue = (val: number | null | undefined) => {
+    if (val === null || val === undefined || isDbEmpty) return 'N/A'
+    return val.toLocaleString('id-ID')
+  }
+  const isDbEmpty = data.summary.total_bencana === 0
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
@@ -385,7 +376,7 @@ ${guidelines}`)
               lokasi kejadian bencana yang dilaporkan.
             </p>
             <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
-              <DisasterMap markers={data.markers} faskes={data.faskes} userScope={user?.wilayah_scope} />
+              <DisasterMap markers={data.markers} userScope={user?.wilayah_scope} />
             </div>
           </article>
 

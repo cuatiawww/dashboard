@@ -1,0 +1,42 @@
+import { NextRequest, NextResponse } from 'next/server'
+
+const BACKEND_BASE_URL = (
+  process.env.SIPKK_BACKEND_BASE_URL ||
+  'https://sipkk-new.mediaciptainformasi.co.id'
+).replace(/\/+$/, '')
+
+export const runtime = 'nodejs'
+
+export async function GET(request: NextRequest) {
+  const search = request.nextUrl.searchParams.toString()
+  const targetUrl = `${BACKEND_BASE_URL}/api/wilayah-geojson${search ? `?${search}` : ''}`
+
+  try {
+    const backendRes = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'SIPKK-Wilayah-GeoJSON-Proxy/1.0',
+      },
+      cache: 'no-store',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    })
+
+    const payload = await backendRes.json().catch(() => null)
+    if (payload !== null) {
+      return NextResponse.json(payload, { status: backendRes.status || 200 })
+    }
+
+    return NextResponse.json(
+      { success: false, message: 'Backend tidak mengembalikan JSON.' },
+      { status: 502 },
+    )
+  } catch (error: any) {
+    const isTimeout = error?.name === 'TimeoutError' || error?.name === 'AbortError'
+    return NextResponse.json(
+      { success: false, message: isTimeout ? 'Permintaan geojson timeout.' : 'Gagal menghubungi backend.' },
+      { status: 502 },
+    )
+  }
+}
