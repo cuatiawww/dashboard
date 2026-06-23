@@ -19,7 +19,21 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import { buildBencanaStatsUrl } from '@/lib/utils/api'
 import { useAuthStore } from '@/lib/authStore'
 import FilterDropdownBar, { type FilterSummary } from '@/components/landing/FilterDropdownBar'
@@ -98,6 +112,55 @@ export default function DashboardKejadianPage() {
   const [cakupan, setCakupan] = useState('nasional')
   const [province, setProvince] = useState('')
   const [kabupaten, setKabupaten] = useState('')
+
+  // Agregasi tren bulanan dari markers API dan data krisis dummy
+  const { trendData, targetYear } = useMemo(() => {
+    const months = [
+      { name: 'Jan', bencanaCount: 0, bencanaKorban: 0, krisisCount: 63, krisisKorban: 45 },
+      { name: 'Feb', bencanaCount: 0, bencanaKorban: 0, krisisCount: 28, krisisKorban: 30 },
+      { name: 'Mar', bencanaCount: 0, bencanaKorban: 0, krisisCount: 33, krisisKorban: 48 },
+      { name: 'Apr', bencanaCount: 0, bencanaKorban: 0, krisisCount: 34, krisisKorban: 27 },
+      { name: 'May', bencanaCount: 0, bencanaKorban: 0, krisisCount: 32, krisisKorban: 23 },
+      { name: 'Jun', bencanaCount: 0, bencanaKorban: 0, krisisCount: 13, krisisKorban: 8 },
+      { name: 'Jul', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Agus', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Sep', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Okt', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Nov', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Des', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+    ]
+
+    let targetYear = '2026'
+    if (data?.markers && data.markers.length > 0) {
+      // Cari tahun yang paling banyak datanya sebagai targetYear
+      const years = data.markers.map(m => m.tgl_kejadian?.split('-')[0]).filter(Boolean)
+      if (years.length > 0) {
+        const counts = years.reduce((acc, y) => {
+          acc[y] = (acc[y] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        const sortedYears = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+        if (sortedYears[0]) {
+          targetYear = sortedYears[0]
+        }
+      }
+
+      data.markers.forEach((m) => {
+        if (!m.tgl_kejadian) return
+        const parts = m.tgl_kejadian.split('-')
+        if (parts.length >= 2) {
+          const year = parts[0]
+          const monthIdx = parseInt(parts[1], 10) - 1
+          if (year === targetYear && monthIdx >= 0 && monthIdx < 12) {
+            months[monthIdx].bencanaCount++
+            months[monthIdx].bencanaKorban += m.total_korban || 0
+          }
+        }
+      })
+    }
+
+    return { trendData: months, targetYear }
+  }, [data])
 
   const isDbEmpty = !data || data.summary.total_bencana === 0
 
@@ -523,6 +586,102 @@ ${guidelines}`)
           </article>
 
         </div>
+      </section>
+
+      {/* Trend Section ( Kejadian & Korban ) */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        {/* Trend Kejadian Bencana & Krisis Kesehatan */}
+        <article
+          className="border border-[#cdcdcd] bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]"
+          style={{
+            borderTopLeftRadius: '17px',
+            borderTopRightRadius: '17px',
+            borderBottomRightRadius: '22px',
+            borderBottomLeftRadius: '17px',
+          }}
+        >
+          <h3 className="text-base font-bold text-slate-900 uppercase mb-4 tracking-wider">
+            TREND KEJADIAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
+          </h3>
+          <div className="h-[320px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
+                <Bar dataKey="bencanaCount" name="Kejadian Bencana" fill="#0f8f96" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="krisisCount" name="Krisis Kesehatan" fill="#334155" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+
+        {/* Trend Korban Bencana & Krisis Kesehatan */}
+        <article
+          className="border border-[#cdcdcd] bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]"
+          style={{
+            borderTopLeftRadius: '17px',
+            borderTopRightRadius: '17px',
+            borderBottomRightRadius: '22px',
+            borderBottomLeftRadius: '17px',
+          }}
+        >
+          <h3 className="text-base font-bold text-slate-900 uppercase mb-2 tracking-wider">
+            TREND KORBAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
+          </h3>
+          
+          <div className="bg-blue-600 text-white text-[11px] font-bold py-2 px-4 rounded-xl mb-4 text-center tracking-wider">
+            Modul Grafik Ini Sedang Dalam Perbaikan Data Hanya Bersifat Dummy
+          </div>
+
+          <div className="h-[272px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
+                <Line
+                  type="monotone"
+                  dataKey="bencanaKorban"
+                  name="BENCANA"
+                  stroke="#0f8f96"
+                  strokeWidth={3}
+                  activeDot={{ r: 6 }}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="krisisKorban"
+                  name="KRISIS"
+                  stroke="#334155"
+                  strokeWidth={3}
+                  activeDot={{ r: 6 }}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
       </section>
 
       {/* Donut Charts & Disease Risks Grid */}
