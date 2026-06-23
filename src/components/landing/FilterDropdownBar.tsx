@@ -23,6 +23,7 @@ export type FilterSummary = {
 type FilterDropdownBarProps = {
   onSummaryChange?: (summary: FilterSummary) => void
   selectedProvinceName?: string | null
+  selectedKabupatenName?: string | null
 }
 
 type RegionOption = {
@@ -58,7 +59,7 @@ function hasValidScopedMode(scope?: WilayahScope): scope is WilayahScope {
   return !!scope && SCOPED_MODES.includes(scope.mode)
 }
 
-export default function FilterDropdownBar({ onSummaryChange, selectedProvinceName }: FilterDropdownBarProps = {}) {
+export default function FilterDropdownBar({ onSummaryChange, selectedProvinceName, selectedKabupatenName }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
 
   // Hanya benar-benar "scoped" jika mode dikenal (provinsi/kabupaten).
@@ -197,6 +198,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   const rootRef = useRef<HTMLDivElement>(null)
 
   const lastProvinceNameRef = useRef<string | null | undefined>(undefined)
+  const lastKabupatenNameRef = useRef<string | null | undefined>(undefined)
 
   // Only update selected values when the default values change (e.g., user scope loads or changes)
   const defaultSelectedStr = JSON.stringify(defaultSelected)
@@ -206,30 +208,54 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
     setOpenId(null)
   }, [defaultSelectedStr])
 
-  // Synchronize external selectedProvinceName changes (e.g., map clicks or reset filters)
+  // Synchronize external selectedProvinceName & selectedKabupatenName changes (e.g., map clicks, resets, smart search)
   useEffect(() => {
-    if (lastProvinceNameRef.current === undefined) {
+    if (lastProvinceNameRef.current === undefined || lastKabupatenNameRef.current === undefined) {
       lastProvinceNameRef.current = selectedProvinceName
+      lastKabupatenNameRef.current = selectedKabupatenName
       return
     }
 
-    if (selectedProvinceName !== lastProvinceNameRef.current) {
+    if (selectedProvinceName !== lastProvinceNameRef.current || selectedKabupatenName !== lastKabupatenNameRef.current) {
       lastProvinceNameRef.current = selectedProvinceName
+      lastKabupatenNameRef.current = selectedKabupatenName
 
       if (selectedProvinceName) {
-        const cleanName = selectedProvinceName.toUpperCase().trim()
-        const found = dynamicProvinces.find(
-          (p) => p.label.toUpperCase().trim() === cleanName
+        const cleanProv = selectedProvinceName.toUpperCase().trim()
+        const foundProv = dynamicProvinces.find(
+          (p) => p.label.toUpperCase().trim() === cleanProv
         )
-        if (found) {
-          const nextProv = found.value
-          if (selected.provinsi !== nextProv || selected.cakupan !== 'provinsi' || selected.kabkota !== 'semua-kabkota') {
-            setSelected((prev) => ({
-              ...prev,
-              provinsi: nextProv,
+        
+        if (foundProv) {
+          const nextProv = foundProv.value
+          
+          if (selectedKabupatenName) {
+            const cleanKab = selectedKabupatenName.toUpperCase().trim()
+            const foundKab = dynamicKabkota.find(
+              (k) => k.label.toUpperCase().trim() === cleanKab
+            )
+            
+            if (foundKab) {
+              setSelected({
+                cakupan: 'kabupaten-kota',
+                provinsi: nextProv,
+                kabkota: foundKab.value,
+              })
+            } else {
+              // Jika kabkota belum termuat di dynamicKabkota, set provinsi dulu dan tunggu Cascade
+              setSelected((prev) => ({
+                ...prev,
+                cakupan: 'kabupaten-kota',
+                provinsi: nextProv,
+                kabkota: 'semua-kabkota',
+              }))
+            }
+          } else {
+            setSelected({
               cakupan: 'provinsi',
+              provinsi: nextProv,
               kabkota: 'semua-kabkota',
-            }))
+            })
           }
         }
       } else {
@@ -237,7 +263,24 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
         setSelected(parsed)
       }
     }
-  }, [selectedProvinceName, dynamicProvinces, defaultSelectedStr, selected])
+  }, [selectedProvinceName, selectedKabupatenName, dynamicProvinces, dynamicKabkota, defaultSelectedStr])
+
+  // Sinkronisasi cascade saat data dynamicKabkota selesai termuat di faskes/provinsi yang baru terpilih
+  useEffect(() => {
+    if (selectedKabupatenName && selectedProvinceName) {
+      const cleanKab = selectedKabupatenName.toUpperCase().trim()
+      const foundKab = dynamicKabkota.find(
+        (k) => k.label.toUpperCase().trim() === cleanKab
+      )
+      if (foundKab && selected.kabkota !== foundKab.value) {
+        setSelected((prev) => ({
+          ...prev,
+          kabkota: foundKab.value,
+          cakupan: 'kabupaten-kota',
+        }))
+      }
+    }
+  }, [dynamicKabkota, selectedKabupatenName, selectedProvinceName, selected.kabkota])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -509,27 +552,6 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
             </div>
           )
         })}
-      </div>
-
-      <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-teal-100 bg-[#f6fffd] px-3.5 py-2.5 text-[12px] shadow-[0_6px_18px_rgba(20,120,116,0.04)] sm:flex-row sm:flex-wrap sm:items-center">
-        <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.08em] text-[#0f766e]">
-          <Info className="h-3.5 w-3.5" />
-          Info Filter
-        </span>
-        <span className="hidden h-4 w-px bg-teal-200 sm:inline-block" aria-hidden="true" />
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-600">
-          {summaryItems.map((item, index) => (
-            <span key={item.label} className="inline-flex items-center gap-1">
-              <span className="font-medium text-slate-500">{item.label}:</span>
-              <span className="font-bold text-slate-800">{item.value}</span>
-              {index < summaryItems.length - 1 ? (
-                <span className="ml-1 text-teal-400" aria-hidden="true">
-                  |
-                </span>
-              ) : null}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   )

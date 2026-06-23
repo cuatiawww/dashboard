@@ -18,6 +18,9 @@ import {
   TrendingUp,
   ChevronUp,
   ChevronDown,
+  Search,
+  X,
+  Info,
 } from 'lucide-react'
 import {
   PieChart,
@@ -103,6 +106,57 @@ export default function DashboardKejadianPage() {
   const [cakupan, setCakupan] = useState('nasional')
   const [province, setProvince] = useState('')
   const [kabupaten, setKabupaten] = useState('')
+
+  // State untuk pencarian wilayah pintar
+  const [searchQuery, setSearchQuery] = useState('')
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Debounced region search API call
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSuggestions([])
+      setIsSearching(false)
+      return
+    }
+
+    const handler = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const headers: Record<string, string> = { Accept: 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
+        const res = await fetch(`/api/regions-search?q=${encodeURIComponent(searchQuery)}`, { headers })
+        const json = await res.json()
+        if (json?.success && Array.isArray(json?.data)) {
+          setSuggestions(json.data)
+        }
+      } catch (err) {
+        console.error('Error searching regions:', err)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 400) // 400ms debounce
+
+    return () => clearTimeout(handler)
+  }, [searchQuery, token])
+
+  const handleSelectSuggestion = useCallback((sug: any) => {
+    setSearchQuery('')
+    setSuggestions([])
+    setShowSuggestions(false)
+
+    // Tangkap data dan filter wilayahnya kesitu
+    setProvince(sug.province_name)
+    if (sug.type === 'provinsi') {
+      setKabupaten('')
+      setCakupan('provinsi')
+    } else {
+      setKabupaten(sug.kabupaten_name)
+      setCakupan('kabupaten')
+    }
+  }, [])
 
   // Agregasi tren bulanan dari markers API dan data krisis dummy
   const { trendData, targetYear } = useMemo(() => {
@@ -465,11 +519,128 @@ ${guidelines}`)
         )}
       </section>
 
+      {/* Smart Search & Info Filter Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-start z-20 relative">
+        {/* Left Column: Smart Search Bar */}
+        <div className="relative w-full z-20">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
+            Pencarian Wilayah
+          </p>
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setShowSuggestions(true)
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Cari Provinsi, Kab/Kota, Kecamatan, atau Desa..."
+              className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+            />
+            {isSearching ? (
+              <Loader2 className="absolute right-4 h-4 w-4 animate-spin text-teal-600" />
+            ) : searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setSuggestions([])
+                }}
+                type="button"
+                className="absolute right-4 rounded-lg p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Dropdown Suggestions */}
+          {showSuggestions && suggestions.length > 0 && (
+            <>
+              {/* Backdrop to close dropdown on outer click */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowSuggestions(false)}
+              />
+              
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[320px] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+                {suggestions.map((sug, idx) => {
+                  let badgeClass = 'bg-slate-50 text-slate-700 border-slate-200'
+                  if (sug.type === 'provinsi') badgeClass = 'bg-teal-50 text-teal-700 border-teal-150'
+                  if (sug.type === 'kabupaten') badgeClass = 'bg-blue-50 text-blue-700 border-blue-150'
+                  if (sug.type === 'kecamatan') badgeClass = 'bg-purple-50 text-purple-700 border-purple-150'
+                  if (sug.type === 'desa') badgeClass = 'bg-amber-50 text-amber-700 border-amber-150'
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectSuggestion(sug)}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-teal-50/50 transition-colors"
+                    >
+                      <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+                      <span className="flex-1 truncate">{sug.label}</span>
+                      <span className={`rounded-lg border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${badgeClass}`}>
+                        {sug.type}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {showSuggestions && searchQuery.trim().length >= 2 && !isSearching && suggestions.length === 0 && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowSuggestions(false)} />
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 rounded-2xl border border-slate-100 bg-white p-4 text-center shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+                <p className="text-xs text-slate-400 italic">Tidak ditemukan wilayah dengan kata kunci "{searchQuery}"</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Right Column: Info Filter Panel */}
+        <div className="w-full">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
+            Info Filter Aktif
+          </p>
+          <div className="flex items-center rounded-2xl border border-teal-100 bg-[#f6fffd] px-4 py-[13px] text-xs shadow-[0_6px_18px_rgba(20,120,116,0.04)] min-h-[46px] w-full">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-slate-600 font-semibold w-full">
+              <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.08em] text-[#0f766e] shrink-0">
+                <Info className="h-4 w-4 text-[#0f766e]" />
+                Info Filter
+              </span>
+              <span className="hidden h-4 w-px bg-teal-200 sm:inline-block" aria-hidden="true" />
+              
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-700">
+                <span className="inline-flex items-center gap-1">
+                  <span className="font-semibold text-slate-400">Cakupan:</span>
+                  <span className="font-extrabold text-slate-800 uppercase text-[11px]">{cakupan}</span>
+                </span>
+                <span className="text-teal-200" aria-hidden="true">|</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="font-semibold text-slate-400">Provinsi:</span>
+                  <span className="font-extrabold text-slate-800 uppercase text-[11px]">{province || 'Semua Provinsi'}</span>
+                </span>
+                <span className="text-teal-200" aria-hidden="true">|</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="font-semibold text-slate-400">Kab/Kota:</span>
+                  <span className="font-extrabold text-slate-800 uppercase text-[11px]">{kabupaten || 'Semua Kab/Kota'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Filter Wilayah Section */}
-      <section className="w-full bg-[#fbffff]">
+      <section className="w-full bg-[#fbffff] z-10">
         <FilterDropdownBar
           onSummaryChange={handleSummaryChange}
           selectedProvinceName={province}
+          selectedKabupatenName={kabupaten}
         />
       </section>
 
