@@ -91,7 +91,55 @@ type ApiResponse = {
 
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
 
+const toTitleCase = (str: string): string => {
+  const acronyms = ['DKI', 'DIY', 'NTT', 'NTB', 'KLB', 'KLB/OUTBREAK', 'KLB - PENYAKIT', 'EMT', 'PSC', 'CFR', 'ISPA'];
+  return str
+    .split(' ')
+    .map((word) => {
+      const upperWord = word.toUpperCase();
+      if (acronyms.includes(upperWord)) {
+        return upperWord;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
 
+const getTopItemsAndOthers = (items: PieChartItem[] | undefined | null, limit: number = 7): PieChartItem[] => {
+  if (!items || items.length === 0) return [];
+
+  // 1. Merge duplicates case-insensitively using Title Case as standard
+  const mergedMap = new Map<string, number>();
+  items.forEach((item) => {
+    const rawName = (item.nama || '').trim();
+    if (rawName === '') return;
+
+    const name = toTitleCase(rawName);
+    mergedMap.set(name, (mergedMap.get(name) || 0) + (item.jumlah || 0));
+  });
+
+  const mergedItems: PieChartItem[] = Array.from(mergedMap.entries()).map(([nama, jumlah]) => ({
+    nama,
+    jumlah,
+  }));
+
+  // 2. Sort descending
+  mergedItems.sort((a, b) => b.jumlah - a.jumlah);
+
+  // 3. Group anything past limit into "Lainnya"
+  if (mergedItems.length <= limit + 1) {
+    return mergedItems;
+  }
+
+  const top = mergedItems.slice(0, limit);
+  const remaining = mergedItems.slice(limit);
+  const othersCount = remaining.reduce((sum, item) => sum + item.jumlah, 0);
+
+  return [
+    ...top,
+    { nama: 'Lainnya', jumlah: othersCount }
+  ];
+};
 
 export default function DashboardKejadianPage() {
   const { token, isInitialized, user } = useAuthStore()
@@ -266,6 +314,14 @@ export default function DashboardKejadianPage() {
   }, [trendData, latestMonthIdx])
 
   const isDbEmpty = !data || data.summary.total_bencana === 0
+
+  const formattedJenisBencana = useMemo(() => {
+    return getTopItemsAndOthers(data?.jenis_bencana, 7)
+  }, [data?.jenis_bencana])
+
+  const formattedWilayah = useMemo(() => {
+    return getTopItemsAndOthers(data?.wilayah, 7)
+  }, [data?.wilayah])
 
   const isProvLocked = user?.wilayah_scope?.mode === 'provinsi'
   const isKabLocked = user?.wilayah_scope?.mode === 'kabupaten'
@@ -919,7 +975,7 @@ ${guidelines}`)
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.jenis_bencana}
+                    data={formattedJenisBencana}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -928,8 +984,8 @@ ${guidelines}`)
                     dataKey="jumlah"
                     nameKey="nama"
                   >
-                    {data.jenis_bencana.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {formattedJenisBencana.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.nama === 'Lainnya' ? '#94a3b8' : COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -955,7 +1011,7 @@ ${guidelines}`)
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={data.wilayah}
+                    data={formattedWilayah}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -964,8 +1020,8 @@ ${guidelines}`)
                     dataKey="jumlah"
                     nameKey="nama"
                   >
-                    {data.wilayah.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                    {formattedWilayah.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.nama === 'Lainnya' ? '#94a3b8' : COLORS[(index + 3) % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
