@@ -95,6 +95,8 @@ type ApiResponse = {
 }
 
 const COLORS = ['#0f8f96', '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e', '#eab308']
+const CATEGORY_COLORS = ['#10b981', '#0ea5e9', '#6366f1']
+
 
 const toTitleCase = (str: string): string => {
   const acronyms = ['DKI', 'DIY', 'NTT', 'NTB', 'KLB', 'KLB/OUTBREAK', 'KLB - PENYAKIT', 'EMT', 'PSC', 'CFR', 'ISPA'];
@@ -319,6 +321,36 @@ export default function DashboardKejadianPage() {
   const formattedWilayah = useMemo(() => {
     return getTopItemsAndOthers(data?.wilayah)
   }, [data?.wilayah])
+
+  const categoryChartData = useMemo(() => {
+    let alam = 0
+    let nonAlam = 0
+    let sosial = 0
+
+    if (data?.markers) {
+      data.markers.forEach((m) => {
+        const cat = String(m.kategori_bencana || '').trim()
+        if (cat === '1') {
+          alam++
+        } else if (cat === '2') {
+          nonAlam++
+        } else if (cat === '3') {
+          sosial++
+        }
+      })
+    }
+
+    return [
+      { nama: 'Bencana Alam', jumlah: alam },
+      { nama: 'Bencana Non-Alam', jumlah: nonAlam },
+      { nama: 'Bencana Sosial', jumlah: sosial },
+    ]
+  }, [data?.markers])
+
+  const isCategoryDataEmpty = useMemo(() => {
+    return categoryChartData.every(item => item.jumlah === 0)
+  }, [categoryChartData])
+
 
   const isProvLocked = user?.wilayah_scope?.mode === 'provinsi'
   const isKabLocked = user?.wilayah_scope?.mode === 'kabupaten'
@@ -959,7 +991,7 @@ ${guidelines}`)
       </section>
 
       {/* Donut Charts & Disease Risks Grid */}
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Pie Chart 1: Jenis Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
           <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA - {getRegionLabel()}</h3>
@@ -995,7 +1027,42 @@ ${guidelines}`)
           </div>
         </article>
 
-        {/* Pie Chart 2: Wilayah Bencana */}
+        {/* Pie Chart 2: Kategori Bencana */}
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
+          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA - {getRegionLabel()}</h3>
+          <p className="text-xs text-slate-500 mb-4">Persentase kejadian berdasarkan kategori bencana di wilayah {getRegionLabel()}.</p>
+          <div className="h-[220px]">
+            {isDbEmpty || isCategoryDataEmpty ? (
+              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="jumlah"
+                    nameKey="nama"
+                  >
+                    {categoryChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </article>
+
+        {/* Pie Chart 3: Wilayah Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
           <h3 className="text-base font-bold text-slate-900 uppercase">{getWilayahChartInfo().title}</h3>
           <p className="text-xs text-slate-500 mb-4">{getWilayahChartInfo().desc}</p>
