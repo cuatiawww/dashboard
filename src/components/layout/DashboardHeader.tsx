@@ -20,6 +20,7 @@ import {
   UserCircle,
   X,
   RefreshCw,
+  Clock,
 } from 'lucide-react'
 
 
@@ -46,6 +47,54 @@ const sidebarMenu = [
       { label: 'Verifikasi Data', href: '#', icon: ShieldCheck },
       { label: 'Pengaturan', href: '#', icon: Settings },
     ],
+  },
+]
+
+const notificationsData = [
+  {
+    id: 1,
+    title: 'Krisis Banjir Bandang',
+    description: 'Terjadi banjir bandang di Bandung. 12 korban luka, faskes tergenang.',
+    time: '2m',
+    icon: Flame,
+    iconBg: 'bg-red-50 text-red-600 border-red-100',
+    unread: true,
+  },
+  {
+    id: 2,
+    title: 'Siaga Gempa Bumi',
+    description: 'Gempa M 5.6 di Karangasem, Bali. 5 korban jiwa dilaporkan.',
+    time: '15m',
+    icon: ShieldCheck,
+    iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
+    unread: true,
+  },
+  {
+    id: 3,
+    title: 'Peringatan KLB Diare',
+    description: 'Kasus diare Tangerang melebihi ambang batas normal.',
+    time: '1j',
+    icon: Bell,
+    iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+    unread: true,
+  },
+  {
+    id: 4,
+    title: 'Evakuasi Tanah Longsor',
+    description: 'Evakuasi pengungsi mandiri sedang berlangsung di posko Bogor.',
+    time: '3j',
+    icon: MapPinned,
+    iconBg: 'bg-blue-50 text-blue-600 border-blue-100',
+    unread: false,
+  },
+  {
+    id: 5,
+    title: 'Logistik Darurat NTT',
+    description: 'Faskes melaporkan kekurangan stok obat-obatan darurat.',
+    time: '1h',
+    icon: Settings,
+    iconBg: 'bg-teal-50 text-teal-600 border-teal-100',
+    unread: false,
   },
 ]
 
@@ -137,6 +186,8 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
   
   const { user, logout, isAuthenticated } = useAuthStore()
   const [activeRegion, setActiveRegion] = useState('NASIONAL')
@@ -190,6 +241,15 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
     return () => document.removeEventListener('mousedown', onClickOutside)
   }, [profileOpen])
 
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setNotifOpen(false)
+    }
+
+    if (notifOpen) document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [notifOpen])
+
   return (
     <header className="w-full border-b-2 border-teal-400/25 bg-white">
       <div className="relative flex min-h-[118px] items-stretch overflow-visible">
@@ -242,17 +302,89 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               >
                 <RefreshCw className={`h-[18px] w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
               </button>
-              <button
-                type="button"
-                className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
-                aria-label="Notifikasi"
-              >
+              <div className="relative" ref={notifRef}>
+                <button
+                  type="button"
+                  onClick={() => setNotifOpen((prev) => !prev)}
+                  className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
+                  aria-label="Notifikasi"
+                >
+                  <Bell className="h-[19px] w-[19px]" />
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-teal-600 px-1 text-[10px] font-bold text-white">
+                    5
+                  </span>
+                </button>
 
-                <Bell className="h-[19px] w-[19px]" />
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-teal-600 px-1 text-[10px] font-bold text-white">
-                  5
-                </span>
-              </button>
+                {notifOpen && (
+                  <div className="absolute right-0 top-14 z-30 w-[320px] sm:w-[380px] rounded-2xl border border-slate-200 bg-white/98 backdrop-blur-md p-4 shadow-[0_12px_40px_rgba(15,118,110,0.15)] flex flex-col animate-in slide-in-from-top-2 duration-155">
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-800">Notifikasi</span>
+                        <span className="rounded-full bg-teal-50 border border-teal-100 px-2 py-0.5 text-[9px] font-extrabold text-teal-700 uppercase tracking-wide">
+                          5 Baru
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setNotifOpen(false)}
+                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* List */}
+                    <div className="mt-2 divide-y divide-slate-100 max-h-[320px] overflow-y-auto pr-1 no-scrollbar space-y-1">
+                      {notificationsData.map((notif) => {
+                        const NotifIcon = notif.icon;
+                        return (
+                          <div
+                            key={notif.id}
+                            className={`flex items-start gap-3 py-2.5 px-2 transition hover:bg-slate-50/80 rounded-xl cursor-pointer ${
+                              notif.unread ? 'bg-teal-50/10' : ''
+                            }`}
+                          >
+                            {/* Left: Icon */}
+                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${notif.iconBg}`}>
+                              <NotifIcon className="h-4.5 w-4.5" />
+                            </div>
+
+                            {/* Middle: Title & Desc */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className={`text-[11px] font-bold text-slate-800 truncate leading-tight ${notif.unread ? 'text-teal-955 font-extrabold' : ''}`}>
+                                  {notif.title}
+                                </p>
+                                {/* Right: Time */}
+                                <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400 whitespace-nowrap pt-0.5 shrink-0">
+                                  <Clock className="h-2.5 w-2.5" />
+                                  {notif.time}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[10px] text-slate-500 leading-normal line-clamp-2">
+                                {notif.description}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => {
+                          alert('Buka halaman detail notifikasi');
+                          setNotifOpen(false);
+                        }}
+                        className="w-full py-2 text-center text-[10px] font-extrabold uppercase tracking-widest text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl transition-all"
+                      >
+                        LIHAT SEMUA NOTIFIKASI
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 className="inline-flex h-12 items-center gap-2.5 whitespace-nowrap rounded-xl border border-teal-200 bg-white/95 px-4 text-xs font-bold uppercase tracking-[0.05em] text-teal-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-50 hover:shadow-md"
