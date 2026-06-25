@@ -56,6 +56,7 @@ const DisasterMap = dynamic(() => import('./DisasterMap'), {
 
 type SummaryData = {
   total_bencana: number
+  total_krisis: number
   total_meninggal: number
   total_luka: number
   total_hilang: number
@@ -78,7 +79,10 @@ type MarkerItem = {
   kabupaten?: string
   nama_desa?: string
   kecamatan?: string
+  topografi?: string
+  is_krisis?: number
   total_korban: number
+  icon_file?: string
 }
 
 type ApiResponse = {
@@ -209,12 +213,12 @@ export default function DashboardKejadianPage() {
   // Agregasi tren bulanan dari markers API dan data krisis dummy
   const { trendData, targetYear } = useMemo(() => {
     const months = [
-      { name: 'Jan', bencanaCount: 0, bencanaKorban: 0, krisisCount: 63, krisisKorban: 45 },
-      { name: 'Feb', bencanaCount: 0, bencanaKorban: 0, krisisCount: 28, krisisKorban: 30 },
-      { name: 'Mar', bencanaCount: 0, bencanaKorban: 0, krisisCount: 33, krisisKorban: 48 },
-      { name: 'Apr', bencanaCount: 0, bencanaKorban: 0, krisisCount: 34, krisisKorban: 27 },
-      { name: 'May', bencanaCount: 0, bencanaKorban: 0, krisisCount: 32, krisisKorban: 23 },
-      { name: 'Jun', bencanaCount: 0, bencanaKorban: 0, krisisCount: 13, krisisKorban: 8 },
+      { name: 'Jan', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Feb', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Mar', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Apr', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'May', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
+      { name: 'Jun', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
       { name: 'Jul', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
       { name: 'Agus', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
       { name: 'Sep', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
@@ -247,6 +251,10 @@ export default function DashboardKejadianPage() {
           if (year === targetYear && monthIdx >= 0 && monthIdx < 12) {
             months[monthIdx].bencanaCount++
             months[monthIdx].bencanaKorban += m.total_korban || 0
+            if (m.is_krisis) {
+              months[monthIdx].krisisCount++
+              months[monthIdx].krisisKorban += m.total_korban || 0
+            }
           }
         }
       })
@@ -704,11 +712,11 @@ ${guidelines}`)
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
           { label: 'Total Kejadian', value: data.summary.total_bencana, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
+          { label: 'Krisis Kesehatan', value: data.summary.total_krisis, color: 'text-red-650', icon: AlertTriangle, bg: 'bg-red-50/80' },
           { label: 'Korban Meninggal', value: data.summary.total_meninggal, color: 'text-red-650', icon: ShieldAlert, bg: 'bg-red-50/80' },
           { label: 'Korban Luka', value: data.summary.total_luka, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
           { label: 'Korban Hilang', value: data.summary.total_hilang, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
           { label: 'Jumlah Pengungsi', value: data.summary.total_pengungsi, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
-          { label: 'Penduduk Terdampak', value: data.summary.total_terdampak, color: 'text-slate-700', icon: Activity, bg: 'bg-slate-50/80' },
         ].map((card, idx) => {
           const Icon = card.icon
           const trend = getDynamicTrend(card.label)

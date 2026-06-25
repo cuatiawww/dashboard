@@ -10,7 +10,7 @@ import View from 'ol/View'
 import GeoJSON from 'ol/format/GeoJSON'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
-import { Fill, Stroke, Style, Circle as CircleStyle } from 'ol/style'
+import { Fill, Stroke, Style, Circle as CircleStyle, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
 import Feature from 'ol/Feature'
@@ -31,7 +31,9 @@ interface MarkerData {
   kabupaten?: string
   nama_desa?: string
   kecamatan?: string
+  topografi?: string
   total_korban: number
+  icon_file?: string
 }
 
 interface DisasterMapProps {
@@ -102,14 +104,25 @@ const pinColor = (totalKorban: number) => {
 }
 
 /** Style OL untuk marker pin */
-const markerStyle = (totalKorban: number) =>
-  new Style({
+const markerStyle = (iconFile: string | undefined, totalKorban: number) => {
+  if (iconFile) {
+    const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || ''
+    const src = `${backendUrl}/app_asset/icon/data_bencana/${iconFile}`
+    return new Style({
+      image: new Icon({
+        src: src,
+        scale: 0.8,
+      }),
+    })
+  }
+  return new Style({
     image: new CircleStyle({
       radius: 7,
       fill: new Fill({ color: pinColor(totalKorban) }),
       stroke: new Stroke({ color: '#ffffff', width: 2 }),
     }),
   })
+}
 
 // Cache GeoJSON agar tidak fetch ulang setiap render
 const geojsonCache: Record<string, any> = {}
@@ -495,7 +508,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           geometry: new Point(fromLonLat([m.lng, m.lat])),
           markerData: m,
         })
-        feature.setStyle(markerStyle(m.total_korban))
+        feature.setStyle(markerStyle(m.icon_file, m.total_korban))
         return feature
       })
 
@@ -676,6 +689,20 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                 {[markerPopup.data.kecamatan && `Kec. ${markerPopup.data.kecamatan}`, markerPopup.data.kabupaten].filter(Boolean).join(', ') || markerPopup.data.provinsi || '—'}
               </span>
             </div>
+
+            {markerPopup.data.nama_desa && markerPopup.data.nama_desa !== 'Desa Lainnya' && (
+              <div className="flex items-start gap-2">
+                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Desa/Dusun</span>
+                <span className="font-semibold text-slate-800">{markerPopup.data.nama_desa}</span>
+              </div>
+            )}
+
+            {markerPopup.data.topografi && markerPopup.data.topografi !== '-' && (
+              <div className="flex items-start gap-2">
+                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Topografi</span>
+                <span className="font-semibold text-slate-800">{markerPopup.data.topografi}</span>
+              </div>
+            )}
 
             <div className="flex items-start gap-2">
               <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Korban</span>
