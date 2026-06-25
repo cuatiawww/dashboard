@@ -110,7 +110,7 @@ const toTitleCase = (str: string): string => {
     .join(' ');
 };
 
-const getTopItemsAndOthers = (items: PieChartItem[] | undefined | null, limit: number = 7): PieChartItem[] => {
+const getTopItemsAndOthers = (items: PieChartItem[] | undefined | null): PieChartItem[] => {
   if (!items || items.length === 0) return [];
 
   // 1. Merge duplicates case-insensitively using Title Case as standard
@@ -131,19 +131,7 @@ const getTopItemsAndOthers = (items: PieChartItem[] | undefined | null, limit: n
   // 2. Sort descending
   mergedItems.sort((a, b) => b.jumlah - a.jumlah);
 
-  // 3. Group anything past limit into "Lainnya"
-  if (mergedItems.length <= limit + 1) {
-    return mergedItems;
-  }
-
-  const top = mergedItems.slice(0, limit);
-  const remaining = mergedItems.slice(limit);
-  const othersCount = remaining.reduce((sum, item) => sum + item.jumlah, 0);
-
-  return [
-    ...top,
-    { nama: 'Lainnya', jumlah: othersCount }
-  ];
+  return mergedItems;
 };
 
 export default function DashboardKejadianPage() {
@@ -325,11 +313,11 @@ export default function DashboardKejadianPage() {
   const isDbEmpty = !data || data.summary.total_bencana === 0
 
   const formattedJenisBencana = useMemo(() => {
-    return getTopItemsAndOthers(data?.jenis_bencana, 7)
+    return getTopItemsAndOthers(data?.jenis_bencana)
   }, [data?.jenis_bencana])
 
   const formattedWilayah = useMemo(() => {
-    return getTopItemsAndOthers(data?.wilayah, 7)
+    return getTopItemsAndOthers(data?.wilayah)
   }, [data?.wilayah])
 
   const isProvLocked = user?.wilayah_scope?.mode === 'provinsi'
@@ -995,13 +983,12 @@ ${guidelines}`)
                     nameKey="nama"
                   >
                     {formattedJenisBencana.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.nama === 'Lainnya' ? '#94a3b8' : COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -1031,13 +1018,12 @@ ${guidelines}`)
                     nameKey="nama"
                   >
                     {formattedWilayah.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.nama === 'Lainnya' ? '#94a3b8' : COLORS[(index + 3) % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
                   />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
