@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 
 // OpenLayers core
@@ -10,12 +10,15 @@ import View from 'ol/View'
 import GeoJSON from 'ol/format/GeoJSON'
 import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
+import TileLayer from 'ol/layer/Tile'
+import OSM from 'ol/source/OSM'
 import { Fill, Stroke, Style, Circle as CircleStyle, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import 'ol/ol.css'
+
 
 // ─────────────────────────────────────────────
 // Types
@@ -140,10 +143,12 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const mapRef             = useRef<HTMLDivElement | null>(null)
   const mapContainerRef    = useRef<HTMLDivElement | null>(null)
   const mapInstanceRef     = useRef<OlMap | null>(null)
+  const baseMapLayerRef    = useRef<any>(null)
   const provinceLayerRef   = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const kabupatenLayerRef  = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const markerLayerRef     = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const lastFetchedProvinceRef = useRef<string | null>(null)
+
 
   // Stable callback refs (avoid stale closures inside OL event handlers)
   const onSelectProvinceRef = useRef(onSelectProvince)
@@ -155,11 +160,14 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [mapInstance, setMapInstance]     = useState<OlMap | null>(null)
   const [showSettings, setShowSettings]   = useState(false)
   const [showMarkers, setShowMarkers]     = useState(true)  // toggle pin visibility
+  const [showBaseMap, setShowBaseMap]     = useState(false)
+  const [showGeoJson, setShowGeoJson]     = useState(true)
   const [markerPopup, setMarkerPopup]     = useState<MarkerPopupState | null>(null)
 
   // ── Filter states ──
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
   const [excludedTypes, setExcludedTypes] = useState<Set<string>>(new Set())
+
 
   const toggleCategory = (catId: string) => {
     setExcludedCategories((prev) => {
@@ -273,6 +281,13 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   useEffect(() => {
     if (!mapRef.current) return
 
+    // Base Map OSM layer
+    const baseMapLayer = new TileLayer({
+      source: new OSM(),
+      visible: showBaseMap,
+    })
+    baseMapLayerRef.current = baseMapLayer
+
     // Province choropleth layer
     const provinceLayer  = new VectorLayer({ source: new VectorSource() })
     provinceLayerRef.current = provinceLayer
@@ -287,7 +302,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     const map = new OlMap({
       target: mapRef.current,
-      layers: [provinceLayer, kabupatenLayer, markerLayer],
+      layers: [baseMapLayer, provinceLayer, kabupatenLayer, markerLayer],
       controls: defaultControls({ attribution: false }),
       view: new View({
         center: fromLonLat([118, -2.5]),
@@ -399,6 +414,31 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       setMapInstance(null)
     }
   }, [])
+
+  // ── Sync Basemap and GeoJSON Layer states ──
+  useEffect(() => {
+    const baseMapLayer = baseMapLayerRef.current
+    const provinceLayer = provinceLayerRef.current
+    const kabupatenLayer = kabupatenLayerRef.current
+
+    if (baseMapLayer) {
+      baseMapLayer.setVisible(showBaseMap)
+    }
+
+    if (provinceLayer && kabupatenLayer) {
+      provinceLayer.setVisible(showGeoJson)
+      kabupatenLayer.setVisible(showGeoJson)
+
+      if (showBaseMap && showGeoJson) {
+        provinceLayer.setOpacity(0.55)
+        kabupatenLayer.setOpacity(0.55)
+      } else {
+        provinceLayer.setOpacity(1.0)
+        kabupatenLayer.setOpacity(1.0)
+      }
+    }
+  }, [showBaseMap, showGeoJson])
+
 
   // ─────────────────────────────────────────────
   // Load Province GeoJSON (once)
@@ -687,6 +727,49 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                     />
                   </div>
                 </div>
+
+                {/* Toggle basemap */}
+                <div
+                  onClick={() => setShowBaseMap((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="h-4 w-4 text-teal-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Peta Dasar (OSM)</p>
+                      <p className="text-[10px] text-slate-400">Tampilkan peta jalan & geografis</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBaseMap ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBaseMap ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle GeoJSON boundary */}
+                <div
+                  onClick={() => setShowGeoJson((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Layers className="h-4 w-4 text-teal-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Batas Administrasi</p>
+                      <p className="text-[10px] text-slate-400">Layer GeoJSON kerawanan wilayah</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showGeoJson ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showGeoJson ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
               </div>
 
               {/* ── Filter & Kategori Section ── */}
