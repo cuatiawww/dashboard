@@ -25,6 +25,7 @@ interface MarkerData {
   kode_trans: string
   tgl_kejadian: string
   jenis_bencana: string
+  kategori_bencana?: string
   lat: number
   lng: number
   provinsi?: string
@@ -156,6 +157,34 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showMarkers, setShowMarkers]     = useState(true)  // toggle pin visibility
   const [markerPopup, setMarkerPopup]     = useState<MarkerPopupState | null>(null)
 
+  // ── Filter states ──
+  const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
+  const [excludedTypes, setExcludedTypes] = useState<Set<string>>(new Set())
+
+  const toggleCategory = (catId: string) => {
+    setExcludedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(catId)) {
+        next.delete(catId)
+      } else {
+        next.add(catId)
+      }
+      return next
+    })
+  }
+
+  const toggleType = (typeName: string) => {
+    setExcludedTypes((prev) => {
+      const next = new Set(prev)
+      if (next.has(typeName)) {
+        next.delete(typeName)
+      } else {
+        next.add(typeName)
+      }
+      return next
+    })
+  }
+
   // Polygon popup state (existing click-on-province/kabupaten popup)
   const [activePopup, setActivePopup] = useState<{
     type: 'provinsi' | 'kabupaten'
@@ -185,15 +214,57 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // Computed
   // ─────────────────────────────────────────────
 
+  // 1. Get filtered markers first based on exclusions
+  const filteredMarkers = useMemo(() => {
+    return markers.filter((m) => {
+      const cat = m.kategori_bencana || '1'
+      if (excludedCategories.has(cat)) return false
+      if (excludedTypes.has(m.jenis_bencana)) return false
+      return true
+    })
+  }, [markers, excludedCategories, excludedTypes])
+
+  // 2. Compute category totals from all markers
+  const categoryCounts = useMemo(() => {
+    let alam = 0
+    let nonAlam = 0
+    let sosial = 0
+    markers.forEach((m) => {
+      const cat = m.kategori_bencana || '1'
+      if (cat === '1') alam++
+      else if (cat === '2') nonAlam++
+      else if (cat === '3') sosial++
+    })
+    return { alam, nonAlam, sosial }
+  }, [markers])
+
+  // 3. Compute disaster types breakdown from all markers
+  const disasterTypesBreakdown = useMemo(() => {
+    const counts = new Map<string, number>()
+    const typeToCategory = new Map<string, string>()
+    markers.forEach((m) => {
+      counts.set(m.jenis_bencana, (counts.get(m.jenis_bencana) || 0) + 1)
+      if (m.kategori_bencana) {
+        typeToCategory.set(m.jenis_bencana, m.kategori_bencana)
+      }
+    })
+    return Array.from(counts.entries()).map(([name, count]) => ({
+      name,
+      count,
+      category: typeToCategory.get(name) || '1',
+    })).sort((a, b) => b.count - a.count)
+  }, [markers])
+
+  // 4. Compute counts for choropleth based on filtered markers
   const { provinceCounts, kabupatenCounts } = useMemo(() => {
     const provinceCounts  = new Map<string, number>()
     const kabupatenCounts = new Map<string, number>()
-    markers.forEach((m) => {
+    filteredMarkers.forEach((m) => {
       if (m.provinsi)  provinceCounts.set(cleanKey(m.provinsi),   (provinceCounts.get(cleanKey(m.provinsi))   || 0) + 1)
       if (m.kabupaten) kabupatenCounts.set(cleanKey(m.kabupaten), (kabupatenCounts.get(cleanKey(m.kabupaten)) || 0) + 1)
     })
     return { provinceCounts, kabupatenCounts }
-  }, [markers])
+  }, [filteredMarkers])
 
   // ─────────────────────────────────────────────
   // Initialize Map (once)
@@ -501,7 +572,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     markerLayer.setVisible(true)
 
-    const features = markers
+    const features = filteredMarkers
       .filter((m) => m.lat && m.lng && m.lat !== 0 && m.lng !== 0)
       .map((m) => {
         const feature = new Feature({
@@ -513,7 +584,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       })
 
     source.addFeatures(features)
-  }, [markers, showMarkers])
+  }, [filteredMarkers, showMarkers])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -618,22 +689,126 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                 </div>
               </div>
 
-              {/* ── Placeholder sections for future features ── */}
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
-                  Layer Data
-                </p>
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-4 text-center">
-                  <p className="text-[11px] text-slate-400 italic">Fitur layer data akan hadir di sini</p>
-                </div>
-              </div>
+              {/* ── Filter & Kategori Section ── */}
+              <div className={showMarkers ? "space-y-5 transition-opacity" : "space-y-5 opacity-40 pointer-events-none transition-opacity"}>
+                {/* ── Kategori Bencana ── */}
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
+                    Kategori Bencana
+                  </p>
+                  <div className="space-y-2">
+                    {/* Bencana Alam */}
+                    <div
+                      onClick={() => toggleCategory('1')}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 hover:bg-teal-50/40 hover:border-teal-100 transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-700">Bencana Alam</span>
+                        <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">{categoryCounts.alam}</span>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${!excludedCategories.has('1') ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${!excludedCategories.has('1') ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
+                    </div>
 
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
-                  Filter & Analisis
-                </p>
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-4 text-center">
-                  <p className="text-[11px] text-slate-400 italic">Filter dan analisis spasial akan hadir di sini</p>
+                    {/* Bencana Non-Alam */}
+                    <div
+                      onClick={() => toggleCategory('2')}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 hover:bg-teal-50/40 hover:border-teal-100 transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-700">Bencana Non-Alam</span>
+                        <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">{categoryCounts.nonAlam}</span>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${!excludedCategories.has('2') ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${!excludedCategories.has('2') ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bencana Sosial */}
+                    <div
+                      onClick={() => toggleCategory('3')}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-2 hover:bg-teal-50/40 hover:border-teal-100 transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-700">Bencana Sosial</span>
+                        <span className="rounded-md bg-white border border-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">{categoryCounts.sosial}</span>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${!excludedCategories.has('3') ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${!excludedCategories.has('3') ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Detail Jenis Kejadian ── */}
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
+                    Jenis Kejadian
+                  </p>
+                  {disasterTypesBreakdown.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-3 py-4 text-center">
+                      <p className="text-[11px] text-slate-400 italic">Tidak ada jenis kejadian</p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[260px] overflow-y-auto pr-1 space-y-1.5 border border-slate-100 rounded-xl bg-[#fcfdfd] p-2 shadow-inner">
+                      {disasterTypesBreakdown.map((item) => {
+                        const isChecked = !excludedTypes.has(item.name);
+                        const isCategoryDisabled = excludedCategories.has(item.category);
+                        const getCategoryLabel = (cat: string) => {
+                          if (cat === '1') return 'Alam'
+                          if (cat === '2') return 'Non-Alam'
+                          return 'Sosial'
+                        }
+                        const getCategoryBadgeClass = (cat: string) => {
+                          if (cat === '1') return 'bg-teal-50 text-teal-700 border-teal-150'
+                          if (cat === '2') return 'bg-blue-50 text-blue-700 border-blue-150'
+                          return 'bg-purple-50 text-purple-700 border-purple-150'
+                        }
+
+                        return (
+                          <div
+                            key={item.name}
+                            onClick={() => {
+                              if (!isCategoryDisabled) toggleType(item.name);
+                            }}
+                            className={`flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all ${
+                              isCategoryDisabled ? 'opacity-30 cursor-not-allowed pointer-events-none' : ''
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked && !isCategoryDisabled}
+                                disabled={isCategoryDisabled}
+                                onChange={() => {}} // handled by parent onClick
+                                className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                              />
+                              <span className="text-[11px] font-semibold text-slate-700 truncate">{item.name}</span>
+                              <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded border uppercase tracking-wider shrink-0 ${getCategoryBadgeClass(item.category)}`}>
+                                {getCategoryLabel(item.category)}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-extrabold text-slate-400">
+                              {item.count}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

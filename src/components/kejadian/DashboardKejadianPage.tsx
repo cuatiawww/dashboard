@@ -73,6 +73,7 @@ type MarkerItem = {
   kode_trans: string
   tgl_kejadian: string
   jenis_bencana: string
+  kategori_bencana?: string
   lat: number
   lng: number
   provinsi?: string
@@ -390,7 +391,7 @@ export default function DashboardKejadianPage() {
     return user?.wilayah_scope
   }, [province, kabupaten, user])
 
-  const getRegionLabel = () => {
+  const getRegionLabel = useCallback(() => {
     if (kabupaten) {
       return `${kabupaten.toUpperCase()}, PROV. ${province.toUpperCase()}`
     }
@@ -398,7 +399,12 @@ export default function DashboardKejadianPage() {
       return `PROV. ${province.toUpperCase()}`
     }
     return cakupan.toUpperCase()
-  }
+  }, [province, kabupaten, cakupan])
+
+  useEffect(() => {
+    const label = getRegionLabel()
+    window.dispatchEvent(new CustomEvent('sipkk-region-changed', { detail: label }))
+  }, [getRegionLabel])
 
   const getWilayahChartInfo = () => {
     if (kabupaten) {
@@ -559,33 +565,9 @@ ${guidelines}`)
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
-      {/* Header Panel */}
-      <section className="flex flex-col justify-between gap-4 border-b border-teal-200/40 pb-5 md:flex-row md:items-center">
-        <div>
-
-          <h2 className="mt-2 text-2xl font-extrabold text-slate-900 md:text-3xl">
-            PEMETAAN KRISIS KESEHATAN AKIBAT BENCANA
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah {getRegionLabel()}.
-          </p>
-        </div>
-        {showResetButton && (
-          <div>
-            <button
-              onClick={handleResetFilter}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-bold text-teal-800 shadow-sm transition hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              {getResetButtonLabel()}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* Smart Search & Info Filter Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-start z-20 relative">
-        {/* Left Column: Smart Search Bar */}
+      {/* Smart Search, Info Filter & Reset Button Grid */}
+      <section className="grid grid-cols-1 md:grid-cols-[10fr_9fr_1fr] gap-4 w-full items-end z-20 relative">
+        {/* Column 1: Smart Search Bar */}
         <div className="relative w-full z-20">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
             Pencarian Wilayah
@@ -601,7 +583,7 @@ ${guidelines}`)
               }}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Cari Provinsi, Kab/Kota, Kecamatan, atau Desa..."
-              className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+              className="w-full rounded-2xl border border-slate-200 bg-white h-12 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
             />
             {isSearching ? (
               <Loader2 className="absolute right-4 h-4 w-4 animate-spin text-teal-600" />
@@ -665,12 +647,12 @@ ${guidelines}`)
           )}
         </div>
 
-        {/* Right Column: Info Filter Panel */}
+        {/* Column 2: Info Filter Panel */}
         <div className="w-full">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
             Info Filter Aktif
           </p>
-          <div className="flex items-center rounded-2xl border border-teal-100 bg-[#f6fffd] px-4 py-[13px] text-xs shadow-[0_6px_18px_rgba(20,120,116,0.04)] min-h-[46px] w-full">
+          <div className="flex items-center rounded-2xl border border-teal-100 bg-[#f6fffd] px-4 text-xs shadow-[0_6px_18px_rgba(20,120,116,0.04)] h-auto md:h-12 py-3 md:py-0 w-full">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-slate-600 font-semibold w-full">
               <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.08em] text-[#0f766e] shrink-0">
                 <Info className="h-4 w-4 text-[#0f766e]" />
@@ -696,6 +678,26 @@ ${guidelines}`)
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Column 3: Reset Filter Button */}
+        <div className="w-full">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] md:invisible">
+            Aksi
+          </p>
+          <button
+            onClick={handleResetFilter}
+            disabled={!showResetButton}
+            title="Reset Filter"
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 md:px-0 text-xs font-extrabold shadow-sm transition-all outline-none h-12 uppercase tracking-wider ${
+              showResetButton
+                ? 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95'
+                : 'border-slate-200 bg-slate-50/50 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="md:hidden">RESET FILTER</span>
+          </button>
         </div>
       </section>
 

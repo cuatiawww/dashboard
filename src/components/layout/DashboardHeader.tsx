@@ -35,7 +35,7 @@ const sidebarMenu = [
     title: 'Menu Utama',
     items: [
       { label: 'Dashboard Nasional', href: '/', icon: Home },
-      { label: 'Dashboard Kejadian', href: '/dashboard-kejadian', icon: Flame },
+      { label: 'Dashboard EOC', href: '/dashboard-kejadian', icon: Flame },
     ],
   },
   {
@@ -132,10 +132,33 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
 }
 
 export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProps) {
+  const pathname = usePathname()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileRef = useRef<HTMLDivElement>(null)
   
   const { user, logout, isAuthenticated } = useAuthStore()
+  const [activeRegion, setActiveRegion] = useState('NASIONAL')
+
+  useEffect(() => {
+    if (user?.wilayah_scope) {
+      const scope = user.wilayah_scope
+      if (scope.mode === 'kabupaten' && scope.kabupaten?.label) {
+        setActiveRegion(`${scope.kabupaten.label.toUpperCase()}, PROV. ${scope.provinsi?.label?.toUpperCase()}`)
+      } else if (scope.mode === 'provinsi' && scope.provinsi?.label) {
+        setActiveRegion(`PROV. ${scope.provinsi.label.toUpperCase()}`)
+      }
+    }
+
+    const handleRegionChange = (e: Event) => {
+      const customEvent = e as CustomEvent<string>
+      setActiveRegion(customEvent.detail)
+    }
+
+    window.addEventListener('sipkk-region-changed', handleRegionChange)
+    return () => {
+      window.removeEventListener('sipkk-region-changed', handleRegionChange)
+    }
+  }, [user])
   const initialName = isAuthenticated ? (user?.nama_lengkap || user?.username || 'Pengguna') : 'Tamu (Guest)'
   const roleName = isAuthenticated ? (user?.level_name || (user?.level_user_id === 1 ? 'Super Administrator' : 'Admin')) : 'Akses Publik'
   const userEmail = isAuthenticated ? (user?.email || `${user?.username || 'admin'}@faskes.go.id`) : 'guest@faskes.go.id'
@@ -184,10 +207,14 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
                 <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl">
-                  DASHBOARD INDIKATOR PENILAIAN KINERJA FASILITAS KESEHATAN
+                  {pathname === '/dashboard-kejadian'
+                    ? 'PEMETAAN KRISIS KESEHATAN AKIBAT BENCANA'
+                    : 'DASHBOARD INDIKATOR PENILAIAN KINERJA FASILITAS KESEHATAN'}
                 </h1>
                 <p className="mt-2 max-w-[760px] text-sm leading-relaxed text-slate-600 md:text-base">
-                  Pantau perkembangan fasilitas kesehatan di seluruh Indonesia secara real-time.
+                  {pathname === '/dashboard-kejadian'
+                    ? `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`
+                    : 'Pantau perkembangan fasilitas kesehatan di seluruh Indonesia secara real-time.'}
                 </p>
               </div>
             </div>
