@@ -143,34 +143,34 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
   // ── Map refs ──
-  const mapRef             = useRef<HTMLDivElement | null>(null)
-  const mapContainerRef    = useRef<HTMLDivElement | null>(null)
-  const mapInstanceRef     = useRef<OlMap | null>(null)
-  const baseMapLayerRef    = useRef<any>(null)
-  const provinceLayerRef   = useRef<VectorLayer<VectorSource<any>> | null>(null)
-  const kabupatenLayerRef  = useRef<VectorLayer<VectorSource<any>> | null>(null)
-  const markerLayerRef     = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const mapRef = useRef<HTMLDivElement | null>(null)
+  const mapContainerRef = useRef<HTMLDivElement | null>(null)
+  const mapInstanceRef = useRef<OlMap | null>(null)
+  const baseMapLayerRef = useRef<any>(null)
+  const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const kabupatenLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const markerLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const lastFetchedProvinceRef = useRef<string | null>(null)
 
 
   // Stable callback refs (avoid stale closures inside OL event handlers)
   const onSelectProvinceRef = useRef(onSelectProvince)
-  const userScopeRef        = useRef(userScope)
-  const markersRef          = useRef(markers)
+  const userScopeRef = useRef(userScope)
+  const markersRef = useRef(markers)
 
   // ── UI state ──
-  const [isLoading, setIsLoading]         = useState(false)
-  const [mapInstance, setMapInstance]     = useState<OlMap | null>(null)
-  const [showSettings, setShowSettings]   = useState(false)
-  const [showMarkers, setShowMarkers]     = useState(true)  // toggle pin visibility
-  const [showBaseMap, setShowBaseMap]     = useState(false)
-  const [showGeoJson, setShowGeoJson]     = useState(true)
-  const [showRegionLegend, setShowRegionLegend]     = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [mapInstance, setMapInstance] = useState<OlMap | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
+  const [showBaseMap, setShowBaseMap] = useState(false)
+  const [showGeoJson, setShowGeoJson] = useState(true)
+  const [showRegionLegend, setShowRegionLegend] = useState(true)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
 
 
 
-  const [markerPopup, setMarkerPopup]     = useState<MarkerPopupState | null>(null)
+  const [markerPopup, setMarkerPopup] = useState<MarkerPopupState | null>(null)
 
   // ── Filter states ──
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
@@ -216,8 +216,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // ── Sync refs ──
   useEffect(() => {
     onSelectProvinceRef.current = onSelectProvince
-    userScopeRef.current        = userScope
-    markersRef.current          = markers
+    userScopeRef.current = userScope
+    markersRef.current = markers
   }, [onSelectProvince, userScope, markers])
 
   // Dismiss popup on scope changes
@@ -275,10 +275,10 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
   // 4. Compute counts for choropleth based on filtered markers
   const { provinceCounts, kabupatenCounts } = useMemo(() => {
-    const provinceCounts  = new Map<string, number>()
+    const provinceCounts = new Map<string, number>()
     const kabupatenCounts = new Map<string, number>()
     filteredMarkers.forEach((m) => {
-      if (m.provinsi)  provinceCounts.set(cleanKey(m.provinsi),   (provinceCounts.get(cleanKey(m.provinsi))   || 0) + 1)
+      if (m.provinsi) provinceCounts.set(cleanKey(m.provinsi), (provinceCounts.get(cleanKey(m.provinsi)) || 0) + 1)
       if (m.kabupaten) kabupatenCounts.set(cleanKey(m.kabupaten), (kabupatenCounts.get(cleanKey(m.kabupaten)) || 0) + 1)
     })
     return { provinceCounts, kabupatenCounts }
@@ -299,7 +299,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     baseMapLayerRef.current = baseMapLayer
 
     // Province choropleth layer
-    const provinceLayer  = new VectorLayer({ source: new VectorSource() })
+    const provinceLayer = new VectorLayer({ source: new VectorSource() })
     provinceLayerRef.current = provinceLayer
 
     // Kabupaten choropleth layer
@@ -360,28 +360,28 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       setMarkerPopup(null)
 
       const currentScope = userScopeRef.current
-      const isProvMode   = currentScope?.mode === 'provinsi'
-      const isKabMode    = currentScope?.mode === 'kabupaten'
+      const isProvMode = currentScope?.mode === 'provinsi'
+      const isKabMode = currentScope?.mode === 'kabupaten'
 
       if (!isProvMode && !isKabMode) {
         // National mode → clicked province
         const provName = getFeatureName(polyFeature, 'provinsi')
         if (!provName) return
 
-        const provCleaned  = cleanKey(provName)
-        const provMarkers  = markersRef.current.filter((m) => cleanKey(m.provinsi) === provCleaned)
+        const provCleaned = cleanKey(provName)
+        const provMarkers = markersRef.current.filter((m) => cleanKey(m.provinsi) === provCleaned)
 
         // Group by kabupaten
         const kabMap = new Map<string, { count: number; totalKorban: number }>()
         provMarkers.forEach((m) => {
-          const kab      = m.kabupaten || 'LAINNYA'
+          const kab = m.kabupaten || 'LAINNYA'
           const existing = kabMap.get(kab) || { count: 0, totalKorban: 0 }
           existing.count++
           existing.totalKorban += m.total_korban || 0
           kabMap.set(kab, existing)
         })
 
-        const breakdown  = Array.from(kabMap.entries())
+        const breakdown = Array.from(kabMap.entries())
           .map(([name, s]) => ({ name, count: s.count, totalKorban: s.totalKorban }))
           .sort((a, b) => b.count - a.count)
 
@@ -455,7 +455,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const map          = mapInstance
+    const map = mapInstance
     const provinceLayer = provinceLayerRef.current
     if (!map || !provinceLayer) return
 
@@ -493,13 +493,13 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const map           = mapInstance
+    const map = mapInstance
     const kabupatenLayer = kabupatenLayerRef.current
     if (!map || !kabupatenLayer) return
 
-    const kabSource    = kabupatenLayer.getSource()!
-    const isProvMode   = userScope?.mode === 'provinsi'
-    const isKabMode    = userScope?.mode === 'kabupaten'
+    const kabSource = kabupatenLayer.getSource()!
+    const isProvMode = userScope?.mode === 'provinsi'
+    const isKabMode = userScope?.mode === 'kabupaten'
     const provinceName = userScope?.provinsi?.label || ''
     const kabupatenName = userScope?.kabupaten?.label || ''
 
@@ -561,14 +561,14 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const provinceLayer  = provinceLayerRef.current
+    const provinceLayer = provinceLayerRef.current
     const kabupatenLayer = kabupatenLayerRef.current
     if (!provinceLayer || !kabupatenLayer) return
 
-    const isProvMode       = userScope?.mode === 'provinsi'
-    const isKabMode        = userScope?.mode === 'kabupaten'
-    const targetProvKey    = cleanKey(userScope?.provinsi?.label || '')
-    const targetKabKey     = cleanKey(userScope?.kabupaten?.label || '')
+    const isProvMode = userScope?.mode === 'provinsi'
+    const isKabMode = userScope?.mode === 'kabupaten'
+    const targetProvKey = cleanKey(userScope?.provinsi?.label || '')
+    const targetKabKey = cleanKey(userScope?.kabupaten?.label || '')
 
     provinceLayer.setStyle((feature: any) => {
       const provKey = cleanKey(feature.get('provinsi'))
@@ -589,7 +589,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     kabupatenLayer.setStyle((feature: any) => {
       const kabKey = cleanKey(feature.get('nama_kab') || feature.get('kabupaten'))
-      const count  = kabupatenCounts.get(kabKey) || 0
+      const count = kabupatenCounts.get(kabKey) || 0
       if (isKabMode && kabKey !== targetKabKey) {
         return new Style({
           fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
@@ -642,7 +642,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // Legend / UI data
   // ─────────────────────────────────────────────
 
-  const markerTitle  = userScope?.mode === 'provinsi' || userScope?.mode === 'kabupaten'
+  const markerTitle = userScope?.mode === 'provinsi' || userScope?.mode === 'kabupaten'
     ? 'SEBARAN KEJADIAN PER KABUPATEN/KOTA'
     : 'SEBARAN KEJADIAN PER PROVINSI'
 
@@ -923,16 +923,15 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                             onClick={() => {
                               if (!isCategoryDisabled) toggleType(item.name);
                             }}
-                            className={`flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all ${
-                              isCategoryDisabled ? 'opacity-30 cursor-not-allowed pointer-events-none' : ''
-                            }`}
+                            className={`flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all ${isCategoryDisabled ? 'opacity-30 cursor-not-allowed pointer-events-none' : ''
+                              }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={isChecked && !isCategoryDisabled}
                                 disabled={isCategoryDisabled}
-                                onChange={() => {}} // handled by parent onClick
+                                onChange={() => { }} // handled by parent onClick
                                 className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                               />
                               <span className="text-[11px] font-semibold text-slate-700 truncate">{item.name}</span>
@@ -969,7 +968,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           className="absolute z-10 w-[280px] rounded-2xl border border-[#cbe3e2] bg-white/98 backdrop-blur-md shadow-[0_12px_40px_rgba(15,118,110,0.18)] transition-all duration-200"
           style={{
             left: Math.min(markerPopup.x + 10, (mapContainerRef.current?.offsetWidth || 800) - 295),
-            top:  Math.max(markerPopup.y - 10, 8),
+            top: Math.max(markerPopup.y - 10, 8),
           }}
         >
           {/* Header */}
@@ -1204,10 +1203,10 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           {/* Pin Marker (Korban) legend */}
           {showCasualtyLegend && (
             <div>
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-red-650">Skala Dampak Korban (Pin)</p>
+              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-red-600">Skala Dampak Korban</p>
               <div className="space-y-1.5">
                 {[
-                  { label: '0 korban / terdampak', color: '#94a3b8' },
+                  { label: '0 korban', color: '#94a3b8' },
                   { label: '1 – 5 korban', color: '#facc15' },
                   { label: '6 – 20 korban', color: '#f97316' },
                   { label: '> 20 korban', color: '#dc2626' },

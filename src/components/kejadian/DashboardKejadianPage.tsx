@@ -741,53 +741,74 @@ ${guidelines}`)
 
       {/* Summary Cards Grid */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        {[
-          { label: 'Total Kejadian', value: data.summary.total_bencana, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
-          { label: 'Krisis Kesehatan', value: data.summary.total_krisis, color: 'text-red-650', icon: AlertTriangle, bg: 'bg-red-50/80' },
-          { label: 'Korban Meninggal', value: data.summary.total_meninggal, color: 'text-red-650', icon: ShieldAlert, bg: 'bg-red-50/80' },
-          { label: 'Korban Luka', value: data.summary.total_luka, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
-          { label: 'Korban Hilang', value: data.summary.total_hilang, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
-          { label: 'Jumlah Pengungsi', value: data.summary.total_pengungsi, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
-        ].map((card, idx) => {
-          const Icon = card.icon
-          const trend = getDynamicTrend(card.label)
-          return (
-            <article
-              key={idx}
-              className="flex min-h-[128px] w-full items-center gap-3 border border-[#bedbda] bg-white px-4 py-3 shadow-[0_6px_18px_rgba(20,120,116,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(20,120,116,0.1)] sm:px-5 sm:py-3.5"
-              style={{
-                borderTopLeftRadius: '17px',
-                borderTopRightRadius: '17px',
-                borderBottomRightRadius: '22px',
-                borderBottomLeftRadius: '17px',
-              }}
-            >
-              <div className={`flex h-[58px] w-[58px] flex-shrink-0 items-center justify-center rounded-full ${card.bg} ${card.color}`}>
-                <Icon className="h-7 w-7" />
+        {loading
+          ? Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="flex min-h-[128px] w-full items-center gap-3 border border-[#bedbda] bg-white px-4 py-3 shadow-[0_6px_18px_rgba(20,120,116,0.06)] rounded-2xl animate-pulse"
+                style={{
+                  borderTopLeftRadius: '17px',
+                  borderTopRightRadius: '17px',
+                  borderBottomRightRadius: '22px',
+                  borderBottomLeftRadius: '17px',
+                }}
+              >
+                <div className="h-[58px] w-[58px] rounded-full bg-slate-100 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-2/3 rounded bg-slate-100" />
+                  <div className="h-7 w-1/2 rounded bg-slate-100" />
+                  <div className="h-3 w-3/4 rounded bg-slate-100/60" />
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold leading-tight text-[#4f4f4f] sm:text-[12px] uppercase tracking-wider">
-                  {card.label.toUpperCase()}
-                </p>
-                <p className={`mt-2 text-[30px] font-bold leading-[0.92] tracking-[-0.02em] ${card.color} sm:text-[34px] xl:text-[28px] 2xl:text-[34px] truncate`}>
-                  {getCardValue(card.value)}
-                </p>
-                <p className="mt-2 text-[11px] text-[#383838] sm:text-[12px] flex flex-wrap items-center gap-x-1 gap-y-0.5">
-                  <span className={`inline-flex items-center gap-0.5 font-bold ${trend.isUp ? 'text-red-650' : 'text-emerald-600'}`}>
-                    {trend.isUp ? (
-                      <ChevronUp className="h-3 w-3 stroke-[2.8]" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3 stroke-[2.8]" />
-                    )}
-                    {trend.value}
-                  </span>{' '}
-                  <span className="text-slate-500">{trend.label}</span>
-                </p>
-              </div>
-            </article>
-          )
-        })}
+            ))
+          : [
+              { label: 'Total Kejadian', value: data.summary.total_bencana, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
+              { label: 'Krisis Kesehatan', value: data.summary.total_krisis, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50/80' },
+              { label: 'Korban Meninggal', value: data.summary.total_meninggal, color: 'text-red-600', icon: ShieldAlert, bg: 'bg-red-50/80' },
+              { label: 'Korban Luka', value: data.summary.total_luka, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
+              { label: 'Korban Hilang', value: data.summary.total_hilang, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
+              { label: 'Jumlah Pengungsi', value: data.summary.total_pengungsi, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
+            ].map((card, idx) => {
+              const Icon = card.icon
+              const trend = getDynamicTrend(card.label)
+              return (
+                <article
+                  key={idx}
+                  className="flex min-h-[128px] w-full items-center gap-3 border border-[#bedbda] bg-white px-4 py-3 shadow-[0_6px_18px_rgba(20,120,116,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(20,120,116,0.1)] sm:px-5 sm:py-3.5"
+                  style={{
+                    borderTopLeftRadius: '17px',
+                    borderTopRightRadius: '17px',
+                    borderBottomRightRadius: '22px',
+                    borderBottomLeftRadius: '17px',
+                  }}
+                >
+                  <div className={`flex h-[58px] w-[58px] flex-shrink-0 items-center justify-center rounded-full ${card.bg} ${card.color}`}>
+                     <Icon className="h-7 w-7" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold leading-tight text-[#4f4f4f] sm:text-[12px] uppercase tracking-wider">
+                      {card.label.toUpperCase()}
+                    </p>
+                    <p className={`mt-2 text-[30px] font-bold leading-[0.92] tracking-[-0.02em] ${card.color} sm:text-[34px] xl:text-[28px] 2xl:text-[34px] truncate`}>
+                      {getCardValue(card.value)}
+                    </p>
+                    <p className="mt-2 text-[11px] text-[#383838] sm:text-[12px] flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                      <span className={`inline-flex items-center gap-0.5 font-bold ${trend.isUp ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {trend.isUp ? (
+                          <ChevronUp className="h-3 w-3 stroke-[2.8]" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 stroke-[2.8]" />
+                        )}
+                        {trend.value}
+                      </span>{' '}
+                      <span className="text-slate-500">{trend.label}</span>
+                    </p>
+                  </div>
+                </article>
+              )
+            })}
       </section>
+
 
       {/* Map + AI Insight Section - Matches Homepage Aesthetics */}
       <section className="w-full bg-[#fbffff] pb-5">
@@ -920,26 +941,44 @@ ${guidelines}`)
             Grafik perbandingan tren jumlah kejadian bencana alam dengan laporan krisis kesehatan bulanan di wilayah {getRegionLabel()}.
           </p>
           <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
-                <Bar dataKey="bencanaCount" name="Kejadian Bencana" fill="#0f8f96" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="krisisCount" name="Krisis Kesehatan" fill="#334155" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="h-full w-full flex items-end gap-3 px-4 pb-2 border-b border-l border-slate-200 animate-pulse">
+                <div className="w-full bg-slate-200 rounded-t h-[65%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[45%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[80%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[35%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[90%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[55%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[75%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[40%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[85%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[50%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[70%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[60%]" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
+                  <Bar dataKey="bencanaCount" name="Kejadian Bencana" fill="#0f8f96" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="krisisCount" name="Krisis Kesehatan" fill="#334155" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
+
         </article>
 
         {/* Trend Korban Bencana & Krisis Kesehatan */}
@@ -960,42 +999,60 @@ ${guidelines}`)
           </p>
 
           <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{
-                    background: 'rgba(255, 255, 255, 0.95)',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
-                    boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
-                    fontSize: '12px',
-                  }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
-                <Line
-                  type="monotone"
-                  dataKey="bencanaKorban"
-                  name="BENCANA"
-                  stroke="#0f8f96"
-                  strokeWidth={3}
-                  activeDot={{ r: 6 }}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="krisisKorban"
-                  name="KRISIS"
-                  stroke="#334155"
-                  strokeWidth={3}
-                  activeDot={{ r: 6 }}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="h-full w-full flex items-end gap-3 px-4 pb-2 border-b border-l border-slate-200 animate-pulse">
+                <div className="w-full bg-slate-200 rounded-t h-[55%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[70%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[45%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[85%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[35%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[90%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[60%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[80%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[50%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[75%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[40%]" />
+                <div className="w-full bg-slate-200 rounded-t h-[65%]" />
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+                      fontSize: '12px',
+                    }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
+                  <Line
+                    type="monotone"
+                    dataKey="bencanaKorban"
+                    name="BENCANA"
+                    stroke="#0f8f96"
+                    strokeWidth={3}
+                    activeDot={{ r: 6 }}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="krisisKorban"
+                    name="KRISIS"
+                    stroke="#334155"
+                    strokeWidth={3}
+                    activeDot={{ r: 6 }}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
+
         </article>
       </section>
 
@@ -1006,7 +1063,11 @@ ${guidelines}`)
           <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA - {getRegionLabel()}</h3>
           <p className="text-xs text-slate-500 mb-4">Persentase kejadian berdasarkan tipe bencana di wilayah {getRegionLabel()}.</p>
           <div className="h-[220px]">
-            {isDbEmpty ? (
+            {loading ? (
+              <div className="h-full w-full flex items-center justify-center animate-pulse">
+                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+              </div>
+            ) : isDbEmpty ? (
               <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
               </div>
@@ -1034,6 +1095,7 @@ ${guidelines}`)
               </ResponsiveContainer>
             )}
           </div>
+
         </article>
 
         {/* Pie Chart 2: Kategori Bencana */}
@@ -1041,7 +1103,11 @@ ${guidelines}`)
           <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA - {getRegionLabel()}</h3>
           <p className="text-xs text-slate-500 mb-4">Persentase kejadian berdasarkan kategori bencana di wilayah {getRegionLabel()}.</p>
           <div className="h-[220px]">
-            {isDbEmpty || isCategoryDataEmpty ? (
+            {loading ? (
+              <div className="h-full w-full flex items-center justify-center animate-pulse">
+                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+              </div>
+            ) : isDbEmpty || isCategoryDataEmpty ? (
               <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
               </div>
@@ -1069,6 +1135,7 @@ ${guidelines}`)
               </ResponsiveContainer>
             )}
           </div>
+
         </article>
 
         {/* Pie Chart 3: Wilayah Bencana */}
@@ -1076,7 +1143,11 @@ ${guidelines}`)
           <h3 className="text-base font-bold text-slate-900 uppercase">{getWilayahChartInfo().title}</h3>
           <p className="text-xs text-slate-500 mb-4">{getWilayahChartInfo().desc}</p>
           <div className="h-[220px]">
-            {isDbEmpty || data.wilayah.length === 0 ? (
+            {loading ? (
+              <div className="h-full w-full flex items-center justify-center animate-pulse">
+                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+              </div>
+            ) : isDbEmpty || data.wilayah.length === 0 ? (
               <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
               </div>
@@ -1104,6 +1175,7 @@ ${guidelines}`)
               </ResponsiveContainer>
             )}
           </div>
+
         </article>
 
         {/* Post-Disaster Disease Risk */}
@@ -1115,24 +1187,39 @@ ${guidelines}`)
             </div>
             <p className="text-xs text-slate-500 mb-4">Indeks kerentanan KLB penyakit menular di posko pengungsian wilayah {getRegionLabel()}.</p>
 
-            <div className="space-y-3.5">
-              {[
-                { name: 'ISPA / Pneumonia', risk: isDbEmpty ? 0 : 85, color: 'bg-red-500' },
-                { name: 'Penyakit Kulit & Gatal', risk: isDbEmpty ? 0 : 72, color: 'bg-orange-500' },
-                { name: 'Diare Akut / Gastroenteritis', risk: isDbEmpty ? 0 : 65, color: 'bg-amber-500' },
-                { name: 'Leptospirosis / Demam Tikus', risk: isDbEmpty ? 0 : 34, color: 'bg-indigo-500' },
-              ].map((disease, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-slate-700">{disease.name}</span>
-                    <span className="text-slate-900">{isDbEmpty ? 'N/A' : `${disease.risk}% Tingkat Bahaya`}</span>
+            {loading ? (
+              <div className="space-y-4 animate-pulse pt-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between">
+                      <div className="h-3.5 w-1/3 bg-slate-100 rounded" />
+                      <div className="h-3.5 w-1/4 bg-slate-100 rounded" />
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full" />
                   </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full ${disease.color}`} style={{ width: isDbEmpty ? '0%' : `${disease.risk}%` }} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {[
+                  { name: 'ISPA / Pneumonia', risk: isDbEmpty ? 0 : 85, color: 'bg-red-500' },
+                  { name: 'Penyakit Kulit & Gatal', risk: isDbEmpty ? 0 : 72, color: 'bg-orange-500' },
+                  { name: 'Diare Akut / Gastroenteritis', risk: isDbEmpty ? 0 : 65, color: 'bg-amber-500' },
+                  { name: 'Leptospirosis / Demam Tikus', risk: isDbEmpty ? 0 : 34, color: 'bg-indigo-500' },
+                ].map((disease, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700">{disease.name}</span>
+                      <span className="text-slate-900">{isDbEmpty ? 'N/A' : `${disease.risk}% Tingkat Bahaya`}</span>
+                    </div>
+                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full ${disease.color}`} style={{ width: isDbEmpty ? '0%' : `${disease.risk}%` }} />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+
           </div>
         </article>
       </section>
