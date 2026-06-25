@@ -1,7 +1,7 @@
 'use client'
 
-import DashboardKejadianPage from '@/components/kejadian/DashboardKejadianPage'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <DashboardKejadianPage />
+  redirect('/')
 }
