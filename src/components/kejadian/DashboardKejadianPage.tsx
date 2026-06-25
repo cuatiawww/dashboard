@@ -501,6 +501,17 @@ export default function DashboardKejadianPage() {
     fetchData()
   }, [fetchData])
 
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchData()
+    }
+    window.addEventListener('sipkk-refresh-data', handleRefresh)
+    return () => {
+      window.removeEventListener('sipkk-refresh-data', handleRefresh)
+    }
+  }, [fetchData])
+
+
   const generateAiInsight = () => {
     if (!data) return
     setGeneratingAi(true)
@@ -586,7 +597,8 @@ ${guidelines}`)
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
       {/* Smart Search, Info Filter & Reset Button Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-[10fr_9fr_1fr] gap-4 w-full items-end z-20 relative">
+      <section className="grid grid-cols-1 md:grid-cols-[10fr_8fr_2fr] gap-4 w-full items-end z-20 relative">
+
         {/* Column 1: Smart Search Bar */}
         <div className="relative w-full z-20">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
@@ -629,7 +641,7 @@ ${guidelines}`)
                 className="fixed inset-0 z-40"
                 onClick={() => setShowSuggestions(false)}
               />
-              
+
               <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 max-h-[320px] overflow-y-auto rounded-2xl border border-slate-100 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
                 {suggestions.map((sug, idx) => {
                   let badgeClass = 'bg-slate-50 text-slate-700 border-slate-200'
@@ -674,12 +686,9 @@ ${guidelines}`)
           </p>
           <div className="flex items-center rounded-2xl border border-teal-100 bg-[#f6fffd] px-4 text-xs shadow-[0_6px_18px_rgba(20,120,116,0.04)] h-auto md:h-12 py-3 md:py-0 w-full">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-slate-600 font-semibold w-full">
-              <span className="inline-flex items-center gap-1.5 font-bold uppercase tracking-[0.08em] text-[#0f766e] shrink-0">
-                <Info className="h-4 w-4 text-[#0f766e]" />
-                Info Filter
-              </span>
+
               <span className="hidden h-4 w-px bg-teal-200 sm:inline-block" aria-hidden="true" />
-              
+
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-700">
                 <span className="inline-flex items-center gap-1">
                   <span className="font-semibold text-slate-400">Cakupan:</span>
@@ -709,14 +718,14 @@ ${guidelines}`)
             onClick={handleResetFilter}
             disabled={!showResetButton}
             title="Reset Filter"
-            className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 md:px-0 text-xs font-extrabold shadow-sm transition-all outline-none h-12 uppercase tracking-wider ${
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-extrabold shadow-sm transition-all outline-none h-12 uppercase tracking-wider ${
               showResetButton
                 ? 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95'
                 : 'border-slate-200 bg-slate-50/50 text-slate-400 cursor-not-allowed'
             }`}
           >
-            <RefreshCw className="h-4 w-4" />
-            <span className="md:hidden">RESET FILTER</span>
+            <RefreshCw className="h-4 w-4 shrink-0" />
+            <span>RESET FILTER</span>
           </button>
         </div>
       </section>

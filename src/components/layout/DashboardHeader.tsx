@@ -19,7 +19,9 @@ import {
   ShieldCheck,
   UserCircle,
   X,
+  RefreshCw,
 } from 'lucide-react'
+
 
 type DashboardHeaderProps = {
   onToggleSidebar: () => void
@@ -138,6 +140,16 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   
   const { user, logout, isAuthenticated } = useAuthStore()
   const [activeRegion, setActiveRegion] = useState('NASIONAL')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    window.dispatchEvent(new CustomEvent('sipkk-refresh-data'))
+    setTimeout(() => {
+      setIsRefreshing(false)
+    }, 850)
+  }
+
 
   useEffect(() => {
     if (user?.wilayah_scope) {
@@ -222,9 +234,20 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
           <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
               <button
                 type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md disabled:cursor-wait"
+                aria-label="Refresh Data"
+                title="Refresh Data"
+              >
+                <RefreshCw className={`h-[18px] w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
+              </button>
+              <button
+                type="button"
                 className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
                 aria-label="Notifikasi"
               >
+
                 <Bell className="h-[19px] w-[19px]" />
                 <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-teal-600 px-1 text-[10px] font-bold text-white">
                   5

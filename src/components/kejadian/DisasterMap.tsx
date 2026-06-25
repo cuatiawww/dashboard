@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
+
+
+
 
 // OpenLayers core
 import OlMap from 'ol/Map'
@@ -162,6 +165,11 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showMarkers, setShowMarkers]     = useState(true)  // toggle pin visibility
   const [showBaseMap, setShowBaseMap]     = useState(false)
   const [showGeoJson, setShowGeoJson]     = useState(true)
+  const [showRegionLegend, setShowRegionLegend]     = useState(true)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
+
+
+
   const [markerPopup, setMarkerPopup]     = useState<MarkerPopupState | null>(null)
 
   // ── Filter states ──
@@ -231,6 +239,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       return true
     })
   }, [markers, excludedCategories, excludedTypes])
+
+
 
   // 2. Compute category totals from all markers
   const categoryCounts = useMemo(() => {
@@ -593,6 +603,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     kabupatenLayer.changed()
   }, [userScope, provinceCounts, kabupatenCounts])
 
+
+
   // ─────────────────────────────────────────────
   // Sync marker features when markers/visibility changes
   // ─────────────────────────────────────────────
@@ -770,6 +782,50 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                   </div>
                 </div>
 
+                {/* Toggle region legend visibility */}
+                <div
+                  onClick={() => setShowRegionLegend((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Info className="h-4 w-4 text-teal-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Legenda Wilayah</p>
+                      <p className="text-[10px] text-slate-400">Keterangan warna jumlah kejadian</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showRegionLegend ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showRegionLegend ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle casualty legend visibility */}
+                <div
+                  onClick={() => setShowCasualtyLegend((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Info className="h-4 w-4 text-red-500" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Legenda Korban</p>
+                      <p className="text-[10px] text-slate-400">Keterangan warna dampak korban</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showCasualtyLegend ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showCasualtyLegend ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
+
+
               </div>
 
               {/* ── Filter & Kategori Section ── */}
@@ -895,6 +951,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                 </div>
               </div>
             </div>
+
 
             {/* Panel footer */}
             <div className="border-t border-slate-100 px-4 py-3">
@@ -1122,18 +1179,51 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       )}
 
       {/* ── Legend (bottom-left) ── */}
-      <div className="absolute bottom-5 left-5 max-w-[260px] rounded-2xl border border-[#cbe3e2] bg-white/95 backdrop-blur-md p-4 shadow-[0_8px_30px_rgba(15,118,110,0.12)]">
-        {/* Choropleth legend */}
-        <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-slate-500">{markerTitle}</p>
-        <div className="space-y-1.5 mb-3">
-          {choroplethLegend.map((b, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200 shadow-sm" style={{ background: b.color }} />
-              <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
+      {(showRegionLegend || showCasualtyLegend) && (
+        <div className="absolute bottom-5 left-5 max-w-[260px] rounded-2xl border border-[#cbe3e2] bg-white/95 backdrop-blur-md p-4 shadow-[0_8px_30px_rgba(15,118,110,0.12)] space-y-3.5">
+          {/* Choropleth legend */}
+          {showRegionLegend && (
+            <div>
+              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-[#0f766e]">{markerTitle}</p>
+              <div className="space-y-1.5">
+                {choroplethLegend.map((b, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200 shadow-sm" style={{ background: b.color }} />
+                    <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Divider */}
+          {showRegionLegend && showCasualtyLegend && (
+            <div className="h-px bg-slate-100" />
+          )}
+
+          {/* Pin Marker (Korban) legend */}
+          {showCasualtyLegend && (
+            <div>
+              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-red-650">Skala Dampak Korban (Pin)</p>
+              <div className="space-y-1.5">
+                {[
+                  { label: '0 korban / terdampak', color: '#94a3b8' },
+                  { label: '1 – 5 korban', color: '#facc15' },
+                  { label: '6 – 20 korban', color: '#f97316' },
+                  { label: '> 20 korban', color: '#dc2626' },
+                ].map((b, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200 shadow-sm animate-pulse" style={{ background: b.color }} />
+                    <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+
     </div>
   )
 }
