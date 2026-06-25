@@ -217,7 +217,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   // 1. Get filtered markers first based on exclusions
   const filteredMarkers = useMemo(() => {
     return markers.filter((m) => {
-      const cat = m.kategori_bencana || '1'
+      const cat = String(m.kategori_bencana || '1')
       if (excludedCategories.has(cat)) return false
       if (excludedTypes.has(m.jenis_bencana)) return false
       return true
@@ -230,7 +230,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     let nonAlam = 0
     let sosial = 0
     markers.forEach((m) => {
-      const cat = m.kategori_bencana || '1'
+      const cat = String(m.kategori_bencana || '1')
       if (cat === '1') alam++
       else if (cat === '2') nonAlam++
       else if (cat === '3') sosial++
@@ -244,8 +244,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     const typeToCategory = new Map<string, string>()
     markers.forEach((m) => {
       counts.set(m.jenis_bencana, (counts.get(m.jenis_bencana) || 0) + 1)
-      if (m.kategori_bencana) {
-        typeToCategory.set(m.jenis_bencana, m.kategori_bencana)
+      if (m.kategori_bencana !== undefined && m.kategori_bencana !== null) {
+        typeToCategory.set(m.jenis_bencana, String(m.kategori_bencana))
       }
     })
     return Array.from(counts.entries()).map(([name, count]) => ({
