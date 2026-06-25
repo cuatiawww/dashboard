@@ -561,7 +561,7 @@ ${guidelines}`)
     }
   }, [data])
 
-  if (!isInitialized || (loading && !data)) {
+  if (!isInitialized) {
     return (
       <div className="flex min-h-[500px] w-full items-center justify-center">
         <div className="text-center space-y-4">
@@ -572,7 +572,7 @@ ${guidelines}`)
     )
   }
 
-  if (error || !data) {
+  if (!loading && (error || !data)) {
     return (
       <div className="mx-auto my-8 max-w-[520px] rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
         <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
@@ -762,12 +762,12 @@ ${guidelines}`)
               </div>
             ))
           : [
-              { label: 'Total Kejadian', value: data.summary.total_bencana, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
-              { label: 'Krisis Kesehatan', value: data.summary.total_krisis, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50/80' },
-              { label: 'Korban Meninggal', value: data.summary.total_meninggal, color: 'text-red-600', icon: ShieldAlert, bg: 'bg-red-50/80' },
-              { label: 'Korban Luka', value: data.summary.total_luka, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
-              { label: 'Korban Hilang', value: data.summary.total_hilang, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
-              { label: 'Jumlah Pengungsi', value: data.summary.total_pengungsi, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
+              { label: 'Total Kejadian', value: data?.summary?.total_bencana ?? 0, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
+              { label: 'Krisis Kesehatan', value: data?.summary?.total_krisis ?? 0, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50/80' },
+              { label: 'Korban Meninggal', value: data?.summary?.total_meninggal ?? 0, color: 'text-red-600', icon: ShieldAlert, bg: 'bg-red-50/80' },
+              { label: 'Korban Luka', value: data?.summary?.total_luka ?? 0, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
+              { label: 'Korban Hilang', value: data?.summary?.total_hilang ?? 0, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
+              { label: 'Jumlah Pengungsi', value: data?.summary?.total_pengungsi ?? 0, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
             ].map((card, idx) => {
               const Icon = card.icon
               const trend = getDynamicTrend(card.label)
@@ -911,7 +911,7 @@ ${guidelines}`)
             </p>
             <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
               <DisasterMap
-                markers={data.markers}
+                markers={data?.markers || []}
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
                 isGuest={!token || !user}
@@ -1147,7 +1147,7 @@ ${guidelines}`)
               <div className="h-full w-full flex items-center justify-center animate-pulse">
                 <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
               </div>
-            ) : isDbEmpty || data.wilayah.length === 0 ? (
+            ) : isDbEmpty || !data?.wilayah || data.wilayah.length === 0 ? (
               <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
               </div>
