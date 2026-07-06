@@ -6,12 +6,10 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/lib/authStore'
 import {
-  BarChart3,
   Bell,
   ChevronDown,
   Download,
   Flame,
-  Home,
   LogOut,
   MapPinned,
   Menu,
@@ -37,7 +35,6 @@ const sidebarMenu = [
   {
     title: 'Menu Utama',
     items: [
-      { label: 'Dashboard Nasional', href: '/dashboard-nasional', icon: Home },
       { label: 'Dashboard EOC', href: '/', icon: Flame },
     ],
   },
@@ -279,14 +276,10 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
                 <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl">
-                  {pathname === '/' || pathname === '/dashboard-kejadian'
-                    ? 'PEMETAAN KRISIS KESEHATAN AKIBAT BENCANA'
-                    : 'DASHBOARD INDIKATOR PENILAIAN KINERJA FASILITAS KESEHATAN'}
+                  PEMETAAN KRISIS KESEHATAN AKIBAT BENCANA
                 </h1>
                 <p className="mt-2 max-w-[760px] text-sm leading-relaxed text-slate-600 md:text-base">
-                  {pathname === '/' || pathname === '/dashboard-kejadian'
-                    ? `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`
-                    : 'Pantau perkembangan fasilitas kesehatan di seluruh Indonesia secara real-time.'}
+                  {`Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
                 </p>
               </div>
             </div>
