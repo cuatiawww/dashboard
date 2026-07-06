@@ -35,7 +35,7 @@ const sidebarMenu = [
   {
     title: 'Menu Utama',
     items: [
-      { label: 'Dashboard EOC', href: '/', icon: Flame },
+      { label: 'Dashboard EOC Krisis Kesehatan Nasional', href: '/', icon: Flame },
     ],
   },
   {
@@ -276,7 +276,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
                 <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl">
-                  PEMETAAN KRISIS KESEHATAN AKIBAT BENCANA
+                  DASHBOARD EOC KRISIS KESEHATAN NASIONAL
                 </h1>
                 <p className="mt-2 max-w-[760px] text-sm leading-relaxed text-slate-600 md:text-base">
                   {`Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
