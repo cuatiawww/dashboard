@@ -32,7 +32,19 @@ type DashboardSidebarProps = {
   onClose: () => void
 }
 
-const sidebarMenu = [
+type SidebarMenuItem = {
+  label: string
+  href: string
+  icon: any
+  isExternal?: boolean
+}
+
+type SidebarMenuGroup = {
+  title: string
+  items: SidebarMenuItem[]
+}
+
+const sidebarMenu: SidebarMenuGroup[] = [
   {
     title: 'Menu Utama',
     items: [
