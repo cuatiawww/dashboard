@@ -19,6 +19,7 @@ import {
   X,
   RefreshCw,
   Clock,
+  LayoutGrid,
 } from 'lucide-react'
 
 
@@ -36,6 +37,17 @@ const sidebarMenu = [
     title: 'Menu Utama',
     items: [
       { label: 'Dashboard EOC Krisis Kesehatan Nasional', href: '/', icon: Flame },
+    ],
+  },
+  {
+    title: 'Akses Sistem',
+    items: [
+      {
+        label: 'Akses Sistem',
+        href: process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru',
+        icon: LayoutGrid,
+        isExternal: true,
+      },
     ],
   },
   {
@@ -97,6 +109,7 @@ const notificationsData = [
 
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const { token } = useAuthStore()
 
   return (
     <>
@@ -149,7 +162,24 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               <div className="mt-2 space-y-1.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
+                  let href = item.href
                   const active = item.href !== '#' && pathname === item.href
+                  if (item.isExternal && token) {
+                    href = `${href}/index.php?r=site/sso-login&token=${token}`
+                  }
+
+                  if (item.isExternal) {
+                    return (
+                      <a
+                        key={item.label}
+                        href={href}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-[0.03em] text-teal-50/85 hover:bg-white/10 hover:text-white transition"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </a>
+                    )
+                  }
 
                   return (
                     <Link
