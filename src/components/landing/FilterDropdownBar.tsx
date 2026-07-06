@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Globe, MapPin, Building2, ChevronDown, Info } from 'lucide-react'
+import { Globe, MapPin, Building2, ChevronDown, Info, Calendar } from 'lucide-react'
 import { useAuthStore, type WilayahScope } from '@/lib/authStore'
 import { buildRegionsUrl } from '@/lib/utils/api'
 
 type FilterItem = {
   id: string
-  icon: 'globe' | 'pin' | 'building'
+  icon: 'globe' | 'pin' | 'building' | 'calendar'
   sublabel: string
   defaultValue: string
   options: Array<{ value: string; label: string }>
@@ -18,6 +18,7 @@ export type FilterSummary = {
   cakupan: string
   provinsi: string
   kabkota: string
+  tahun: string
 }
 
 type FilterDropdownBarProps = {
@@ -36,12 +37,14 @@ const iconStyles: Record<FilterItem['icon'], { bg: string; color: string }> = {
   globe: { bg: 'bg-[#E1F5EE]', color: 'text-[#0F6E56]' },
   pin: { bg: 'bg-[#E6F1FB]', color: 'text-[#185FA5]' },
   building: { bg: 'bg-[#EEEDFE]', color: 'text-[#534AB7]' },
+  calendar: { bg: 'bg-[#FDF2F8]', color: 'text-[#DB2777]' },
 }
 
 function FilterIcon({ icon, className }: { icon: FilterItem['icon']; className?: string }) {
   if (icon === 'globe') return <Globe className={className} />
   if (icon === 'pin') return <MapPin className={className} />
-  return <Building2 className={className} />
+  if (icon === 'building') return <Building2 className={className} />
+  return <Calendar className={className} />
 }
 
 function slugify(value: string) {
@@ -111,6 +114,18 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
             ? [{ value: 'semua-kabkota', label: 'Memuat...' }]
             : dynamicKabkota,
         },
+        {
+          id: 'tahun',
+          icon: 'calendar',
+          sublabel: 'Tahun',
+          defaultValue: '2026',
+          options: [
+            { value: '2026', label: '2026' },
+            { value: '2025', label: '2025' },
+            { value: '2024', label: '2024' },
+            { value: '2023', label: '2023' },
+          ],
+        },
       ]
     } else {
       // userScope dipastikan ada & mode-nya valid (provinsi/kabupaten) di sini.
@@ -160,6 +175,18 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
           locked: scope.kabupaten.locked,
           options: kabupatenOptions,
         },
+        {
+          id: 'tahun',
+          icon: 'calendar',
+          sublabel: 'Tahun',
+          defaultValue: '2026',
+          options: [
+            { value: '2026', label: '2026' },
+            { value: '2025', label: '2025' },
+            { value: '2024', label: '2024' },
+            { value: '2023', label: '2023' },
+          ],
+        },
       ]
     }
 
@@ -178,6 +205,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
         cakupan: 'nasional',
         provinsi: 'semua-provinsi',
         kabkota: 'semua-kabkota',
+        tahun: '2026',
       }
     }
     const scope = userScope as WilayahScope
@@ -190,6 +218,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
       cakupan: cakupanValue,
       provinsi: provinsiValue,
       kabkota: kabupatenValue,
+      tahun: '2026',
     }
   }, [isScoped, userScope])
 
@@ -394,6 +423,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
       cakupan: summaryItems.find((item) => item.id === 'cakupan')?.value || 'Nasional',
       provinsi: summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi',
       kabkota: summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota',
+      tahun: summaryItems.find((item) => item.id === 'tahun')?.value || '2026',
     }),
     [summaryItems]
   )

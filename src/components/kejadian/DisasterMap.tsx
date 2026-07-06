@@ -965,7 +965,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       {/* ── Marker Pin Popup ── */}
       {markerPopup && (
         <div
-          className="absolute z-10 w-[280px] rounded-2xl border border-[#cbe3e2] bg-white/98 backdrop-blur-md shadow-[0_12px_40px_rgba(15,118,110,0.18)] transition-all duration-200"
+          className="absolute z-10 w-[280px] rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)] transition-all duration-200"
           style={{
             left: Math.min(markerPopup.x + 10, (mapContainerRef.current?.offsetWidth || 800) - 295),
             top: Math.max(markerPopup.y - 10, 8),
@@ -974,7 +974,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-100 p-3 pb-2.5">
             <div className="min-w-0">
-              <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-teal-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-800">
                 <MapPin className="h-2.5 w-2.5" />
                 Lokasi Kejadian
               </span>
@@ -993,12 +993,12 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           {/* Info rows */}
           <div className="p-3 space-y-1.5 text-[11px] text-slate-600">
             <div className="flex items-start gap-2">
-              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Tanggal</span>
+              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Tanggal</span>
               <span className="font-semibold text-slate-800">{markerPopup.data.tgl_kejadian || '—'}</span>
             </div>
 
             <div className="flex items-start gap-2">
-              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Lokasi</span>
+              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Lokasi</span>
               <span className="font-semibold text-slate-800 leading-snug">
                 {[markerPopup.data.kecamatan && `Kec. ${markerPopup.data.kecamatan}`, markerPopup.data.kabupaten].filter(Boolean).join(', ') || markerPopup.data.provinsi || '—'}
               </span>
@@ -1006,20 +1006,20 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
             {markerPopup.data.nama_desa && markerPopup.data.nama_desa !== 'Desa Lainnya' && (
               <div className="flex items-start gap-2">
-                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Desa/Dusun</span>
+                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Desa/Dusun</span>
                 <span className="font-semibold text-slate-800">{markerPopup.data.nama_desa}</span>
               </div>
             )}
 
             {markerPopup.data.topografi && markerPopup.data.topografi !== '-' && (
               <div className="flex items-start gap-2">
-                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Topografi</span>
+                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Topografi</span>
                 <span className="font-semibold text-slate-800">{markerPopup.data.topografi}</span>
               </div>
             )}
 
             <div className="flex items-start gap-2">
-              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-slate-400 uppercase">Korban</span>
+              <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Korban</span>
               <span
                 className="font-extrabold"
                 style={{ color: pinColor(markerPopup.data.total_korban) }}
