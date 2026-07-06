@@ -121,7 +121,7 @@ const notificationsData = [
 
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
-  const { token } = useAuthStore()
+  const { token, user, isAuthenticated, isGuest } = useAuthStore()
 
   return (
     <>
@@ -166,12 +166,21 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
           </button>
         </div>
         <nav className="h-[calc(100vh-80px)] space-y-5 overflow-y-auto px-3 py-4">
-          {sidebarMenu.map((group) => (
-            <section key={group.title}>
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                {group.title}
-              </p>
-              <div className="mt-2 space-y-1.5">
+          {sidebarMenu.map((group) => {
+            if (group.title === 'Akses Sistem') {
+              const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
+              const isTamu = !isAuthenticated || isGuest
+              if (isMasyarakat || isTamu) {
+                return null
+              }
+            }
+
+            return (
+              <section key={group.title}>
+                <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                  {group.title}
+                </p>
+                <div className="mt-2 space-y-1.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
                   let href = item.href
@@ -214,7 +223,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
                 })}
               </div>
             </section>
-          ))}
+          )
+        })}
         </nav>
       </aside>
     </>
