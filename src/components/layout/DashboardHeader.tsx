@@ -31,7 +31,12 @@ import {
   Activity,
   Mountain,
   Layers,
+  Users,
+  Key,
+  FileText,
+  Info,
 } from 'lucide-react'
+import { buildApiUrl } from '@/lib/utils/api'
 
 
 type DashboardHeaderProps = {
@@ -146,17 +151,109 @@ const notificationsData = [
   },
 ]
 
+function getIconComponent(iconName: string) {
+  const name = iconName?.toLowerCase() || ''
+  if (name.includes('shield') || name.includes('security') || name.includes('bnpb')) return Shield
+  if (name.includes('newspaper') || name.includes('media') || name.includes('news')) return Newspaper
+  if (name.includes('wind') || name.includes('angin')) return Wind
+  if (name.includes('globe') || name.includes('penyakit') || name.includes('world')) return Globe
+  if (name.includes('tree') || name.includes('karhutla') || name.includes('forest')) return TreePine
+  if (name.includes('cloud') || name.includes('cuaca') || name.includes('weather')) return Cloud
+  if (name.includes('activity') || name.includes('gempa') || name.includes('seismic')) return Activity
+  if (name.includes('mountain') || name.includes('gunung')) return Mountain
+  if (name.includes('layers') || name.includes('tanah') || name.includes('ground')) return Layers
+  if (name.includes('layout') || name.includes('dashboard')) return Flame
+  if (name.includes('user') || name.includes('users') || name.includes('profile')) return Users
+  if (name.includes('gear') || name.includes('settings') || name.includes('pengaturan')) return Settings
+  if (name.includes('lock') || name.includes('key')) return Key
+  if (name.includes('file') || name.includes('document')) return FileText
+  if (name.includes('help') || name.includes('info')) return Info
+  return LayoutGrid
+}
+
+const isLocalRoute = (route: string) => {
+  const r = route?.toLowerCase() || ''
+  return r.includes('pantauan/') || r === '/' || r === ''
+}
+
+const normalizeLocalRoute = (route: string) => {
+  const r = route?.toLowerCase() || ''
+  if (r.includes('pantauan/bnpb')) return '/pantauan/bnpb'
+  if (r.includes('pantauan/media')) return '/pantauan/media'
+  if (r.includes('pantauan/angin')) return '/pantauan/angin'
+  if (r.includes('pantauan/penyakit')) return '/pantauan/penyakit'
+  if (r.includes('pantauan/karhutla')) return '/pantauan/karhutla'
+  if (r.includes('pantauan/cuaca')) return '/pantauan/cuaca'
+  if (r.includes('pantauan/gempa')) return '/pantauan/gempa'
+  if (r.includes('pantauan/gunung-berapi')) return '/pantauan/gunung-berapi'
+  if (r.includes('pantauan/tanah')) return '/pantauan/tanah'
+  return '/'
+}
+
+const buildExternalRoute = (route: string, token: string | null) => {
+  const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru'
+  if (route.startsWith('http')) return route
+  const cleanRoute = route.trim().replace(/^\/+/, '')
+  if (token) {
+    return `${backendUrl}/index.php?r=site/sso-login&token=${token}&redirect=${encodeURIComponent(cleanRoute)}`
+  }
+  return `${backendUrl}/index.php?r=${cleanRoute}`
+}
+
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { token, user, isAuthenticated, isGuest } = useAuthStore()
-  // Track which collapsible groups are expanded
+
+  // Dynamic menu from DB
+  const [dynamicMenu, setDynamicMenu] = useState<any[] | null>(null)
+  const [loadingMenu, setLoadingMenu] = useState(false)
+
+  // Track expanded groups
   const isPantauanActive = pathname.startsWith('/pantauan')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     () => ({ Pantauan: isPantauanActive })
   )
+
   const toggleGroup = (title: string) => {
     setExpandedGroups((prev) => ({ ...prev, [title]: !prev[title] }))
   }
+
+  // Fetch dynamic menu if authenticated
+  useEffect(() => {
+    if (!token) {
+      setDynamicMenu(null)
+      return
+    }
+
+    setLoadingMenu(true)
+    fetch(buildApiUrl('/api/menu'), {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error()
+        return res.json()
+      })
+      .then((data) => {
+        if (data.success && Array.isArray(data.menu)) {
+          setDynamicMenu(data.menu)
+          // Default expand all database modules
+          const initialExpanded: Record<string, boolean> = {}
+          data.menu.forEach((mod: any) => {
+            const title = mod.modul_label || mod.label || mod.nama_modul
+            initialExpanded[title] = true
+          })
+          setExpandedGroups((prev) => ({ ...prev, ...initialExpanded }))
+        }
+      })
+      .catch((err) => {
+        console.error('Gagal mengambil menu dinamis database:', err)
+      })
+      .finally(() => {
+        setLoadingMenu(false)
+      })
+  }, [token])
 
   return (
     <>
@@ -169,14 +266,14 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         />
       ) : null}
       <aside
-        className={`fixed left-0 top-0 z-40 h-screen w-[280px] border-r border-teal-300/30 bg-gradient-to-b from-[#0f8f96] via-[#076176] to-[#03384d] text-slate-100 shadow-2xl transition-transform duration-300 ${
+        className={`fixed left-0 top-0 z-40 h-screen w-[280px] border-r border-slate-100 bg-white text-slate-800 shadow-[2px_0_12px_rgba(0,0,0,0.03)] transition-transform duration-300 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="h-[3px] bg-gradient-to-r from-teal-300 via-cyan-200 to-transparent" />
-        <div className="flex items-start justify-between gap-3 border-b border-teal-200/20 px-4 py-4">
+        <div className="h-[4px] bg-[#047D78]" />
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/95 p-1.5 shadow-sm">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
               <Image
                 src="/kemenkes.png"
                 alt="Logo Kementerian Kesehatan"
@@ -187,102 +284,171 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold tracking-wide text-white">FASILITAS KESEHATAN</p>
-              <p className="mt-0.5 text-[11px] text-teal-50/80">Kementerian Kesehatan RI</p>
+              <p className="text-sm font-bold tracking-wide text-slate-800">FASILITAS KESEHATAN</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">Kementerian Kesehatan RI</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Tutup sidebar"
-            className="rounded-lg p-1 text-teal-50/80 transition hover:bg-white/10 hover:text-white"
+            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <nav className="h-[calc(100vh-80px)] space-y-5 overflow-y-auto px-3 py-4">
-          {sidebarMenu.map((group) => {
-            if (group.title === 'Akses Sistem') {
-              const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
-              const isTamu = !isAuthenticated || isGuest
-              if (isMasyarakat || isTamu) {
-                return null
-              }
-            }
+          {dynamicMenu ? (
+            dynamicMenu.map((modul: any) => {
+              const hasSub = Array.isArray(modul.sub_modules) && modul.sub_modules.length > 0
+              const title = modul.modul_label || modul.label || modul.nama_modul
+              const isExpanded = expandedGroups[title] ?? true
 
-            const isExpanded = expandedGroups[group.title] ?? false
-
-            return (
-              <section key={group.title}>
-                {/* Group header — clickable to toggle if collapsible */}
-                {group.collapsible ? (
+              return (
+                <section key={title} className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => toggleGroup(group.title)}
-                    className="flex w-full items-center justify-between px-2 py-1 rounded-lg hover:bg-white/5 transition"
+                    onClick={() => toggleGroup(title)}
+                    className="flex w-full items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-50 text-slate-800 transition"
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      {title}
+                    </p>
+                    {hasSub && (isExpanded ? (
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                    ))}
+                  </button>
+
+                  {isExpanded && hasSub && (
+                    <div className="mt-1 space-y-1">
+                      {modul.sub_modules.map((sub: any) => {
+                        const label = sub.sub_modul_label || sub.label || sub.nama_sub_modul
+                        const route = sub.route || '#'
+                        const Icon = getIconComponent(sub.icon)
+                        const isLocal = isLocalRoute(route)
+                        const targetHref = isLocal ? normalizeLocalRoute(route) : buildExternalRoute(route, token)
+                        const active = isLocal && pathname === targetHref
+
+                        if (!isLocal) {
+                          return (
+                            <a
+                              key={label}
+                              href={targetHref}
+                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-slate-600 hover:bg-slate-50 hover:text-[#047D78] transition"
+                            >
+                              <Icon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{label}</span>
+                            </a>
+                          )
+                        }
+
+                        return (
+                          <Link
+                            key={label}
+                            href={targetHref}
+                            onClick={onClose}
+                            className={`flex w-full items-center gap-3 py-2 px-3 text-xs font-semibold uppercase tracking-[0.03em] transition ${
+                              active
+                                ? 'bg-teal-50/70 text-[#047D78] font-bold border-l-4 border-[#047D78] rounded-r-xl rounded-l-none'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#047D78]'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{label}</span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </section>
+              )
+            })
+          ) : (
+            sidebarMenu.map((group) => {
+              if (group.title === 'Akses Sistem') {
+                const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
+                const isTamu = !isAuthenticated || isGuest
+                if (isMasyarakat || isTamu) {
+                  return null
+                }
+              }
+
+              const isExpanded = expandedGroups[group.title] ?? false
+
+              return (
+                <section key={group.title}>
+                  {/* Group header — clickable to toggle if collapsible */}
+                  {group.collapsible ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.title)}
+                      className="flex w-full items-center justify-between px-2 py-1 rounded-lg hover:bg-slate-50 transition text-slate-800"
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                        {group.title}
+                      </p>
+                      {isExpanded
+                        ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                        : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                      }
+                    </button>
+                  ) : (
+                    <p className="px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
                       {group.title}
                     </p>
-                    {isExpanded
-                      ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                      : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                    }
-                  </button>
-                ) : (
-                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                    {group.title}
-                  </p>
-                )}
+                  )}
 
-                {/* Items — hidden if collapsible and not expanded */}
-                {(!group.collapsible || isExpanded) && (
-                  <div className="mt-2 space-y-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon
-                      let href = item.href
-                      const active = item.href !== '#' && pathname === item.href
-                      if (item.isExternal && token) {
-                        href = `${href}/index.php?r=site/sso-login&token=${token}`
-                      }
+                  {/* Items — hidden if collapsible and not expanded */}
+                  {(!group.collapsible || isExpanded) && (
+                    <div className="mt-2 space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon
+                        let href = item.href
+                        const active = item.href !== '#' && pathname === item.href
+                        if (item.isExternal && token) {
+                          href = `${href}/index.php?r=site/sso-login&token=${token}`
+                        }
 
-                      if (item.isExternal) {
+                        if (item.isExternal) {
+                          return (
+                            <a
+                              key={item.label}
+                              href={href}
+                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-slate-600 hover:bg-slate-50 hover:text-[#047D78] transition"
+                            >
+                              <Icon className="h-4 w-4" />
+                              {item.label}
+                            </a>
+                          )
+                        }
+
                         return (
-                          <a
+                          <Link
                             key={item.label}
-                            href={href}
-                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-[0.03em] text-teal-50/85 hover:bg-white/10 hover:text-white transition"
+                            href={item.href}
+                            onClick={(event) => {
+                              if (item.href === '#') event.preventDefault()
+                              else onClose()
+                            }}
+                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.03em] transition ${
+                              active
+                                ? 'bg-teal-50/70 text-[#047D78] font-bold border-l-4 border-[#047D78] rounded-r-xl rounded-l-none'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#047D78]'
+                            }`}
                           >
-                            <Icon className="h-4 w-4" />
-                            {item.label}
-                          </a>
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                          </Link>
                         )
-                      }
-
-                      return (
-                        <Link
-                          key={item.label}
-                          href={item.href}
-                          onClick={(event) => {
-                            if (item.href === '#') event.preventDefault()
-                            else onClose()
-                          }}
-                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.03em] transition ${
-                            active
-                              ? 'bg-white/14 text-white shadow-[inset_0_0_0_1px_rgba(94,234,212,0.55)]'
-                              : 'text-teal-50/80 hover:bg-white/10 hover:text-white'
-                          } ${group.collapsible ? 'pl-5' : ''}`}
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                )}
-              </section>
-            )
-          })}
+                      })}
+                    </div>
+                  )}
+                </section>
+              )
+            })
+          )}
         </nav>
       </aside>
     </>

@@ -1,5 +1,6 @@
 'use client'
 
+import { use } from 'react'
 import { notFound } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
@@ -28,8 +29,9 @@ function PageLoader() {
   )
 }
 
-export default function PantauanPage({ params }: { params: { slug: string } }) {
-  const Component = pageComponents[params.slug]
+export default function PantauanPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params)
+  const Component = pageComponents[resolvedParams.slug]
   if (!Component) {
     notFound()
   }
