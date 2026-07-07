@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/authStore'
 import {
   Bell,
   ChevronDown,
+  ChevronRight,
   Download,
   Flame,
   LogOut,
@@ -20,6 +21,16 @@ import {
   RefreshCw,
   Clock,
   LayoutGrid,
+  // PANTAUAN icons
+  Shield,
+  Newspaper,
+  Wind,
+  Globe,
+  TreePine,
+  Cloud,
+  Activity,
+  Mountain,
+  Layers,
 } from 'lucide-react'
 
 
@@ -42,6 +53,7 @@ type SidebarMenuItem = {
 type SidebarMenuGroup = {
   title: string
   items: SidebarMenuItem[]
+  collapsible?: boolean
 }
 
 const sidebarMenu: SidebarMenuGroup[] = [
@@ -49,6 +61,21 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'Menu Utama',
     items: [
       { label: 'Dashboard EOC Krisis Kesehatan Nasional', href: '/', icon: Flame },
+    ],
+  },
+  {
+    title: 'Pantauan',
+    collapsible: true,
+    items: [
+      { label: 'Pantauan BNPB', href: '/pantauan/bnpb', icon: Shield },
+      { label: 'Pantauan Media', href: '/pantauan/media', icon: Newspaper },
+      { label: 'Pergerakan Angin', href: '/pantauan/angin', icon: Wind },
+      { label: 'Penyakit Menular Dunia', href: '/pantauan/penyakit', icon: Globe },
+      { label: 'Hotspot Karhutla', href: '/pantauan/karhutla', icon: TreePine },
+      { label: 'Cuaca', href: '/pantauan/cuaca', icon: Cloud },
+      { label: 'Gempa Bumi', href: '/pantauan/gempa', icon: Activity },
+      { label: 'Gunung Berapi', href: '/pantauan/gunung-berapi', icon: Mountain },
+      { label: 'Pergerakan Tanah', href: '/pantauan/tanah', icon: Layers },
     ],
   },
   {
@@ -122,6 +149,14 @@ const notificationsData = [
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { token, user, isAuthenticated, isGuest } = useAuthStore()
+  // Track which collapsible groups are expanded
+  const isPantauanActive = pathname.startsWith('/pantauan')
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    () => ({ Pantauan: isPantauanActive })
+  )
+  const toggleGroup = (title: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [title]: !prev[title] }))
+  }
 
   return (
     <>
@@ -175,56 +210,79 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               }
             }
 
+            const isExpanded = expandedGroups[group.title] ?? false
+
             return (
               <section key={group.title}>
-                <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
-                  {group.title}
-                </p>
-                <div className="mt-2 space-y-1.5">
-                {group.items.map((item) => {
-                  const Icon = item.icon
-                  let href = item.href
-                  const active = item.href !== '#' && pathname === item.href
-                  if (item.isExternal && token) {
-                    href = `${href}/index.php?r=site/sso-login&token=${token}`
-                  }
+                {/* Group header — clickable to toggle if collapsible */}
+                {group.collapsible ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.title)}
+                    className="flex w-full items-center justify-between px-2 py-1 rounded-lg hover:bg-white/5 transition"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                      {group.title}
+                    </p>
+                    {isExpanded
+                      ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                    }
+                  </button>
+                ) : (
+                  <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-300">
+                    {group.title}
+                  </p>
+                )}
 
-                  if (item.isExternal) {
-                    return (
-                      <a
-                        key={item.label}
-                        href={href}
-                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-[0.03em] text-teal-50/85 hover:bg-white/10 hover:text-white transition"
-                      >
-                        <Icon className="h-4 w-4" />
-                        {item.label}
-                      </a>
-                    )
-                  }
+                {/* Items — hidden if collapsible and not expanded */}
+                {(!group.collapsible || isExpanded) && (
+                  <div className="mt-2 space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      let href = item.href
+                      const active = item.href !== '#' && pathname === item.href
+                      if (item.isExternal && token) {
+                        href = `${href}/index.php?r=site/sso-login&token=${token}`
+                      }
 
-                  return (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      onClick={(event) => {
-                        if (item.href === '#') event.preventDefault()
-                        else onClose()
-                      }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-[0.03em] transition ${
-                        active
-                          ? 'bg-white/14 font-semibold text-white shadow-[inset_0_0_0_1px_rgba(94,234,212,0.55)]'
-                          : 'text-teal-50/85 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            </section>
-          )
-        })}
+                      if (item.isExternal) {
+                        return (
+                          <a
+                            key={item.label}
+                            href={href}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold uppercase tracking-[0.03em] text-teal-50/85 hover:bg-white/10 hover:text-white transition"
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </a>
+                        )
+                      }
+
+                      return (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                          onClick={(event) => {
+                            if (item.href === '#') event.preventDefault()
+                            else onClose()
+                          }}
+                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.03em] transition ${
+                            active
+                              ? 'bg-white/14 text-white shadow-[inset_0_0_0_1px_rgba(94,234,212,0.55)]'
+                              : 'text-teal-50/80 hover:bg-white/10 hover:text-white'
+                          } ${group.collapsible ? 'pl-5' : ''}`}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )
+          })}
         </nav>
       </aside>
     </>
