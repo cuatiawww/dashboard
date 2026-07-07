@@ -63,42 +63,43 @@ type SidebarMenuGroup = {
 
 const sidebarMenu: SidebarMenuGroup[] = [
   {
-    title: 'Menu Utama',
+    title: 'DASHBOARD EOC',
     items: [
-      { label: 'Dashboard EOC Krisis Kesehatan Nasional', href: '/', icon: Flame },
+      { label: 'DASHBOARD EOC', href: '/', icon: Flame },
     ],
   },
   {
-    title: 'Pantauan',
+    title: 'PANTAUAN',
     collapsible: true,
     items: [
-      { label: 'Pantauan BNPB', href: '/pantauan/bnpb', icon: Shield },
-      { label: 'Pantauan Media', href: '/pantauan/media', icon: Newspaper },
-      { label: 'Pergerakan Angin', href: '/pantauan/angin', icon: Wind },
-      { label: 'Penyakit Menular Dunia', href: '/pantauan/penyakit', icon: Globe },
-      { label: 'Hotspot Karhutla', href: '/pantauan/karhutla', icon: TreePine },
-      { label: 'Cuaca', href: '/pantauan/cuaca', icon: Cloud },
-      { label: 'Gempa Bumi', href: '/pantauan/gempa', icon: Activity },
-      { label: 'Gunung Berapi', href: '/pantauan/gunung-berapi', icon: Mountain },
-      { label: 'Pergerakan Tanah', href: '/pantauan/tanah', icon: Layers },
+      { label: 'PANTAUAN BNPB', href: '/pantauan/bnpb', icon: Shield },
+      { label: 'PANTAUAN MEDIA', href: '/pantauan/media', icon: Newspaper },
+      { label: 'PERGERAKAN ANGIN', href: '/pantauan/angin', icon: Wind },
+      { label: 'PENYAKIT MENULAR DUNIA', href: '/pantauan/penyakit', icon: Globe },
+      { label: 'HOTSPOT KARHUTLA', href: '/pantauan/karhutla', icon: TreePine },
+      { label: 'CUACA', href: '/pantauan/cuaca', icon: Cloud },
+      { label: 'GEMPA BUMI', href: '/pantauan/gempa', icon: Activity },
+      { label: 'GUNUNG BERAPI', href: '/pantauan/gunung-berapi', icon: Mountain },
+      { label: 'PERGERAKAN TANAH', href: '/pantauan/tanah', icon: Layers },
     ],
   },
   {
-    title: 'Akses Sistem',
+    title: 'AKSES SISTEM',
     items: [
       {
-        label: 'Akses Sistem',
-        href: process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru',
+        label: 'AKSES SISTEM',
+        href: '',
         icon: LayoutGrid,
         isExternal: true,
       },
     ],
   },
   {
-    title: 'Pengelolaan',
+    title: 'PENGELOLAAN',
+    collapsible: true,
     items: [
-      { label: 'Verifikasi Data', href: '#', icon: ShieldCheck },
-      { label: 'Pengaturan', href: '#', icon: Settings },
+      { label: 'VERIFIKASI DATA', href: 'faskes/verifikasi', icon: ShieldCheck, isExternal: true },
+      { label: 'PENGATURAN', href: 'system-setting', icon: Settings, isExternal: true },
     ],
   },
 ]
@@ -204,56 +205,18 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { token, user, isAuthenticated, isGuest } = useAuthStore()
 
-  // Dynamic menu from DB
-  const [dynamicMenu, setDynamicMenu] = useState<any[] | null>(null)
-  const [loadingMenu, setLoadingMenu] = useState(false)
-
   // Track expanded groups
   const isPantauanActive = pathname.startsWith('/pantauan')
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () => ({ Pantauan: isPantauanActive })
-  )
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => ({
+    'DASHBOARD EOC': true,
+    'PANTAUAN': isPantauanActive,
+    'AKSES SISTEM': true,
+    'PENGELOLAAN': true,
+  }))
 
   const toggleGroup = (title: string) => {
     setExpandedGroups((prev) => ({ ...prev, [title]: !prev[title] }))
   }
-
-  // Fetch dynamic menu if authenticated
-  useEffect(() => {
-    if (!token) {
-      setDynamicMenu(null)
-      return
-    }
-
-    setLoadingMenu(true)
-    fetch(buildApiUrl('/api/menu'), {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error()
-        return res.json()
-      })
-      .then((data) => {
-        if (data.success && Array.isArray(data.menu)) {
-          setDynamicMenu(data.menu)
-          // Default expand all database modules
-          const initialExpanded: Record<string, boolean> = {}
-          data.menu.forEach((mod: any) => {
-            const title = mod.modul_label || mod.label || mod.nama_modul
-            initialExpanded[title] = true
-          })
-          setExpandedGroups((prev) => ({ ...prev, ...initialExpanded }))
-        }
-      })
-      .catch((err) => {
-        console.error('Gagal mengambil menu dinamis database:', err)
-      })
-      .finally(() => {
-        setLoadingMenu(false)
-      })
-  }, [token])
 
   return (
     <>
@@ -284,7 +247,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold tracking-wide text-slate-800">FASILITAS KESEHATAN</p>
+              <p className="text-sm font-bold tracking-wide text-slate-800">DASHBOARD EOC</p>
               <p className="mt-0.5 text-[11px] text-slate-500">Kementerian Kesehatan RI</p>
             </div>
           </div>
@@ -298,157 +261,86 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
           </button>
         </div>
         <nav className="h-[calc(100vh-80px)] space-y-5 overflow-y-auto px-3 py-4">
-          {dynamicMenu ? (
-            dynamicMenu.map((modul: any) => {
-              const hasSub = Array.isArray(modul.sub_modules) && modul.sub_modules.length > 0
-              const title = modul.modul_label || modul.label || modul.nama_modul
-              const isExpanded = expandedGroups[title] ?? true
+          {sidebarMenu.map((group) => {
+            if (group.title === 'AKSES SISTEM') {
+              const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
+              const isTamu = !isAuthenticated || isGuest
+              if (isMasyarakat || isTamu) {
+                return null
+              }
+            }
 
-              return (
-                <section key={title} className="space-y-1">
+            const isExpanded = expandedGroups[group.title] ?? false
+
+            return (
+              <section key={group.title}>
+                {/* Group header — clickable to toggle if collapsible */}
+                {group.collapsible ? (
                   <button
                     type="button"
-                    onClick={() => toggleGroup(title)}
-                    className="flex w-full items-center justify-between px-2 py-1.5 rounded-lg hover:bg-slate-50 text-slate-800 transition"
+                    onClick={() => toggleGroup(group.title)}
+                    className="flex w-full items-center justify-between px-2 py-1 rounded-lg hover:bg-slate-50 transition text-slate-800"
                   >
                     <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                      {title}
-                    </p>
-                    {hasSub && (isExpanded ? (
-                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                    ))}
-                  </button>
-
-                  {isExpanded && hasSub && (
-                    <div className="mt-1 space-y-1">
-                      {modul.sub_modules.map((sub: any) => {
-                        const label = sub.sub_modul_label || sub.label || sub.nama_sub_modul
-                        const route = sub.route || '#'
-                        const Icon = getIconComponent(sub.icon)
-                        const isLocal = isLocalRoute(route)
-                        const targetHref = isLocal ? normalizeLocalRoute(route) : buildExternalRoute(route, token)
-                        const active = isLocal && pathname === targetHref
-
-                        if (!isLocal) {
-                          return (
-                            <a
-                              key={label}
-                              href={targetHref}
-                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-slate-600 hover:bg-slate-50 hover:text-[#047D78] transition"
-                            >
-                              <Icon className="h-3.5 w-3.5 shrink-0" />
-                              <span className="truncate">{label}</span>
-                            </a>
-                          )
-                        }
-
-                        return (
-                          <Link
-                            key={label}
-                            href={targetHref}
-                            onClick={onClose}
-                            className={`flex w-full items-center gap-3 py-2 px-3 text-xs font-semibold uppercase tracking-[0.03em] transition ${
-                              active
-                                ? 'bg-teal-50/70 text-[#047D78] font-bold border-l-4 border-[#047D78] rounded-r-xl rounded-l-none'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#047D78]'
-                            }`}
-                          >
-                            <Icon className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{label}</span>
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-              )
-            })
-          ) : (
-            sidebarMenu.map((group) => {
-              if (group.title === 'Akses Sistem') {
-                const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
-                const isTamu = !isAuthenticated || isGuest
-                if (isMasyarakat || isTamu) {
-                  return null
-                }
-              }
-
-              const isExpanded = expandedGroups[group.title] ?? false
-
-              return (
-                <section key={group.title}>
-                  {/* Group header — clickable to toggle if collapsible */}
-                  {group.collapsible ? (
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.title)}
-                      className="flex w-full items-center justify-between px-2 py-1 rounded-lg hover:bg-slate-50 transition text-slate-800"
-                    >
-                      <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                        {group.title}
-                      </p>
-                      {isExpanded
-                        ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                        : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
-                      }
-                    </button>
-                  ) : (
-                    <p className="px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
                       {group.title}
                     </p>
-                  )}
+                    {isExpanded
+                      ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                    }
+                  </button>
+                ) : (
+                  <p className="px-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                    {group.title}
+                  </p>
+                )}
 
-                  {/* Items — hidden if collapsible and not expanded */}
-                  {(!group.collapsible || isExpanded) && (
-                    <div className="mt-2 space-y-1">
-                      {group.items.map((item) => {
-                        const Icon = item.icon
-                        let href = item.href
-                        const active = item.href !== '#' && pathname === item.href
-                        if (item.isExternal && token) {
-                          href = `${href}/index.php?r=site/sso-login&token=${token}`
-                        }
+                {/* Items — hidden if collapsible and not expanded */}
+                {(!group.collapsible || isExpanded) && (
+                  <div className="mt-2 space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      const isLocal = !item.isExternal
+                      const targetHref = isLocal ? item.href : buildExternalRoute(item.href, token)
+                      const active = isLocal && pathname === targetHref
 
-                        if (item.isExternal) {
-                          return (
-                            <a
-                              key={item.label}
-                              href={href}
-                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-slate-600 hover:bg-slate-50 hover:text-[#047D78] transition"
-                            >
-                              <Icon className="h-4 w-4" />
-                              {item.label}
-                            </a>
-                          )
-                        }
-
+                      if (!isLocal) {
                         return (
-                          <Link
+                          <a
                             key={item.label}
-                            href={item.href}
-                            onClick={(event) => {
-                              if (item.href === '#') event.preventDefault()
-                              else onClose()
-                            }}
-                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.03em] transition ${
-                              active
-                                ? 'bg-teal-50/70 text-[#047D78] font-bold border-l-4 border-[#047D78] rounded-r-xl rounded-l-none'
-                                : 'text-slate-600 hover:bg-slate-50 hover:text-[#047D78]'
-                            }`}
+                            href={targetHref}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-slate-600 hover:bg-slate-50 hover:text-[#047D78] transition"
                           >
                             <Icon className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate">{item.label}</span>
-                          </Link>
+                          </a>
                         )
-                      })}
-                    </div>
-                  )}
-                </section>
-              )
-            })
-          )}
+                      }
+
+                      return (
+                        <Link
+                          key={item.label}
+                          href={targetHref}
+                          onClick={(event) => {
+                            if (item.href === '#') event.preventDefault()
+                            else onClose()
+                          }}
+                          className={`flex w-full items-center gap-3 py-2 px-3 text-xs font-semibold uppercase tracking-[0.03em] transition ${
+                            active
+                              ? 'bg-teal-50/70 text-[#047D78] font-bold border-l-4 border-[#047D78] rounded-r-xl rounded-l-none'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-[#047D78]'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )
+          })}
         </nav>
       </aside>
     </>
