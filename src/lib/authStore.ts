@@ -63,10 +63,30 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token: null, user: null, isAuthenticated: false, isGuest: true })
   },
   logout: () => {
+    // Ambil token sebelum dihapus untuk dikirim ke backend
+    const currentToken = localStorage.getItem('auth_token')
+
+    // Hapus state lokal segera (UX tetap responsif)
     localStorage.removeItem('auth_token')
     localStorage.removeItem('auth_user')
     localStorage.removeItem('auth_guest')
     set({ token: null, user: null, isAuthenticated: false, isGuest: false })
+
+    // Single Sign-Out: hit backend Yii2 agar session server juga terhapus
+    if (currentToken) {
+      const backendBase = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id'
+      fetch(`${backendBase}/api/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+        },
+        // fire-and-forget — jangan await, biarkan berjalan di background
+        keepalive: true,
+      }).catch(() => {
+        // Abaikan error jaringan — logout lokal sudah berhasil
+      })
+    }
   },
   initialize: () => {
     if (typeof window === 'undefined') return
