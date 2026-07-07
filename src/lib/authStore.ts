@@ -5,6 +5,7 @@ export interface User {
   username: string
   email: string
   nama_lengkap: string
+  no_telpon?: string
   level_user_id: number
   level_name?: string
   wilayah_scope?: WilayahScope
