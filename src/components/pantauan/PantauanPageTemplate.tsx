@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Loader2, RefreshCw, ExternalLink } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useHeaderStore } from '@/lib/headerStore'
 
 // ─── Stat Widget ─────────────────────────────────────────────────────────────
 
@@ -95,61 +97,41 @@ export default function PantauanPageTemplate({
   bottomContent,
   sideContent,
 }: PantauanPageTemplateProps) {
-  return (
-    <div className="min-h-screen bg-[#f0f7f7] pt-20 pb-10">
-      {/* ── Header Section ── */}
-      <div className="border-b border-teal-200/60 bg-white/80 backdrop-blur-sm px-6 py-4 shadow-sm">
-        <div className="mx-auto max-w-screen-2xl flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {Icon && (
-              <div className={`grid h-9 w-9 place-items-center rounded-xl ${iconBg} shrink-0`}>
-                <Icon className="h-5 w-5" />
-              </div>
-            )}
-            <div>
-              <h1 className="text-base font-bold text-slate-800 leading-tight">{title}</h1>
-              {description && (
-                <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {lastUpdated && (
-              <span className="hidden text-[11px] text-slate-400 sm:block">
-                Diperbarui: {lastUpdated}
-              </span>
-            )}
-            {sourceLabel && sourceUrl && (
-              <a
-                href={sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 hover:bg-teal-100 transition"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {sourceLabel}
-              </a>
-            )}
-            {onRefresh && (
-              <button
-                onClick={onRefresh}
-                disabled={loading}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+  const { setHeader, resetHeader } = useHeaderStore()
 
+  useEffect(() => {
+    setHeader({
+      title,
+      description,
+      lastUpdated,
+      sourceLabel,
+      sourceUrl,
+    })
+    return () => resetHeader()
+  }, [title, description, lastUpdated, sourceLabel, sourceUrl, setHeader, resetHeader])
+
+  return (
+    <div className="min-h-screen bg-[#f0f7f7] pt-6 pb-10">
       {/* ── Main Content ── */}
-      <div className="mx-auto max-w-screen-2xl px-4 py-6 space-y-6">
+      <div className="w-full px-6 py-6 space-y-6">
         {/* Error Banner */}
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             ⚠️ {error}
+          </div>
+        )}
+
+        {/* Action Bar */}
+        {onRefresh && (
+          <div className="flex justify-end">
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Data
+            </button>
           </div>
         )}
 

@@ -37,6 +37,7 @@ import {
   Info,
 } from 'lucide-react'
 import { buildApiUrl } from '@/lib/utils/api'
+import { useHeaderStore } from '@/lib/headerStore'
 
 
 type DashboardHeaderProps = {
@@ -209,7 +210,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const isPantauanActive = pathname.startsWith('/pantauan')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => ({
     'DASHBOARD EOC': true,
-    'PANTAUAN': isPantauanActive,
+    'PANTAUAN': true,
     'AKSES SISTEM': true,
     'PENGELOLAAN': true,
   }))
@@ -355,6 +356,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   const notifRef = useRef<HTMLDivElement>(null)
   
   const { user, logout, isAuthenticated } = useAuthStore()
+  const { title: headerTitle, description: headerDesc, lastUpdated, sourceLabel, sourceUrl } = useHeaderStore()
   const [activeRegion, setActiveRegion] = useState('NASIONAL')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -443,12 +445,30 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 priority
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
-                <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl">
-                  DASHBOARD EOC KRISIS KESEHATAN NASIONAL
+                <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl uppercase">
+                  {headerTitle}
                 </h1>
                 <p className="mt-2 max-w-[760px] text-sm leading-relaxed text-slate-600 md:text-base">
-                  {`Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
+                  {headerDesc || `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
                 </p>
+                {(lastUpdated || (sourceLabel && sourceUrl)) && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 font-semibold">
+                    {lastUpdated && (
+                      <span>Diperbarui: {lastUpdated}</span>
+                    )}
+                    {lastUpdated && sourceLabel && <span className="text-slate-300">|</span>}
+                    {sourceLabel && sourceUrl && (
+                      <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-[10px] font-bold text-teal-700 hover:bg-teal-100 transition uppercase tracking-wider"
+                      >
+                        {sourceLabel}
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
