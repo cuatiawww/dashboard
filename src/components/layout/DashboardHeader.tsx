@@ -89,7 +89,7 @@ const sidebarMenu: SidebarMenuGroup[] = [
     items: [
       {
         label: 'AKSES SISTEM',
-        href: '',
+        href: 'site/login',
         icon: LayoutGrid,
         isExternal: true,
       },

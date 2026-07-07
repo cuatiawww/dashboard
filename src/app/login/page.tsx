@@ -384,10 +384,10 @@ export default function LoginPage() {
                 <div className="h-px flex-1 bg-slate-100" />
               </div>
 
-              {/* SSO Login */}
+              {/* Akses Sistem — link ke halaman login admin backend */}
               <div className="mb-4">
                 <a
-                  href={`${process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru'}/index.php?r=auth/sso`}
+                  href={`${process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru'}/index.php?r=site/login`}
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 hover:border-teal-300 text-[13px] font-extrabold uppercase tracking-wider transition-all"
                 >
                   Akses Sistem
