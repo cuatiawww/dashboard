@@ -174,8 +174,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
   const [showBaseMap, setShowBaseMap] = useState(false)
   const [showGeoJson, setShowGeoJson] = useState(true)
-  const [showRegionLegend, setShowRegionLegend] = useState(true)
-  const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
+  const [showRegionLegend, setShowRegionLegend] = useState(false)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
   // BNPB layer visibilities
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
