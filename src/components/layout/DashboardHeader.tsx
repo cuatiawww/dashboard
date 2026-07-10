@@ -70,18 +70,9 @@ const sidebarMenu: SidebarMenuGroup[] = [
     ],
   },
   {
-    title: 'PANTAUAN',
-    collapsible: true,
+    title: 'PEMANTAUAN KRISIS',
     items: [
-      { label: 'PANTAUAN BNPB', href: '/pantauan/bnpb', icon: Shield },
-      { label: 'PANTAUAN MEDIA', href: '/pantauan/media', icon: Newspaper },
-      { label: 'PERGERAKAN ANGIN', href: '/pantauan/angin', icon: Wind },
-      { label: 'PENYAKIT MENULAR DUNIA', href: '/pantauan/penyakit', icon: Globe },
-      { label: 'HOTSPOT KARHUTLA', href: '/pantauan/karhutla', icon: TreePine },
-      { label: 'CUACA', href: '/pantauan/cuaca', icon: Cloud },
-      { label: 'GEMPA BUMI', href: '/pantauan/gempa', icon: Activity },
-      { label: 'GUNUNG BERAPI', href: '/pantauan/gunung-berapi', icon: Mountain },
-      { label: 'PERGERAKAN TANAH', href: '/pantauan/tanah', icon: Layers },
+      { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
     ],
   },
   {
@@ -118,11 +109,11 @@ const notificationsData = [
   {
     id: 2,
     title: 'Siaga Gempa Bumi',
-    description: 'Gempa M 5.6 di Karangasem, Bali. 5 korban jiwa dilaporkan.',
-    time: '15m',
-    icon: ShieldCheck,
-    iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
-    unread: true,
+    description: 'Terjadi gempa bumi di Sulawesi. 2 korban luka, faskes rusak sedang.',
+    time: '1h',
+    icon: Activity,
+    iconBg: 'bg-orange-50 text-orange-600 border-orange-100',
+    unread: false,
   },
   {
     id: 3,
@@ -153,23 +144,25 @@ const notificationsData = [
   },
 ]
 
-function getIconComponent(iconName: string) {
-  const name = iconName?.toLowerCase() || ''
-  if (name.includes('shield') || name.includes('security') || name.includes('bnpb')) return Shield
-  if (name.includes('newspaper') || name.includes('media') || name.includes('news')) return Newspaper
-  if (name.includes('wind') || name.includes('angin')) return Wind
-  if (name.includes('globe') || name.includes('penyakit') || name.includes('world')) return Globe
-  if (name.includes('tree') || name.includes('karhutla') || name.includes('forest')) return TreePine
-  if (name.includes('cloud') || name.includes('cuaca') || name.includes('weather')) return Cloud
-  if (name.includes('activity') || name.includes('gempa') || name.includes('seismic')) return Activity
-  if (name.includes('mountain') || name.includes('gunung')) return Mountain
-  if (name.includes('layers') || name.includes('tanah') || name.includes('ground')) return Layers
-  if (name.includes('layout') || name.includes('dashboard')) return Flame
-  if (name.includes('user') || name.includes('users') || name.includes('profile')) return Users
-  if (name.includes('gear') || name.includes('settings') || name.includes('pengaturan')) return Settings
-  if (name.includes('lock') || name.includes('key')) return Key
-  if (name.includes('file') || name.includes('document')) return FileText
-  if (name.includes('help') || name.includes('info')) return Info
+// Helper function to resolve icon components based on string names (dynamic fallback)
+const getMenuIcon = (name: string) => {
+  const lowercaseName = name?.toLowerCase() || ''
+  if (lowercaseName.includes('dashboard') || lowercaseName.includes('home')) return Flame
+  if (lowercaseName.includes('pantauan') || lowercaseName.includes('krisis') || lowercaseName.includes('activity') || lowercaseName.includes('peta')) return Activity
+  if (lowercaseName.includes('login') || lowercaseName.includes('register')) return LayoutGrid
+  if (lowercaseName.includes('verifikasi')) return ShieldCheck
+  if (lowercaseName.includes('setting') || lowercaseName.includes('pengaturan')) return Settings
+  if (lowercaseName.includes('shield')) return Shield
+  if (lowercaseName.includes('newspaper')) return Newspaper
+  if (lowercaseName.includes('wind')) return Wind
+  if (lowercaseName.includes('globe')) return Globe
+  if (lowercaseName.includes('tree') || lowercaseName.includes('karhutla')) return TreePine
+  if (lowercaseName.includes('cloud') || lowercaseName.includes('cuaca')) return Cloud
+  if (lowercaseName.includes('mountain') || lowercaseName.includes('gunung')) return Mountain
+  if (lowercaseName.includes('layer') || lowercaseName.includes('tanah')) return Layers
+  if (lowercaseName.includes('lock') || lowercaseName.includes('key')) return Key
+  if (lowercaseName.includes('file') || lowercaseName.includes('document')) return FileText
+  if (lowercaseName.includes('help') || lowercaseName.includes('info')) return Info
   return LayoutGrid
 }
 
@@ -180,15 +173,7 @@ const isLocalRoute = (route: string) => {
 
 const normalizeLocalRoute = (route: string) => {
   const r = route?.toLowerCase() || ''
-  if (r.includes('pantauan/bnpb')) return '/pantauan/bnpb'
-  if (r.includes('pantauan/media')) return '/pantauan/media'
-  if (r.includes('pantauan/angin')) return '/pantauan/angin'
-  if (r.includes('pantauan/penyakit')) return '/pantauan/penyakit'
-  if (r.includes('pantauan/karhutla')) return '/pantauan/karhutla'
-  if (r.includes('pantauan/cuaca')) return '/pantauan/cuaca'
-  if (r.includes('pantauan/gempa')) return '/pantauan/gempa'
-  if (r.includes('pantauan/gunung-berapi')) return '/pantauan/gunung-berapi'
-  if (r.includes('pantauan/tanah')) return '/pantauan/tanah'
+  if (r.includes('pantauan/krisis-kesehatan')) return '/pantauan/krisis-kesehatan'
   return '/'
 }
 

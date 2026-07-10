@@ -7,15 +7,7 @@ import { Loader2 } from 'lucide-react'
 
 // Map slug to dynamic component imports
 const pageComponents: Record<string, React.ComponentType> = {
-  bnpb: dynamic(() => import('@/components/pantauan/pages/PantauanBNPBPage'), { ssr: false, loading: () => <PageLoader /> }),
-  media: dynamic(() => import('@/components/pantauan/pages/PantauanMediaPage'), { ssr: false, loading: () => <PageLoader /> }),
-  angin: dynamic(() => import('@/components/pantauan/pages/PergerakanAnginPage'), { ssr: false, loading: () => <PageLoader /> }),
-  penyakit: dynamic(() => import('@/components/pantauan/pages/PenyakitMenularPage'), { ssr: false, loading: () => <PageLoader /> }),
-  karhutla: dynamic(() => import('@/components/pantauan/pages/HotspotKarhutlaPage'), { ssr: false, loading: () => <PageLoader /> }),
-  cuaca: dynamic(() => import('@/components/pantauan/pages/CuacaPage'), { ssr: false, loading: () => <PageLoader /> }),
-  gempa: dynamic(() => import('@/components/pantauan/pages/GempaBumiPage'), { ssr: false, loading: () => <PageLoader /> }),
-  'gunung-berapi': dynamic(() => import('@/components/pantauan/pages/GunungBerapiPage'), { ssr: false, loading: () => <PageLoader /> }),
-  tanah: dynamic(() => import('@/components/pantauan/pages/PergerakanTanahPage'), { ssr: false, loading: () => <PageLoader /> }),
+  'krisis-kesehatan': dynamic(() => import('@/components/pantauan/pages/KrisisKesehatanPage'), { ssr: false, loading: () => <PageLoader /> }),
 }
 
 function PageLoader() {
