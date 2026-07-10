@@ -15,6 +15,7 @@ import VectorLayer from 'ol/layer/Vector'
 import VectorSource from 'ol/source/Vector'
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
+import TileArcGISRest from 'ol/source/TileArcGISRest'
 import { Fill, Stroke, Style, Circle as CircleStyle, Icon } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
@@ -152,6 +153,14 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const markerLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const lastFetchedProvinceRef = useRef<string | null>(null)
 
+  // BNPB layers refs
+  const bnpbAdminLayerRef = useRef<any>(null)
+  const bnpbHillshadeLayerRef = useRef<any>(null)
+  const bnpbKepadatanLayerRef = useRef<any>(null)
+  const bnpbBanjirLayerRef = useRef<any>(null)
+  const bnpbGempaLayerRef = useRef<any>(null)
+  const bnpbLongsorLayerRef = useRef<any>(null)
+  const bnpbKarhutlaLayerRef = useRef<any>(null)
 
   // Stable callback refs (avoid stale closures inside OL event handlers)
   const onSelectProvinceRef = useRef(onSelectProvince)
@@ -167,6 +176,15 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showGeoJson, setShowGeoJson] = useState(true)
   const [showRegionLegend, setShowRegionLegend] = useState(true)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
+
+  // BNPB layer visibilities
+  const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
+  const [showBnpbHillshade, setShowBnpbHillshade] = useState(false)
+  const [showBnpbKepadatan, setShowBnpbKepadatan] = useState(false)
+  const [showBnpbBanjir, setShowBnpbBanjir] = useState(false)
+  const [showBnpbGempa, setShowBnpbGempa] = useState(false)
+  const [showBnpbLongsor, setShowBnpbLongsor] = useState(false)
+  const [showBnpbKarhutla, setShowBnpbKarhutla] = useState(false)
 
 
 
@@ -298,6 +316,76 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     })
     baseMapLayerRef.current = baseMapLayer
 
+    // BNPB layers
+    const bnpbAdminLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/batas_administrasi/MapServer',
+        params: {},
+      }),
+      visible: showBnpbAdmin,
+    })
+    bnpbAdminLayerRef.current = bnpbAdminLayer
+
+    const bnpbHillshadeLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/Basemap/Indo_Hillshade/MapServer',
+        params: {},
+      }),
+      visible: showBnpbHillshade,
+      opacity: 0.6,
+    })
+    bnpbHillshadeLayerRef.current = bnpbHillshadeLayer
+
+    const bnpbKepadatanLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/Basemap/Kepadatan_penduduk_2020/MapServer',
+        params: {},
+      }),
+      visible: showBnpbKepadatan,
+      opacity: 0.6,
+    })
+    bnpbKepadatanLayerRef.current = bnpbKepadatanLayer
+
+    const bnpbBanjirLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_banjir/ImageServer',
+        params: {},
+      }),
+      visible: showBnpbBanjir,
+      opacity: 0.6,
+    })
+    bnpbBanjirLayerRef.current = bnpbBanjirLayer
+
+    const bnpbGempaLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_gempabumi/ImageServer',
+        params: {},
+      }),
+      visible: showBnpbGempa,
+      opacity: 0.6,
+    })
+    bnpbGempaLayerRef.current = bnpbGempaLayer
+
+    const bnpbLongsorLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_tanah_longsor/ImageServer',
+        params: {},
+      }),
+      visible: showBnpbLongsor,
+      opacity: 0.6,
+    })
+    bnpbLongsorLayerRef.current = bnpbLongsorLayer
+
+    const bnpbKarhutlaLayer = new TileLayer({
+      source: new TileArcGISRest({
+        url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_kebakaran_hutan_dan_lahan/ImageServer',
+        params: {},
+      }),
+      visible: showBnpbKarhutla,
+      opacity: 0.6,
+    })
+    bnpbKarhutlaLayerRef.current = bnpbKarhutlaLayer
+
     // Province choropleth layer
     const provinceLayer = new VectorLayer({ source: new VectorSource() })
     provinceLayerRef.current = provinceLayer
@@ -312,7 +400,19 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     const map = new OlMap({
       target: mapRef.current,
-      layers: [baseMapLayer, provinceLayer, kabupatenLayer, markerLayer],
+      layers: [
+        baseMapLayer,
+        bnpbAdminLayer,
+        bnpbHillshadeLayer,
+        bnpbKepadatanLayer,
+        bnpbBanjirLayer,
+        bnpbGempaLayer,
+        bnpbLongsorLayer,
+        bnpbKarhutlaLayer,
+        provinceLayer,
+        kabupatenLayer,
+        markerLayer
+      ],
       controls: defaultControls({ attribution: false }),
       view: new View({
         center: fromLonLat([118, -2.5]),
@@ -330,7 +430,6 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
         (f) => f,
         { layerFilter: (l) => l === markerLayerRef.current }
       )
-
       if (markerFeature) {
         const data = markerFeature.get('markerData') as MarkerData
 
@@ -422,6 +521,13 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       map.setTarget(undefined)
       mapInstanceRef.current = null
       setMapInstance(null)
+      bnpbAdminLayerRef.current = null
+      bnpbHillshadeLayerRef.current = null
+      bnpbKepadatanLayerRef.current = null
+      bnpbBanjirLayerRef.current = null
+      bnpbGempaLayerRef.current = null
+      bnpbLongsorLayerRef.current = null
+      bnpbKarhutlaLayerRef.current = null
     }
   }, [])
 
@@ -448,6 +554,17 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       }
     }
   }, [showBaseMap, showGeoJson])
+
+  // ── Sync BNPB Layers state ──
+  useEffect(() => {
+    if (bnpbAdminLayerRef.current) bnpbAdminLayerRef.current.setVisible(showBnpbAdmin)
+    if (bnpbHillshadeLayerRef.current) bnpbHillshadeLayerRef.current.setVisible(showBnpbHillshade)
+    if (bnpbKepadatanLayerRef.current) bnpbKepadatanLayerRef.current.setVisible(showBnpbKepadatan)
+    if (bnpbBanjirLayerRef.current) bnpbBanjirLayerRef.current.setVisible(showBnpbBanjir)
+    if (bnpbGempaLayerRef.current) bnpbGempaLayerRef.current.setVisible(showBnpbGempa)
+    if (bnpbLongsorLayerRef.current) bnpbLongsorLayerRef.current.setVisible(showBnpbLongsor)
+    if (bnpbKarhutlaLayerRef.current) bnpbKarhutlaLayerRef.current.setVisible(showBnpbKarhutla)
+  }, [showBnpbAdmin, showBnpbHillshade, showBnpbKepadatan, showBnpbBanjir, showBnpbGempa, showBnpbLongsor, showBnpbKarhutla])
 
 
   // ─────────────────────────────────────────────
@@ -826,6 +943,140 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
 
 
+              </div>
+
+              {/* ── BNPB Inarisk Layers Section ── */}
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
+                  Layer BNPB (Inarisk)
+                </p>
+                <div className="space-y-2.5">
+                  {/* Toggle BNPB Batas Administrasi */}
+                  <div
+                    onClick={() => setShowBnpbAdmin((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Batas Administrasi BNPB</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Batas administrasi daerah Inarisk</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbAdmin ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbAdmin ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Hillshade */}
+                  <div
+                    onClick={() => setShowBnpbHillshade((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Indo Hillshade</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Peta bayangan bukit basemap</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbHillshade ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbHillshade ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Kepadatan Penduduk 2020 */}
+                  <div
+                    onClick={() => setShowBnpbKepadatan((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Kepadatan Penduduk 2020</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Kepadatan penduduk tahun 2020</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbKepadatan ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbKepadatan ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Bahaya Banjir */}
+                  <div
+                    onClick={() => setShowBnpbBanjir((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Bahaya Banjir</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan bencana banjir</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbBanjir ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbBanjir ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Bahaya Gempa */}
+                  <div
+                    onClick={() => setShowBnpbGempa((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Bahaya Gempa Bumi</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan gempa bumi</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbGempa ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbGempa ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Bahaya Longsor */}
+                  <div
+                    onClick={() => setShowBnpbLongsor((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Bahaya Tanah Longsor</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan tanah longsor</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbLongsor ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbLongsor ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Toggle BNPB Bahaya Karhutla */}
+                  <div
+                    onClick={() => setShowBnpbKarhutla((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Bahaya Karhutla</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Rawan kebakaran hutan & lahan</p>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbKarhutla ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbKarhutla ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* ── Filter & Kategori Section ── */}
