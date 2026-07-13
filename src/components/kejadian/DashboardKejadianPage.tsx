@@ -1593,7 +1593,7 @@ ${guidelines}`)
                     const isEven = idx % 2 === 1
                     return (
                       <tr
-                        key={m.kode_trans || idx}
+                        key={m.kode_trans ? `${m.kode_trans}-${idx}` : `event-${idx}`}
                         className={`transition-colors text-xs cursor-pointer ${
                           isEven ? 'bg-slate-50/50 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-100/70'
                         }`}
