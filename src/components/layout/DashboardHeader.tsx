@@ -21,6 +21,9 @@ import {
   RefreshCw,
   Clock,
   LayoutGrid,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
   // PANTAUAN icons
   Shield,
   Newspaper,
@@ -34,10 +37,10 @@ import {
   Users,
   Key,
   FileText,
-  Info,
 } from 'lucide-react'
 import { buildApiUrl } from '@/lib/utils/api'
 import { useHeaderStore } from '@/lib/headerStore'
+import { useNotificationItems, useNotificationSound } from '@/hooks/useNotification'
 
 
 type DashboardHeaderProps = {
@@ -143,6 +146,22 @@ const notificationsData = [
     unread: false,
   },
 ]
+
+// Helper function to format time ago
+const getTimeAgo = (date: Date): string => {
+  const now = new Date()
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (seconds < 60) return 'sekarang'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d`
+  
+  return date.toLocaleDateString('id-ID')
+}
 
 // Helper function to resolve icon components based on string names (dynamic fallback)
 const getMenuIcon = (name: string) => {
@@ -339,14 +358,53 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   const profileRef = useRef<HTMLDivElement>(null)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const [notificationsList, setNotificationsList] = useState<any[]>([])
   
   const { user, logout, isAuthenticated } = useAuthStore()
   const { title: headerTitle, description: headerDesc, lastUpdated, sourceLabel, sourceUrl } = useHeaderStore()
+  const { getItems, subscribeToItems, addNotificationItem, markAsRead, clearAll, markAllAsRead } = useNotificationItems()
+  const { playSound } = useNotificationSound()
   const [activeRegion, setActiveRegion] = useState('NASIONAL')
   const [isRefreshing, setIsRefreshing] = useState(false)
 
+  const hasUnread = notificationsList.some(n => !n.read)
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead()
+    window.dispatchEvent(new CustomEvent('sipkk-silence-alert'))
+  }
+
+  const handleClearAll = () => {
+    clearAll()
+    window.dispatchEvent(new CustomEvent('sipkk-silence-alert'))
+  }
+
+  // Subscribe to notification items
+  useEffect(() => {
+    const unsubscribe = subscribeToItems(() => {
+      const items = getItems().slice(0, 15)
+      console.log('[DashboardHeader] Notifications updated:', items)
+      setNotificationsList(items)
+    })
+    
+    // Initial load
+    const initialItems = getItems().slice(0, 15)
+    console.log('[DashboardHeader] Initial notifications:', initialItems)
+    setNotificationsList(initialItems)
+    
+    return unsubscribe
+  }, [subscribeToItems, getItems])
+
   const handleRefresh = () => {
     setIsRefreshing(true)
+    // Clear seen events so new data is detected as new
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.removeItem('sipkk-dashboard-seen-events-v1')
+      } catch {
+        // Ignore storage errors
+      }
+    }
     window.dispatchEvent(new CustomEvent('sipkk-refresh-data'))
     setTimeout(() => {
       setIsRefreshing(false)
@@ -469,16 +527,25 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 <RefreshCw className={`h-[18px] w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
               </button>
               <div className="relative" ref={notifRef}>
+                {hasUnread && (
+                  <span className="absolute inset-0 rounded-xl bg-red-500/40 animate-ping pointer-events-none" />
+                )}
                 <button
                   type="button"
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
+                  className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md ${
+                    hasUnread
+                      ? 'border-red-500 bg-red-50 text-red-650 ring-2 ring-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-[pulse_1s_infinite]'
+                      : 'border-slate-200 bg-white/95 text-slate-600'
+                  }`}
                   aria-label="Notifikasi"
                 >
-                  <Bell className="h-[19px] w-[19px]" />
-                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-teal-600 px-1 text-[10px] font-bold text-white">
-                    5
-                  </span>
+                  <Bell className={`h-[19px] w-[19px] ${hasUnread ? 'animate-bounce text-red-600' : 'text-slate-600'}`} />
+                  {notificationsList.length > 0 && (
+                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {notificationsList.length > 15 ? '15+' : notificationsList.length}
+                    </span>
+                  )}
                 </button>
 
                 {notifOpen && (
@@ -486,10 +553,12 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                     {/* Header */}
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-800">Notifikasi</span>
-                        <span className="rounded-full bg-teal-50 border border-teal-100 px-2 py-0.5 text-[9px] font-extrabold text-teal-700 uppercase tracking-wide">
-                          5 Baru
-                        </span>
+                        <span className="text-sm font-bold text-slate-800">Notifikasi Terbaru</span>
+                        {notificationsList.length > 0 && (
+                          <span className="rounded-full bg-red-50 border border-red-100 px-2 py-0.5 text-[9px] font-extrabold text-red-700 uppercase tracking-wide">
+                            {notificationsList.length > 15 ? '15+' : notificationsList.length} Baru
+                          </span>
+                        )}
                       </div>
                       <button
                         onClick={() => setNotifOpen(false)}
@@ -500,54 +569,95 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                     </div>
 
                     {/* List */}
-                    <div className="mt-2 divide-y divide-slate-100 max-h-[320px] overflow-y-auto pr-1 no-scrollbar space-y-1">
-                      {notificationsData.map((notif) => {
-                        const NotifIcon = notif.icon;
-                        return (
-                          <div
-                            key={notif.id}
-                            className={`flex items-start gap-3 py-2.5 px-2 transition hover:bg-slate-50/80 rounded-xl cursor-pointer ${
-                              notif.unread ? 'bg-teal-50/10' : ''
-                            }`}
-                          >
-                            {/* Left: Icon */}
-                            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${notif.iconBg}`}>
-                              <NotifIcon className="h-4.5 w-4.5" />
-                            </div>
+                    <div className="mt-2 divide-y divide-slate-100 max-h-[350px] overflow-y-auto pr-1 no-scrollbar space-y-1">
+                      {notificationsList.length === 0 ? (
+                        <div className="py-8 text-center text-slate-400">
+                          <Bell className="mx-auto h-8 w-8 mb-2 opacity-30" />
+                          <p className="text-sm">Tidak ada notifikasi</p>
+                        </div>
+                      ) : (
+                        notificationsList.map((notif) => {
+                          const getIconAndColor = (type: string) => {
+                            const configs: Record<string, { icon: any; bg: string; text: string }> = {
+                              alert: { icon: AlertTriangle, bg: 'bg-red-50', text: 'text-red-600' },
+                              warning: { icon: AlertTriangle, bg: 'bg-orange-50', text: 'text-orange-600' },
+                              error: { icon: AlertTriangle, bg: 'bg-red-50', text: 'text-red-600' },
+                              success: { icon: CheckCircle2, bg: 'bg-green-50', text: 'text-green-600' },
+                              info: { icon: Info, bg: 'bg-blue-50', text: 'text-blue-600' },
+                            }
+                            return configs[type] || configs.info
+                          }
 
-                            {/* Middle: Title & Desc */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className={`text-[11px] font-bold text-slate-800 truncate leading-tight ${notif.unread ? 'text-teal-955 font-extrabold' : ''}`}>
-                                  {notif.title}
-                                </p>
-                                {/* Right: Time */}
-                                <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400 whitespace-nowrap pt-0.5 shrink-0">
-                                  <Clock className="h-2.5 w-2.5" />
-                                  {notif.time}
-                                </span>
+                          const { icon: NotifIcon, bg, text } = getIconAndColor(notif.type)
+                          const timeAgo = getTimeAgo(notif.timestamp)
+
+                          return (
+                            <div
+                              key={notif.id}
+                              onClick={() => {
+                                markAsRead(notif.id)
+                                const remainingUnread = notificationsList.filter(n => n.id !== notif.id && !n.read)
+                                if (remainingUnread.length === 0) {
+                                  window.dispatchEvent(new CustomEvent('sipkk-silence-alert'))
+                                }
+                              }}
+                              className={`flex items-start gap-3 py-2.5 px-3 transition rounded-xl cursor-pointer ${
+                                !notif.read
+                                  ? 'bg-teal-50/40 border-l-4 border-teal-650 shadow-sm'
+                                  : 'bg-white hover:bg-slate-50 border-l-4 border-slate-200'
+                              }`}
+                            >
+                              {/* Left: Icon */}
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${bg} ${text}`}>
+                                <NotifIcon className="h-4.5 w-4.5" />
                               </div>
-                              <p className="mt-1 text-[10px] text-slate-500 leading-normal line-clamp-2">
-                                {notif.description}
-                              </p>
+
+                              {/* Middle: Title & Desc */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`text-[11px] text-slate-800 truncate leading-tight ${!notif.read ? 'font-extrabold text-[#047D78]' : 'font-semibold text-slate-550'}`}>
+                                    {notif.title}
+                                  </p>
+                                  {/* Right: Time */}
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400 whitespace-nowrap pt-0.5 shrink-0">
+                                    <Clock className="h-2.5 w-2.5" />
+                                    {timeAgo}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-[10px] text-slate-550 leading-normal line-clamp-2">
+                                  {notif.message}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          )
+                        })
+                      )}
                     </div>
 
                     {/* Footer */}
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                      <button
-                        onClick={() => {
-                          alert('Buka halaman detail notifikasi');
-                          setNotifOpen(false);
-                        }}
-                        className="w-full py-2 text-center text-[10px] font-extrabold uppercase tracking-widest text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl transition-all"
-                      >
-                        LIHAT SEMUA NOTIFIKASI
-                      </button>
-                    </div>
+                    {notificationsList.length > 0 ? (
+                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleMarkAllAsRead}
+                            className="flex-1 py-1.5 px-2 rounded-lg bg-teal-50 hover:bg-teal-100 text-[#047D78] text-[10px] font-extrabold transition text-center uppercase tracking-wider border border-teal-200/60"
+                          >
+                            Telah Dibaca Semua
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleClearAll}
+                            className="flex-1 py-1.5 px-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-750 text-[10px] font-extrabold transition text-center uppercase tracking-wider border border-red-200/60"
+                          >
+                            Clear Notifikasi
+                          </button>
+                        </div>
+                        <div className="text-center text-[9px] text-slate-400">
+                          Menampilkan {notificationsList.length > 15 ? '15+' : notificationsList.length} notifikasi terbaru
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>

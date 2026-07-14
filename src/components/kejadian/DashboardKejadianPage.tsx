@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import {
@@ -20,7 +20,6 @@ import {
   ChevronDown,
   Search,
   X,
-  Info,
   CloudRain,
   Waves,
   Bug,
@@ -47,6 +46,7 @@ import { buildBencanaStatsUrl } from '@/lib/utils/api'
 import { useAuthStore } from '@/lib/authStore'
 import FilterDropdownBar, { type FilterSummary } from '@/components/landing/FilterDropdownBar'
 import DetailKejadianPage from './DetailKejadianPage'
+import { useNewEventDetection, useNotificationSound, useNotificationItems } from '@/hooks/useNotification'
 
 // Dynamically import map component to completely bypass SSR/window issues in Next.js
 const DisasterMap = dynamic(() => import('./DisasterMap'), {
@@ -265,7 +265,81 @@ export default function DashboardKejadianPage() {
   }, [data?.markers, activeDetailCard])
 
   const [tableSearchQuery, setTableSearchQuery] = useState('')
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<MarkerItem | null>(null)
+  const [alertIntervalId, setAlertIntervalId] = useState<number | null>(null)
+
+  // Notification states
+  const { playSound } = useNotificationSound()
+  const { addNotificationItem } = useNotificationItems()
+
+  useEffect(() => {
+    const enableAudio = () => {
+      if (typeof window === 'undefined') return
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (AudioContextClass) {
+        const audioContext = new AudioContextClass()
+        if (audioContext.state === 'suspended') {
+          void audioContext.resume().catch(() => undefined)
+        }
+      }
+    }
+
+    // Try to unlock audio immediately after mount and on first user interaction
+    enableAudio()
+    window.addEventListener('click', enableAudio, { once: true })
+    window.addEventListener('touchstart', enableAudio, { once: true })
+    window.addEventListener('keydown', enableAudio, { once: true })
+
+    return () => {
+      window.removeEventListener('click', enableAudio)
+      window.removeEventListener('touchstart', enableAudio)
+      window.removeEventListener('keydown', enableAudio)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleSilence = () => {
+      console.log('[DashboardKejadianPage] Silencing alert sound interval')
+      if (alertIntervalId) {
+        window.clearInterval(alertIntervalId)
+        setAlertIntervalId(null)
+      }
+    }
+    window.addEventListener('sipkk-silence-alert', handleSilence)
+    return () => {
+      window.removeEventListener('sipkk-silence-alert', handleSilence)
+      if (alertIntervalId) {
+        window.clearInterval(alertIntervalId)
+      }
+    }
+  }, [alertIntervalId])
+  
+  useNewEventDetection(
+    data?.markers || [],
+    (items) => {
+      console.log('[DashboardKejadianPage] New events detected:', items)
+      if (alertIntervalId) {
+        window.clearInterval(alertIntervalId)
+      }
+
+      playSound('alert')
+
+      items.forEach(item => {
+        console.log('[DashboardKejadianPage] Adding notification for:', item.jenis_bencana)
+        addNotificationItem(
+          `${item.jenis_bencana}`,
+          `📍 ${item.kabupaten || item.provinsi || 'Lokasi tidak diketahui'} • 👥 ${item.total_korban || 0} korban`,
+          item.is_krisis === 1 ? 'alert' : 'warning',
+          item
+        )
+      })
+
+      const intervalId = window.setInterval(() => {
+        playSound('alert')
+      }, 15000)
+      setAlertIntervalId(intervalId)
+    }
+  )
 
   const filteredMarkersForTable = useMemo(() => {
     if (!data?.markers) return []
@@ -764,6 +838,9 @@ export default function DashboardKejadianPage() {
 
       const json = await response.json().catch(() => null)
       if (json !== null) {
+        console.log('[fetchData] API response:', json)
+        console.log('[fetchData] markers count:', json.markers?.length || 0)
+        console.log('[fetchData] first marker:', json.markers?.[0])
         setData(json)
         return
       }
@@ -789,6 +866,20 @@ export default function DashboardKejadianPage() {
       window.removeEventListener('sipkk-refresh-data', handleRefresh)
     }
   }, [fetchData])
+
+  // Polling data otomatis setiap 10 detik agar deteksi kejadian baru real-time bekerja tanpa refresh manual
+  const fetchDataRef = useRef(fetchData)
+  useEffect(() => {
+    fetchDataRef.current = fetchData
+  }, [fetchData])
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      console.log('[DashboardKejadianPage] Polling new data from backend...')
+      fetchDataRef.current()
+    }, 10000)
+    return () => clearInterval(intervalId)
+  }, [])
 
 
   const generateAiInsight = () => {
@@ -839,6 +930,15 @@ ${guidelines}`)
       generateAiInsight()
     }
   }, [data])
+
+  // Auto-refresh data every 10 seconds for real-time notifications
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData()
+    }, 10000) // Refresh every 10 seconds
+
+    return () => clearInterval(interval)
+  }, [fetchData])
 
   if (!isInitialized) {
     return (

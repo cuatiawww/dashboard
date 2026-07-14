@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/authStore'
 import DashboardHeader, { DashboardSidebar } from './DashboardHeader'
 import Footer from './Footer'
+import { NotificationProvider } from '@/components/NotificationProvider'
 import { Loader2 } from 'lucide-react'
 
 interface AppShellProps {
@@ -53,12 +54,14 @@ export default function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <main className="min-h-screen">
-      <DashboardSidebar open={sidebarOpen} onClose={closeSidebar} />
-      <DashboardHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} />
-      {children}
-      <Footer />
-    </main>
+    <NotificationProvider>
+      <main className="min-h-screen">
+        <DashboardSidebar open={sidebarOpen} onClose={closeSidebar} />
+        <DashboardHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} />
+        {children}
+        <Footer />
+      </main>
+    </NotificationProvider>
   )
 }
 
