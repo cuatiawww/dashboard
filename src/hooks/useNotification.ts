@@ -65,8 +65,67 @@ export function useNotification() {
 }
 
 // Hook for managing notification items (history)
+let isPollingStarted = false
+
 export function useNotificationItems() {
   const notificationIdRef = useRef(0)
+
+  const fetchNotifications = useCallback(async () => {
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+
+    try {
+      const res = await fetch('/api/backend/notifications', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.notifications)) {
+        const items: NotificationItem[] = data.notifications.map((n: any) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        }))
+
+        globalNotificationItems = items
+
+        // Broadcast to listeners
+        notificationItemListeners.forEach(listener => {
+          try {
+            listener(null as any)
+          } catch (e) {}
+        })
+      }
+    } catch (e) {
+      console.error('[fetchNotifications] Failed to fetch notifications:', e)
+    }
+  }, [])
+
+  // Start global polling on mount
+  useEffect(() => {
+    const fetchFn = () => {
+      void fetchNotifications()
+    }
+    
+    if (!isPollingStarted) {
+      isPollingStarted = true
+      fetchFn()
+      const interval = setInterval(fetchFn, 30000)
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('sipkk-refresh-data', fetchFn)
+      }
+
+      return () => {
+        clearInterval(interval)
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('sipkk-refresh-data', fetchFn)
+        }
+      }
+    }
+  }, [fetchNotifications])
 
   const addNotificationItem = useCallback((
     title: string,
@@ -74,7 +133,7 @@ export function useNotificationItems() {
     type: 'success' | 'error' | 'info' | 'warning' | 'alert' = 'info',
     data?: any
   ): string => {
-    const id = `notif-item-${++notificationIdRef.current}`
+    const id = data?.kode_trans || `notif-item-${++notificationIdRef.current}`
     const item: NotificationItem = {
       id,
       title,
@@ -109,39 +168,87 @@ export function useNotificationItems() {
     return [...globalNotificationItems]
   }, [])
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
+    // Update local state first
     globalNotificationItems = globalNotificationItems.map(item =>
       item.id === id ? { ...item, read: true } : item
     )
-    // Notify listeners so UI updates immediately
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
       } catch (e) {}
     })
+
+    // Send to backend
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+
+    try {
+      await fetch('/api/backend/read-notification', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ kode_trans: id })
+      })
+    } catch (e) {
+      console.error('[markAsRead] Failed to mark as read:', e)
+    }
   }, [])
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
     globalNotificationItems = globalNotificationItems.map(item => ({ ...item, read: true }))
-    // Notify listeners so UI updates immediately
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
       } catch (e) {}
     })
+
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+
+    try {
+      await fetch('/api/backend/read-all-notifications', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+    } catch (e) {
+      console.error('[markAllAsRead] Failed to mark all as read:', e)
+    }
   }, [])
 
-  const clearAll = useCallback(() => {
+  const clearAll = useCallback(async () => {
     globalNotificationItems = []
-    // Notify listeners so UI updates immediately
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
       } catch (e) {}
     })
+
+    if (typeof window === 'undefined') return
+    const token = localStorage.getItem('auth_token')
+    if (!token) return
+
+    try {
+      await fetch('/api/backend/read-all-notifications', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+    } catch (e) {
+      console.error('[clearAll] Failed to clear notifications:', e)
+    }
   }, [])
 
-  return { addNotificationItem, subscribeToItems, getItems, markAsRead, clearAll, markAllAsRead }
+  return { addNotificationItem, subscribeToItems, getItems, markAsRead, clearAll, markAllAsRead, fetchNotifications }
 }
 
 // Hook for playing notification sound
