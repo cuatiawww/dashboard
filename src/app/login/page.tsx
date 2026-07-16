@@ -32,6 +32,9 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  
+  const [bgSrc, setBgSrc] = useState<string>('/pkk.png')
+  const [logoSrc, setLogoSrc] = useState<string>('/Logo-Kemenkes.png')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,9 +66,15 @@ export default function LoginPage() {
             ...prev,
             ...payload.settings
           }))
+          if (payload.settings.login_background) {
+            setBgSrc(getAssetUrl(payload.settings.login_background))
+          }
+          if (payload.settings.login_logo) {
+            setLogoSrc(getAssetUrl(payload.settings.login_logo))
+          }
         }
       } catch (err) {
-        console.error('Gagal mengambil pengaturan sistem:', err)
+        console.error('Failed to fetch settings:', err)
       }
     }
     fetchSettings()
@@ -166,12 +175,13 @@ export default function LoginPage() {
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
-          src={getAssetUrl(settings.login_background) || "/pkk.png"}
+          src={bgSrc || "/pkk.png"}
           alt="Dashboard fasilitas kesehatan"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
+          onError={() => setBgSrc('/pkk.png')}
         />
 
         {/* Overlay gradient â€” matches dashboard's teal palette */}
@@ -191,12 +201,13 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src={getAssetUrl(settings.login_logo) || "/Logo-Kemenkes.png"}
+              src={logoSrc || "/Logo-Kemenkes.png"}
               alt="Logo Kementerian Kesehatan"
               width={160}
               height={58}
               className="h-auto w-[160px] brightness-0 invert"
               priority
+              onError={() => setLogoSrc('/Logo-Kemenkes.png')}
             />
           </div>
 
@@ -226,12 +237,13 @@ export default function LoginPage() {
           {/* Mobile-only logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
-              src={getAssetUrl(settings.login_logo) || "/Logo-Kemenkes.png"}
+              src={logoSrc || "/Logo-Kemenkes.png"}
               alt="Logo Kementerian Kesehatan"
               width={140}
               height={50}
               className="h-auto w-[140px]"
               priority
+              onError={() => setLogoSrc('/Logo-Kemenkes.png')}
             />
           </div>
 
