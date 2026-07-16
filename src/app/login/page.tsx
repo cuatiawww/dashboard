@@ -15,6 +15,16 @@ type LoginResponse = {
   user?: User
 }
 
+// Helper to format assets URL from backend
+const getAssetUrl = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+  const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id').replace(/\/+$/, '')
+  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
 // Stat items shown on the left hero panel
 const heroStats = [
   { value: '10.123', label: 'Faskes Terdaftar', icon: Activity },
@@ -37,6 +47,35 @@ export default function LoginPage() {
   const [captchaQuestion, setCaptchaQuestion] = useState('')
   const [captchaValue, setCaptchaValue] = useState('')
   const [loadingCaptcha, setLoadingCaptcha] = useState(false)
+
+  const [settings, setSettings] = useState({
+    frontend_app_title: 'Indikator Penilaian Kinerja Faskes',
+    frontend_app_subtitle: 'Sistem pemantauan terpadu untuk melihat capaian, sebaran, dan perkembangan fasilitas kesehatan di seluruh wilayah Indonesia.',
+    frontend_login_card_title: 'Dashboard Faskes',
+    frontend_login_card_subtitle: 'Silakan masuk untuk mengakses data fasilitas kesehatan.',
+    frontend_login_note: 'Akses terbatas untuk pengguna yang berwenang.\nHubungi admin jika mengalami kendala masuk.',
+    frontend_footer_text: '© 2026 Kementerian Kesehatan Republik Indonesia',
+    login_logo: '/Logo-Kemenkes.png',
+    login_background: '/pkk.png',
+  })
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(buildApiUrl('/api/settings'))
+        const payload = await res.json()
+        if (payload?.success && payload?.settings) {
+          setSettings(prev => ({
+            ...prev,
+            ...payload.settings
+          }))
+        }
+      } catch (err) {
+        console.error('Gagal mengambil pengaturan sistem:', err)
+      }
+    }
+    fetchSettings()
+  }, [])
 
   const fetchCaptcha = useCallback(async () => {
     setLoadingCaptcha(true)
@@ -133,7 +172,7 @@ export default function LoginPage() {
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
-          src="/pkk.png"
+          src={getAssetUrl(settings.login_background) || "/pkk.png"}
           alt="Dashboard fasilitas kesehatan"
           fill
           priority
@@ -158,7 +197,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src="/Logo-Kemenkes.png"
+              src={getAssetUrl(settings.login_logo) || "/Logo-Kemenkes.png"}
               alt="Logo Kementerian Kesehatan"
               width={160}
               height={58}
@@ -170,12 +209,10 @@ export default function LoginPage() {
           {/* Main copy */}
           <div className="max-w-xl pb-4">
             <h1 className="mt-4 text-[42px] font-extrabold leading-[1.1] tracking-tight text-white xl:text-[52px]">
-              Indikator Penilaian<br />
-              <span className="text-teal-300">Kinerja Faskes</span>
+              {settings.frontend_app_title}
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-teal-100/80 xl:text-[16px]">
-              Sistem pemantauan terpadu untuk melihat capaian, sebaran, dan
-              perkembangan fasilitas kesehatan di seluruh wilayah Indonesia.
+              {settings.frontend_app_subtitle}
             </p>
 
             {/* Stats row */}
@@ -200,7 +237,7 @@ export default function LoginPage() {
 
           {/* Footer credit */}
           <p className="text-[12px] text-teal-300/50">
-            Â© {new Date().getFullYear()} Kementerian Kesehatan Republik Indonesia
+            {settings.frontend_footer_text}
           </p>
         </div>
       </div>
@@ -212,7 +249,7 @@ export default function LoginPage() {
           {/* Mobile-only logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
-              src="/Logo-Kemenkes.png"
+              src={getAssetUrl(settings.login_logo) || "/Logo-Kemenkes.png"}
               alt="Logo Kementerian Kesehatan"
               width={140}
               height={50}
@@ -231,10 +268,10 @@ export default function LoginPage() {
                 Masuk Akun
               </span>
               <h2 className="mt-3 text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[32px]">
-                Dashboard Faskes
+                {settings.frontend_login_card_title}
               </h2>
               <p className="mt-1.5 text-[14px] text-slate-500">
-                Silakan masuk untuk mengakses data fasilitas kesehatan.
+                {settings.frontend_login_card_subtitle}
               </p>
             </div>
 
@@ -411,9 +448,8 @@ export default function LoginPage() {
           </div>
 
           {/* Footer note */}
-          <p className="mt-5 text-center text-[12px] text-slate-400">
-            Akses terbatas untuk pengguna yang berwenang.
-            <br />Hubungi admin jika mengalami kendala masuk.
+          <p className="mt-5 text-center text-[12px] text-slate-400 whitespace-pre-line">
+            {settings.frontend_login_note}
           </p>
         </div>
       </section>
