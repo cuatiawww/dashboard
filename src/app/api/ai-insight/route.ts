@@ -95,107 +95,44 @@ export async function POST(req: Request) {
       )
     }
 
-    const body = await req.json()
-
-    // ── Check if this is the new Disaster/SIPKK Data Request ──
+    const body = await req.json()    // ── Check if this is the new Disaster/SIPKK Data Request ──
     if (body.bencanaData) {
       const { bencanaData } = body
-      const regionLabel = bencanaData.regionLabel || 'Nasional'
+      const { province, kabupaten } = bencanaData
+
+      const backendBaseUrl = process.env.SIPKK_BACKEND_BASE_URL || 'http://localhost'
       
-      const prompt = `
-Kamu adalah Senior Crisis Health Analyst di Emergency Operation Center (EOC) Kementerian Kesehatan RI dengan pengalaman internasional dan sangat familiar dengan standar dari WHO (World Health Organization) Health Emergency Response Framework, UNDRR, IMS (Incident Management System), PHEOC (Public Health Emergency Operations Center), dan praktik global penanganan krisis kesehatan akibat bencana dan pandemi.
+      const params = new URLSearchParams()
+      if (province) params.append('province', province)
+      if (kabupaten) params.append('kabupaten', kabupaten)
 
-Lakukan analisis komprehensif, evidence-based, dan berbobot strategis (setara laporan WHO / World Bank) terhadap data bencana aktif berikut:
-
-DATA BENCANA AKTIF (${regionLabel}):
-- Total Kejadian Bencana: ${bencanaData.summary.total_bencana}
-- Total Krisis Kesehatan: ${bencanaData.summary.total_krisis}
-- Korban Meninggal: ${bencanaData.summary.total_meninggal} Jiwa
-- Korban Luka-Luka: ${bencanaData.summary.total_luka} Jiwa
-- Korban Hilang: ${bencanaData.summary.total_hilang} Jiwa
-- Jumlah Pengungsi: ${bencanaData.summary.total_pengungsi} Jiwa
-- Total Penduduk Terdampak: ${bencanaData.summary.total_terdampak} Jiwa
-
-DAFTAR BENCANA TERDOMINAN:
-${(bencanaData.jenis_bencana || []).map((jb: any) => `- ${jb.nama}: ${jb.jumlah} kejadian`).join('\n')}
-
-WILAYAH TERAKTIF:
-${(bencanaData.wilayah || []).map((w: any) => `- ${w.nama}: ${w.jumlah} kejadian`).join('\n')}
-
-Berikan analisis mendalam dengan membagi respon Anda menjadi DUA bagian utama secara persis (jangan gunakan format markdown asterisks ** atau markdown headings ###, gunakan pemisah teks biasa):
-
-[ANALISIS RISK ASSESSMENT]
-1. EXECUTIVE SUMMARY
-- Analisis situasi krisis secara strategis berdasarkan data aktif di atas.
-- Highlight risiko utama dan urgensi penanganan segera.
-
-2. ANALISIS EPIDEMIOLOGIS & DAMPAK KESEHATAN
-- Hitung dan tuliskan kalkulasi matematika eksplisit untuk:
-  * Case Fatality Rate (CFR) = (Meninggal / (Meninggal + Luka)) * 100%
-  * Injury Rate per Incident = (Luka / Total Kejadian)
-  * Displacement Ratio = (Pengungsi / Total Penduduk Terdampak)
-- Identifikasi potensi secondary health crisis (ancaman epidemiologi penyakit menular pasca-bencana di pos pengungsian seperti diare akut, ISPA, leptospirosis, penyakit kulit, malaria/DBD) akibat sanitasi buruk dan gangguan layanan faskes.
-
-3. RISK & SEVERITY ASSESSMENT
-- Klasifikasikan tingkat krisis (pilih salah satu secara tegas: Low, Moderate, High, atau Critical) berdasarkan WHO Health Emergency Framework dan Disaster Risk Index.
-- Jelaskan indikator eskalasi situasi yang harus diwaspadai.
-
-4. KOMPARASI GLOBAL
-- Bandingkan kondisi di atas dengan studi kasus internasional nyata (misalnya penanganan bencana besar atau krisis pandemi global).
-- Ulas perbedaan kapasitas sistem kesehatan, apa yang berhasil dan gagal, serta posisi Indonesia dibanding global benchmark menggunakan standar IMS dan PHEOC.
-
-5. DAMPAK TERHADAP SISTEM KESEHATAN
-- Analisis potensi overload rumah sakit rujukan, kapasitas tenaga kesehatan setempat, rantai pasok logistik (obat dan alat medis), serta aksesibilitas layanan kesehatan primer di daerah terisolasi.
-
-6. GAP ANALYSIS
-- Identifikasi kelemahan respon saat ini dibandingkan dengan standar WHO. Apa saja aspek penanganan darurat yang belum optimal?
-
-PANDUAN KLINIS & RESPONS CEPAT:
-7. REKOMENDASI STRATEGIS (ACTIONABLE & SCALABLE)
-Rumuskan rencana tindak lanjut taktis medis darurat:
-- Rekomendasi Jangka Pendek (Respon cepat medis, mobilisasi tim EMT/Emergency Medical Team, imunisasi/ATS darurat, logistik medis esensial).
-- Rekomendasi Jangka Menengah (Tindakan sanitasi lingkungan darurat posko pengungsian dengan rasio air bersih dan ketersediaan jamban standar WHO 1:20, penguatan sistem faskes penyangga).
-- Rekomendasi Jangka Panjang (Strategi mitigasi struktural, surveillance aktif berbasis komunitas, serta kesiapsiagaan PHEOC daerah).
-`
-
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 1500,
-            },
-          }),
+      console.log(`[ai-insight] Fetching daily cached EOC AI analysis for province: "${province || ''}", kabupaten: "${kabupaten || ''}"...`)
+      
+      const res = await fetch(`${backendBaseUrl}/api/ai-insight?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
         }
-      )
+      })
 
       if (!res.ok) {
         const errText = await res.text()
-        console.error('[ai-insight] Gemini API error:', errText)
+        console.error('[ai-insight] Backend API error:', errText)
         return NextResponse.json(
-          { error: 'Gagal memproses permintaan AI dari Gemini', detail: errText },
+          { error: 'Gagal menghubungi backend untuk analisis AI', detail: errText },
           { status: 500 }
         )
       }
 
       const resData = await res.json()
-      const raw = resData?.candidates?.[0]?.content?.parts?.[0]?.text
-
-      if (!raw || typeof raw !== 'string') {
-        console.error('[ai-insight] Empty Gemini response:', resData)
+      if (resData.success && resData.insight) {
+        return NextResponse.json({ insight: resData.insight })
+      } else {
         return NextResponse.json(
-          { error: 'Respons Gemini kosong atau tidak valid', detail: JSON.stringify(resData) },
+          { error: resData.error || 'Respons backend tidak valid' },
           { status: 500 }
         )
       }
-
-      return NextResponse.json({ insight: raw })
     }
 
     // ── Fallback to Posyandu Logic ──
@@ -224,7 +161,7 @@ REKOMENDASI:
 `
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {

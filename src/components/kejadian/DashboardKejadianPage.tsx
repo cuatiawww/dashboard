@@ -929,7 +929,9 @@ export default function DashboardKejadianPage() {
             summary: data.summary,
             jenis_bencana: data.jenis_bencana,
             wilayah: data.wilayah,
-            regionLabel: getRegionLabel()
+            regionLabel: getRegionLabel(),
+            province: province,
+            kabupaten: kabupaten
           }
         })
       })
@@ -1005,52 +1007,125 @@ ${guidelines}`)
   const renderAiReportContent = () => {
     if (generatingAi || !aiInsight) {
       return (
-        <div className="space-y-4 animate-pulse py-4">
-          <div className="h-6 bg-slate-100 rounded w-1/3" />
-          <div className="h-4 bg-slate-100 rounded w-full" />
-          <div className="h-4 bg-slate-100 rounded w-5/6" />
-          <div className="h-4 bg-slate-100 rounded w-4/5" />
-          <div className="pt-4 h-6 bg-slate-100 rounded w-1/4" />
-          <div className="h-4 bg-slate-100 rounded w-full" />
-          <div className="h-4 bg-slate-100 rounded w-11/12" />
+        <div className="space-y-5 animate-pulse py-4">
+          <div className="h-5 bg-slate-100 rounded-full w-2/5" />
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-5">
+              <div className="h-4 bg-slate-200 rounded w-1/3 mb-3" />
+              <div className="space-y-2">
+                <div className="h-3 bg-slate-100 rounded w-full" />
+                <div className="h-3 bg-slate-100 rounded w-5/6" />
+                <div className="h-3 bg-slate-100 rounded w-4/5" />
+              </div>
+            </div>
+          ))}
         </div>
       )
     }
 
-    const sections = aiInsight.split('PANDUAN KLINIS & RESPONS CEPAT:')
-    const assessment = sections[0].replace('[ANALISIS RISK ASSESSMENT]', '').trim()
-    const guidelines = sections[1]?.trim() || ''
+    // Parse structured sections from AI response
+    const sectionDefs = [
+      { key: 'executive',    label: 'Executive Summary & Situasi Terkini',        num: '1', color: 'teal',    icon: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 01.182 12C.182 17.627 4.82 22.2 10.5 22.2c4.17 0 7.8-2.294 9.697-5.65' },
+      { key: 'epidemiology', label: 'Analisis Epidemiologis & Dampak Kesehatan',  num: '2', color: 'amber',   icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z' },
+      { key: 'severity',     label: 'Klasifikasi Tingkat Keparahan',               num: '3', color: 'red',     icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' },
+      { key: 'global',       label: 'Komparasi Internasional & Benchmark',         num: '4', color: 'indigo',  icon: 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418' },
+      { key: 'healthsystem', label: 'Dampak Terhadap Sistem Kesehatan Nasional',   num: '5', color: 'orange',  icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' },
+      { key: 'gap',          label: 'Gap Analysis Respons Darurat',                num: '6', color: 'rose',    icon: 'M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z' },
+      { key: 'recommendations', label: 'Rekomendasi Strategis Terstruktur',       num: '7', color: 'green',   icon: 'M9 12.75L11.25 15 15 9.75M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z' },
+      { key: 'conclusion',   label: 'Kesimpulan Strategis EOC',                    num: '8', color: 'slate',   icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
+    ]
+
+    const colorMap: Record<string, { bg: string; border: string; badge: string; text: string; heading: string }> = {
+      teal:    { bg: 'bg-teal-50/40',   border: 'border-teal-100',   badge: 'bg-teal-700',   text: 'text-slate-700', heading: 'text-teal-800'   },
+      amber:   { bg: 'bg-amber-50/40',  border: 'border-amber-100',  badge: 'bg-amber-600',  text: 'text-slate-700', heading: 'text-amber-800'  },
+      red:     { bg: 'bg-red-50/40',    border: 'border-red-100',    badge: 'bg-red-700',    text: 'text-slate-700', heading: 'text-red-800'    },
+      indigo:  { bg: 'bg-indigo-50/40', border: 'border-indigo-100', badge: 'bg-indigo-700', text: 'text-slate-700', heading: 'text-indigo-800' },
+      orange:  { bg: 'bg-orange-50/40', border: 'border-orange-100', badge: 'bg-orange-600', text: 'text-slate-700', heading: 'text-orange-800' },
+      rose:    { bg: 'bg-rose-50/40',   border: 'border-rose-100',   badge: 'bg-rose-700',   text: 'text-slate-700', heading: 'text-rose-800'   },
+      green:   { bg: 'bg-green-50/40',  border: 'border-green-100',  badge: 'bg-green-700',  text: 'text-slate-700', heading: 'text-green-800'  },
+      slate:   { bg: 'bg-slate-50/60',  border: 'border-slate-200',  badge: 'bg-slate-700',  text: 'text-slate-700', heading: 'text-slate-800'  },
+    }
+
+    // Extract numbered sections from AI text
+    const extractSection = (text: string, sectionNum: number): string => {
+      const escaped = text.replace(/\r\n/g, '\n')
+      const start = escaped.search(new RegExp(`(^|\\n)${sectionNum}\\. `, 'm'))
+      if (start === -1) return ''
+      const nextNum = sectionNum + 1
+      const end = escaped.search(new RegExp(`(^|\\n)${nextNum}\\. `, 'm'))
+      const raw = end > start ? escaped.slice(start, end) : escaped.slice(start)
+      return raw.replace(new RegExp(`^${sectionNum}\\. [^\\n]+\\n?`), '').trim()
+    }
+
+    const extractGuidelines = (text: string): { short: string; medium: string; long: string } => {
+      const guidelineBlock = text.split(/PANDUAN KLINIS & RESPONS CEPAT:/i)[1] || ''
+      const short  = guidelineBlock.split(/JANGKA MENENGAH/i)[0]?.replace(/JANGKA PENDEK[^:]*:/i, '').trim() || ''
+      const medium = (guidelineBlock.split(/JANGKA MENENGAH/i)[1] || '').split(/JANGKA PANJANG/i)[0]?.replace(/[^:]*:/i, '').trim() || ''
+      const longTerm = (guidelineBlock.split(/JANGKA PANJANG/i)[1] || '').split(/\d+\./)[0]?.replace(/[^:]*:/i, '').trim() || ''
+      return { short, medium, long: longTerm }
+    }
+
+    const guidelines = extractGuidelines(aiInsight)
+    const cleanText  = aiInsight.replace('[ANALISIS RISK ASSESSMENT]', '').replace('PANDUAN KLINIS & RESPONS CEPAT:', '')
+
+    const sectionTexts: Record<string, string> = {
+      executive:        extractSection(cleanText, 1),
+      epidemiology:     extractSection(cleanText, 2),
+      severity:         extractSection(cleanText, 3),
+      global:           extractSection(cleanText, 4),
+      healthsystem:     extractSection(cleanText, 5),
+      gap:              extractSection(cleanText, 6),
+      recommendations:  '',  // special handling below
+      conclusion:       extractSection(cleanText, 8),
+    }
 
     return (
-      <div className="space-y-6 py-2">
-        {/* Card 1: Risk Assessment */}
-        <div className="rounded-2xl border border-teal-100 bg-[#eefbfb]/30 p-5 shadow-xs">
-          <h4 className="text-sm font-black text-teal-850 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <Sparkles className="h-4.5 w-4.5 text-teal-650" />
-            Analisis Penilaian Risiko (Risk Assessment)
-          </h4>
-          <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-            {assessment}
-          </p>
-        </div>
+      <div className="space-y-4 py-2">
+        {sectionDefs.map((sec) => {
+          const c = colorMap[sec.color]
+          let content = sectionTexts[sec.key] || ''
 
-        {/* Card 2: Guidelines */}
-        {guidelines && (
-          <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-5 shadow-xs">
-            <h4 className="text-sm font-black text-blue-850 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Activity className="h-4.5 w-4.5 text-blue-650" />
-              Panduan Klinis & Respons Medis Cepat
-            </h4>
-            <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
-              {guidelines}
-            </p>
-          </div>
-        )}
+          // Special layout for recommendations
+          if (sec.key === 'recommendations') {
+            return (
+              <div key={sec.key} className={`rounded-2xl border ${c.border} ${c.bg} p-5 shadow-xs`}>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold ${c.badge}`}>{sec.num}</span>
+                  <h4 className={`text-sm font-black uppercase tracking-wide ${c.heading}`}>{sec.label}</h4>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[
+                    { label: '⚡ Jangka Pendek (0–72 Jam)', text: guidelines.short,  bg: 'bg-red-50 border-red-200',    badge: 'text-red-700'    },
+                    { label: '🔧 Jangka Menengah (1–4 Minggu)', text: guidelines.medium, bg: 'bg-amber-50 border-amber-200', badge: 'text-amber-700'  },
+                    { label: '🏗 Jangka Panjang (1–6 Bulan)', text: guidelines.long,   bg: 'bg-green-50 border-green-200', badge: 'text-green-700'  },
+                  ].map((g) => (
+                    <div key={g.label} className={`rounded-xl border ${g.bg} p-4`}>
+                      <p className={`text-xs font-bold mb-2 ${g.badge}`}>{g.label}</p>
+                      <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{g.text || '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+
+          if (!content) return null
+
+          return (
+            <div key={sec.key} className={`rounded-2xl border ${c.border} ${c.bg} p-5 shadow-xs`}>
+              <div className="flex items-center gap-2.5 mb-3">
+                <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-bold ${c.badge}`}>{sec.num}</span>
+                <h4 className={`text-sm font-black uppercase tracking-wide ${c.heading}`}>{sec.label}</h4>
+              </div>
+              <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line">{content}</p>
+            </div>
+          )
+        })}
       </div>
     )
   }
 
-  // Pre-generate AI insight once data is loaded
+  // Generate AI insight sekali saat data pertama kali dimuat (cakupan selalu nasional)
   useEffect(() => {
     if (data && !aiInsight) {
       generateAiInsight()

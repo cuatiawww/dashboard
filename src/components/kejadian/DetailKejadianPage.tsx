@@ -1,7 +1,7 @@
 'use client'
 
-import React from 'react'
-import { MapPin, Users } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { MapPin, Users, Loader2, AlertTriangle } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 
 interface DetailKejadianPageProps {
@@ -11,7 +11,7 @@ interface DetailKejadianPageProps {
 
 const getKorbanBreakdown = (total: number, jenis: string) => {
   const t = total || 0
-  if (t === 0) return { meninggal: 0, luka: 0, hilang: 0, pengungsi: 0 }
+  if (t === 0) return { meninggal: 0, luka: 0, hilang: 0, pengungsi: 0, luka_berat: 0, luka_ringan: 0 }
   const seed = (jenis || '').length % 4
   let meninggal = 0
   let luka = 0
@@ -45,36 +45,120 @@ const getKorbanBreakdown = (total: number, jenis: string) => {
     luka: Math.max(0, luka),
     hilang: Math.max(0, hilang),
     pengungsi: Math.max(0, pengungsi),
+    luka_berat: Math.max(0, Math.floor(luka * 0.2)),
+    luka_ringan: Math.max(0, Math.floor(luka * 0.8)),
   }
 }
 
 export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKejadianPageProps) {
+  const [detail, setDetail] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function fetchDetail() {
+      try {
+        setLoading(true)
+        setError(null)
+        const res = await fetch(`/api/bencana-detail?id=${encodeURIComponent(selectedEvent.kode_trans)}`)
+        if (!res.ok) {
+          throw new Error(`Gagal menghubungi server API (HTTP ${res.status})`)
+        }
+        const json = await res.json()
+        if (json.success && json.data) {
+          if (active) {
+            setDetail(json.data)
+          }
+        } else {
+          throw new Error(json.message || 'Gagal memuat rincian data bencana.')
+        }
+      } catch (err: any) {
+        console.error('[DetailKejadianPage] Error fetching detail:', err)
+        if (active) {
+          setError(err.message || 'Terjadi kesalahan saat memuat data.')
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+
+    if (selectedEvent?.kode_trans) {
+      fetchDetail()
+    }
+    return () => {
+      active = false
+    }
+  }, [selectedEvent?.kode_trans])
+
   if (!selectedEvent) return null
 
-  const formattedDate = selectedEvent.tgl_kejadian
-    ? new Date(selectedEvent.tgl_kejadian).toLocaleDateString('id-ID', {
+  if (loading) {
+    return (
+      <div className="w-full min-h-[450px] flex flex-col items-center justify-center space-y-4 py-16 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-in fade-in duration-200">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-700" />
+        <p className="text-sm font-semibold text-slate-500">Menghubungkan & memuat data krisis secara realtime...</p>
+      </div>
+    )
+  }
+
+  const hasDetail = !!detail
+  const eventData = {
+    ...selectedEvent,
+    ...detail
+  }
+
+  const formattedDate = eventData.tgl_kejadian
+    ? new Date(eventData.tgl_kejadian.replace(/\s+WIB/i, '')).toLocaleDateString('id-ID', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
-      })
+      }) + ' WIB'
     : '-'
 
   const locationFull =
     [
-      selectedEvent.kecamatan && `Kec. ${selectedEvent.kecamatan}`,
-      selectedEvent.kabupaten,
-      selectedEvent.provinsi,
+      eventData.kecamatan && `Kec. ${eventData.kecamatan}`,
+      eventData.kabupaten,
+      eventData.provinsi,
     ]
       .filter(Boolean)
       .join(', ') || 'Nasional'
 
-  const breakdown = getKorbanBreakdown(selectedEvent.total_korban, selectedEvent.jenis_bencana)
+  const breakdown = hasDetail ? {
+    meninggal: Number(detail.meninggal ?? 0),
+    luka: Number((detail.luka_berat ?? 0) + (detail.luka_ringan ?? 0)),
+    luka_berat: Number(detail.luka_berat ?? 0),
+    luka_ringan: Number(detail.luka_ringan ?? 0),
+    hilang: Number(detail.hilang ?? 0),
+    pengungsi: Number(detail.pengungsi ?? 0),
+  } : getKorbanBreakdown(selectedEvent.total_korban, selectedEvent.jenis_bencana)
 
-  // Generate dynamic chronology text
-  const kronologi = `Telah dilaporkan kejadian bencana ${selectedEvent.jenis_bencana} di wilayah ${locationFull}. Kejadian ini tercatat pada tanggal ${formattedDate}. Laporan masuk ke pusat komando EOC Kemenkes RI untuk penanganan medis darurat dan asesmen dampak kesehatan. Tim medis darurat dan logistik kesehatan setempat disiagakan guna mengantisipasi eskalasi dampak pasca-bencana.`
+  const totalKorbanReal = hasDetail
+    ? (breakdown.meninggal + breakdown.hilang + breakdown.luka + breakdown.pengungsi)
+    : (selectedEvent.total_korban || 0)
+
+  const kronologi = eventData.deskripsi_bencana || eventData.kronologis ||
+    `Telah dilaporkan kejadian bencana ${eventData.jenis_bencana} di wilayah ${locationFull}. Kejadian ini tercatat pada tanggal ${formattedDate}. Laporan masuk ke pusat komando EOC Kemenkes RI untuk penanganan medis darurat dan asesmen dampak kesehatan. Tim medis darurat dan logistik kesehatan setempat disiagakan guna mengantisipasi eskalasi dampak pasca-bencana.`
+
+  const faskesTerdampakList = eventData.faskes_terdampak || []
+
+  // Map markers for OPENLAYERS Map component
+  const mapMarkers = useMemo(() => {
+    if (detail && Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
+      return detail.lokasi.map((loc: any, idx: number) => ({
+        ...selectedEvent,
+        kode_trans: `${selectedEvent.kode_trans}-loc-${idx}`,
+        lat: Number(loc.latitude),
+        lng: Number(loc.longitude),
+      }))
+    }
+    return [selectedEvent]
+  }, [selectedEvent, detail])
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff] animate-in fade-in duration-200">
@@ -90,8 +174,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             </svg>
           </button>
           <div>
-            <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide">
+            <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
               DETAIL KEJADIAN KRISIS KESEHATAN
+              {hasDetail && (
+                <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Realtime API
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Pemantauan rincian komprehensif logistik dan dampak korban untuk kejadian bencana.
@@ -100,12 +189,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-xs font-semibold">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-bold">Gagal memuat detail lengkap dari server</p>
+            <p className="text-[11px] text-amber-700/90 mt-0.5">{error}. Menampilkan data ringkasan cadangan.</p>
+          </div>
+        </div>
+      )}
+
       {/* 1. Kronologi Kejadian */}
       <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
         <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-3">
-          KRONOLOGI KEJADIAN
+          KRONOLOGI / DESKRIPSI KEJADIAN
         </h4>
-        <p className="text-xs text-slate-650 leading-relaxed font-semibold">
+        <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
           {kronologi}
         </p>
       </article>
@@ -119,7 +218,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jenis & Lokasi Kejadian</p>
-            <h5 className="font-extrabold text-[15px] text-slate-850 mt-1 leading-snug">{selectedEvent.jenis_bencana}</h5>
+            <h5 className="font-extrabold text-[15px] text-slate-850 mt-1 leading-snug">{eventData.jenis_bencana}</h5>
             <p className="text-[11px] font-semibold text-slate-500 mt-0.5 leading-snug truncate" title={locationFull}>
               {locationFull}
             </p>
@@ -147,7 +246,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Penduduk Terdampak</p>
             <h5 className="font-extrabold text-[24px] text-slate-850 leading-none mt-1">
-              {selectedEvent.total_korban ? selectedEvent.total_korban.toLocaleString('id-ID') : 0} <span className="text-xs font-bold text-slate-400">Jiwa</span>
+              {eventData.penduduk_terdampak ? eventData.penduduk_terdampak.toLocaleString('id-ID') : (eventData.total_korban ? eventData.total_korban.toLocaleString('id-ID') : 0)} <span className="text-xs font-bold text-slate-400">Jiwa</span>
             </h5>
           </div>
         </article>
@@ -173,7 +272,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.luka || 0}</span>
+            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.luka_ringan || (breakdown.luka - (breakdown.luka_berat ?? 0)) || 0}</span>
           </div>
         </article>
 
@@ -184,7 +283,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{Math.max(0, Math.floor(breakdown.luka * 0.15)) || 0}</span>
+            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.luka_berat || Math.max(0, Math.floor(breakdown.luka * 0.15)) || 0}</span>
           </div>
         </article>
 
@@ -202,29 +301,58 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
       {/* 4. Respon EOC & Fasilitas Kesehatan */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Card 1: Fasilitas Kesehatan Siaga */}
+        {/* Card 1: Fasilitas Kesehatan Terdampak & Siaga */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
           <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3">
             FASILITAS KESEHATAN TERDAMPAK & SIAGA
           </h4>
-          <div className="space-y-3 text-xs text-slate-700">
-            <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
-              <span className="font-semibold text-slate-500">Puskesmas Terdampak:</span>
-              <span className="font-bold text-slate-800">1 Unit (Rusak Ringan)</span>
+          {hasDetail ? (
+            faskesTerdampakList.length === 0 ? (
+              <div className="py-6 text-center text-slate-400 font-semibold text-xs">
+                Tidak ada fasilitas kesehatan terdampak yang dilaporkan.
+              </div>
+            ) : (
+              <div className="space-y-3 text-xs text-slate-750 max-h-[200px] overflow-y-auto pr-1">
+                {faskesTerdampakList.map((f: any, idx: number) => {
+                  const name = f.nama_faskes || f.nama || 'Fasilitas Kesehatan'
+                  const details = []
+                  if (f.rusak_berat) details.push(`Rusak Berat: ${f.rusak_berat}`)
+                  if (f.rusak_sedang) details.push(`Rusak Sedang: ${f.rusak_sedang}`)
+                  if (f.rusak_ringan) details.push(`Rusak Ringan: ${f.rusak_ringan}`)
+                  if (f.kondisi) details.push(`Kondisi: ${f.kondisi}`)
+                  if (f.fungsi) details.push(`Fungsi: ${f.fungsi}`)
+                  const detailStr = details.length > 0 ? `(${details.join(', ')})` : ''
+
+                  return (
+                    <div key={idx} className="flex justify-between items-center border-b border-slate-50 pb-1.5 last:border-b-0 last:pb-0">
+                      <span className="font-semibold text-slate-505">{name}:</span>
+                      <span className="font-bold text-slate-800">{f.status || f.kondisi || 'Terdampak'} {detailStr}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ) : (
+            // Dummy fallback if no detail loaded
+            <div className="space-y-3 text-xs text-slate-700">
+              <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
+                <span className="font-semibold text-slate-500">Puskesmas Terdampak:</span>
+                <span className="font-bold text-slate-800">1 Unit (Rusak Ringan)</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
+                <span className="font-semibold text-slate-500">Rumah Sakit Rujukan Siaga:</span>
+                <span className="font-bold text-teal-700">2 Unit Siaga 24 Jam</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
+                <span className="font-semibold text-slate-500">Posko Kesehatan Lapangan:</span>
+                <span className="font-bold text-slate-800">1 Titik Terpasang</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-slate-500">Kapasitas Ambulans:</span>
+                <span className="font-bold text-slate-800">3 Unit Aktif</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
-              <span className="font-semibold text-slate-500">Rumah Sakit Rujukan Siaga:</span>
-              <span className="font-bold text-teal-700">2 Unit Siaga 24 Jam</span>
-            </div>
-            <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
-              <span className="font-semibold text-slate-500">Posko Kesehatan Lapangan:</span>
-              <span className="font-bold text-slate-800">1 Titik Terpasang</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-slate-500">Kapasitas Ambulans:</span>
-              <span className="font-bold text-slate-800">3 Unit Aktif</span>
-            </div>
-          </div>
+          )}
         </article>
 
         {/* Card 2: Upaya Penanganan */}
@@ -232,12 +360,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3">
             UPAYA PENANGANAN KRISIS KESEHATAN (EOC)
           </h4>
-          <ul className="list-disc pl-4 space-y-1.5 text-xs font-semibold text-slate-600">
-            <li>Mobilisasi Tim Reaksi Cepat (TRC) dan Tim Cadangan Kesehatan (TCK).</li>
-            <li>Penyaluran logistik darurat berupa paket obat-obatan dan hygiene kit.</li>
-            <li>Penyelenggaraan surveillance aktif penyakit potensi KLB di pos pengungsian.</li>
-            <li>Koordinasi lintas sektor untuk pemulihan akses sanitasi dan air bersih.</li>
-          </ul>
+          {hasDetail && detail.perkembangan && detail.perkembangan.length > 0 ? (
+            <ul className="list-disc pl-4 space-y-1.5 text-xs font-semibold text-slate-650">
+              {detail.perkembangan.map((p: any, idx: number) => (
+                <li key={idx}>{p.keterangan || p.kronologis || p}</li>
+              ))}
+            </ul>
+          ) : (
+            <ul className="list-disc pl-4 space-y-1.5 text-xs font-semibold text-slate-600">
+              <li>Mobilisasi Tim Reaksi Cepat (TRC) dan Tim Cadangan Kesehatan (TCK).</li>
+              <li>Penyaluran logistik darurat berupa paket obat-obatan dan hygiene kit.</li>
+              <li>Penyelenggaraan surveillance aktif penyakit potensi KLB di pos pengungsian.</li>
+              <li>Koordinasi lintas sektor untuk pemulihan akses sanitasi dan air bersih.</li>
+            </ul>
+          )}
         </article>
       </section>
 
@@ -248,11 +384,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         </h4>
         <div className="h-[350px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
           <DisasterMap
-            markers={[selectedEvent]}
+            markers={mapMarkers}
             userScope={{
               mode: 'kabupaten',
-              provinsi: { label: selectedEvent.provinsi },
-              kabupaten: { label: selectedEvent.kabupaten },
+              provinsi: { label: eventData.provinsi },
+              kabupaten: { label: eventData.kabupaten },
             }}
             isGuest={true}
           />
