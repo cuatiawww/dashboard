@@ -26,6 +26,8 @@ import {
   Skull,
   ChevronRight,
   Download,
+  Video,
+  Settings,
 } from 'lucide-react'
 import {
   PieChart,
@@ -235,6 +237,27 @@ const getKorbanBreakdown = (total: number, jenis: string) => {
   }
 }
 
+const isYouTubeUrl = (url: string) => {
+  if (!url) return false
+  return url.includes('youtube.com') || url.includes('youtu.be')
+}
+
+const getYouTubeEmbedUrl = (url: string) => {
+  if (!url) return ''
+  if (url.includes('youtu.be/')) {
+    const id = url.split('youtu.be/')[1]?.split(/[?#]/)[0]
+    return `https://www.youtube.com/embed/${id}`
+  }
+  if (url.includes('v=')) {
+    const id = url.split('v=')[1]?.split('&')[0]?.split(/[?#]/)[0]
+    return `https://www.youtube.com/embed/${id}`
+  }
+  if (url.includes('embed/')) {
+    return url
+  }
+  return url
+}
+
 export default function DashboardKejadianPage() {
   const { token, isInitialized, user } = useAuthStore()
 
@@ -243,6 +266,8 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string>('https://www.youtube.com/watch?v=xvFZjo5PgG0') // Disaster warning/management demo
+  const [showVideoInput, setShowVideoInput] = useState(false)
 
   // Primitive string states to avoid reference comparison bugs causing infinite loops
   const [cakupan, setCakupan] = useState('nasional')
@@ -1204,89 +1229,123 @@ ${guidelines}`)
 
       {/* Map + AI Insight Section - Matches Homepage Aesthetics */}
       <section className="w-full bg-[#fbffff] pb-5">
-        <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[381px_minmax(0,1fr)] xl:items-start">
+        <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[381px_minmax(0,1fr)] xl:items-stretch">
+          {/* ── AI Insight Card ── */}
+          <article
+            className="relative overflow-hidden border border-[#b7d9d8] p-5 xl:h-[550px] xl:w-[381px] flex flex-col"
+            style={{
+              backgroundImage: "url('/bg insght.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center bottom',
+              backgroundRepeat: 'no-repeat',
+              borderTopLeftRadius: '17px',
+              borderTopRightRadius: '17px',
+              borderBottomRightRadius: '22px',
+              borderBottomLeftRadius: '17px',
+            }}
+          >
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(237,251,250,0.72)_0%,rgba(231,247,246,0.60)_100%)]" />
 
-          <div className="space-y-3">
-            {/* ── AI Insight Card ── */}
-            <article
-              className="relative overflow-hidden border border-[#b7d9d8] p-5 xl:h-[415px] xl:w-[381px]"
-              style={{
-                backgroundImage: "url('/bg insght.png')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center bottom',
-                backgroundRepeat: 'no-repeat',
-                borderTopLeftRadius: '17px',
-                borderTopRightRadius: '17px',
-                borderBottomRightRadius: '22px',
-                borderBottomLeftRadius: '17px',
-              }}
-            >
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(237,251,250,0.72)_0%,rgba(231,247,246,0.60)_100%)]" />
-
-              <div className="relative z-10 flex h-full flex-col">
-                {/* Icon + Title */}
-                <div className="flex items-start gap-3">
-                  <Image
-                    src="/insight.svg"
-                    alt="Insight"
-                    width={52}
-                    height={52}
-                    className="h-13 w-13 flex-shrink-0"
-                  />
-                  <h3 className="text-[15px] font-bold leading-[1.3] text-[#1a3535] sm:text-[17px]">
-                    Analisis Penilaian Risiko Krisis Kesehatan Akibat Bencana
-                  </h3>
-                </div>
-
-                {/* Body text */}
-                <div className="mt-3 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/60 px-3 py-2.5 backdrop-blur-[2px] overflow-y-auto max-h-[180px] min-h-[140px]">
-                  <p className="text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px] whitespace-pre-line">
-                    {aiInsight || 'Klik tombol di bawah untuk membuat analisis.'}
-                  </p>
-                </div>
-
-                {/* Divider */}
-                <div className="my-4 h-px bg-[rgba(0,0,0,0.08)]" />
-
-                <div className="mt-auto">
-                  <button
-                    onClick={generateAiInsight}
-                    disabled={generatingAi}
-                    className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-[#4d90d0] to-[#6c5ce7] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(77,144,208,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(108,92,231,0.42)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
-                      {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    </span>
-                    <span className="text-xs font-bold uppercase tracking-[0.1em]">
-                      {generatingAi ? 'Sedang Menganalisis...' : 'Analisis AI'}
-                    </span>
-                  </button>
-                </div>
+            <div className="relative z-10 flex h-full flex-col">
+              {/* Icon + Title */}
+              <div className="flex items-start gap-3">
+                <Image
+                  src="/insight.svg"
+                  alt="Insight"
+                  width={52}
+                  height={52}
+                  className="h-13 w-13 flex-shrink-0"
+                />
+                <h3 className="text-[15px] font-bold leading-[1.3] text-[#1a3535] sm:text-[17px]">
+                  Analisis Penilaian Risiko Krisis Kesehatan Akibat Bencana
+                </h3>
               </div>
-            </article>
 
-            {/* Source card */}
-            <article
-              className="border border-[#b7c8c9] bg-[#e9f1f2] p-4 xl:h-[183px] xl:w-[381px]"
-              style={{
-                borderTopLeftRadius: '17px',
-                borderTopRightRadius: '17px',
-                borderBottomRightRadius: '22px',
-                borderBottomLeftRadius: '17px',
-              }}
-            >
-              <h4 className="text-[18px] font-bold text-[#2f3a3a] sm:text-[22px]">Sumber Data:</h4>
-              <p className="mt-1 text-[14px] text-[#3f4a4a] sm:text-[16px]">
-                Kementerian Kesehatan Republik Indonesia
-              </p>
-              <h4 className="mt-4 text-[18px] font-bold text-[#2f3a3a] sm:text-[22px]">Data per:</h4>
-              <p className="mt-1 text-[14px] text-[#3f4a4a] sm:text-[16px]">22 Juni 2026 10.00 WIB</p>
-            </article>
-          </div>
+              {/* Video Embed Container */}
+              <div className="mt-3 relative aspect-video w-full overflow-hidden rounded-xl border border-teal-200/60 bg-black/5 shadow-inner group/video">
+                {videoUrl ? (
+                  isYouTubeUrl(videoUrl) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(videoUrl)}
+                      className="h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100/50 text-slate-400">
+                    <Video className="h-8 w-8 stroke-[1.5]" />
+                    <span className="mt-1 text-xs">Belum ada video tersemat</span>
+                  </div>
+                )}
+
+                {/* Settings overlay to edit/embed video URL */}
+                <button
+                  onClick={() => setShowVideoInput(!showVideoInput)}
+                  className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
+                  title="Ubah URL Video"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </button>
+
+                {showVideoInput && (
+                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 p-4 text-white animate-fade-in backdrop-blur-sm">
+                    <p className="mb-2 text-xs font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
+                    <input
+                      type="text"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/15"
+                    />
+                    <div className="mt-3 flex gap-2 w-full justify-end">
+                      <button
+                        onClick={() => setShowVideoInput(false)}
+                        className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 transition"
+                      >
+                        Simpan
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Body text */}
+              <div className="mt-3 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/60 px-3 py-2.5 backdrop-blur-[2px] overflow-y-auto flex-1 min-h-[140px]">
+                <p className="text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px] whitespace-pre-line">
+                  {aiInsight || 'Klik tombol di bawah untuk membuat analisis.'}
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div className="my-4 h-px bg-[rgba(0,0,0,0.08)]" />
+
+              <div className="mt-auto">
+                <button
+                  onClick={generateAiInsight}
+                  disabled={generatingAi}
+                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-[#4d90d0] to-[#6c5ce7] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(77,144,208,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(108,92,231,0.42)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
+                    {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-[0.1em]">
+                    {generatingAi ? 'Sedang Menganalisis...' : 'Analisis AI'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </article>
 
           {/* Map Card */}
           <article
-            className="border border-[#cdcdcd] bg-white p-4 xl:h-[615px]"
+            className="border border-[#cdcdcd] bg-white p-4 xl:h-[550px] flex flex-col"
             style={{
               borderTopLeftRadius: '17px',
               borderTopRightRadius: '17px',
@@ -1316,7 +1375,7 @@ ${guidelines}`)
                 Peringatan Dini Aktif
               </button>
             </div>
-            <div className="mt-4 h-[300px] sm:h-[350px] md:h-[420px] xl:h-[470px]">
+            <div className="mt-4 flex-1 min-h-[300px] w-full">
               <DisasterMap
                 markers={data?.markers || []}
                 userScope={activeUserScope}
