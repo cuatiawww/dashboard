@@ -22,6 +22,7 @@ import {
   Clock,
   LayoutGrid,
   CheckCircle2,
+  ExternalLink,
   AlertTriangle,
   Info,
   // PANTAUAN icons
@@ -76,25 +77,6 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'PEMANTAUAN KRISIS',
     items: [
       { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
-    ],
-  },
-  {
-    title: 'AKSES SISTEM',
-    items: [
-      {
-        label: 'AKSES SISTEM',
-        href: 'site/login',
-        icon: LayoutGrid,
-        isExternal: true,
-      },
-    ],
-  },
-  {
-    title: 'PENGELOLAAN',
-    collapsible: true,
-    items: [
-      { label: 'VERIFIKASI DATA', href: 'faskes/verifikasi', icon: ShieldCheck, isExternal: true },
-      { label: 'PENGATURAN', href: '/settings', icon: Settings },
     ],
   },
 ]
@@ -208,15 +190,13 @@ const buildExternalRoute = (route: string, token: string | null) => {
 
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
-  const { token, user, isAuthenticated, isGuest } = useAuthStore()
+  const { token, user } = useAuthStore()
 
   // Track expanded groups
   const isPantauanActive = pathname.startsWith('/pantauan')
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => ({
     'DASHBOARD EOC': true,
     'PANTAUAN': true,
-    'AKSES SISTEM': true,
-    'PENGELOLAAN': true,
   }))
 
   const toggleGroup = (title: string) => {
@@ -267,14 +247,6 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         </div>
         <nav className="h-[calc(100vh-80px)] space-y-5 overflow-y-auto px-3 py-4">
           {sidebarMenu.map((group) => {
-            if (group.title === 'AKSES SISTEM') {
-              const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
-              const isTamu = !isAuthenticated || isGuest
-              if (isMasyarakat || isTamu) {
-                return null
-              }
-            }
-
             const isExpanded = expandedGroups[group.title] ?? false
 
             return (
@@ -360,7 +332,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   const notifRef = useRef<HTMLDivElement>(null)
   const [notificationsList, setNotificationsList] = useState<any[]>([])
   
-  const { user, logout, isAuthenticated } = useAuthStore()
+  const { token, user, logout, isAuthenticated, isGuest } = useAuthStore()
   const { title: headerTitle, description: headerDesc, lastUpdated, sourceLabel, sourceUrl } = useHeaderStore()
   const { getItems, subscribeToItems, addNotificationItem, markAsRead, clearAll, markAllAsRead } = useNotificationItems()
   const { playSound } = useNotificationSound()
@@ -368,6 +340,10 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const hasUnread = notificationsList.some(n => !n.read)
+  
+  const isMasyarakat = user?.level_name?.toLowerCase().includes('masyarakat') || false
+  const isTamu = !isAuthenticated || isGuest
+  const showAksesSistem = !(isMasyarakat || isTamu)
 
   const handleMarkAllAsRead = () => {
     markAllAsRead()
@@ -526,6 +502,16 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               >
                 <RefreshCw className={`h-[18px] w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
               </button>
+              {showAksesSistem && (
+                <a
+                  href={buildExternalRoute('site/login', token)}
+                  className="relative inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 text-xs font-bold uppercase tracking-wider text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
+                  title="Akses Sistem"
+                >
+                  <ExternalLink className="h-4.5 w-4.5 text-slate-600" />
+                  <span>Akses Sistem</span>
+                </a>
+              )}
               <div className="relative" ref={notifRef}>
                 {hasUnread && (
                   <span className="absolute inset-0 rounded-xl bg-red-500/40 animate-ping pointer-events-none" />
