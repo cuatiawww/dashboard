@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, ShieldCheck, Activity, MapPin, RefreshCw } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, UserRound, RefreshCw } from 'lucide-react'
 import { useAuthStore, type User } from '@/lib/authStore'
 import { buildApiUrl } from '@/lib/utils/api'
 
@@ -25,12 +25,6 @@ const getAssetUrl = (url: string) => {
   return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
-// Stat items shown on the left hero panel
-const heroStats = [
-  { value: '10.123', label: 'Faskes Terdaftar', icon: Activity },
-  { value: '34', label: 'Provinsi Terevaluasi', icon: MapPin },
-  { value: '72%', label: 'Tingkat Kepatuhan', icon: ShieldCheck },
-]
 
 export default function LoginPage() {
   const router = useRouter()
@@ -215,24 +209,7 @@ export default function LoginPage() {
               {settings.frontend_app_subtitle}
             </p>
 
-            {/* Stats row */}
-            <div className="mt-8 grid grid-cols-3 gap-3">
-              {heroStats.map(({ value, label, icon: Icon }) => (
-                <div
-                  key={label}
-                  className="rounded-2xl border border-white/10 bg-white/8 p-4 backdrop-blur-sm"
-                  style={{ background: 'rgba(255,255,255,0.07)' }}
-                >
-                  <Icon className="mb-2 h-5 w-5 text-teal-300" strokeWidth={1.8} />
-                  <p className="text-[22px] font-extrabold leading-none text-white xl:text-[26px]">
-                    {value}
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium leading-tight text-teal-200/70">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
+
           </div>
 
           {/* Footer credit */}
