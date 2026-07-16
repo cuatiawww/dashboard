@@ -115,7 +115,9 @@ const pinColor = (totalKorban: number) => {
 const markerStyle = (iconFile: string | undefined, totalKorban: number) => {
   if (iconFile) {
     const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || ''
-    const src = `${backendUrl}/app_asset/icon/data_bencana/${iconFile}`
+    const src = iconFile.startsWith('http')
+      ? iconFile
+      : `${backendUrl}/app_asset/icon/data_bencana/${iconFile}`
     return new Style({
       image: new Icon({
         src: src,

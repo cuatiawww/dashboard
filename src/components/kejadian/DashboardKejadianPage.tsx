@@ -432,7 +432,11 @@ export default function DashboardKejadianPage() {
       }
 
       const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || ''
-      const iconUrl = m.icon_file ? `${backendUrl}/app_asset/icon/data_bencana/${m.icon_file}` : null
+      const iconUrl = m.icon_file
+        ? m.icon_file.startsWith('http')
+          ? m.icon_file
+          : `${backendUrl}/app_asset/icon/data_bencana/${m.icon_file}`
+        : null
 
       // Set fallback Lucide icons based on disaster name or default
       let icon = AlertTriangle
