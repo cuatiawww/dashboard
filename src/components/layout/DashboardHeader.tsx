@@ -80,12 +80,12 @@ const sidebarMenu: SidebarMenuGroup[] = [
       { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
     ],
   },
-  {
-    title: 'TENTANG DASHBOARD',
-    items: [
-      { label: 'INTEROPERABILITAS', href: '/interoperabilitas', icon: Network },
-    ],
-  },
+  // {
+  //   title: 'TENTANG DASHBOARD',
+  //   items: [
+  //     { label: 'INTEROPERABILITAS', href: '/interoperabilitas', icon: Network },
+  //   ],
+  // },
 ]
 
 const notificationsData = [
