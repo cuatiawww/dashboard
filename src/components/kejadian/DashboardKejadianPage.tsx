@@ -915,18 +915,43 @@ export default function DashboardKejadianPage() {
     return () => clearInterval(intervalId)
   }, [])
 
-
-  const generateAiInsight = () => {
+  const generateAiInsight = async () => {
     if (!data) return
     setGeneratingAi(true)
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/ai-insight', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          bencanaData: {
+            summary: data.summary,
+            jenis_bencana: data.jenis_bencana,
+            wilayah: data.wilayah,
+            regionLabel: getRegionLabel()
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('API request failed')
+      }
+
+      const resJson = await response.json()
+      if (resJson.insight) {
+        setAiInsight(resJson.insight)
+      } else {
+        throw new Error('No insight text returned')
+      }
+    } catch (err) {
+      console.warn('[DashboardKejadianPage] Real AI failed, using fallback mock...', err)
       if (data.summary.total_bencana === 0) {
         setAiInsight(`[ANALISIS RISK ASSESSMENT]
 Tidak ada data laporan kejadian bencana yang terdaftar di dalam database.
 
-Rekomendasi Respons:
+PANDUAN KLINIS & RESPONS CEPAT:
 N/A`)
-        setGeneratingAi(false)
         return
       }
 
@@ -954,8 +979,9 @@ Indeks Kematian (Case Fatality Rate - CFR) terpantau di angka ${caseFatalityRate
 
 PANDUAN KLINIS & RESPONS CEPAT:
 ${guidelines}`)
+    } finally {
       setGeneratingAi(false)
-    }, 1250)
+    }
   }
 
   const handleOpenAiModal = () => {
@@ -1327,31 +1353,66 @@ ${guidelines}`)
                 </h3>
               </div>
 
-              {/* Teaser/Info Box */}
-              <div className="mt-4 rounded-xl border border-teal-200/40 bg-[#eefbfb]/60 p-4 shadow-sm backdrop-blur-[1px] flex flex-col gap-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4.5 w-4.5 text-teal-650 animate-pulse" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700">AI Penilaian Risiko</span>
-                </div>
-                <p className="text-[12px] leading-relaxed text-[#2f4040]">
-                  Sistem kecerdasan buatan terkonfigurasi untuk memindai seluruh data bencana nasional secara real-time, mendeteksi indeks fatalitas kasus (CFR), memprediksi kerentanan KLB penyakit menular di pengungsian, serta merumuskan rekomendasi taktis medis.
-                </p>
+              {/* Video Embed Container */}
+              <div className="mt-3 relative aspect-video w-full overflow-hidden rounded-xl border border-teal-200/60 bg-black/5 shadow-inner group/video shrink-0">
+                {videoUrl ? (
+                  isYouTubeUrl(videoUrl) ? (
+                    <iframe
+                      src={getYouTubeEmbedUrl(videoUrl)}
+                      className="h-full w-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100/50 text-slate-400">
+                    <Video className="h-8 w-8 stroke-[1.5]" />
+                    <span className="mt-1 text-xs">Belum ada video tersemat</span>
+                  </div>
+                )}
+
+                {/* Settings overlay to edit/embed video URL */}
+                <button
+                  onClick={() => setShowVideoInput(!showVideoInput)}
+                  className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
+                  title="Ubah URL Video"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                </button>
+
+                {showVideoInput && (
+                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 p-4 text-white animate-fade-in backdrop-blur-sm">
+                    <p className="mb-2 text-xs font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
+                    <input
+                      type="text"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/15"
+                    />
+                    <div className="mt-3 flex gap-2 w-full justify-end">
+                      <button
+                        onClick={() => setShowVideoInput(false)}
+                        className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 transition"
+                      >
+                        Simpan
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Body text / Preview of AI Insight */}
-              <div className="mt-4 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/70 p-4 backdrop-blur-[2px] overflow-hidden flex-1 flex flex-col relative">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 shrink-0">Pratinjau Analisis:</span>
-                <div className="overflow-y-auto flex-1 text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px]">
-                  <p className="text-[13px] italic whitespace-pre-line leading-relaxed">
-                    {aiInsight 
-                      ? aiInsight.replace('[ANALISIS RISK ASSESSMENT]', '').trim() 
-                      : 'Klik "Lihat Analisis Lengkap" di bawah untuk memproses dan meninjau laporan penilaian risiko krisis kesehatan, video presenter AI, serta informasi parameter pendukung.'
-                    }
-                  </p>
-                </div>
-                {aiInsight && (
-                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/90 to-transparent pointer-events-none" />
-                )}
+              {/* Body text */}
+              <div className="mt-3 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/60 px-3 py-2.5 backdrop-blur-[2px] overflow-y-auto flex-1 min-h-[140px]">
+                <p className="text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px] whitespace-pre-line">
+                  {aiInsight || 'Klik tombol di bawah untuk membuat analisis.'}
+                </p>
               </div>
 
               {/* Divider */}
@@ -1361,7 +1422,7 @@ ${guidelines}`)
                 <button
                   onClick={handleOpenAiModal}
                   disabled={generatingAi}
-                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-[#4d90d0] to-[#6c5ce7] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(77,144,208,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(108,92,231,0.42)] active:scale-[0.99] disabled:cursor-wait"
+                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-[#047D78] hover:bg-[#03605c] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(4,125,120,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(4,125,120,0.42)] active:scale-[0.99] disabled:cursor-wait"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
                     {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -2063,7 +2124,7 @@ ${guidelines}`)
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
                 style={{ backgroundImage: "url('/bg header.png')" }}
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#4d90d0] via-[#5b6ce3] to-[#6c5ce7]" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#047D78]/95 via-[#076176]/90 to-[#0f8f96]/95" />
               <div className="relative z-10 flex-1 min-w-0 flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-xl">
                   <Sparkles className="h-6 w-6 text-white" />
