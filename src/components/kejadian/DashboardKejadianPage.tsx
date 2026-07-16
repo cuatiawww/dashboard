@@ -896,7 +896,7 @@ export default function DashboardKejadianPage() {
     }
   }, [fetchData])
 
-  // Polling data otomatis setiap 10 detik agar deteksi kejadian baru real-time bekerja tanpa refresh manual
+  // Polling data otomatis setiap 30 menit agar deteksi kejadian baru bekerja tanpa terlalu sering refresh skeleton
   const fetchDataRef = useRef(fetchData)
   useEffect(() => {
     fetchDataRef.current = fetchData
@@ -906,7 +906,7 @@ export default function DashboardKejadianPage() {
     const intervalId = setInterval(() => {
       console.log('[DashboardKejadianPage] Polling new data from backend...')
       fetchDataRef.current()
-    }, 10000)
+    }, 1800000) // 30 menit (1.800.000 ms)
     return () => clearInterval(intervalId)
   }, [])
 
