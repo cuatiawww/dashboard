@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Clock,
   LayoutGrid,
+  Network,
   CheckCircle2,
   ExternalLink,
   AlertTriangle,
@@ -77,6 +78,12 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'PEMANTAUAN KRISIS',
     items: [
       { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
+    ],
+  },
+  {
+    title: 'TENTANG DASHBOARD',
+    items: [
+      { label: 'INTEROPERABILITAS', href: '/interoperabilitas', icon: Network },
     ],
   },
 ]
@@ -197,6 +204,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => ({
     'DASHBOARD EOC': true,
     'PANTAUAN': true,
+    'TENTANG DASHBOARD': true,
   }))
 
   const toggleGroup = (title: string) => {
