@@ -28,6 +28,9 @@ import {
   Download,
   Video,
   Settings,
+  Info,
+  FileText,
+  Clock,
 } from 'lucide-react'
 import {
   PieChart,
@@ -275,6 +278,8 @@ export default function DashboardKejadianPage() {
   const [kabupaten, setKabupaten] = useState('')
   const [tahun, setTahun] = useState('2026')
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [aiModalTab, setAiModalTab] = useState<'report' | 'video' | 'info'>('report')
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Record<string | number, boolean>>({})
 
@@ -953,21 +958,78 @@ ${guidelines}`)
     }, 1250)
   }
 
+  const handleOpenAiModal = () => {
+    setIsAiModalOpen(true)
+    setAiModalTab('report')
+    if (!aiInsight && !generatingAi) {
+      generateAiInsight()
+    }
+  }
+
+  const currentFormattedTime = useMemo(() => {
+    if (!aiInsight) return ''
+    const now = new Date()
+    return now.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }) + ' pukul ' + now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB'
+  }, [aiInsight])
+
+  const renderAiReportContent = () => {
+    if (generatingAi || !aiInsight) {
+      return (
+        <div className="space-y-4 animate-pulse py-4">
+          <div className="h-6 bg-slate-100 rounded w-1/3" />
+          <div className="h-4 bg-slate-100 rounded w-full" />
+          <div className="h-4 bg-slate-100 rounded w-5/6" />
+          <div className="h-4 bg-slate-100 rounded w-4/5" />
+          <div className="pt-4 h-6 bg-slate-100 rounded w-1/4" />
+          <div className="h-4 bg-slate-100 rounded w-full" />
+          <div className="h-4 bg-slate-100 rounded w-11/12" />
+        </div>
+      )
+    }
+
+    const sections = aiInsight.split('PANDUAN KLINIS & RESPONS CEPAT:')
+    const assessment = sections[0].replace('[ANALISIS RISK ASSESSMENT]', '').trim()
+    const guidelines = sections[1]?.trim() || ''
+
+    return (
+      <div className="space-y-6 py-2">
+        {/* Card 1: Risk Assessment */}
+        <div className="rounded-2xl border border-teal-100 bg-[#eefbfb]/30 p-5 shadow-xs">
+          <h4 className="text-sm font-black text-teal-850 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Sparkles className="h-4.5 w-4.5 text-teal-650" />
+            Analisis Penilaian Risiko (Risk Assessment)
+          </h4>
+          <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+            {assessment}
+          </p>
+        </div>
+
+        {/* Card 2: Guidelines */}
+        {guidelines && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50/20 p-5 shadow-xs">
+            <h4 className="text-sm font-black text-blue-850 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Activity className="h-4.5 w-4.5 text-blue-650" />
+              Panduan Klinis & Respons Medis Cepat
+            </h4>
+            <p className="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+              {guidelines}
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // Pre-generate AI insight once data is loaded
   useEffect(() => {
     if (data && !aiInsight) {
       generateAiInsight()
     }
   }, [data])
-
-  // Auto-refresh data every 10 seconds for real-time notifications
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData()
-    }, 10000) // Refresh every 10 seconds
-
-    return () => clearInterval(interval)
-  }, [fetchData])
 
   if (!isInitialized) {
     return (
@@ -1265,82 +1327,47 @@ ${guidelines}`)
                 </h3>
               </div>
 
-              {/* Video Embed Container */}
-              <div className="mt-3 relative aspect-video w-full overflow-hidden rounded-xl border border-teal-200/60 bg-black/5 shadow-inner group/video">
-                {videoUrl ? (
-                  isYouTubeUrl(videoUrl) ? (
-                    <iframe
-                      src={getYouTubeEmbedUrl(videoUrl)}
-                      className="h-full w-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <video
-                      src={videoUrl}
-                      controls
-                      className="h-full w-full object-cover"
-                    />
-                  )
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100/50 text-slate-400">
-                    <Video className="h-8 w-8 stroke-[1.5]" />
-                    <span className="mt-1 text-xs">Belum ada video tersemat</span>
-                  </div>
-                )}
-
-                {/* Settings overlay to edit/embed video URL */}
-                <button
-                  onClick={() => setShowVideoInput(!showVideoInput)}
-                  className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
-                  title="Ubah URL Video"
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                </button>
-
-                {showVideoInput && (
-                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 p-4 text-white animate-fade-in backdrop-blur-sm">
-                    <p className="mb-2 text-xs font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
-                    <input
-                      type="text"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/15"
-                    />
-                    <div className="mt-3 flex gap-2 w-full justify-end">
-                      <button
-                        onClick={() => setShowVideoInput(false)}
-                        className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 transition"
-                      >
-                        Simpan
-                      </button>
-                    </div>
-                  </div>
-                )}
+              {/* Teaser/Info Box */}
+              <div className="mt-4 rounded-xl border border-teal-200/40 bg-[#eefbfb]/60 p-4 shadow-sm backdrop-blur-[1px] flex flex-col gap-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4.5 w-4.5 text-teal-650 animate-pulse" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-teal-700">AI Penilaian Risiko</span>
+                </div>
+                <p className="text-[12px] leading-relaxed text-[#2f4040]">
+                  Sistem kecerdasan buatan terkonfigurasi untuk memindai seluruh data bencana nasional secara real-time, mendeteksi indeks fatalitas kasus (CFR), memprediksi kerentanan KLB penyakit menular di pengungsian, serta merumuskan rekomendasi taktis medis.
+                </p>
               </div>
 
-              {/* Body text */}
-              <div className="mt-3 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/60 px-3 py-2.5 backdrop-blur-[2px] overflow-y-auto flex-1 min-h-[140px]">
-                <p className="text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px] whitespace-pre-line">
-                  {aiInsight || 'Klik tombol di bawah untuk membuat analisis.'}
-                </p>
+              {/* Body text / Preview of AI Insight */}
+              <div className="mt-4 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/70 p-4 backdrop-blur-[2px] overflow-hidden flex-1 flex flex-col relative">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5 shrink-0">Pratinjau Analisis:</span>
+                <div className="overflow-y-auto flex-1 text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px]">
+                  <p className="text-[13px] italic whitespace-pre-line leading-relaxed">
+                    {aiInsight 
+                      ? aiInsight.replace('[ANALISIS RISK ASSESSMENT]', '').trim() 
+                      : 'Klik "Lihat Analisis Lengkap" di bawah untuk memproses dan meninjau laporan penilaian risiko krisis kesehatan, video presenter AI, serta informasi parameter pendukung.'
+                    }
+                  </p>
+                </div>
+                {aiInsight && (
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white/90 to-transparent pointer-events-none" />
+                )}
               </div>
 
               {/* Divider */}
               <div className="my-4 h-px bg-[rgba(0,0,0,0.08)]" />
 
-              <div className="mt-auto">
+              <div className="mt-auto shrink-0">
                 <button
-                  onClick={generateAiInsight}
+                  onClick={handleOpenAiModal}
                   disabled={generatingAi}
-                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-[#4d90d0] to-[#6c5ce7] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(77,144,208,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(108,92,231,0.42)] active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-gradient-to-r from-[#4d90d0] to-[#6c5ce7] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(77,144,208,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(108,92,231,0.42)] active:scale-[0.99] disabled:cursor-wait"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
                     {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                   </span>
                   <span className="text-xs font-bold uppercase tracking-[0.1em]">
-                    {generatingAi ? 'Sedang Menganalisis...' : 'Analisis AI'}
+                    {generatingAi ? 'Sedang Menganalisis...' : 'Lihat Analisis Lengkap'}
                   </span>
                 </button>
               </div>
@@ -2021,6 +2048,190 @@ ${guidelines}`)
                 className="px-5 py-2 bg-[#047D78] hover:bg-[#03605c] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-sm"
               >
                 Tutup Rincian
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── AI Analysis Modal ── */}
+      {isAiModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-4xl rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="relative text-white px-6 py-5 flex items-center justify-between overflow-hidden border-b border-slate-200 shrink-0">
+              <div
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
+                style={{ backgroundImage: "url('/bg header.png')" }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#4d90d0] via-[#5b6ce3] to-[#6c5ce7]" />
+              <div className="relative z-10 flex-1 min-w-0 flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-xl">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-[16px] md:text-[18px] font-extrabold uppercase tracking-wide truncate">
+                    Analisis Detail AI Penilaian Risiko Krisis Kesehatan
+                  </h3>
+                  <p className="text-[11px] md:text-[12px] text-teal-50/90 mt-0.5 truncate">
+                    Laporan Cerdas Penilaian Risiko Bencana & Krisis Kesehatan - {getRegionLabel()}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAiModalOpen(false)}
+                className="relative z-20 rounded-xl p-1.5 text-teal-100 hover:bg-white/10 hover:text-white transition shrink-0 ml-4"
+                aria-label="Tutup"
+              >
+                <X className="h-5.5 w-5.5" />
+              </button>
+            </div>
+
+            {/* Modal Tab Headers */}
+            <div className="flex border-b border-slate-200 bg-slate-50 shrink-0">
+              {[
+                { id: 'report', label: 'Laporan Analisis', icon: FileText },
+                { id: 'video', label: 'AI Video Presenter', icon: Video },
+                { id: 'info', label: 'Informasi Sumber Data & AI', icon: Info },
+              ].map((tab) => {
+                const TabIcon = tab.icon
+                const isActive = aiModalTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAiModalTab(tab.id as 'report' | 'video' | 'info')}
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 border-b-2 outline-none ${
+                      isActive
+                        ? 'border-teal-600 text-teal-700 bg-white'
+                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
+                    }`}
+                  >
+                    <TabIcon className="h-4.5 w-4.5" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 scrollbar-thin bg-white">
+              {aiModalTab === 'report' && renderAiReportContent()}
+
+              {aiModalTab === 'video' && (
+                <div className="space-y-5 py-2">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-lg">
+                    {videoUrl ? (
+                      isYouTubeUrl(videoUrl) ? (
+                        <iframe
+                          src={getYouTubeEmbedUrl(videoUrl)}
+                          className="h-full w-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <video
+                          src={videoUrl}
+                          controls
+                          className="h-full w-full object-cover"
+                        />
+                      )
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
+                        <Video className="h-10 w-10 stroke-[1.5]" />
+                        <span className="mt-2 text-sm font-semibold">Belum ada video tersemat</span>
+                      </div>
+                    )}
+
+                    {/* Settings Overlay Button */}
+                    <button
+                      onClick={() => setShowVideoInput(!showVideoInput)}
+                      className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
+                      title="Ubah URL Video"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+
+                    {showVideoInput && (
+                      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 p-6 text-white backdrop-blur-sm">
+                        <p className="mb-3 text-sm font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
+                        <input
+                          type="text"
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="w-full max-w-md rounded-xl bg-white/15 px-4 py-2 text-sm text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/20"
+                        />
+                        <div className="mt-4 flex gap-3">
+                          <button
+                            onClick={() => setShowVideoInput(false)}
+                            className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition"
+                          >
+                            Simpan Perubahan
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-150 p-4">
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      💡 <strong>Presenter AI</strong> memvisualisasikan data penilaian risiko bencana dalam format video interaktif yang diperbarui secara periodik oleh EOC Krisis Kesehatan Kemenkes RI.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {aiModalTab === 'info' && (
+                <div className="space-y-6 py-2">
+                  {/* Alert 1: Warning Amber */}
+                  <div className="rounded-2xl border border-amber-200/85 bg-amber-50/65 p-5 flex items-start gap-4 shadow-sm">
+                    <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1.5 flex-1">
+                      <h4 className="text-xs md:text-sm font-black text-amber-900 uppercase tracking-wider">
+                        REKOMENDASI UTAMA: STATUS SIAGA / PERLU ANTISIPASI
+                      </h4>
+                      <p className="text-xs md:text-sm text-amber-850 leading-relaxed font-semibold">
+                        Wilayah {getRegionLabel()} berada dalam status SIAGA (perlu perhatian sedang) karena: Tingkat fatalitas kasus (CFR) terpantau di angka {( ((data?.summary?.total_meninggal || 0) / ((data?.summary?.total_meninggal || 0) + (data?.summary?.total_luka || 0) || 1)) * 100 ).toFixed(1)}%, serta besarnya populasi terdampak ({(data?.summary?.total_terdampak || 0).toLocaleString('id-ID')} jiwa) dan pengungsi ({(data?.summary?.total_pengungsi || 0).toLocaleString('id-ID')} jiwa) di posko pengungsian memerlukan pemantauan sanitasi lingkungan ketat mencegah KLB penyakit menular.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Alert 2: Info Blue */}
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 space-y-4 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <Info className="h-5.5 w-5.5 text-blue-600 shrink-0 mt-0.5" />
+                      <div className="space-y-2 flex-1">
+                        <h4 className="text-xs md:text-sm font-black text-blue-900 uppercase tracking-wider">
+                          INFORMASI GENERATE AI
+                        </h4>
+                        <p className="text-xs md:text-sm text-blue-800 leading-relaxed font-semibold">
+                          Analisis Detail AI ini merupakan hasil generate otomatis berdasarkan kalkulasi database SIPKK untuk wilayah {getRegionLabel().toUpperCase()}. AI ini dikonfigurasi khusus hanya untuk menganalisis data dashboard {getRegionLabel().toUpperCase()}.
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold pt-1">
+                          <Clock className="h-4 w-4 text-slate-400" />
+                          <span>Yang Anda lihat saat ini adalah hasil generate AI pada tanggal {currentFormattedTime}.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-px bg-blue-100" />
+
+                    <p className="text-[10px] md:text-[11px] leading-relaxed text-slate-450 uppercase font-bold tracking-wide italic">
+                      DISCLAIMER: Semua informasi, estimasi tren, dan rekomendasi taktis yang disajikan merupakan analisis dari model AI (Google Gemini). Hasil analisis ini ditujukan sebagai referensi pembantu pengambilan keputusan dinas kesehatan setempat dan tidak menggantikan keputusan medis formal maupun regulasi resmi dari kementerian terkait.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-150 flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                EOC KRISIS KESEHATAN KEMENKES RI
+              </span>
+              <button
+                onClick={() => setIsAiModalOpen(false)}
+                className="px-5 py-2 bg-[#047D78] hover:bg-[#03605c] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-sm"
+              >
+                Tutup Analisis
               </button>
             </div>
           </div>
