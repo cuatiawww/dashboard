@@ -74,18 +74,18 @@ const sidebarMenu: SidebarMenuGroup[] = [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
     ],
   },
-  {
-    title: 'PEMANTAUAN KRISIS',
-    items: [
-      { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
-    ],
-  },
   // {
-  //   title: 'TENTANG DASHBOARD',
+  //   title: 'PEMANTAUAN KRISIS',
   //   items: [
-  //     { label: 'INTEROPERABILITAS', href: '/interoperabilitas', icon: Network },
+  //     { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
   //   ],
   // },
+  {
+    title: 'TENTANG DASHBOARD',
+    items: [
+      { label: 'INTEROPERABILITAS', href: '/interoperabilitas', icon: Network },
+    ],
+  },
 ]
 
 const notificationsData = [
