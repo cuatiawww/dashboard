@@ -240,6 +240,20 @@ const getKorbanBreakdown = (total: number, jenis: string) => {
   }
 }
 
+const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
 const isYouTubeUrl = (url: string) => {
   if (!url) return false
   return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('heygen.com')
@@ -410,21 +424,60 @@ export default function DashboardKejadianPage() {
         window.clearInterval(alertIntervalId)
       }
 
-      playSound('alert')
+      let hasProximityAlert = false
+      let closestDistance = 9999
+      let closestEvent: any = null
+
+      if (typeof window !== 'undefined') {
+        const savedCoords = localStorage.getItem('user_coords')
+        if (savedCoords) {
+          try {
+            const userCoords = JSON.parse(savedCoords)
+            if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
+              items.forEach(item => {
+                if (item.lat && item.lng) {
+                  const dist = getDistanceInKm(userCoords.lat, userCoords.lng, item.lat, item.lng)
+                  if (dist <= 100) {
+                    hasProximityAlert = true
+                    if (dist < closestDistance) {
+                      closestDistance = dist
+                      closestEvent = item
+                    }
+                  }
+                }
+              })
+            }
+          } catch (e) {
+            console.error('[EWS Radius Check] Failed to parse user coordinates:', e)
+          }
+        }
+      }
+
+      playSound(hasProximityAlert ? 'alert' : 'warning')
 
       items.forEach(item => {
-        console.log('[DashboardKejadianPage] Adding notification for:', item.jenis_bencana)
+        const isClose = closestEvent && closestEvent.kode_trans === item.kode_trans
+        const distStr = isClose ? ` • ⚠️ Radius ${Math.round(closestDistance)} km!` : ''
+
         addNotificationItem(
-          `${item.jenis_bencana}`,
-          `📍 ${item.kabupaten || item.provinsi || 'Lokasi tidak diketahui'} • 👥 ${item.total_korban || 0} korban`,
-          item.is_krisis === 1 ? 'alert' : 'warning',
+          `${item.jenis_bencana}${isClose ? ' (BAHAYA DEKAT)' : ''}`,
+          `📍 ${item.kabupaten || item.provinsi || 'Lokasi tidak diketahui'}${distStr} • 👥 ${item.total_korban || 0} korban`,
+          isClose || item.is_krisis === 1 ? 'alert' : 'warning',
           item
         )
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(isClose ? "⚠️ EWS: BENCANA DEKAT LOKASI ANDA!" : "Laporan Kejadian Baru", {
+            body: `${item.jenis_bencana} di ${item.kabupaten || item.provinsi || 'Lokasi Terdeteksi'}.${isClose ? ` Berjarak ${Math.round(closestDistance)} km dari lokasi Anda!` : ''}`,
+            icon: "/favicon.ico"
+          })
+        }
       })
 
+      const intervalDuration = hasProximityAlert ? 10000 : 15000
       const intervalId = window.setInterval(() => {
-        playSound('alert')
-      }, 15000)
+        playSound(hasProximityAlert ? 'alert' : 'warning')
+      }, intervalDuration)
       setAlertIntervalId(intervalId)
     }
   )
