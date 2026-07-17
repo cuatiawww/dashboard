@@ -884,8 +884,12 @@ export default function DashboardKejadianPage() {
   }
 
   const handleSummaryChange = useCallback((summary: FilterSummary) => {
-    const prov = summary.provinsi !== 'SEMUA PROVINSI' ? summary.provinsi : ''
-    const kab = summary.kabkota !== 'SEMUA KAB/KOTA' ? summary.kabkota : ''
+    if (summary.provinsi.toUpperCase().includes('MEMUAT') || summary.kabkota.toUpperCase().includes('MEMUAT')) {
+      return
+    }
+
+    const prov = (summary.provinsi !== 'SEMUA PROVINSI' && !summary.provinsi.toUpperCase().includes('MEMUAT')) ? summary.provinsi : ''
+    const kab = (summary.kabkota !== 'SEMUA KAB/KOTA' && !summary.kabkota.toUpperCase().includes('MEMUAT')) ? summary.kabkota : ''
     const cak = summary.cakupan.toLowerCase()
     const yr = summary.tahun || '2026'
 

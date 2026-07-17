@@ -420,8 +420,8 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
 
   const summary = useMemo<FilterSummary>(
     () => {
-      const parentProv = selectedProvinceName ? selectedProvinceName.toUpperCase() : null
-      const parentKab = selectedKabupatenName ? selectedKabupatenName.toUpperCase() : null
+      const parentProv = (selectedProvinceName && !selectedProvinceName.toUpperCase().includes('MEMUAT')) ? selectedProvinceName.toUpperCase() : null
+      const parentKab = (selectedKabupatenName && !selectedKabupatenName.toUpperCase().includes('MEMUAT')) ? selectedKabupatenName.toUpperCase() : null
 
       const defaultProv = summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi'
       const defaultKab = summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota'
