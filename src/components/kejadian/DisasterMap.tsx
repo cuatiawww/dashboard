@@ -21,6 +21,8 @@ import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
+import Overlay from 'ol/Overlay'
+import CircleGeom from 'ol/geom/Circle'
 import 'ol/ol.css'
 
 
@@ -157,6 +159,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const kabupatenLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const markerLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const pulseOverlayRef = useRef<Overlay | null>(null)
   const lastFetchedProvinceRef = useRef<string | null>(null)
 
   // BNPB layers refs
@@ -428,6 +431,23 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       }),
     })
 
+    // Create pulse overlay element for EWS
+    const pulseEl = document.createElement('div')
+    pulseEl.className = 'ews-pulse-overlay pointer-events-none'
+    pulseEl.innerHTML = `
+      <div class="relative flex h-14 w-14 items-center justify-center">
+        <div class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></div>
+        <div class="relative inline-flex rounded-full h-3 w-3 bg-red-600"></div>
+      </div>
+    `
+    const pulseOverlay = new Overlay({
+      element: pulseEl,
+      positioning: 'center-center',
+      stopEvent: false
+    })
+    map.addOverlay(pulseOverlay)
+    pulseOverlayRef.current = pulseOverlay
+
     // ── Click handler ──
     map.on('singleclick', (evt) => {
       // Check marker pin first (highest priority)
@@ -526,6 +546,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
+      pulseOverlayRef.current = null
       setMapInstance(null)
       bnpbAdminLayerRef.current = null
       bnpbHillshadeLayerRef.current = null
@@ -742,23 +763,90 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     if (!showMarkers) {
       markerLayer.setVisible(false)
+      if (pulseOverlayRef.current) {
+        pulseOverlayRef.current.setPosition(undefined)
+      }
       return
     }
 
     markerLayer.setVisible(true)
 
-    const features = filteredMarkers
-      .filter((m) => m.lat && m.lng && m.lat !== 0 && m.lng !== 0)
-      .map((m) => {
-        const feature = new Feature({
-          geometry: new Point(fromLonLat([m.lng, m.lat])),
-          markerData: m,
-        })
-        feature.setStyle(markerStyle(m.icon_file, m.total_korban))
-        return feature
+    const validMarkers = filteredMarkers.filter((m) => m.lat && m.lng && m.lat !== 0 && m.lng !== 0)
+    const features: Feature<any>[] = validMarkers.map((m) => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([m.lng, m.lat])),
+        markerData: m,
       })
+      feature.setStyle(markerStyle(m.icon_file, m.total_korban))
+      return feature
+    })
+
+    // Draw 100km warning circles for disasters
+    validMarkers.forEach((m) => {
+      if (m.total_korban > 0 || m.jenis_bencana) {
+        const circleFeature = new Feature({
+          geometry: new CircleGeom(fromLonLat([m.lng, m.lat]), 100000), // 100km radius
+        })
+        circleFeature.setStyle(new Style({
+          fill: new Fill({ color: 'rgba(239, 68, 68, 0.04)' }),
+          stroke: new Stroke({ color: 'rgba(239, 68, 68, 0.25)', width: 1.2, lineDash: [4, 4] })
+        }))
+        features.push(circleFeature)
+      }
+    })
+
+    // Add User Current GPS Location blue pin
+    if (typeof window !== 'undefined') {
+      const savedCoords = localStorage.getItem('user_coords')
+      if (savedCoords) {
+        try {
+          const userCoords = JSON.parse(savedCoords)
+          if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
+            const userFeature = new Feature({
+              geometry: new Point(fromLonLat([userCoords.lng, userCoords.lat])),
+              markerData: {
+                kode_trans: 'user-location',
+                jenis_bencana: 'Lokasi Saya',
+                provinsi: '',
+                kabupaten: localStorage.getItem('user_coords_name') || 'Saya Berada di Sini',
+                total_korban: 0,
+                lat: userCoords.lat,
+                lng: userCoords.lng
+              }
+            })
+            userFeature.setStyle(new Style({
+              image: new CircleStyle({
+                radius: 8,
+                fill: new Fill({ color: '#2563eb' }),
+                stroke: new Stroke({ color: '#ffffff', width: 2 })
+              })
+            }))
+            features.push(userFeature)
+          }
+        } catch (e) {
+          console.error('[DisasterMap] Failed to parse user coords:', e)
+        }
+      }
+    }
 
     source.addFeatures(features)
+
+    // Position EWS pulse overlay on the latest disaster event
+    if (pulseOverlayRef.current && validMarkers.length > 0) {
+      const sorted = [...validMarkers].sort((a, b) => {
+        const dateA = a.tgl_kejadian ? new Date(a.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
+        const dateB = b.tgl_kejadian ? new Date(b.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
+        return dateB - dateA
+      })
+      const latest = sorted[0]
+      if (latest && latest.lat && latest.lng) {
+        pulseOverlayRef.current.setPosition(fromLonLat([latest.lng, latest.lat]))
+      } else {
+        pulseOverlayRef.current.setPosition(undefined)
+      }
+    } else if (pulseOverlayRef.current) {
+      pulseOverlayRef.current.setPosition(undefined)
+    }
   }, [filteredMarkers, showMarkers])
 
   // ─────────────────────────────────────────────
