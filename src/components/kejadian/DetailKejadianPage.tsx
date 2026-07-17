@@ -1,7 +1,25 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { MapPin, Users, Loader2, AlertTriangle } from 'lucide-react'
+import {
+  MapPin,
+  Users,
+  Loader2,
+  AlertTriangle,
+  Compass,
+  Zap,
+  Droplets,
+  Wifi,
+  Phone,
+  ShieldAlert,
+  HeartPulse,
+  Activity,
+  FileText,
+  Home,
+  CheckCircle2,
+  XCircle,
+  HelpCircle
+} from 'lucide-react'
 import DisasterMap from './DisasterMap'
 
 interface DetailKejadianPageProps {
@@ -147,6 +165,67 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const faskesTerdampakList = eventData.faskes_terdampak || []
 
+  // Helper for status flags
+  const getStatusLabel = (val: number | null | undefined, type: 'akses' | 'listrik' | 'air') => {
+    if (val === null || val === undefined) return { label: 'Tidak Dilaporkan', color: 'bg-slate-100 text-slate-500 border border-slate-200' }
+    if (type === 'akses') {
+      return val === 1 
+        ? { label: 'Terbuka / Lancar', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' }
+        : { label: 'Terputus / Tertutup', color: 'bg-rose-50 text-rose-700 border border-rose-200' }
+    }
+    if (type === 'listrik') {
+      return val === 1 
+        ? { label: 'Berfungsi Normal', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' }
+        : { label: 'Padam / Terputus', color: 'bg-rose-50 text-rose-700 border border-rose-200' }
+    }
+    if (type === 'air') {
+      return val === 1 
+        ? { label: 'Tersedia Layak', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' }
+        : { label: 'Tercemar / Krisis', color: 'bg-rose-50 text-rose-700 border border-rose-200' }
+    }
+    return { label: 'N/A', color: 'bg-slate-100 text-slate-500 border border-slate-200' }
+  }
+
+  const aggregatedTenaga = useMemo(() => {
+    const list = eventData.tenaga_kesehatan || []
+    if (list.length === 0) return null
+
+    const totals = {
+      dokter: { aktif: 0, butuh: 0 },
+      perawat: { aktif: 0, butuh: 0 },
+      bidan: { aktif: 0, butuh: 0 },
+      farmasi: { aktif: 0, butuh: 0 },
+      gizi: { aktif: 0, butuh: 0 },
+      kesling: { aktif: 0, butuh: 0 },
+      lainnya: { aktif: 0, butuh: 0 },
+    }
+
+    list.forEach((t: any) => {
+      totals.dokter.aktif += Number(t.jml_dokter ?? 0)
+      totals.dokter.butuh += Number(t.kebutuhan_dokter ?? 0)
+      
+      totals.perawat.aktif += Number(t.jml_perawat ?? 0)
+      totals.perawat.butuh += Number(t.kebutuhan_perawat ?? 0)
+      
+      totals.bidan.aktif += Number(t.jml_bidan ?? 0)
+      totals.bidan.butuh += Number(t.kebutuhan_bidan ?? 0)
+      
+      totals.farmasi.aktif += Number(t.jml_farmasi ?? 0)
+      totals.farmasi.butuh += Number(t.kebutuhan_farmasi ?? 0)
+      
+      totals.gizi.aktif += Number(t.jml_gizi ?? 0)
+      totals.gizi.butuh += Number(t.kebutuhan_gizi ?? 0)
+      
+      totals.kesling.aktif += Number(t.jml_kesling ?? 0)
+      totals.kesling.butuh += Number(t.kebutuhan_kesling ?? 0)
+      
+      totals.lainnya.aktif += Number(t.jml_tenaga_lainnya ?? 0)
+      totals.lainnya.butuh += Number(t.kebutuhan_tenaga_lainnya ?? 0)
+    })
+    
+    return totals
+  }, [eventData.tenaga_kesehatan])
+
   // Map markers for OPENLAYERS Map component
   const mapMarkers = useMemo(() => {
     if (detail && Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
@@ -252,6 +331,108 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         </article>
       </section>
 
+      {/* 2.5. Aksesibilitas & Kondisi Infrastruktur (New Section) */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <Compass className="h-4 w-4 text-teal-700" />
+          KONDISI INFRASTRUKTUR & AKSESIBILITAS
+        </h4>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {/* Akses Jalan */}
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                  <Compass className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-xs font-bold text-slate-700">Akses Jalan</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.akses_lokasi, 'akses').color}`}>
+                {getStatusLabel(eventData.akses_lokasi, 'akses').label}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+              {eventData.akses_lokasi_keterangan || 'Kondisi akses jalan menuju area terdampak krisis.'}
+            </p>
+          </div>
+
+          {/* Jaringan Listrik */}
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+                  <Zap className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-xs font-bold text-slate-700">Jaringan Listrik</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.jaringan_listrik, 'listrik').color}`}>
+                {getStatusLabel(eventData.jaringan_listrik, 'listrik').label}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+              Kondisi keaktifan pasokan daya listrik di lokasi bencana krisis kesehatan.
+            </p>
+          </div>
+
+          {/* Air Bersih */}
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                  <Droplets className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-xs font-bold text-slate-700">Pasokan Air Bersih</span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.air_bersih, 'air').color}`}>
+                {getStatusLabel(eventData.air_bersih, 'air').label}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+              Ketersediaan air bersih higienis untuk sanitasi dan konsumsi pengungsi.
+            </p>
+          </div>
+
+          {/* Jalur Komunikasi */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+              <Wifi className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">Jalur Komunikasi</span>
+              <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
+                {eventData.jalur_komunikasi || 'Tidak Dilaporkan'}
+              </span>
+            </div>
+          </div>
+
+          {/* Mobilisasi EMT */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">Mobilisasi EMT</span>
+              <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
+                {eventData.mobilisasi_emt || 'Tidak Ada Mobilisasi'}
+              </span>
+            </div>
+          </div>
+
+          {/* Mobilisasi PSC */}
+          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
+              <Phone className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-slate-400 block uppercase">Mobilisasi PSC 119</span>
+              <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
+                {eventData.mobilisasi_psc || 'Tidak Ada Mobilisasi'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 3. Four impact cards below */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {/* Korban Meninggal */}
@@ -297,6 +478,155 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.pengungsi || 0}</span>
           </div>
         </article>
+      </section>
+
+      {/* 3.5. Mobilisasi Sumber Daya Kesehatan (New Section) */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <HeartPulse className="h-4.5 w-4.5 text-teal-700" />
+          MOBILISASI & KEBUTUHAN TENAGA KESEHATAN
+        </h4>
+        
+        {aggregatedTenaga ? (
+          <div>
+            <p className="text-xs text-slate-500 font-semibold mb-4 leading-relaxed">
+              Berikut data total petugas medis yang telah berhasil dimobilisasi ke lokasi bencana beserta analisis kebutuhan mendesak tambahan tenaga kesehatan:
+            </p>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+              {[
+                { name: 'Dokter', val: aggregatedTenaga.dokter },
+                { name: 'Perawat', val: aggregatedTenaga.perawat },
+                { name: 'Bidan', val: aggregatedTenaga.bidan },
+                { name: 'Farmasi', val: aggregatedTenaga.farmasi },
+                { name: 'Gizi', val: aggregatedTenaga.gizi },
+                { name: 'Kesling', val: aggregatedTenaga.kesling },
+                { name: 'Tenaga Lain', val: aggregatedTenaga.lainnya },
+              ].map((item, idx) => {
+                const hasNeed = item.val.butuh > 0
+                return (
+                  <div key={idx} className="flex flex-col justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 text-center">
+                    <span className="text-[11px] font-bold text-slate-700">{item.name}</span>
+                    <div className="my-3">
+                      <span className="text-lg font-black text-slate-800">{item.val.aktif}</span>
+                      <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Aktif di Lapangan</span>
+                    </div>
+                    <div className={`py-1 px-2 rounded-xl text-[9px] font-bold ${hasNeed ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-150/40 text-slate-400'}`}>
+                      {hasNeed ? `Butuh +${item.val.butuh}` : 'Terpenuhi'}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            {/* Detail per Faskes List */}
+            {eventData.tenaga_kesehatan && eventData.tenaga_kesehatan.length > 0 && (
+              <div className="mt-4 border-t border-slate-100 pt-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Rincian Penempatan Pos Medis:</span>
+                <div className="overflow-x-auto text-xs max-h-[150px] overflow-y-auto pr-1">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-150 text-[10px] uppercase text-slate-400 font-bold">
+                        <th className="pb-1.5 font-bold">Pos Medis/Faskes</th>
+                        <th className="pb-1.5 text-center font-bold">Dokter</th>
+                        <th className="pb-1.5 text-center font-bold">Perawat</th>
+                        <th className="pb-1.5 text-center font-bold">Bidan</th>
+                        <th className="pb-1.5 text-center font-bold">Farmasi</th>
+                        <th className="pb-1.5 text-center font-bold">Lainnya</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-650">
+                      {eventData.tenaga_kesehatan.map((t: any, tidx: number) => (
+                        <tr key={tidx}>
+                          <td className="py-1.5">{t.nama_faskes || 'Fasilitas Kesehatan'}</td>
+                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_dokter || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_dokter || 0}</span></td>
+                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_perawat || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_perawat || 0}</span></td>
+                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_bidan || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_bidan || 0}</span></td>
+                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_farmasi || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_farmasi || 0}</span></td>
+                          <td className="py-1.5 text-center font-bold text-slate-800">{Number(t.jml_gizi || 0) + Number(t.jml_kesling || 0) + Number(t.jml_tenaga_lainnya || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="py-6 text-center text-slate-400 font-semibold text-xs flex flex-col items-center justify-center gap-1">
+            <Activity className="h-8 w-8 text-slate-300" />
+            <span>Tidak ada data mobilisasi petugas kesehatan khusus yang dilaporkan untuk kejadian ini.</span>
+            <span className="text-[11px] text-slate-400/80 font-normal">Tim respon darurat dinkes setempat disiagakan di posko utama.</span>
+          </div>
+        )}
+      </section>
+
+      {/* 3.6. Posko Pengungsian & Dampak Pengungsian (New Section) */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <Home className="h-4.5 w-4.5 text-teal-700" />
+          INFORMASI TITIK POSKO PENGUNGSIAN
+        </h4>
+        
+        {eventData.pos_pengungsi && eventData.pos_pengungsi.length > 0 ? (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+              Berikut daftar titik lokasi penampungan pengungsi beserta data jumlah kepala keluarga (KK), gender, dan sebarannya:
+            </p>
+            <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-slate-50/20">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold tracking-wider">
+                    <th className="py-2.5 px-4">Kecamatan / Lokasi</th>
+                    <th className="py-2.5 px-4 text-center">Titik Pengungsian</th>
+                    <th className="py-2.5 px-4 text-center">Total Kepala Keluarga (KK)</th>
+                    <th className="py-2.5 px-4 text-center">Total Pengungsi</th>
+                    <th className="py-2.5 px-4 text-center">Laki-Laki</th>
+                    <th className="py-2.5 px-4 text-center">Perempuan</th>
+                    <th className="py-2.5 px-4 text-center">Titik Koordinat (Lat, Lng)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-650">
+                  {eventData.pos_pengungsi.map((pos: any, pidx: number) => (
+                    <tr key={pidx} className="hover:bg-slate-100/40 transition-colors">
+                      <td className="py-2.5 px-4 text-slate-800 font-bold">Kec. {pos.kecamatan || eventData.kecamatan || 'Kecamatan'}</td>
+                      <td className="py-2.5 px-4 text-center">
+                        <div className="inline-flex gap-1.5 justify-center">
+                          <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold" title="Terpusat">
+                            T: {pos.jml_titik_pengungsian_terpusat || 0}
+                          </span>
+                          <span className="text-[10px] bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded font-bold" title="Mandiri">
+                            M: {pos.jml_titik_pengungsian_mandiri || 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-center font-bold text-slate-800">
+                        {pos.jml_kk_pengungsi ? Number(pos.jml_kk_pengungsi).toLocaleString('id-ID') : 0} KK
+                      </td>
+                      <td className="py-2.5 px-4 text-center font-extrabold text-teal-800">
+                        {pos.jml_total_pengungsi ? Number(pos.jml_total_pengungsi).toLocaleString('id-ID') : 0} Jiwa
+                      </td>
+                      <td className="py-2.5 px-4 text-center text-slate-500">
+                        {pos.jml_pengungsi_laki ? Number(pos.jml_pengungsi_laki).toLocaleString('id-ID') : 0}
+                      </td>
+                      <td className="py-2.5 px-4 text-center text-slate-500">
+                        {pos.jml_pengungsi_perempuan ? Number(pos.jml_pengungsi_perempuan).toLocaleString('id-ID') : 0}
+                      </td>
+                      <td className="py-2.5 px-4 text-center text-[11px] text-slate-400 font-mono">
+                        {pos.latitude && pos.longitude ? `${Number(pos.latitude).toFixed(4)}, ${Number(pos.longitude).toFixed(4)}` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="py-6 text-center text-slate-400 font-semibold text-xs flex flex-col items-center justify-center gap-1">
+            <Home className="h-8 w-8 text-slate-300" />
+            <span>Tidak ada data spesifik titik posko pengungsian terdaftar untuk kejadian ini.</span>
+            <span className="text-[11px] text-slate-400/80 font-normal">Data jumlah pengungsi dihitung berdasarkan estimasi laporan dinkes provinsi.</span>
+          </div>
+        )}
       </section>
 
       {/* 4. Respon EOC & Fasilitas Kesehatan */}
@@ -374,6 +704,30 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               <li>Koordinasi lintas sektor untuk pemulihan akses sanitasi dan air bersih.</li>
             </ul>
           )}
+        </article>
+
+        {/* Card 3: Distribusi Bantuan & Logistik Kesehatan (New Section) */}
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <FileText className="h-4.5 w-4.5 text-teal-700" />
+            DISTRIBUSI BANTUAN & LOGISTIK KESEHATAN
+          </h4>
+          <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
+            {eventData.bantuan || 
+              "Belum ada rincian bantuan logistik spesifik yang tercatat di sistem. Penyaluran logistik dasar (obat-obatan, masker, hygiene kit) biasanya disalurkan langsung oleh dinkes kabupaten/kota setempat."}
+          </p>
+        </article>
+
+        {/* Card 4: Rekomendasi Medis & Rencana Tindak Lanjut (New Section) */}
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <HelpCircle className="h-4.5 w-4.5 text-teal-700" />
+            REKOMENDASI DAN RENCANA TINDAK LANJUT
+          </h4>
+          <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
+            {eventData.rekomendasi || 
+              "Tingkatkan surveilans penyakit pasca bencana di wilayah pengungsian, pantau kecukupan logistik obat-obatan, serta pastikan koordinasi aktif 24 jam dengan pusat komando krisis kesehatan."}
+          </p>
         </article>
       </section>
 

@@ -1537,9 +1537,20 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                   height={52}
                   className="h-13 w-13 flex-shrink-0"
                 />
-                <h3 className="text-[15px] font-bold leading-[1.3] text-[#1a3535] sm:text-[17px]">
-                  Analisis Penilaian Risiko Krisis Kesehatan Akibat Bencana
-                </h3>
+                <div className="flex flex-col">
+                  <h3 className="text-[15px] font-black leading-[1.2] text-[#1a3535] sm:text-[17px] uppercase tracking-wide">
+                    Insight & Rekomendasi AI
+                  </h3>
+                  {currentFormattedTime ? (
+                    <span className="text-[10px] text-slate-500 font-semibold mt-1">
+                      Data generate: <span className="text-[#0f766e]">{currentFormattedTime}</span> <span className="text-slate-400 font-normal italic">(by AI)</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-normal italic mt-1">
+                      Menghubungkan ke layanan AI...
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Video Embed Container */}
