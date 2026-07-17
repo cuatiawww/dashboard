@@ -49,8 +49,9 @@ interface DisasterMapProps {
   userScope?: any
   onSelectProvince?: (prov: string) => void
   isGuest?: boolean
-  showAllMarkers?: boolean
-  setShowAllMarkers?: (val: boolean) => void
+  /** Jumlah bulan ke belakang untuk menampilkan pin (0 = semua periode) */
+  markerMonths?: number
+  setMarkerMonths?: (val: number) => void
   onSelectEvent?: (event: MarkerData) => void
 }
 
@@ -144,7 +145,7 @@ const geojsonCache: Record<string, any> = {}
 // Component
 // ─────────────────────────────────────────────
 
-export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest, showAllMarkers, setShowAllMarkers, onSelectEvent }: DisasterMapProps) {
+export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest, markerMonths, setMarkerMonths, onSelectEvent }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
@@ -862,25 +863,36 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                   </div>
                 </div>
 
-                {/* Toggle timeframe filter */}
-                {setShowAllMarkers !== undefined && (
-                  <div
-                    onClick={() => setShowAllMarkers(!showAllMarkers)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Clock className="h-4 w-4 text-teal-600" />
+                {/* Period range selector */}
+                {setMarkerMonths !== undefined && (
+                  <div className="mt-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <Clock className="h-4 w-4 text-teal-600 shrink-0" />
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">Semua Periode Pin</p>
-                        <p className="text-[10px] text-slate-400">Nonaktifkan limitasi 1 bulan</p>
+                        <p className="text-xs font-semibold text-slate-800">Rentang Waktu Pin</p>
+                        <p className="text-[10px] text-slate-400">Tampilkan kejadian N bulan terakhir</p>
                       </div>
                     </div>
-                    <div
-                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showAllMarkers ? 'bg-teal-600' : 'bg-slate-300'}`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showAllMarkers ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { label: '1 Bln', value: 1 },
+                        { label: '3 Bln', value: 3 },
+                        { label: '6 Bln', value: 6 },
+                        { label: '1 Thn', value: 12 },
+                        { label: 'Semua', value: 0 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setMarkerMonths(opt.value)}
+                          className={`rounded-lg py-1.5 text-[10px] font-bold transition-all duration-150 ${
+                            markerMonths === opt.value
+                              ? 'bg-teal-600 text-white shadow-sm'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}

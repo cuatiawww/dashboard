@@ -279,7 +279,8 @@ export default function DashboardKejadianPage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/07445718ccb54423a319f7df5d830a0f') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
-  const [showAllMarkers, setShowAllMarkers] = useState(false)
+  // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
+  const [markerMonths, setMarkerMonths] = useState(1)
 
   // Primitive string states to avoid reference comparison bugs causing infinite loops
   const [cakupan, setCakupan] = useState('nasional')
@@ -305,18 +306,18 @@ export default function DashboardKejadianPage() {
 
   const mapMarkers = useMemo(() => {
     if (!data?.markers) return []
-    if (showAllMarkers) return data.markers
+    if (markerMonths === 0) return data.markers
 
-    const oneMonthAgo = new Date()
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const cutoff = new Date()
+    cutoff.setMonth(cutoff.getMonth() - markerMonths)
 
     return data.markers.filter((m) => {
       if (!m.tgl_kejadian) return false
       const cleanDateStr = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
       const eventDate = new Date(cleanDateStr)
-      return eventDate >= oneMonthAgo
+      return eventDate >= cutoff
     })
-  }, [data?.markers, showAllMarkers])
+  }, [data?.markers, markerMonths])
 
   const dateRangeText = useMemo(() => {
     const formatIndonesianDate = (date: Date) => {
@@ -330,12 +331,7 @@ export default function DashboardKejadianPage() {
     const now = new Date()
     const endStr = formatIndonesianDate(now)
 
-    if (!showAllMarkers) {
-      const start = new Date()
-      start.setMonth(start.getMonth() - 1)
-      const startStr = formatIndonesianDate(start)
-      return ` (${startStr} - ${endStr})`
-    } else {
+    if (markerMonths === 0) {
       if (data?.markers && data.markers.length > 0) {
         const dates = data.markers
           .map(m => m.tgl_kejadian ? new Date(m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()) : null)
@@ -348,7 +344,12 @@ export default function DashboardKejadianPage() {
       }
       return ' (Semua Periode)'
     }
-  }, [data?.markers, showAllMarkers])
+
+    const start = new Date()
+    start.setMonth(start.getMonth() - markerMonths)
+    const startStr = formatIndonesianDate(start)
+    return ` (${startStr} - ${endStr})`
+  }, [data?.markers, markerMonths])
 
   const [tableSearchQuery, setTableSearchQuery] = useState('')
   const [selectedEvent, setSelectedEvent] = useState<MarkerItem | null>(null)
@@ -1669,8 +1670,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
                 isGuest={!token || !user}
-                showAllMarkers={showAllMarkers}
-                setShowAllMarkers={setShowAllMarkers}
+                markerMonths={markerMonths}
+                setMarkerMonths={setMarkerMonths}
                 onSelectEvent={(event) => setSelectedEvent(event)}
               />
             </div>
