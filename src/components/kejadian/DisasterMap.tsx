@@ -51,6 +51,7 @@ interface DisasterMapProps {
   isGuest?: boolean
   showAllMarkers?: boolean
   setShowAllMarkers?: (val: boolean) => void
+  onSelectEvent?: (event: MarkerData) => void
 }
 
 interface MarkerPopupState {
@@ -143,7 +144,7 @@ const geojsonCache: Record<string, any> = {}
 // Component
 // ─────────────────────────────────────────────
 
-export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest, showAllMarkers, setShowAllMarkers }: DisasterMapProps) {
+export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest, showAllMarkers, setShowAllMarkers, onSelectEvent }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
@@ -1312,9 +1313,9 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
             <div className="border-t border-slate-100 p-2.5">
               <button
                 onClick={() => {
-                  // Buka modal detail (bisa dikembangkan lebih lanjut)
-                  alert(`Detail kejadian: ${markerPopup.data.kode_trans}`)
-                  // TODO: buka modal / drawer detail dengan kode_trans
+                  if (onSelectEvent) {
+                    onSelectEvent(markerPopup.data)
+                  }
                 }}
                 className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-teal-800"
               >

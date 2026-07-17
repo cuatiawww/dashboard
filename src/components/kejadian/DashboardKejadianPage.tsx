@@ -1667,6 +1667,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 isGuest={!token || !user}
                 showAllMarkers={showAllMarkers}
                 setShowAllMarkers={setShowAllMarkers}
+                onSelectEvent={(event) => setSelectedEvent(event)}
               />
             </div>
           </article>
