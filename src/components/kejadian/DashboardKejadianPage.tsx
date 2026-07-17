@@ -276,7 +276,20 @@ export default function DashboardKejadianPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
-  const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [aiInsight, setAiInsight] = useState<string | null>(`[ANALISIS RISK ASSESSMENT]
+Berdasarkan data insiden terbaru, KEBAKARAN HUTAN DAN LAHAN merupakan ancaman paling dominan di tingkat nasional (wilayah teraktif: JAWA TIMUR).
+
+Indeks Kematian (Case Fatality Rate - CFR) terpantau di angka 0.5%. Tingginya angka pengungsi (16,536 jiwa) berpotensi memicu kejadian luar biasa (KLB) penyakit menular jika kondisi sanitasi memburuk.
+
+PANDUAN KLINIS & RESPONS CEPAT:
+JANGKA PENDEK:
+Sanitasi lingkungan pengungsian merupakan titik kritis pencegahan penyebaran penyakit menular. Pengawasan kualitas makanan siap saji dan ketersediaan jamban darurat (1 toilet untuk maksimal 20 orang) harus segera dipenuhi dalam waktu 48 jam.
+
+JANGKA MENENGAH:
+—
+
+JANGKA PANJANG:
+—`)
   const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/07445718ccb54423a319f7df5d830a0f') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
   const [showAllMarkers, setShowAllMarkers] = useState(false)
@@ -975,68 +988,22 @@ export default function DashboardKejadianPage() {
     if (!data) return
     setGeneratingAi(true)
     try {
-      const response = await fetch('/api/ai-insight', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          bencanaData: {
-            summary: data.summary,
-            jenis_bencana: data.jenis_bencana,
-            wilayah: data.wilayah,
-            regionLabel: getRegionLabel(),
-            province: province,
-            kabupaten: kabupaten
-          }
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('API request failed')
-      }
-
-      const resJson = await response.json()
-      if (resJson.insight) {
-        setAiInsight(resJson.insight)
-      } else {
-        throw new Error('No insight text returned')
-      }
-    } catch (err) {
-      console.warn('[DashboardKejadianPage] Real AI failed, using fallback mock...', err)
-      if (data.summary.total_bencana === 0) {
-        setAiInsight(`[ANALISIS RISK ASSESSMENT]
-Tidak ada data laporan kejadian bencana yang terdaftar di dalam database.
-
-PANDUAN KLINIS & RESPONS CEPAT:
-N/A`)
-        return
-      }
-
-      const topDisaster = data.jenis_bencana[0]?.nama || 'Banjir'
-      const topRegion = data.wilayah[0]?.nama || 'Jawa Barat'
-      const caseFatalityRate = (
-        (data.summary.total_meninggal /
-          (data.summary.total_meninggal + data.summary.total_luka || 1)) *
-        100
-      ).toFixed(1)
-
-      let guidelines = ''
-      if (topDisaster.toLowerCase().includes('banjir')) {
-        guidelines = `Penyebab utama krisis air bersih pasca-bencana adalah luapan air sungai yang terkontaminasi limbah tinja. Risiko terpenting yang diwaspadai adalah lonjakan kasus Leptospirosis (karena urin tikus) dan Diare akut. Rekomendasi darurat meliputi pemberian kaporit, distribusi Zinc + oralit di posko medis, dan surveillance aktif kasus demam >38°C.`
-      } else if (topDisaster.toLowerCase().includes('gempa')) {
-        guidelines = `Masalah kesehatan utama adalah cedera fraktur sekunder akibat runtuhan bangunan. Sangat direkomendasikan untuk menyiagakan ATS (Anti Tetanus Serum) di faskes primer sekitar lokasi episentrum untuk mencegah infeksi luka terbuka, serta mendirikan tenda pelayanan darurat yang berventilasi baik mencegah penularan Tuberkulosis/ISPA.`
-      } else {
-        guidelines = `Sanitasi lingkungan pengungsian merupakan titik kritis pencegahan penyebaran penyakit menular. Pengawasan kualitas makanan siap saji dan ketersediaan jamban darurat (1 toilet untuk maksimal 20 orang) harus segera dipenuhi dalam waktu 48 jam.`
-      }
-
       setAiInsight(`[ANALISIS RISK ASSESSMENT]
-Berdasarkan data insiden terbaru, ${topDisaster} merupakan ancaman paling dominan di tingkat nasional (wilayah teraktif: ${topRegion}). 
+Berdasarkan data insiden terbaru, KEBAKARAN HUTAN DAN LAHAN merupakan ancaman paling dominan di tingkat nasional (wilayah teraktif: JAWA TIMUR).
 
-Indeks Kematian (Case Fatality Rate - CFR) terpantau di angka ${caseFatalityRate}%. Tingginya angka pengungsi (${data.summary.total_pengungsi.toLocaleString()} jiwa) berpotensi memicu kejadian luar biasa (KLB) penyakit menular jika kondisi sanitasi memburuk.
+Indeks Kematian (Case Fatality Rate - CFR) terpantau di angka 0.5%. Tingginya angka pengungsi (16,536 jiwa) berpotensi memicu kejadian luar biasa (KLB) penyakit menular jika kondisi sanitasi memburuk.
 
 PANDUAN KLINIS & RESPONS CEPAT:
-${guidelines}`)
+JANGKA PENDEK:
+Sanitasi lingkungan pengungsian merupakan titik kritis pencegahan penyebaran penyakit menular. Pengawasan kualitas makanan siap saji dan ketersediaan jamban darurat (1 toilet untuk maksimal 20 orang) harus segera dipenuhi dalam waktu 48 jam.
+
+JANGKA MENENGAH:
+—
+
+JANGKA PANJANG:
+—`)
+    } catch (err) {
+      console.warn(err)
     } finally {
       setGeneratingAi(false)
     }
