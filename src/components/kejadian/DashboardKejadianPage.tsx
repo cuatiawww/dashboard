@@ -272,6 +272,7 @@ export default function DashboardKejadianPage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('/2026-07-17_06-45-52_Lumina_1.mp4') // Local disaster warning/management demo
   const [showVideoInput, setShowVideoInput] = useState(false)
+  const [showAllMarkers, setShowAllMarkers] = useState(false)
 
   // Primitive string states to avoid reference comparison bugs causing infinite loops
   const [cakupan, setCakupan] = useState('nasional')
@@ -294,6 +295,21 @@ export default function DashboardKejadianPage() {
     }
     return data.markers
   }, [data?.markers, activeDetailCard])
+
+  const mapMarkers = useMemo(() => {
+    if (!data?.markers) return []
+    if (showAllMarkers) return data.markers
+
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+
+    return data.markers.filter((m) => {
+      if (!m.tgl_kejadian) return false
+      const cleanDateStr = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
+      const eventDate = new Date(cleanDateStr)
+      return eventDate >= oneMonthAgo
+    })
+  }, [data?.markers, showAllMarkers])
 
   const [tableSearchQuery, setTableSearchQuery] = useState('')
   const [selectedEvent, setSelectedEvent] = useState<MarkerItem | null>(null)
@@ -1537,21 +1553,36 @@ ${guidelines}`)
                   lokasi kejadian bencana yang dilaporkan pada wilayah {getRegionLabel()}.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsWarningModalOpen(true)}
-                className="shrink-0 inline-flex items-center gap-2.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-sm relative overflow-hidden transform hover:-translate-y-0.5 active:translate-y-0 self-start md:self-center"
-              >
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
-                </span>
-                Peringatan Dini Aktif
-              </button>
+              <div className="flex flex-wrap items-center gap-3.5 self-start md:self-center">
+                <button
+                  type="button"
+                  onClick={() => setShowAllMarkers(!showAllMarkers)}
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 border rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-sm relative overflow-hidden transform hover:-translate-y-0.5 active:translate-y-0 ${
+                    showAllMarkers 
+                      ? 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100' 
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <MapPin className={`h-4 w-4 ${showAllMarkers ? 'text-teal-600' : 'text-slate-500'}`} />
+                  {showAllMarkers ? 'Tampilkan: Semua Pin' : 'Tampilkan: 1 Bulan Terakhir'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsWarningModalOpen(true)}
+                  className="shrink-0 inline-flex items-center gap-2.5 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-sm relative overflow-hidden transform hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+                  </span>
+                  Peringatan Dini Aktif
+                </button>
+              </div>
             </div>
             <div className="mt-4 flex-1 min-h-[300px] w-full">
               <DisasterMap
-                markers={data?.markers || []}
+                markers={mapMarkers}
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
                 isGuest={!token || !user}
