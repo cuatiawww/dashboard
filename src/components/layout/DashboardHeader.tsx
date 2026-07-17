@@ -472,10 +472,10 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 priority
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
-                <h1 className="max-w-[720px] text-2xl font-extrabold leading-tight tracking-normal text-slate-900 md:text-3xl uppercase">
+                <h1 className="max-w-[720px] text-lg sm:text-2xl md:text-3xl font-extrabold leading-tight tracking-normal text-slate-900 uppercase">
                   {headerTitle}
                 </h1>
-                <p className="mt-2 max-w-[760px] text-sm leading-relaxed text-slate-600 md:text-base">
+                <p className="mt-2 max-w-[760px] text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base hidden sm:block">
                   {headerDesc || `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
                 </p>
                 {(lastUpdated || (sourceLabel && sourceUrl)) && (
@@ -504,20 +504,20 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 type="button"
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md disabled:cursor-wait"
+                className="relative inline-flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/95 text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md disabled:cursor-wait"
                 aria-label="Refresh Data"
                 title="Refresh Data"
               >
-                <RefreshCw className={`h-[18px] w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
+                <RefreshCw className={`h-4 w-4 sm:h-[18px] sm:w-[18px] text-slate-600 ${isRefreshing ? 'animate-spin text-teal-650' : ''}`} />
               </button>
               {showAksesSistem && (
                 <a
                   href={buildExternalRoute('site/login', token)}
-                  className="relative inline-flex h-12 items-center gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 text-xs font-bold uppercase tracking-wider text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
+                  className="relative inline-flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-white/95 px-3 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md"
                   title="Akses Sistem"
                 >
-                  <ExternalLink className="h-4.5 w-4.5 text-slate-600" />
-                  <span>Akses Sistem</span>
+                  <ExternalLink className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-slate-600" />
+                  <span className="hidden sm:inline">Akses Sistem</span>
                 </a>
               )}
               <div className="relative" ref={notifRef}>
@@ -527,16 +527,16 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 <button
                   type="button"
                   onClick={() => setNotifOpen((prev) => !prev)}
-                  className={`relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md ${
+                  className={`relative inline-flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:text-teal-700 hover:shadow-md ${
                     hasUnread
                       ? 'border-red-500 bg-red-50 text-red-650 ring-2 ring-red-500/40 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-[pulse_1s_infinite]'
                       : 'border-slate-200 bg-white/95 text-slate-600'
                   }`}
                   aria-label="Notifikasi"
                 >
-                  <Bell className={`h-[19px] w-[19px] ${hasUnread ? 'animate-bounce text-red-600' : 'text-slate-600'}`} />
+                  <Bell className={`h-4 w-4 sm:h-[19px] sm:w-[19px] ${hasUnread ? 'animate-bounce text-red-600' : 'text-slate-600'}`} />
                   {notificationsList.length > 0 && (
-                    <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-bold text-white">
+                    <span className="absolute -right-1 -top-1 grid h-4.5 min-w-4.5 sm:h-5 sm:min-w-5 place-items-center rounded-full border-2 border-white bg-red-500 px-0.5 sm:px-1 text-[9px] sm:text-[10px] font-bold text-white">
                       {notificationsList.length > 15 ? '15+' : notificationsList.length}
                     </span>
                   )}
@@ -657,27 +657,27 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               </div>
               <button
                 type="button"
-                className="inline-flex h-12 items-center gap-2.5 whitespace-nowrap rounded-xl border border-teal-200 bg-white/95 px-4 text-xs font-bold uppercase tracking-[0.05em] text-teal-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-50 hover:shadow-md"
+                className="inline-flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2.5 whitespace-nowrap rounded-xl border border-teal-200 bg-white/95 px-3 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-[0.05em] text-teal-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-50 hover:shadow-md"
               >
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-teal-50 text-teal-600">
-                  <Download className="h-4 w-4" />
+                <span className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-lg bg-teal-50 text-teal-600">
+                  <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </span>
-                Unduh Laporan
+                <span className="hidden sm:inline">Unduh Laporan</span>
               </button>
               <div className="relative" ref={profileRef}>
                 <button
                   type="button"
                   onClick={() => setProfileOpen((prev) => !prev)}
-                  className="inline-flex h-12 items-center gap-2.5 rounded-xl border border-slate-200 bg-white/95 px-2.5 pr-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
+                  className="inline-flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2.5 rounded-xl border border-slate-200 bg-white/95 px-2 sm:px-2.5 pr-2.5 sm:pr-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md"
                 >
-                  <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 text-xs font-extrabold text-white shadow-sm">
+                  <div className="grid h-7 w-7 sm:h-8 sm:w-8 place-items-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 text-[10px] sm:text-xs font-extrabold text-white shadow-sm">
                     {initials}
                   </div>
                   <div className="hidden sm:block">
                     <p className="text-xs font-bold uppercase tracking-[0.04em] leading-4 text-slate-900">{initialName}</p>
                     <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-teal-700">{roleName}</p>
                   </div>
-                  <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition ${profileOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-500 transition ${profileOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {profileOpen ? (
                   isAuthenticated ? (

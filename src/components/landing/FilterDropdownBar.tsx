@@ -447,7 +447,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
       </p>
 
       {/* Unified pill bar */}
-      <div className="flex items-center rounded-2xl border border-[#e5e7eb] bg-white p-1.5">
+      <div className="grid grid-cols-2 sm:flex sm:items-center rounded-2xl border border-[#e5e7eb] bg-white p-1 sm:p-1.5 gap-y-1 sm:gap-y-0">
         {activeFilterData.map((filter, idx) => {
           const activeOption =
             filter.options.find((o) => o.value === selected[filter.id]) ?? filter.options[0]
@@ -456,10 +456,16 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
           const locked = Boolean(filter.locked)
 
           return (
-            <div key={filter.id} className="relative flex flex-1 items-center">
-              {/* Divider between segments */}
+            <div
+              key={filter.id}
+              className={`relative flex items-center w-full sm:flex-1
+                ${idx % 2 !== 0 ? 'border-l border-slate-100 sm:border-l-0' : ''}
+                ${idx >= 2 ? 'border-t border-slate-100 sm:border-t-0' : ''}
+              `}
+            >
+              {/* Divider between segments on desktop */}
               {idx > 0 && (
-                <span className="h-7 w-px flex-shrink-0 bg-[#e5e7eb]" aria-hidden="true" />
+                <span className="hidden sm:inline-block h-7 w-px flex-shrink-0 bg-[#e5e7eb]" aria-hidden="true" />
               )}
 
               <button
@@ -472,7 +478,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                 aria-haspopup="listbox"
                 title={locked ? 'Filter dikunci sesuai wilayah akun' : undefined}
                 className={`
-                  group flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2
+                  group flex w-full items-center gap-2 sm:gap-2.5 rounded-xl px-2.5 py-2.5 sm:px-3.5 sm:py-2
                   transition-colors duration-150
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17b7b2]
                   ${isOpen ? 'bg-[#f3f4f6]' : ''}
@@ -481,25 +487,25 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
               >
                 {/* Colored icon badge */}
                 <span
-                  className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${bg}`}
+                  className={`flex h-6.5 w-6.5 sm:h-7 sm:w-7 flex-shrink-0 items-center justify-center rounded-lg ${bg}`}
                   aria-hidden="true"
                 >
-                  <FilterIcon icon={filter.icon} className={`h-4 w-4 ${color}`} />
+                  <FilterIcon icon={filter.icon} className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${color}`} />
                 </span>
 
                 {/* Sublabel + value stacked */}
                 <span className="flex min-w-0 flex-col items-start gap-0.5">
-                  <span className="text-[10px] font-medium leading-none text-[#9ca3af]">
+                  <span className="text-[9px] sm:text-[10px] font-medium leading-none text-[#9ca3af]">
                     {filter.sublabel}
                   </span>
-                  <span className="truncate text-[14px] font-semibold leading-none text-[#111827]">
+                  <span className="truncate text-xs sm:text-sm font-semibold leading-none text-[#111827]">
                     {activeOption.label}
                   </span>
                 </span>
 
                 <ChevronDown
                   className={`
-                    ml-auto h-4 w-4 flex-shrink-0 text-[#9ca3af]
+                    ml-auto h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 text-[#9ca3af]
                     transition-transform duration-200
                     ${isOpen ? 'rotate-180' : ''}
                     ${locked ? 'opacity-30' : ''}
@@ -511,12 +517,13 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
               {isOpen && (
                 <div
                   role="listbox"
-                  className="
-                    absolute left-0 top-[calc(100%+8px)] z-30 min-w-[180px]
+                  className={`
+                    absolute top-[calc(100%+8px)] z-30 min-w-[180px]
                     overflow-hidden rounded-2xl border border-[#e5e7eb]
                     bg-white shadow-[0_8px_24px_rgba(0,0,0,0.10)]
                     max-h-[300px] overflow-y-auto scrollbar-thin
-                  "
+                    ${idx % 2 !== 0 ? 'right-0' : 'left-0'}
+                  `}
                 >
                   {filter.options.map((opt) => {
                     const isSelected = opt.value === selected[filter.id]
