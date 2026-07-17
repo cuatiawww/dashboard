@@ -27,8 +27,9 @@ interface DetailKejadianPageProps {
   onBack: () => void
 }
 
-const getKorbanBreakdown = (total: number, jenis: string) => {
-  const t = total || 0
+const getKorbanBreakdown = (total: any, jenis: string) => {
+  const parsed = typeof total === 'number' ? total : parseInt(String(total || '').replace(/[^\d]/g, ''), 10)
+  const t = isNaN(parsed) ? 0 : parsed
   if (t === 0) return { meninggal: 0, luka: 0, hilang: 0, pengungsi: 0, luka_berat: 0, luka_ringan: 0 }
   const seed = (jenis || '').length % 4
   let meninggal = 0
@@ -141,18 +142,39 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
   }, [selectedEvent, detail])
 
   const formattedDate = useMemo(() => {
-    if (!eventData.tgl_kejadian) return '-'
-    try {
-      return new Date(eventData.tgl_kejadian.replace(/\s+WIB/i, '')).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }) + ' WIB'
-    } catch (e) {
-      return eventData.tgl_kejadian
+    const rawDate = eventData.tgl_kejadian
+    if (!rawDate) return '-'
+    
+    const cleanDate = rawDate.replace(/\s+WIB/i, '').trim()
+    const match = cleanDate.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/)
+    
+    if (match) {
+      const [_, year, month, day, hour, minute] = match
+      const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ]
+      const monthName = months[parseInt(month, 10) - 1] || month
+      const timeStr = hour && minute ? `, ${hour}:${minute}` : ''
+      return `${parseInt(day, 10)} ${monthName} ${year}${timeStr} WIB`
     }
+    
+    try {
+      const parsed = new Date(cleanDate)
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }) + ' WIB'
+      }
+    } catch (e) {
+      // ignore
+    }
+    
+    return rawDate
   }, [eventData.tgl_kejadian])
 
   const locationFull = useMemo(() => {
@@ -187,10 +209,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       `Telah dilaporkan kejadian bencana ${eventData.jenis_bencana} di wilayah ${locationFull}. Kejadian ini tercatat pada tanggal ${formattedDate}. Laporan masuk ke pusat komando EOC Kemenkes RI untuk penanganan medis darurat dan asesmen dampak kesehatan. Tim medis darurat dan logistik kesehatan setempat disiagakan guna mengantisipasi eskalasi dampak pasca-bencana.`
   }, [eventData.deskripsi_bencana, eventData.kronologis, eventData.jenis_bencana, locationFull, formattedDate])
 
-  const faskesTerdampakList = eventData.faskes_terdampak || []
+  const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 
   const aggregatedTenaga = useMemo(() => {
-    const list = eventData.tenaga_kesehatan || []
+    const list = Array.isArray(eventData.tenaga_kesehatan) ? eventData.tenaga_kesehatan : []
     if (list.length === 0) return null
 
     const totals = {
@@ -528,7 +550,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             </div>
             
             {/* Detail per Faskes List */}
-            {eventData.tenaga_kesehatan && eventData.tenaga_kesehatan.length > 0 && (
+            {Array.isArray(eventData.tenaga_kesehatan) && eventData.tenaga_kesehatan.length > 0 && (
               <div className="mt-5 border-t border-slate-100 pt-4">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2.5">Rincian Penempatan Pos Medis:</span>
                 <div className="overflow-x-auto text-xs max-h-[200px] overflow-y-auto pr-1">
@@ -576,7 +598,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           INFORMASI TITIK POSKO PENGUNGSIAN
         </h4>
         
-        {eventData.pos_pengungsi && eventData.pos_pengungsi.length > 0 ? (
+        {Array.isArray(eventData.pos_pengungsi) && eventData.pos_pengungsi.length > 0 ? (
           <div className="space-y-4">
             <p className="text-xs text-slate-650 font-medium leading-relaxed">
               Berikut daftar titik lokasi penampungan pengungsi beserta data jumlah kepala keluarga (KK), sebaran gender, dan koordinatnya:
@@ -701,7 +723,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <CheckCircle2 className="h-4.5 w-4.5 text-amber-600" />
             UPAYA PENANGANAN KRISIS KESEHATAN (EOC)
           </h4>
-          {hasDetail && detail.perkembangan && detail.perkembangan.length > 0 ? (
+          {hasDetail && Array.isArray(detail.perkembangan) && detail.perkembangan.length > 0 ? (
             <ul className="list-disc pl-4 space-y-1.5 text-xs font-medium text-slate-700 leading-relaxed">
               {detail.perkembangan.map((p: any, idx: number) => (
                 <li key={idx}>{p.keterangan || p.kronologis || p}</li>
