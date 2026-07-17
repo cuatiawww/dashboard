@@ -627,7 +627,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     if ((isProvMode || isKabMode) && provinceName) {
       const focusMap = (features: any[]) => {
         if (isKabMode && kabupatenName) {
-          const target = features.find((f) => cleanKey(f.get('nama_kab') || f.get('kabupaten')) === cleanKey(kabupatenName))
+          const target = features.find((f) => cleanKey(getFeatureName(f, 'kabupaten')) === cleanKey(kabupatenName))
           if (target) {
             map.getView().fit(target.getGeometry().getExtent(), { padding: [100, 100, 100, 100], duration: 500 })
             return
@@ -692,7 +692,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     const targetKabKey = cleanKey(userScope?.kabupaten?.label || '')
 
     provinceLayer.setStyle((feature: any) => {
-      const provKey = cleanKey(feature.get('provinsi'))
+      const provKey = cleanKey(getFeatureName(feature, 'provinsi'))
       if (isProvMode || isKabMode) {
         // Selected province → transparent (kabupaten layer shows through)
         if (provKey === targetProvKey) {
@@ -709,7 +709,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     })
 
     kabupatenLayer.setStyle((feature: any) => {
-      const kabKey = cleanKey(feature.get('nama_kab') || feature.get('kabupaten'))
+      const kabKey = cleanKey(getFeatureName(feature, 'kabupaten'))
       const count = kabupatenCounts.get(kabKey) || 0
       if (isKabMode && kabKey !== targetKabKey) {
         return new Style({

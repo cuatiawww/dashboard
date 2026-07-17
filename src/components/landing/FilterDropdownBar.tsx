@@ -419,13 +419,21 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   )
 
   const summary = useMemo<FilterSummary>(
-    () => ({
-      cakupan: summaryItems.find((item) => item.id === 'cakupan')?.value || 'Nasional',
-      provinsi: summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi',
-      kabkota: summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota',
-      tahun: summaryItems.find((item) => item.id === 'tahun')?.value || '2026',
-    }),
-    [summaryItems]
+    () => {
+      const parentProv = selectedProvinceName ? selectedProvinceName.toUpperCase() : null
+      const parentKab = selectedKabupatenName ? selectedKabupatenName.toUpperCase() : null
+
+      const defaultProv = summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi'
+      const defaultKab = summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota'
+
+      return {
+        cakupan: summaryItems.find((item) => item.id === 'cakupan')?.value || 'Nasional',
+        provinsi: parentProv || defaultProv,
+        kabkota: parentKab || defaultKab,
+        tahun: summaryItems.find((item) => item.id === 'tahun')?.value || '2026',
+      }
+    },
+    [summaryItems, selectedProvinceName, selectedKabupatenName]
   )
 
   // Keep track of the last emitted summary to prevent infinite loops
