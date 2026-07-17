@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 
 
@@ -140,6 +140,20 @@ const markerStyle = (iconFile: string | undefined, totalKorban: number) => {
   })
 }
 
+const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
 // Cache GeoJSON agar tidak fetch ulang setiap render
 const geojsonCache: Record<string, any> = {}
 
@@ -198,6 +212,11 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
 
   const [markerPopup, setMarkerPopup] = useState<MarkerPopupState | null>(null)
+
+  // ── BMKG Layer states ──
+  const [showBmkg, setShowBmkg] = useState(false)
+  const [bmkgGempas, setBmkgGempas] = useState<any[]>([])
+  const [activeBmkgAlert, setActiveBmkgAlert] = useState<any | null>(null)
 
   // ── Filter states ──
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
@@ -747,7 +766,81 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     kabupatenLayer.changed()
   }, [userScope, provinceCounts, kabupatenCounts])
 
-
+  // ── BMKG Data Fetch & Proximity Alert EWS ──
+  useEffect(() => {
+    let active = true
+    async function fetchBmkg() {
+      try {
+        const res = await fetch('/api/bmkg-gempa')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.data?.Infogempa?.gempa) {
+            const rawList = json.data.Infogempa.gempa
+            const list = Array.isArray(rawList) ? rawList : [rawList]
+            
+            if (active) {
+              setBmkgGempas(list)
+              
+              const latest = list[0]
+              if (latest && latest.Coordinates) {
+                const [latStr, lngStr] = latest.Coordinates.split(',')
+                const gempaLat = parseFloat(latStr)
+                const gempaLng = parseFloat(lngStr)
+                
+                const savedCoords = localStorage.getItem('user_coords')
+                if (savedCoords) {
+                  try {
+                    const userCoords = JSON.parse(savedCoords)
+                    if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
+                      const dist = getDistanceInKm(userCoords.lat, userCoords.lng, gempaLat, gempaLng)
+                      
+                      // EWS Trigger: within 150 km and magnitude >= 5.0
+                      if (dist <= 150 && parseFloat(latest.Magnitude) >= 5.0) {
+                        setActiveBmkgAlert({
+                          gempa: latest,
+                          distance: Math.round(dist)
+                        })
+                        
+                        if (typeof window !== 'undefined') {
+                          const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+                          if (AudioContextClass) {
+                            const ctx = new AudioContextClass()
+                            const osc = ctx.createOscillator()
+                            const gain = ctx.createGain()
+                            osc.connect(gain)
+                            gain.connect(ctx.destination)
+                            osc.type = 'sawtooth'
+                            osc.frequency.setValueAtTime(500, ctx.currentTime)
+                            osc.frequency.linearRampToValueAtTime(900, ctx.currentTime + 0.4)
+                            osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.8)
+                            gain.gain.setValueAtTime(0.3, ctx.currentTime)
+                            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2)
+                            osc.start()
+                            osc.stop(ctx.currentTime + 1.2)
+                          }
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.error('[BMKG EWS] Coordinates parse error:', e)
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[BMKG EWS] Failed to fetch data:', e)
+      }
+    }
+    
+    void fetchBmkg()
+    const interval = setInterval(fetchBmkg, 120000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [])
 
   // ─────────────────────────────────────────────
   // Sync marker features when markers/visibility changes
@@ -829,6 +922,48 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       }
     }
 
+    // Add BMKG Gempa Terkini Layer
+    if (showBmkg && bmkgGempas.length > 0) {
+      bmkgGempas.forEach((g) => {
+        if (g.Coordinates) {
+          const [latStr, lngStr] = g.Coordinates.split(',')
+          const glat = parseFloat(latStr)
+          const glng = parseFloat(lngStr)
+          if (!isNaN(glat) && !isNaN(glng)) {
+            const gempaFeature = new Feature({
+              geometry: new Point(fromLonLat([glng, glat])),
+              markerData: {
+                kode_trans: `bmkg-${g.DateTime}`,
+                jenis_bencana: `Gempa M ${g.Magnitude}`,
+                provinsi: g.Potensi,
+                kabupaten: `${g.Wilayah} (Kedalaman ${g.Kedalaman})`,
+                total_korban: 0,
+                lat: glat,
+                lng: glng
+              }
+            })
+            gempaFeature.setStyle(new Style({
+              image: new CircleStyle({
+                radius: 8,
+                fill: new Fill({ color: '#f97316' }),
+                stroke: new Stroke({ color: '#ffffff', width: 2 })
+              })
+            }))
+            features.push(gempaFeature)
+
+            const warningCircle = new Feature({
+              geometry: new CircleGeom(fromLonLat([glng, glat]), 50000) // 50km radius
+            })
+            warningCircle.setStyle(new Style({
+              fill: new Fill({ color: 'rgba(249, 115, 22, 0.04)' }),
+              stroke: new Stroke({ color: 'rgba(249, 115, 22, 0.3)', width: 1.2, lineDash: [3, 3] })
+            }))
+            features.push(warningCircle)
+          }
+        }
+      })
+    }
+
     source.addFeatures(features)
 
     // Position EWS pulse overlay on the latest disaster event
@@ -875,6 +1010,33 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       ref={mapContainerRef}
       className="relative h-full w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f1fcfc]"
     >
+      {/* BMKG Proximity Warning Modal */}
+      {activeBmkgAlert && (
+        <div className="absolute inset-x-4 top-4 z-[30] animate-in slide-in-from-top-4 duration-500 max-w-md mx-auto">
+          <div className="bg-gradient-to-r from-rose-600 to-amber-600 border border-red-700 rounded-3xl p-5 shadow-[0_15px_40px_rgba(239,68,68,0.25)] text-white relative">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white animate-pulse">
+                <AlertTriangle className="h-6 w-6 animate-bounce" />
+              </div>
+              <div className="space-y-1 flex-1">
+                <span className="text-[9px] font-black tracking-widest bg-white/20 px-2 py-0.5 rounded-full uppercase">BMKG EWS TERPADU</span>
+                <h4 className="text-xs font-black uppercase tracking-wide">GEMPA BUMI BAHAYA DEKAT</h4>
+                <p className="text-[11px] leading-relaxed opacity-95">
+                  Gempa kekuatan <strong className="font-extrabold">M {activeBmkgAlert.gempa.Magnitude}</strong> terdeteksi di {activeBmkgAlert.gempa.Wilayah}. 
+                  Berjarak <strong className="font-extrabold">{activeBmkgAlert.distance} km</strong> dari posisi Anda! ({activeBmkgAlert.gempa.Potensi})
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveBmkgAlert(null)}
+              className="absolute top-3 right-3 text-white/70 hover:text-white transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── OL Map canvas ── */}
       <div ref={mapRef} className="h-full w-full min-h-[480px]" />
 
@@ -1071,6 +1233,29 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
 
 
+              </div>
+
+              {/* ── BMKG EWS Layers Section ── */}
+              <div className="mb-6 border-b border-slate-100 pb-5">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
+                  INTEGRASI EWS BMKG
+                </p>
+                <div
+                  onClick={() => setShowBmkg((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">Layer Gempa Terkini BMKG</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Plot seismik realtime & radius bahaya 50km</p>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBmkg ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBmkg ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* ── BNPB Inarisk Layers Section ── */}
