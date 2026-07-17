@@ -318,6 +318,38 @@ export default function DashboardKejadianPage() {
     })
   }, [data?.markers, showAllMarkers])
 
+  const dateRangeText = useMemo(() => {
+    const formatIndonesianDate = (date: Date) => {
+      const day = date.getDate()
+      const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+      const month = months[date.getMonth()]
+      const year = date.getFullYear()
+      return `${day} ${month} ${year}`
+    }
+
+    const now = new Date()
+    const endStr = formatIndonesianDate(now)
+
+    if (!showAllMarkers) {
+      const start = new Date()
+      start.setMonth(start.getMonth() - 1)
+      const startStr = formatIndonesianDate(start)
+      return ` (${startStr} - ${endStr})`
+    } else {
+      if (data?.markers && data.markers.length > 0) {
+        const dates = data.markers
+          .map(m => m.tgl_kejadian ? new Date(m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()) : null)
+          .filter((d): d is Date => d !== null && !isNaN(d.getTime()))
+        if (dates.length > 0) {
+          const minDate = new Date(Math.min(...dates.map(d => d.getTime())))
+          const minStr = formatIndonesianDate(minDate)
+          return ` (${minStr} - ${endStr})`
+        }
+      }
+      return ' (Semua Periode)'
+    }
+  }, [data?.markers, showAllMarkers])
+
   const [tableSearchQuery, setTableSearchQuery] = useState('')
   const [selectedEvent, setSelectedEvent] = useState<MarkerItem | null>(null)
   const [alertIntervalId, setAlertIntervalId] = useState<number | null>(null)
@@ -1557,7 +1589,7 @@ ${guidelines}`)
                 </h3>
                 <p className="mt-1 text-[14px] leading-relaxed text-[#4b4b4b] sm:text-[16px]">
                   Pemetaan ini menyajikan gambaran komprehensif mengenai distribusi geografis dan
-                  lokasi kejadian bencana yang dilaporkan pada wilayah {getRegionLabel()}.
+                  lokasi kejadian bencana yang dilaporkan pada wilayah {getRegionLabel()}{dateRangeText}.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-3.5 self-start md:self-center">
