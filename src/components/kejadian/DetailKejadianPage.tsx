@@ -111,60 +111,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     }
   }, [selectedEvent?.kode_trans])
 
-  if (!selectedEvent) return null
-
-  if (loading) {
-    return (
-      <div className="w-full min-h-[450px] flex flex-col items-center justify-center space-y-4 py-16 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-in fade-in duration-200">
-        <Loader2 className="h-10 w-10 animate-spin text-teal-700" />
-        <p className="text-sm font-semibold text-slate-500">Menghubungkan & memuat data krisis secara realtime...</p>
-      </div>
-    )
-  }
-
-  const hasDetail = !!detail
-  const eventData = {
-    ...selectedEvent,
-    ...detail
-  }
-
-  const formattedDate = eventData.tgl_kejadian
-    ? new Date(eventData.tgl_kejadian.replace(/\s+WIB/i, '')).toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }) + ' WIB'
-    : '-'
-
-  const locationFull =
-    [
-      eventData.kecamatan && `Kec. ${eventData.kecamatan}`,
-      eventData.kabupaten,
-      eventData.provinsi,
-    ]
-      .filter(Boolean)
-      .join(', ') || 'Nasional'
-
-  const breakdown = hasDetail ? {
-    meninggal: Number(detail.meninggal ?? 0),
-    luka: Number((detail.luka_berat ?? 0) + (detail.luka_ringan ?? 0)),
-    luka_berat: Number(detail.luka_berat ?? 0),
-    luka_ringan: Number(detail.luka_ringan ?? 0),
-    hilang: Number(detail.hilang ?? 0),
-    pengungsi: Number(detail.pengungsi ?? 0),
-  } : getKorbanBreakdown(selectedEvent.total_korban, selectedEvent.jenis_bencana)
-
-  const totalKorbanReal = hasDetail
-    ? (breakdown.meninggal + breakdown.hilang + breakdown.luka + breakdown.pengungsi)
-    : (selectedEvent.total_korban || 0)
-
-  const kronologi = eventData.deskripsi_bencana || eventData.kronologis ||
-    `Telah dilaporkan kejadian bencana ${eventData.jenis_bencana} di wilayah ${locationFull}. Kejadian ini tercatat pada tanggal ${formattedDate}. Laporan masuk ke pusat komando EOC Kemenkes RI untuk penanganan medis darurat dan asesmen dampak kesehatan. Tim medis darurat dan logistik kesehatan setempat disiagakan guna mengantisipasi eskalasi dampak pasca-bencana.`
-
-  const faskesTerdampakList = eventData.faskes_terdampak || []
-
   // Helper for status flags
   const getStatusLabel = (val: number | null | undefined, type: 'akses' | 'listrik' | 'air') => {
     if (val === null || val === undefined) return { label: 'Tidak Dilaporkan', color: 'bg-slate-100 text-slate-500 border border-slate-200' }
@@ -185,6 +131,63 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     }
     return { label: 'N/A', color: 'bg-slate-100 text-slate-500 border border-slate-200' }
   }
+
+  const hasDetail = !!detail
+  const eventData = useMemo(() => {
+    return {
+      ...(selectedEvent || {}),
+      ...(detail || {})
+    }
+  }, [selectedEvent, detail])
+
+  const formattedDate = useMemo(() => {
+    if (!eventData.tgl_kejadian) return '-'
+    try {
+      return new Date(eventData.tgl_kejadian.replace(/\s+WIB/i, '')).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }) + ' WIB'
+    } catch (e) {
+      return eventData.tgl_kejadian
+    }
+  }, [eventData.tgl_kejadian])
+
+  const locationFull = useMemo(() => {
+    return [
+      eventData.kecamatan && `Kec. ${eventData.kecamatan}`,
+      eventData.kabupaten,
+      eventData.provinsi,
+    ]
+      .filter(Boolean)
+      .join(', ') || 'Nasional'
+  }, [eventData.kecamatan, eventData.kabupaten, eventData.provinsi])
+
+  const breakdown = useMemo(() => {
+    return hasDetail ? {
+      meninggal: Number(detail?.meninggal ?? 0),
+      luka: Number((detail?.luka_berat ?? 0) + (detail?.luka_ringan ?? 0)),
+      luka_berat: Number(detail?.luka_berat ?? 0),
+      luka_ringan: Number(detail?.luka_ringan ?? 0),
+      hilang: Number(detail?.hilang ?? 0),
+      pengungsi: Number(detail?.pengungsi ?? 0),
+    } : getKorbanBreakdown(selectedEvent?.total_korban || 0, selectedEvent?.jenis_bencana || '')
+  }, [hasDetail, detail, selectedEvent?.total_korban, selectedEvent?.jenis_bencana])
+
+  const totalKorbanReal = useMemo(() => {
+    return hasDetail
+      ? (breakdown.meninggal + breakdown.hilang + breakdown.luka + breakdown.pengungsi)
+      : (selectedEvent?.total_korban || 0)
+  }, [hasDetail, breakdown, selectedEvent?.total_korban])
+
+  const kronologi = useMemo(() => {
+    return eventData.deskripsi_bencana || eventData.kronologis ||
+      `Telah dilaporkan kejadian bencana ${eventData.jenis_bencana} di wilayah ${locationFull}. Kejadian ini tercatat pada tanggal ${formattedDate}. Laporan masuk ke pusat komando EOC Kemenkes RI untuk penanganan medis darurat dan asesmen dampak kesehatan. Tim medis darurat dan logistik kesehatan setempat disiagakan guna mengantisipasi eskalasi dampak pasca-bencana.`
+  }, [eventData.deskripsi_bencana, eventData.kronologis, eventData.jenis_bencana, locationFull, formattedDate])
+
+  const faskesTerdampakList = eventData.faskes_terdampak || []
 
   const aggregatedTenaga = useMemo(() => {
     const list = eventData.tenaga_kesehatan || []
@@ -226,18 +229,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     return totals
   }, [eventData.tenaga_kesehatan])
 
-  // Map markers for OPENLAYERS Map component
   const mapMarkers = useMemo(() => {
     if (detail && Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
       return detail.lokasi.map((loc: any, idx: number) => ({
-        ...selectedEvent,
-        kode_trans: `${selectedEvent.kode_trans}-loc-${idx}`,
+        ...(selectedEvent || {}),
+        kode_trans: `${selectedEvent?.kode_trans}-loc-${idx}`,
         lat: Number(loc.latitude),
         lng: Number(loc.longitude),
       }))
     }
-    return [selectedEvent]
+    return selectedEvent ? [selectedEvent] : []
   }, [selectedEvent, detail])
+
+  if (!selectedEvent) return null
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-[450px] flex flex-col items-center justify-center space-y-4 py-16 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-in fade-in duration-200">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-700" />
+        <p className="text-sm font-semibold text-slate-500">Menghubungkan & memuat data krisis secara realtime...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff] animate-in fade-in duration-200">
