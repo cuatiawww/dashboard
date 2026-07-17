@@ -242,7 +242,7 @@ const getKorbanBreakdown = (total: number, jenis: string) => {
 
 const isYouTubeUrl = (url: string) => {
   if (!url) return false
-  return url.includes('youtube.com') || url.includes('youtu.be')
+  return url.includes('youtube.com') || url.includes('youtu.be') || url.includes('heygen.com')
 }
 
 const getYouTubeEmbedUrl = (url: string) => {
@@ -270,7 +270,7 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [videoUrl, setVideoUrl] = useState<string>('/2026-07-17_06-45-52_Lumina_1.mp4') // Local disaster warning/management demo
+  const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/07445718ccb54423a319f7df5d830a0f') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
   const [showAllMarkers, setShowAllMarkers] = useState(false)
 
