@@ -82,7 +82,9 @@ const getKorbanBreakdown = (total: any, jenis: string) => {
     luka_berat: Math.max(0, Math.floor(luka * 0.2)),
     luka_ringan: Math.max(0, Math.floor(luka * 0.8)),
   }
-}const formatPerkembangan = (p: any): string => {
+}
+
+const formatPerkembangan = (p: any): string => {
   if (!p) return ''
   if (typeof p === 'object') {
     if (p.keterangan) return String(p.keterangan)
