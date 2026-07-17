@@ -270,7 +270,7 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [videoUrl, setVideoUrl] = useState<string>('https://www.youtube.com/watch?v=xvFZjo5PgG0') // Disaster warning/management demo
+  const [videoUrl, setVideoUrl] = useState<string>('/2026-07-17_06-45-52_Lumina_1.mp4') // Local disaster warning/management demo
   const [showVideoInput, setShowVideoInput] = useState(false)
 
   // Primitive string states to avoid reference comparison bugs causing infinite loops
