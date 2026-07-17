@@ -259,6 +259,13 @@ const getYouTubeEmbedUrl = (url: string) => {
   if (id) {
     return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}`
   }
+
+  if (url.includes('heygen.com')) {
+    if (!url.includes('?')) {
+      return `${url}?autoplay=true&loop=true`
+    }
+  }
+
   return url
 }
 
