@@ -82,7 +82,31 @@ const getKorbanBreakdown = (total: any, jenis: string) => {
     luka_berat: Math.max(0, Math.floor(luka * 0.2)),
     luka_ringan: Math.max(0, Math.floor(luka * 0.8)),
   }
+}const formatPerkembangan = (p: any): string => {
+  if (!p) return ''
+  if (typeof p === 'object') {
+    if (p.keterangan) return String(p.keterangan)
+    if (p.kronologis) return String(p.kronologis)
+    
+    const parts = []
+    if (p.tgl_simple || p.tgl_laporan) {
+      parts.push(`Laporan ${p.tgl_simple || p.tgl_laporan}`)
+    }
+    const metrics = []
+    if (p.meninggal) metrics.push(`Meninggal: ${p.meninggal}`)
+    if (p.luka_berat || p.luka_ringan) {
+      metrics.push(`Luka: ${safeParseInt(p.luka_berat) + safeParseInt(p.luka_ringan)}`)
+    }
+    if (p.pengungsi) metrics.push(`Pengungsi: ${p.pengungsi}`)
+    
+    if (metrics.length > 0) {
+      parts.push(`(${metrics.join(', ')})`)
+    }
+    return parts.length > 0 ? parts.join(' ') : JSON.stringify(p)
+  }
+  return String(p)
 }
+
 
 export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKejadianPageProps) {
   const [detail, setDetail] = useState<any>(null)
@@ -432,7 +456,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 {hasDetail && Array.isArray(detail.perkembangan) && detail.perkembangan.length > 0 ? (
                   <ul className="list-disc pl-4 space-y-1 text-[12px] font-normal text-slate-700 leading-relaxed">
                     {detail.perkembangan.slice(0, 4).map((p: any, idx: number) => (
-                      <li key={idx}>{p.keterangan || p.kronologis || p}</li>
+                      <li key={idx}>{formatPerkembangan(p)}</li>
                     ))}
                   </ul>
                 ) : (
