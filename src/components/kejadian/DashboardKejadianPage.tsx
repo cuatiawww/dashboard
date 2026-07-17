@@ -1539,7 +1539,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 />
                 <div className="flex flex-col">
                   <h3 className="text-[15px] font-black leading-[1.2] text-[#1a3535] sm:text-[17px] uppercase tracking-wide">
-                    Insight & Rekomendasi AI
+                    Rekomendasi Insight AI
                   </h3>
                   {currentFormattedTime ? (
                     <span className="text-[10px] text-slate-500 font-semibold mt-1">
@@ -2342,7 +2342,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 </div>
                 <div>
                   <h3 className="text-[16px] md:text-[18px] font-extrabold uppercase tracking-wide truncate">
-                    Analisis Detail AI Penilaian Risiko Krisis Kesehatan
+                    Rekomendasi Insight AI
                   </h3>
                   <p className="text-[11px] md:text-[12px] text-teal-50/90 mt-0.5 truncate">
                     Laporan Cerdas Penilaian Risiko Bencana & Krisis Kesehatan - {getRegionLabel()}
