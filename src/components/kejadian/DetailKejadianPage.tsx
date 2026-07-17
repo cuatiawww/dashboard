@@ -28,8 +28,22 @@ interface DetailKejadianPageProps {
   onBack: () => void
 }
 
+const safeParseInt = (val: any): number => {
+  if (val === null || val === undefined) return 0
+  if (typeof val === 'number') {
+    return isNaN(val) ? 0 : Math.floor(val)
+  }
+  const clean = String(val)
+    .replace(/\s*[a-zA-Z]+/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim()
+  const parsed = parseInt(clean, 10)
+  return isNaN(parsed) ? 0 : parsed
+}
+
 const getKorbanBreakdown = (total: any, jenis: string) => {
-  const parsed = typeof total === 'number' ? total : parseInt(String(total || '').replace(/[^\d]/g, ''), 10)
+  const parsed = safeParseInt(total)
   const t = isNaN(parsed) ? 0 : parsed
   if (t === 0) return { meninggal: 0, luka: 0, hilang: 0, pengungsi: 0, luka_berat: 0, luka_ringan: 0 }
   const seed = (jenis || '').length % 4
@@ -189,20 +203,31 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
   }, [eventData.kecamatan, eventData.kabupaten, eventData.provinsi])
 
   const breakdown = useMemo(() => {
-    return hasDetail ? {
-      meninggal: Number(detail?.meninggal ?? 0),
-      luka: Number((detail?.luka_berat ?? 0) + (detail?.luka_ringan ?? 0)),
-      luka_berat: Number(detail?.luka_berat ?? 0),
-      luka_ringan: Number(detail?.luka_ringan ?? 0),
-      hilang: Number(detail?.hilang ?? 0),
-      pengungsi: Number(detail?.pengungsi ?? 0),
-    } : getKorbanBreakdown(selectedEvent?.total_korban || 0, selectedEvent?.jenis_bencana || '')
+    if (hasDetail) {
+      const db_meninggal = safeParseInt(detail?.meninggal)
+      const db_luka_berat = safeParseInt(detail?.luka_berat)
+      const db_luka_ringan = safeParseInt(detail?.luka_ringan)
+      const db_luka = db_luka_berat + db_luka_ringan
+      const db_hilang = safeParseInt(detail?.hilang)
+      const db_pengungsi = safeParseInt(detail?.pengungsi)
+      
+      return {
+        meninggal: db_meninggal,
+        luka: db_luka,
+        luka_berat: db_luka_berat,
+        luka_ringan: db_luka_ringan,
+        hilang: db_hilang,
+        pengungsi: db_pengungsi,
+      }
+    }
+    
+    return getKorbanBreakdown(selectedEvent?.total_korban || 0, selectedEvent?.jenis_bencana || '')
   }, [hasDetail, detail, selectedEvent?.total_korban, selectedEvent?.jenis_bencana])
 
   const totalKorbanReal = useMemo(() => {
     return hasDetail
       ? (breakdown.meninggal + breakdown.hilang + breakdown.luka + breakdown.pengungsi)
-      : (selectedEvent?.total_korban || 0)
+      : safeParseInt(selectedEvent?.total_korban || 0)
   }, [hasDetail, breakdown, selectedEvent?.total_korban])
 
   const totalKorbanSum = useMemo(() => {
@@ -236,26 +261,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     }
 
     list.forEach((t: any) => {
-      totals.dokter.aktif += Number(t.jml_dokter ?? 0)
-      totals.dokter.butuh += Number(t.kebutuhan_dokter ?? 0)
+      totals.dokter.aktif += safeParseInt(t.jml_dokter)
+      totals.dokter.butuh += safeParseInt(t.kebutuhan_dokter)
       
-      totals.perawat.aktif += Number(t.jml_perawat ?? 0)
-      totals.perawat.butuh += Number(t.kebutuhan_perawat ?? 0)
+      totals.perawat.aktif += safeParseInt(t.jml_perawat)
+      totals.perawat.butuh += safeParseInt(t.kebutuhan_perawat)
       
-      totals.bidan.aktif += Number(t.jml_bidan ?? 0)
-      totals.bidan.butuh += Number(t.kebutuhan_bidan ?? 0)
+      totals.bidan.aktif += safeParseInt(t.jml_bidan)
+      totals.bidan.butuh += safeParseInt(t.kebutuhan_bidan)
       
-      totals.farmasi.aktif += Number(t.jml_farmasi ?? 0)
-      totals.farmasi.butuh += Number(t.kebutuhan_farmasi ?? 0)
+      totals.farmasi.aktif += safeParseInt(t.jml_farmasi)
+      totals.farmasi.butuh += safeParseInt(t.kebutuhan_farmasi)
       
-      totals.gizi.aktif += Number(t.jml_gizi ?? 0)
-      totals.gizi.butuh += Number(t.kebutuhan_gizi ?? 0)
+      totals.gizi.aktif += safeParseInt(t.jml_gizi)
+      totals.gizi.butuh += safeParseInt(t.kebutuhan_gizi)
       
-      totals.kesling.aktif += Number(t.jml_kesling ?? 0)
-      totals.kesling.butuh += Number(t.kebutuhan_kesling ?? 0)
+      totals.kesling.aktif += safeParseInt(t.jml_kesling)
+      totals.kesling.butuh += safeParseInt(t.kebutuhan_kesling)
       
-      totals.lainnya.aktif += Number(t.jml_tenaga_lainnya ?? 0)
-      totals.lainnya.butuh += Number(t.kebutuhan_tenaga_lainnya ?? 0)
+      totals.lainnya.aktif += safeParseInt(t.jml_tenaga_lainnya)
+      totals.lainnya.butuh += safeParseInt(t.kebutuhan_tenaga_lainnya)
     })
     
     return totals
