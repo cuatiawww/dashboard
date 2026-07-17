@@ -268,11 +268,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           <div>
             <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
               DETAIL KEJADIAN KRISIS KESEHATAN
-              {hasDetail && (
-                <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Realtime API
-                </span>
-              )}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Pemantauan rincian komprehensif logistik dan dampak korban untuk kejadian bencana.
@@ -292,11 +287,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       )}
 
       {/* 1. Kronologi Kejadian */}
-      <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-3">
+      <article className="rounded-3xl border border-slate-200 border-l-4 border-l-teal-600 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+          <FileText className="h-4.5 w-4.5 text-teal-700" />
           KRONOLOGI / DESKRIPSI KEJADIAN
         </h4>
-        <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
+        <p className="text-[13px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
           {kronologi}
         </p>
       </article>
@@ -309,9 +305,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <MapPin className="h-6 w-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Jenis & Lokasi Kejadian</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Jenis & Lokasi Kejadian</p>
             <h5 className="font-extrabold text-[15px] text-slate-850 mt-1 leading-snug">{eventData.jenis_bencana}</h5>
-            <p className="text-[11px] font-semibold text-slate-500 mt-0.5 leading-snug truncate" title={locationFull}>
+            <p className="text-xs font-medium text-slate-550 mt-0.5 leading-snug truncate" title={locationFull}>
               {locationFull}
             </p>
           </div>
@@ -325,7 +321,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             </svg>
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Waktu Kejadian</p>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Waktu Kejadian</p>
             <h5 className="font-extrabold text-[15px] text-slate-850 mt-1">{formattedDate}</h5>
           </div>
         </article>
@@ -336,23 +332,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Penduduk Terdampak</p>
-            <h5 className="font-extrabold text-[24px] text-slate-850 leading-none mt-1">
-              {eventData.penduduk_terdampak ? eventData.penduduk_terdampak.toLocaleString('id-ID') : (eventData.total_korban ? eventData.total_korban.toLocaleString('id-ID') : 0)} <span className="text-xs font-bold text-slate-400">Jiwa</span>
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Penduduk Terdampak</p>
+            <h5 className="font-extrabold text-[24px] text-teal-800 leading-none mt-1">
+              {eventData.penduduk_terdampak ? eventData.penduduk_terdampak.toLocaleString('id-ID') : (eventData.total_korban ? eventData.total_korban.toLocaleString('id-ID') : 0)} <span className="text-xs font-bold text-slate-450">Jiwa</span>
             </h5>
           </div>
         </article>
       </section>
 
-      {/* 2.5. Aksesibilitas & Kondisi Infrastruktur (New Section) */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
-          <Compass className="h-4 w-4 text-teal-700" />
+      {/* 2.5. Aksesibilitas & Kondisi Infrastruktur */}
+      <section className="rounded-3xl border border-slate-200 border-l-4 border-l-sky-500 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <Compass className="h-4.5 w-4.5 text-sky-650" />
           KONDISI INFRASTRUKTUR & AKSESIBILITAS
         </h4>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           {/* Akses Jalan */}
-          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
@@ -360,17 +356,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 </div>
                 <span className="text-xs font-bold text-slate-700">Akses Jalan</span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.akses_lokasi, 'akses').color}`}>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getStatusLabel(eventData.akses_lokasi, 'akses').color}`}>
                 {getStatusLabel(eventData.akses_lokasi, 'akses').label}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+            <p className="text-[12px] text-slate-650 font-medium mt-3.5 leading-relaxed">
               {eventData.akses_lokasi_keterangan || 'Kondisi akses jalan menuju area terdampak krisis.'}
             </p>
           </div>
 
           {/* Jaringan Listrik */}
-          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
@@ -378,17 +374,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 </div>
                 <span className="text-xs font-bold text-slate-700">Jaringan Listrik</span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.jaringan_listrik, 'listrik').color}`}>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getStatusLabel(eventData.jaringan_listrik, 'listrik').color}`}>
                 {getStatusLabel(eventData.jaringan_listrik, 'listrik').label}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+            <p className="text-[12px] text-slate-650 font-medium mt-3.5 leading-relaxed">
               Kondisi keaktifan pasokan daya listrik di lokasi bencana krisis kesehatan.
             </p>
           </div>
 
           {/* Air Bersih */}
-          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex flex-col justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
@@ -396,22 +392,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 </div>
                 <span className="text-xs font-bold text-slate-700">Pasokan Air Bersih</span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getStatusLabel(eventData.air_bersih, 'air').color}`}>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${getStatusLabel(eventData.air_bersih, 'air').color}`}>
                 {getStatusLabel(eventData.air_bersih, 'air').label}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-semibold mt-3 leading-normal">
+            <p className="text-[12px] text-slate-650 font-medium mt-3.5 leading-relaxed">
               Ketersediaan air bersih higienis untuk sanitasi dan konsumsi pengungsi.
             </p>
           </div>
 
           {/* Jalur Komunikasi */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
               <Wifi className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Jalur Komunikasi</span>
+              <span className="text-[10px] font-black text-slate-400 block uppercase">Jalur Komunikasi</span>
               <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
                 {eventData.jalur_komunikasi || 'Tidak Dilaporkan'}
               </span>
@@ -419,26 +415,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           </div>
 
           {/* Mobilisasi EMT */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Mobilisasi EMT</span>
-              <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
+              <span className="text-[10px] font-black text-slate-400 block uppercase">Mobilisasi EMT</span>
+              <span className="text-xs font-extrabold text-slate-850 mt-0.5 truncate block">
                 {eventData.mobilisasi_emt || 'Tidak Ada Mobilisasi'}
               </span>
             </div>
           </div>
 
           {/* Mobilisasi PSC */}
-          <div className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-slate-100 bg-slate-50/40">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-700">
               <Phone className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <span className="text-[10px] font-bold text-slate-400 block uppercase">Mobilisasi PSC 119</span>
-              <span className="text-xs font-extrabold text-slate-800 mt-0.5 truncate block">
+              <span className="text-[10px] font-black text-slate-400 block uppercase">Mobilisasi PSC 119</span>
+              <span className="text-xs font-extrabold text-slate-850 mt-0.5 truncate block">
                 {eventData.mobilisasi_psc || 'Tidak Ada Mobilisasi'}
               </span>
             </div>
@@ -449,60 +445,60 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       {/* 3. Four impact cards below */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {/* Korban Meninggal */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Korban Meninggal</p>
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-rose-500 bg-rose-50/10 p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Korban Meninggal</p>
           <div className="flex justify-between items-end mt-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-650">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.meninggal || 0}</span>
+            <span className="text-[28px] font-black text-rose-700 leading-none">{breakdown.meninggal || 0}</span>
           </div>
         </article>
 
         {/* Korban Luka Ringan */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Korban Luka Ringan / Rawat Jalan</p>
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-amber-500 bg-amber-50/10 p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Korban Luka Ringan / Rawat Jalan</p>
           <div className="flex justify-between items-end mt-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.luka_ringan || (breakdown.luka - (breakdown.luka_berat ?? 0)) || 0}</span>
+            <span className="text-[28px] font-black text-amber-700 leading-none">{breakdown.luka_ringan || (breakdown.luka - (breakdown.luka_berat ?? 0)) || 0}</span>
           </div>
         </article>
 
         {/* Korban Luka Berat */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Korban Luka Berat / Rawat Inap</p>
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-orange-500 bg-orange-50/10 p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Korban Luka Berat / Rawat Inap</p>
           <div className="flex justify-between items-end mt-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 text-orange-700">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.luka_berat || Math.max(0, Math.floor(breakdown.luka * 0.15)) || 0}</span>
+            <span className="text-[28px] font-black text-orange-700 leading-none">{breakdown.luka_berat || Math.max(0, Math.floor(breakdown.luka * 0.15)) || 0}</span>
           </div>
         </article>
 
         {/* Pengungsi */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pengungsi</p>
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-indigo-500 bg-indigo-50/10 p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Pengungsi</p>
           <div className="flex justify-between items-end mt-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
               <Users className="h-4 w-4" />
             </div>
-            <span className="text-[24px] font-black text-slate-850 leading-none">{breakdown.pengungsi || 0}</span>
+            <span className="text-[28px] font-black text-indigo-700 leading-none">{breakdown.pengungsi || 0}</span>
           </div>
         </article>
       </section>
 
-      {/* 3.5. Mobilisasi Sumber Daya Kesehatan (New Section) */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
-          <HeartPulse className="h-4.5 w-4.5 text-teal-700" />
+      {/* 3.5. Mobilisasi Sumber Daya Kesehatan */}
+      <section className="rounded-3xl border border-slate-200 border-l-4 border-l-emerald-500 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <HeartPulse className="h-4.5 w-4.5 text-emerald-700" />
           MOBILISASI & KEBUTUHAN TENAGA KESEHATAN
         </h4>
         
         {aggregatedTenaga ? (
           <div>
-            <p className="text-xs text-slate-500 font-semibold mb-4 leading-relaxed">
+            <p className="text-xs text-slate-655 font-semibold mb-4 leading-relaxed">
               Berikut data total petugas medis yang telah berhasil dimobilisasi ke lokasi bencana beserta analisis kebutuhan mendesak tambahan tenaga kesehatan:
             </p>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
@@ -517,8 +513,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               ].map((item, idx) => {
                 const hasNeed = item.val.butuh > 0
                 return (
-                  <div key={idx} className="flex flex-col justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 text-center">
-                    <span className="text-[11px] font-bold text-slate-700">{item.name}</span>
+                  <div key={idx} className="flex flex-col justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50/40 text-center">
+                    <span className="text-xs font-bold text-slate-700">{item.name}</span>
                     <div className="my-3">
                       <span className="text-lg font-black text-slate-800">{item.val.aktif}</span>
                       <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Aktif di Lapangan</span>
@@ -533,29 +529,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             
             {/* Detail per Faskes List */}
             {eventData.tenaga_kesehatan && eventData.tenaga_kesehatan.length > 0 && (
-              <div className="mt-4 border-t border-slate-100 pt-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Rincian Penempatan Pos Medis:</span>
-                <div className="overflow-x-auto text-xs max-h-[150px] overflow-y-auto pr-1">
+              <div className="mt-5 border-t border-slate-100 pt-4">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2.5">Rincian Penempatan Pos Medis:</span>
+                <div className="overflow-x-auto text-xs max-h-[200px] overflow-y-auto pr-1">
                   <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="border-b border-slate-150 text-[10px] uppercase text-slate-400 font-bold">
-                        <th className="pb-1.5 font-bold">Pos Medis/Faskes</th>
-                        <th className="pb-1.5 text-center font-bold">Dokter</th>
-                        <th className="pb-1.5 text-center font-bold">Perawat</th>
-                        <th className="pb-1.5 text-center font-bold">Bidan</th>
-                        <th className="pb-1.5 text-center font-bold">Farmasi</th>
-                        <th className="pb-1.5 text-center font-bold">Lainnya</th>
+                      <tr className="border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold">
+                        <th className="pb-2 font-bold">Pos Medis/Faskes</th>
+                        <th className="pb-2 text-center font-bold">Dokter</th>
+                        <th className="pb-2 text-center font-bold">Perawat</th>
+                        <th className="pb-2 text-center font-bold">Bidan</th>
+                        <th className="pb-2 text-center font-bold">Farmasi</th>
+                        <th className="pb-2 text-center font-bold">Lainnya</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-650">
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {eventData.tenaga_kesehatan.map((t: any, tidx: number) => (
-                        <tr key={tidx}>
-                          <td className="py-1.5">{t.nama_faskes || 'Fasilitas Kesehatan'}</td>
-                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_dokter || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_dokter || 0}</span></td>
-                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_perawat || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_perawat || 0}</span></td>
-                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_bidan || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_bidan || 0}</span></td>
-                          <td className="py-1.5 text-center font-bold text-slate-800">{t.jml_farmasi || 0} <span className="text-[10px] text-slate-400">/{t.kebutuhan_farmasi || 0}</span></td>
-                          <td className="py-1.5 text-center font-bold text-slate-800">{Number(t.jml_gizi || 0) + Number(t.jml_kesling || 0) + Number(t.jml_tenaga_lainnya || 0)}</td>
+                        <tr key={tidx} className="hover:bg-slate-55/40">
+                          <td className="py-2.5 font-bold text-slate-800">{t.nama_faskes || 'Fasilitas Kesehatan'}</td>
+                          <td className="py-2.5 text-center font-bold text-slate-800">{t.jml_dokter || 0} <span className="text-[10px] text-slate-400 font-normal">/{t.kebutuhan_dokter || 0}</span></td>
+                          <td className="py-2.5 text-center font-bold text-slate-800">{t.jml_perawat || 0} <span className="text-[10px] text-slate-400 font-normal">/{t.kebutuhan_perawat || 0}</span></td>
+                          <td className="py-2.5 text-center font-bold text-slate-800">{t.jml_bidan || 0} <span className="text-[10px] text-slate-400 font-normal">/{t.kebutuhan_bidan || 0}</span></td>
+                          <td className="py-2.5 text-center font-bold text-slate-800">{t.jml_farmasi || 0} <span className="text-[10px] text-slate-400 font-normal">/{t.kebutuhan_farmasi || 0}</span></td>
+                          <td className="py-2.5 text-center font-bold text-slate-800">{Number(t.jml_gizi || 0) + Number(t.jml_kesling || 0) + Number(t.jml_tenaga_lainnya || 0)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -573,32 +569,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         )}
       </section>
 
-      {/* 3.6. Posko Pengungsian & Dampak Pengungsian (New Section) */}
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
-          <Home className="h-4.5 w-4.5 text-teal-700" />
+      {/* 3.6. Posko Pengungsian & Dampak Pengungsian */}
+      <section className="rounded-3xl border border-slate-200 border-l-4 border-l-indigo-500 bg-white p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
+          <Home className="h-4.5 w-4.5 text-indigo-700" />
           INFORMASI TITIK POSKO PENGUNGSIAN
         </h4>
         
         {eventData.pos_pengungsi && eventData.pos_pengungsi.length > 0 ? (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-              Berikut daftar titik lokasi penampungan pengungsi beserta data jumlah kepala keluarga (KK), gender, dan sebarannya:
+            <p className="text-xs text-slate-650 font-medium leading-relaxed">
+              Berikut daftar titik lokasi penampungan pengungsi beserta data jumlah kepala keluarga (KK), sebaran gender, dan koordinatnya:
             </p>
             <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-slate-50/20">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase text-slate-500 font-bold tracking-wider">
-                    <th className="py-2.5 px-4">Kecamatan / Lokasi</th>
-                    <th className="py-2.5 px-4 text-center">Titik Pengungsian</th>
-                    <th className="py-2.5 px-4 text-center">Total Kepala Keluarga (KK)</th>
-                    <th className="py-2.5 px-4 text-center">Total Pengungsi</th>
-                    <th className="py-2.5 px-4 text-center">Laki-Laki</th>
-                    <th className="py-2.5 px-4 text-center">Perempuan</th>
-                    <th className="py-2.5 px-4 text-center">Titik Koordinat (Lat, Lng)</th>
+                    <th className="py-3 px-4">Kecamatan / Lokasi</th>
+                    <th className="py-3 px-4 text-center">Titik Pengungsian</th>
+                    <th className="py-3 px-4 text-center">Total Kepala Keluarga (KK)</th>
+                    <th className="py-3 px-4 text-center">Total Pengungsi</th>
+                    <th className="py-3 px-4 text-center">Laki-Laki</th>
+                    <th className="py-3 px-4 text-center">Perempuan</th>
+                    <th className="py-3 px-4 text-center">Titik Koordinat (Lat, Lng)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-semibold text-slate-650">
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-705">
                   {eventData.pos_pengungsi.map((pos: any, pidx: number) => (
                     <tr key={pidx} className="hover:bg-slate-100/40 transition-colors">
                       <td className="py-2.5 px-4 text-slate-800 font-bold">Kec. {pos.kecamatan || eventData.kecamatan || 'Kecamatan'}</td>
@@ -645,8 +641,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       {/* 4. Respon EOC & Fasilitas Kesehatan */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Card 1: Fasilitas Kesehatan Terdampak & Siaga */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3">
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-rose-500 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <Activity className="h-4.5 w-4.5 text-rose-600" />
             FASILITAS KESEHATAN TERDAMPAK & SIAGA
           </h4>
           {hasDetail ? (
@@ -655,7 +652,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 Tidak ada fasilitas kesehatan terdampak yang dilaporkan.
               </div>
             ) : (
-              <div className="space-y-3 text-xs text-slate-750 max-h-[200px] overflow-y-auto pr-1">
+              <div className="space-y-3 text-xs text-slate-700 max-h-[200px] overflow-y-auto pr-1">
                 {faskesTerdampakList.map((f: any, idx: number) => {
                   const name = f.nama_faskes || f.nama || 'Fasilitas Kesehatan'
                   const details = []
@@ -668,7 +665,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
                   return (
                     <div key={idx} className="flex justify-between items-center border-b border-slate-50 pb-1.5 last:border-b-0 last:pb-0">
-                      <span className="font-semibold text-slate-505">{name}:</span>
+                      <span className="font-semibold text-slate-600">{name}:</span>
                       <span className="font-bold text-slate-800">{f.status || f.kondisi || 'Terdampak'} {detailStr}</span>
                     </div>
                   )
@@ -687,11 +684,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 <span className="font-bold text-teal-700">2 Unit Siaga 24 Jam</span>
               </div>
               <div className="flex justify-between items-center border-b border-slate-50 pb-1.5">
-                <span className="font-semibold text-slate-500">Posko Kesehatan Lapangan:</span>
+                <span className="font-semibold text-slate-505">Posko Kesehatan Lapangan:</span>
                 <span className="font-bold text-slate-800">1 Titik Terpasang</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-slate-500">Kapasitas Ambulans:</span>
+                <span className="font-semibold text-slate-505">Kapasitas Ambulans:</span>
                 <span className="font-bold text-slate-800">3 Unit Aktif</span>
               </div>
             </div>
@@ -699,18 +696,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         </article>
 
         {/* Card 2: Upaya Penanganan */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3">
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-amber-500 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <CheckCircle2 className="h-4.5 w-4.5 text-amber-600" />
             UPAYA PENANGANAN KRISIS KESEHATAN (EOC)
           </h4>
           {hasDetail && detail.perkembangan && detail.perkembangan.length > 0 ? (
-            <ul className="list-disc pl-4 space-y-1.5 text-xs font-semibold text-slate-650">
+            <ul className="list-disc pl-4 space-y-1.5 text-xs font-medium text-slate-700 leading-relaxed">
               {detail.perkembangan.map((p: any, idx: number) => (
                 <li key={idx}>{p.keterangan || p.kronologis || p}</li>
               ))}
             </ul>
           ) : (
-            <ul className="list-disc pl-4 space-y-1.5 text-xs font-semibold text-slate-600">
+            <ul className="list-disc pl-4 space-y-1.5 text-xs font-medium text-slate-650 leading-relaxed">
               <li>Mobilisasi Tim Reaksi Cepat (TRC) dan Tim Cadangan Kesehatan (TCK).</li>
               <li>Penyaluran logistik darurat berupa paket obat-obatan dan hygiene kit.</li>
               <li>Penyelenggaraan surveillance aktif penyakit potensi KLB di pos pengungsian.</li>
@@ -719,25 +717,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           )}
         </article>
 
-        {/* Card 3: Distribusi Bantuan & Logistik Kesehatan (New Section) */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
-            <FileText className="h-4.5 w-4.5 text-teal-700" />
+        {/* Card 3: Distribusi Bantuan & Logistik Kesehatan */}
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-cyan-500 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <FileText className="h-4.5 w-4.5 text-cyan-600" />
             DISTRIBUSI BANTUAN & LOGISTIK KESEHATAN
           </h4>
-          <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
+          <p className="text-[13px] text-slate-750 leading-relaxed font-normal whitespace-pre-line">
             {eventData.bantuan || 
               "Belum ada rincian bantuan logistik spesifik yang tercatat di sistem. Penyaluran logistik dasar (obat-obatan, masker, hygiene kit) biasanya disalurkan langsung oleh dinkes kabupaten/kota setempat."}
           </p>
         </article>
 
-        {/* Card 4: Rekomendasi Medis & Rencana Tindak Lanjut (New Section) */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <h4 className="text-[12px] font-black uppercase tracking-wider text-[#1a3535] border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
-            <HelpCircle className="h-4.5 w-4.5 text-teal-700" />
+        {/* Card 4: Rekomendasi Medis & Rencana Tindak Lanjut */}
+        <article className="rounded-3xl border border-slate-200 border-l-4 border-l-teal-500 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
+          <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+            <HelpCircle className="h-4.5 w-4.5 text-teal-650" />
             REKOMENDASI DAN RENCANA TINDAK LANJUT
           </h4>
-          <p className="text-xs text-slate-650 leading-relaxed font-semibold whitespace-pre-line">
+          <p className="text-[13px] text-slate-750 leading-relaxed font-normal whitespace-pre-line">
             {eventData.rekomendasi || 
               "Tingkatkan surveilans penyakit pasca bencana di wilayah pengungsian, pantau kecukupan logistik obat-obatan, serta pastikan koordinasi aktif 24 jam dengan pusat komando krisis kesehatan."}
           </p>
@@ -746,7 +744,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
       {/* 5. Pemetaan Kejadian */}
       <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-800 border-b border-slate-100 pb-2 mb-3">
+        <h4 className="text-[12px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3">
           PEMETAAN KEJADIAN BENCANA
         </h4>
         <div className="h-[350px] rounded-2xl overflow-hidden border border-slate-200 shadow-inner">

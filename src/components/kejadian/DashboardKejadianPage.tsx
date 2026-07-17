@@ -352,6 +352,7 @@ export default function DashboardKejadianPage() {
   }, [data?.markers, markerMonths])
 
   const [tableSearchQuery, setTableSearchQuery] = useState('')
+  const [tableCurrentPage, setTableCurrentPage] = useState(1)
   const [selectedEvent, setSelectedEvent] = useState<MarkerItem | null>(null)
   const [alertIntervalId, setAlertIntervalId] = useState<number | null>(null)
 
@@ -444,6 +445,15 @@ export default function DashboardKejadianPage() {
       (m.kecamatan || '').toLowerCase().includes(q)
     )
   }, [data?.markers, tableSearchQuery])
+
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(filteredMarkersForTable.length / itemsPerPage)
+  const paginatedMarkers = useMemo(() => {
+    const activePage = Math.min(tableCurrentPage, Math.max(1, totalPages))
+    const startIndex = (activePage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return filteredMarkersForTable.slice(startIndex, endIndex)
+  }, [filteredMarkersForTable, tableCurrentPage, totalPages])
 
   const handleExportCsv = () => {
     if (!filteredMarkersForTable || filteredMarkersForTable.length === 0) {
@@ -1826,7 +1836,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
       </section>
 
       {/* Donut Charts & Disease Risks Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:grid-cols-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:grid-cols-3">
         {/* Pie Chart 1: Jenis Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
           <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA - {getRegionLabel()}</h3>
@@ -1947,7 +1957,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
         </article>
 
-        {/* Post-Disaster Disease Risk */}
+        {/* Post-Disaster Disease Risk - Hidden / Commented Out
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)] flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1991,6 +2001,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
           </div>
         </article>
+        */}
       </section>
 
       {/* Tabel Informasi Kejadian Krisis Kesehatan Terkini */}
@@ -2010,7 +2021,10 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 type="text"
                 placeholder="Cari Kejadian/Wilayah..."
                 value={tableSearchQuery}
-                onChange={(e) => setTableSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setTableSearchQuery(e.target.value)
+                  setTableCurrentPage(1)
+                }}
                 className="w-full md:w-60 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-teal-500 focus:bg-white transition"
               />
             </div>
@@ -2045,7 +2059,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     </td>
                   </tr>
                 ) : (
-                  filteredMarkersForTable.slice(0, 10).map((m, idx) => {
+                  paginatedMarkers.map((m, idx) => {
                     const formattedDate = m.tgl_kejadian ? new Date(m.tgl_kejadian).toLocaleDateString('id-ID', {
                       day: 'numeric',
                       month: 'short',
@@ -2053,6 +2067,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     }) : '-'
                     const location = m.kabupaten || m.provinsi || 'Nasional'
                     const isEven = idx % 2 === 1
+                    const absoluteIdx = ((tableCurrentPage - 1) * itemsPerPage) + idx + 1
                     return (
                       <tr
                         key={m.kode_trans ? `${m.kode_trans}-${idx}` : `event-${idx}`}
@@ -2061,7 +2076,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         }`}
                         onClick={() => setSelectedEvent(m)}
                       >
-                        <td className="py-3 px-5 text-center font-bold text-slate-400">{idx + 1}</td>
+                        <td className="py-3 px-5 text-center font-bold text-slate-400">{absoluteIdx}</td>
                         <td className="py-3 px-5 font-semibold text-slate-650">{formattedDate}</td>
                         <td className="py-3 px-5 font-bold text-slate-800">{m.jenis_bencana}</td>
                         <td className="py-3 px-5 font-semibold text-slate-600">{location}</td>
@@ -2080,11 +2095,62 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
               </tbody>
             </table>
           </div>
-          {filteredMarkersForTable.length > 10 && (
-            <div className="bg-slate-50 border-t border-slate-150 py-2.5 px-5 text-center text-[11px] text-slate-500 font-bold uppercase tracking-wider">
-              Menampilkan 10 laporan kejadian terbaru dari total {filteredMarkersForTable.length} laporan.
+          <div className="bg-slate-50 border-t border-slate-200 py-3.5 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-[11px] text-slate-505 font-bold uppercase tracking-wider">
+              {filteredMarkersForTable.length === 0 ? (
+                'Tidak ada laporan'
+              ) : (
+                `Menampilkan ${((tableCurrentPage - 1) * itemsPerPage) + 1} - ${Math.min(tableCurrentPage * itemsPerPage, filteredMarkersForTable.length)} dari total ${filteredMarkersForTable.length} laporan`
+              )}
             </div>
-          )}
+            
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                <button
+                  disabled={tableCurrentPage === 1}
+                  onClick={() => setTableCurrentPage(prev => Math.max(1, prev - 1))}
+                  className="inline-flex h-8 px-2.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-650 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Sebelumnya
+                </button>
+                
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  let pageNum = i + 1
+                  if (totalPages > 5) {
+                    if (tableCurrentPage > 3) {
+                      pageNum = tableCurrentPage - 3 + i
+                      if (pageNum + (4 - i) > totalPages) {
+                        pageNum = totalPages - 4 + i
+                      }
+                    }
+                  }
+                  
+                  const isCurrent = pageNum === tableCurrentPage
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setTableCurrentPage(pageNum)}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition ${
+                        isCurrent
+                          ? 'bg-[#047D78] text-white'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+                
+                <button
+                  disabled={tableCurrentPage === totalPages}
+                  onClick={() => setTableCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  className="inline-flex h-8 px-2.5 items-center justify-center rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-650 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
