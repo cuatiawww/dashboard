@@ -247,16 +247,17 @@ const isYouTubeUrl = (url: string) => {
 
 const getYouTubeEmbedUrl = (url: string) => {
   if (!url) return ''
+  let id = ''
   if (url.includes('youtu.be/')) {
-    const id = url.split('youtu.be/')[1]?.split(/[?#]/)[0]
-    return `https://www.youtube.com/embed/${id}`
+    id = url.split('youtu.be/')[1]?.split(/[?#]/)[0]
+  } else if (url.includes('v=')) {
+    id = url.split('v=')[1]?.split('&')[0]?.split(/[?#]/)[0]
+  } else if (url.includes('embed/')) {
+    id = url.split('embed/')[1]?.split(/[?#]/)[0]
   }
-  if (url.includes('v=')) {
-    const id = url.split('v=')[1]?.split('&')[0]?.split(/[?#]/)[0]
-    return `https://www.youtube.com/embed/${id}`
-  }
-  if (url.includes('embed/')) {
-    return url
+
+  if (id) {
+    return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}`
   }
   return url
 }
@@ -1442,6 +1443,10 @@ ${guidelines}`)
                     <video
                       src={videoUrl}
                       controls
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
                       className="h-full w-full object-cover"
                     />
                   )
@@ -2267,6 +2272,10 @@ ${guidelines}`)
                         <video
                           src={videoUrl}
                           controls
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
                           className="h-full w-full object-cover"
                         />
                       )
