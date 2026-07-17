@@ -13,10 +13,15 @@ const roboto = Roboto({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 3000)
+
   try {
     const res = await fetch(buildApiUrl('/api/settings'), {
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 },
+      signal: controller.signal
     });
+    clearTimeout(timeoutId)
     const payload = await res.json();
     if (payload?.success && payload?.settings) {
       return {
@@ -25,6 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
       };
     }
   } catch (error) {
+    clearTimeout(timeoutId)
     console.error("Failed to generate dynamic metadata:", error);
   }
 
