@@ -217,6 +217,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showBmkg, setShowBmkg] = useState(false)
   const [bmkgGempas, setBmkgGempas] = useState<any[]>([])
   const [activeBmkgAlert, setActiveBmkgAlert] = useState<any | null>(null)
+  const [showEwsPulse, setShowEwsPulse] = useState(true)
 
   // ── Filter states ──
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
@@ -931,19 +932,60 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       return feature
     })
 
-    // Draw 100km warning circles for disasters
-    validMarkers.forEach((m) => {
-      if (m.total_korban > 0 || m.jenis_bencana) {
-        const circleFeature = new Feature({
-          geometry: new CircleGeom(fromLonLat([m.lng, m.lat]), 100000), // 100km radius
-        })
-        circleFeature.setStyle(new Style({
-          fill: new Fill({ color: 'rgba(239, 68, 68, 0.04)' }),
-          stroke: new Stroke({ color: 'rgba(239, 68, 68, 0.25)', width: 1.2, lineDash: [4, 4] })
-        }))
-        features.push(circleFeature)
+    // Draw proximity EWS warning circles if enabled
+    if (showEwsPulse) {
+      let userCoords: { lat: number; lng: number } | null = null
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('user_coords')
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved)
+            if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+              userCoords = parsed
+            }
+          } catch (e) {
+            console.error('[EWS Map Circle] Failed to parse coordinates:', e)
+          }
+        }
       }
-    })
+
+      validMarkers.forEach((m) => {
+        if (m.lat && m.lng && (m.total_korban > 0 || m.jenis_bencana)) {
+          let drawRadius: number | null = null
+          let fillColor = 'rgba(239, 68, 68, 0.04)'
+          let strokeColor = 'rgba(239, 68, 68, 0.25)'
+
+          if (userCoords) {
+            const dist = getDistanceInKm(userCoords.lat, userCoords.lng, m.lat, m.lng)
+            if (dist <= 25) {
+              // Within 25km: strong warning (25km circle)
+              drawRadius = 25000
+              fillColor = 'rgba(239, 68, 68, 0.08)'
+              strokeColor = 'rgba(239, 68, 68, 0.45)'
+            } else if (dist <= 50) {
+              // Within 50km: warning circle (50km circle)
+              drawRadius = 50000
+              fillColor = 'rgba(245, 158, 11, 0.05)'
+              strokeColor = 'rgba(245, 158, 11, 0.35)'
+            }
+          } else {
+            // Default warning circle if user location is not shared yet
+            drawRadius = 50000
+          }
+
+          if (drawRadius !== null) {
+            const circleFeature = new Feature({
+              geometry: new CircleGeom(fromLonLat([m.lng, m.lat]), drawRadius),
+            })
+            circleFeature.setStyle(new Style({
+              fill: new Fill({ color: fillColor }),
+              stroke: new Stroke({ color: strokeColor, width: 1.2, lineDash: [4, 4] })
+            }))
+            features.push(circleFeature)
+          }
+        }
+      })
+    }
 
     // Add User Current GPS Location blue pin
     if (typeof window !== 'undefined') {
@@ -1008,14 +1050,16 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
             }))
             features.push(gempaFeature)
 
-            const warningCircle = new Feature({
-              geometry: new CircleGeom(fromLonLat([glng, glat]), 50000) // 50km radius
-            })
-            warningCircle.setStyle(new Style({
-              fill: new Fill({ color: 'rgba(249, 115, 22, 0.04)' }),
-              stroke: new Stroke({ color: 'rgba(249, 115, 22, 0.3)', width: 1.2, lineDash: [3, 3] })
-            }))
-            features.push(warningCircle)
+            if (showEwsPulse) {
+              const warningCircle = new Feature({
+                geometry: new CircleGeom(fromLonLat([glng, glat]), 50000) // 50km radius
+              })
+              warningCircle.setStyle(new Style({
+                fill: new Fill({ color: 'rgba(249, 115, 22, 0.04)' }),
+                stroke: new Stroke({ color: 'rgba(249, 115, 22, 0.3)', width: 1.2, lineDash: [3, 3] })
+              }))
+              features.push(warningCircle)
+            }
           }
         }
       })
@@ -1023,8 +1067,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     source.addFeatures(features)
 
-    // Position EWS pulse overlay on the latest disaster event
-    if (pulseOverlayRef.current && validMarkers.length > 0) {
+    // Position EWS pulse overlay on the latest disaster event if EWS circles are enabled
+    if (showEwsPulse && pulseOverlayRef.current && validMarkers.length > 0) {
       const sorted = [...validMarkers].sort((a, b) => {
         const dateA = a.tgl_kejadian ? new Date(a.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
         const dateB = b.tgl_kejadian ? new Date(b.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
@@ -1039,7 +1083,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     } else if (pulseOverlayRef.current) {
       pulseOverlayRef.current.setPosition(undefined)
     }
-  }, [filteredMarkers, showMarkers])
+  }, [filteredMarkers, showMarkers, showBmkg, bmkgGempas, showEwsPulse])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -1293,20 +1337,39 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
               </div>
 
               {/* ── BMKG EWS Layers Section ── */}
-              <div className="mb-6 border-b border-slate-100 pb-5">
+              <div className="mb-6 border-b border-slate-100 pb-5 space-y-2.5">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
                   INTEGRASI EWS BMKG
                 </p>
+                
+                {/* Toggle EWS Pulse Radius Circles */}
+                <div
+                  onClick={() => setShowEwsPulse((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">Denyut Radius EWS</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Lingkaran radius EWS 25km & 50km dekat GPS</p>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showEwsPulse ? 'bg-teal-650' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showEwsPulse ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
                 <div
                   onClick={() => setShowBmkg((v) => !v)}
-                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
                 >
                   <div>
                     <p className="text-xs font-semibold text-slate-800">Layer Gempa Terkini BMKG</p>
                     <p className="text-[10px] text-slate-400 font-medium">Plot seismik realtime & radius bahaya 50km</p>
                   </div>
                   <div
-                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBmkg ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBmkg ? 'bg-teal-650' : 'bg-slate-300'}`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBmkg ? 'translate-x-4' : 'translate-x-0'}`}

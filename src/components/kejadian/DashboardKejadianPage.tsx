@@ -308,6 +308,9 @@ export default function DashboardKejadianPage() {
   const dismissFirstAlert = () => {
     setEwsAlertQueue(prev => prev.slice(1))
   }
+  const dismissAllAlerts = () => {
+    setEwsAlertQueue([])
+  }
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [aiModalTab, setAiModalTab] = useState<'report' | 'video' | 'info'>('report')
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
@@ -2265,12 +2268,22 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 >
                   Buka Detail Kejadian
                 </button>
-                <button
-                  onClick={dismissFirstAlert}
-                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 hover:text-slate-800 rounded-xl text-xs font-bold transition duration-300"
-                >
-                  Tutup & Pantau Peta
-                </button>
+                <div className={ewsAlertQueue.length > 1 ? "grid grid-cols-2 gap-2" : "w-full"}>
+                  <button
+                    onClick={dismissFirstAlert}
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 hover:text-slate-800 rounded-xl text-xs font-bold transition duration-300"
+                  >
+                    {ewsAlertQueue.length > 1 ? 'Tutup Ini' : 'Tutup & Pantau Peta'}
+                  </button>
+                  {ewsAlertQueue.length > 1 && (
+                    <button
+                      onClick={dismissAllAlerts}
+                      className="w-full py-3 bg-slate-100 hover:bg-red-50 text-red-650 hover:text-red-700 border border-slate-200 hover:border-red-200 rounded-xl text-xs font-bold transition duration-300"
+                    >
+                      Tutup Semua ({ewsAlertQueue.length})
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
