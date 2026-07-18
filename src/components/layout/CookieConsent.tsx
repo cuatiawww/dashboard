@@ -105,10 +105,10 @@ export default function CookieConsent() {
         
         <div className="space-y-2">
           <h3 className="text-[13px] font-extrabold tracking-wide uppercase text-slate-900">
-            SISTEM PERINGATAN DINI (EWS) & COOKIES
+            Aktifkan Layanan Peringatan Dini (EWS)
           </h3>
           <p className="text-xs text-slate-650 leading-relaxed font-normal">
-            Aktifkan sistem keamanan darurat terpadu. Kami menggunakan cookies dan koordinat GPS perangkat Anda untuk menghitung radius kerawanan bencana secara realtime, mengirim suara sirine darurat, dan notifikasi BMKG-like langsung ke desktop Anda.
+            Untuk mendeteksi bencana di sekitar Anda secara otomatis, kami memerlukan izin untuk mengakses <strong>Lokasi (GPS)</strong> guna mengukur radius aman, dan <strong>Notifikasi</strong> agar dapat mengirimkan peringatan suara sirine darurat secara realtime ke perangkat Anda.
           </p>
         </div>
 
