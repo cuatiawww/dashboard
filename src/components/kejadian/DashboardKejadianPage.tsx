@@ -291,7 +291,7 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/def2e3afc19a47afb18ba746d3331da4') // HeyGen AI video demo
+  const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
   const [markerMonths, setMarkerMonths] = useState(1)
@@ -1661,8 +1661,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 </div>
               </div>
 
-              {/* Video Embed Container */}
-              <div className="mt-3 relative aspect-video w-full overflow-hidden rounded-xl border border-teal-200/60 bg-black/5 shadow-inner group/video shrink-0">
+              {/* Video Embed Container (Portrait / flex-1 to fill card height) */}
+              <div className="mt-4 mb-4 relative flex-1 w-full overflow-hidden rounded-xl border border-teal-200/60 bg-black/5 shadow-inner group/video">
                 {videoUrl ? (
                   isYouTubeUrl(videoUrl) ? (
                     <iframe
@@ -1688,49 +1688,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     <span className="mt-1 text-xs">Belum ada video tersemat</span>
                   </div>
                 )}
-
-                {/*
-                {/* Settings overlay to edit/embed video URL }
-                <button
-                  onClick={() => setShowVideoInput(!showVideoInput)}
-                  className="absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
-                  title="Ubah URL Video"
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                </button>
-
-                {showVideoInput && (
-                  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/85 p-4 text-white animate-fade-in backdrop-blur-sm">
-                    <p className="mb-2 text-xs font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
-                    <input
-                      type="text"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/15"
-                    />
-                    <div className="mt-3 flex gap-2 w-full justify-end">
-                      <button
-                        onClick={() => setShowVideoInput(false)}
-                        className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-700 transition"
-                      >
-                        Simpan
-                      </button>
-                    </div>
-                  </div>
-                )}
-                */}
               </div>
-
-              {/* Body text */}
-              <div className="mt-3 rounded-xl border-l-[3px] border-l-[#16b7b2] bg-white/60 px-3 py-2.5 backdrop-blur-[2px] overflow-y-auto flex-1 min-h-[140px]">
-                <p className="text-[13px] leading-relaxed text-[#2f4040] sm:text-[14px] whitespace-pre-line">
-                  {aiInsight || 'Klik tombol di bawah untuk membuat analisis.'}
-                </p>
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 h-px bg-[rgba(0,0,0,0.08)]" />
 
               <div className="mt-auto shrink-0">
                 <button
