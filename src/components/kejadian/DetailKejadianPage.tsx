@@ -176,10 +176,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const hasDetail = !!detail
   const eventData = useMemo(() => {
-    return {
+    const merged = {
       ...(selectedEvent || {}),
       ...(detail || {})
     }
+    // Jika selectedEvent memiliki nama jenis_bencana berupa teks (bukan ID angka), pertahankan nama tersebut agar tidak tertimpa ID numerik dari detail
+    if (
+      selectedEvent?.jenis_bencana &&
+      typeof selectedEvent.jenis_bencana === 'string' &&
+      isNaN(Number(selectedEvent.jenis_bencana))
+    ) {
+      merged.jenis_bencana = selectedEvent.jenis_bencana
+    }
+    return merged
   }, [selectedEvent, detail])
 
   const formattedDate = useMemo(() => {
