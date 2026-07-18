@@ -291,7 +291,7 @@ export default function DashboardKejadianPage() {
   const [error, setError] = useState<string | null>(null)
   const [generatingAi, setGeneratingAi] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/07445718ccb54423a319f7df5d830a0f') // HeyGen AI video demo
+  const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
   const [markerMonths, setMarkerMonths] = useState(1)
@@ -1656,7 +1656,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     <iframe
                       src={getYouTubeEmbedUrl(videoUrl)}
                       className="h-full w-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allow={videoUrl.includes('heygen.com') ? "encrypted-media; fullscreen;" : "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"}
                       allowFullScreen
                     />
                   ) : (
@@ -2613,7 +2613,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         <iframe
                           src={getYouTubeEmbedUrl(videoUrl)}
                           className="h-full w-full border-0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allow={videoUrl.includes('heygen.com') ? "encrypted-media; fullscreen;" : "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"}
                           allowFullScreen
                         />
                       ) : (
