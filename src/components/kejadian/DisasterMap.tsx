@@ -956,21 +956,21 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           let strokeColor = 'rgba(239, 68, 68, 0.25)'
 
           if (userCoords) {
-            const dist = getDistanceInKm(userCoords.lat, userCoords.lng, m.lat, m.lng)
+            const mLat = Number(m.lat)
+            const mLng = Number(m.lng)
+            const dist = getDistanceInKm(userCoords.lat, userCoords.lng, mLat, mLng)
+            
             if (dist <= 25) {
-              // Within 25km: strong warning (25km circle)
+              // Dalam 25km: peringatan bahaya dekat (lingkaran 25km radius merah)
               drawRadius = 25000
               fillColor = 'rgba(239, 68, 68, 0.08)'
               strokeColor = 'rgba(239, 68, 68, 0.45)'
             } else if (dist <= 50) {
-              // Within 50km: warning circle (50km circle)
+              // Dalam 50km: peringatan waspada (lingkaran 50km radius oranye)
               drawRadius = 50000
               fillColor = 'rgba(245, 158, 11, 0.05)'
               strokeColor = 'rgba(245, 158, 11, 0.35)'
             }
-          } else {
-            // Default warning circle if user location is not shared yet
-            drawRadius = 50000
           }
 
           if (drawRadius !== null) {
