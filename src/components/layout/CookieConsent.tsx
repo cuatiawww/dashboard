@@ -85,10 +85,9 @@ export default function CookieConsent() {
   }
 
   if (!show) {
-    // If EWS is active, display a subtle live status indicator tag in the corner of the screen
     if (typeof window !== 'undefined' && localStorage.getItem('ews-cookie-consent') === 'accepted') {
       return (
-        <div className="fixed bottom-4 left-4 z-[9990] flex items-center gap-2 bg-[#047D78]/90 backdrop-blur-md text-white border border-teal-500/30 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg animate-in fade-in duration-300">
+        <div className="fixed bottom-4 left-4 z-[9990] flex items-center gap-2 bg-white text-slate-800 border border-slate-200 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md animate-in fade-in duration-300">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -102,33 +101,25 @@ export default function CookieConsent() {
 
   return (
     <div className="fixed bottom-6 right-6 left-6 md:left-auto md:w-[420px] z-[9999] animate-in slide-in-from-bottom-8 duration-500">
-      <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-white relative overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-[0_15px_40px_rgba(0,0,0,0.08)] text-slate-800 relative overflow-hidden">
         
-        {/* Glow accent */}
-        <div className="absolute top-0 right-0 h-40 w-40 bg-teal-500/10 rounded-full blur-3xl -z-10" />
-        
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-400 border border-teal-500/20">
-            <Shield className="h-6 w-6" />
-          </div>
-          <div className="space-y-2 flex-1">
-            <h3 className="text-[14px] font-extrabold tracking-wide uppercase">
-              SISTEM PERINGATAN DINI (EWS) & COOKIES
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed font-normal">
-              Aktifkan sistem keamanan darurat terpadu. Kami menggunakan cookies dan koordinat GPS perangkat Anda untuk menghitung radius kerawanan bencana secara realtime, mengirim suara sirine darurat, dan notifikasi BMKG-like langsung ke desktop Anda.
-            </p>
-          </div>
+        <div className="space-y-2">
+          <h3 className="text-[13px] font-extrabold tracking-wide uppercase text-slate-900">
+            SISTEM PERINGATAN DINI (EWS) & COOKIES
+          </h3>
+          <p className="text-xs text-slate-650 leading-relaxed font-normal">
+            Aktifkan sistem keamanan darurat terpadu. Kami menggunakan cookies dan koordinat GPS perangkat Anda untuk menghitung radius kerawanan bencana secara realtime, mengirim suara sirine darurat, dan notifikasi BMKG-like langsung ke desktop Anda.
+          </p>
         </div>
 
         {/* Feature Icons Grid */}
-        <div className="grid grid-cols-2 gap-3 mt-4 py-3 border-y border-slate-800 text-[11px] text-slate-400">
+        <div className="grid grid-cols-2 gap-3 mt-4 py-3 border-y border-slate-100 text-[11px] text-slate-500">
           <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-teal-400 shrink-0" />
+            <Bell className="h-4 w-4 text-teal-700 shrink-0" />
             <span>Sirine & Web Push Realtime</span>
           </div>
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-sky-400 shrink-0" />
+            <MapPin className="h-4 w-4 text-sky-600 shrink-0" />
             <span>Deteksi Radius Kerawanan</span>
           </div>
         </div>
@@ -136,13 +127,13 @@ export default function CookieConsent() {
         <div className="flex items-center justify-end gap-3 mt-5">
           <button
             onClick={handleDecline}
-            className="px-4 py-2 text-xs font-bold text-slate-450 hover:text-white transition-colors"
+            className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
           >
             Lanjutkan tanpa EWS
           </button>
           <button
             onClick={handleAcceptAll}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-550 to-teal-650 hover:from-teal-650 hover:to-teal-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-teal-900/30 hover:scale-[1.02]"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#047D78] hover:bg-[#03625d] text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-md shadow-teal-900/10 hover:scale-[1.02]"
           >
             <Check className="h-4 w-4" />
             Aktifkan EWS
@@ -151,7 +142,7 @@ export default function CookieConsent() {
 
         <button
           onClick={() => setShow(false)}
-          className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
