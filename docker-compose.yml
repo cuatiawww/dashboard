@@ -1,0 +1,38 @@
+services:
+  dashboard-eoc-ai:
+    container_name: dashboard-eoc-ai
+    image: dashboard-eoc-ai:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/dashboard-eoc}
+        NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL: ${NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
+        NEXT_PUBLIC_MEDIA_MONITORING_URL: ${NEXT_PUBLIC_MEDIA_MONITORING_URL:-https://pusatkrisis.kemkes.go.id/dashboard-media}
+        NEXT_PUBLIC_NLP_URL: ${NEXT_PUBLIC_NLP_URL:-https://pusatkrisis.kemkes.go.id/nlp/}
+        SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
+        SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:-}
+    environment:
+      NODE_ENV: production
+      SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:-}
+      SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
+      API_INDONESIA_KEY: ${API_INDONESIA_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      CAPTCHA_STORE: ${CAPTCHA_STORE:-memory}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+    expose:
+      - "3000"
+    volumes:
+      - dashboard-eoc-ai-node-modules-v2:/app/node_modules
+    networks:
+      - proxy
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  dashboard-eoc-ai-node-modules-v2:

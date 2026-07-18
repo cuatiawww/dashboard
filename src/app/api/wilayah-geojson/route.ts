@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'SIPKK-Wilayah-GeoJSON-Proxy/1.0',
+        ...(process.env.SIPKK_DASHBOARD_TTOKEN?.trim()
+          ? { TTOKEN: process.env.SIPKK_DASHBOARD_TTOKEN.trim() }
+          : {}),
       },
       cache: 'no-store',
       redirect: 'follow',

@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
     Accept: 'application/json',
     'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
   }
+  const dashboardToken = process.env.SIPKK_DASHBOARD_TTOKEN?.trim()
+  if (dashboardToken) headers.TTOKEN = dashboardToken
   if (authHeader) {
     headers['Authorization'] = authHeader
   }

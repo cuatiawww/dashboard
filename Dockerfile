@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ARG NEXT_PUBLIC_BASE_PATH=
+ARG NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+ARG NEXT_PUBLIC_MEDIA_MONITORING_URL=https://pusatkrisis.kemkes.go.id/dashboard-media
+ARG NEXT_PUBLIC_NLP_URL=https://pusatkrisis.kemkes.go.id/nlp/
+ARG SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+ARG SIPKK_DASHBOARD_TTOKEN=
+RUN printf '%s\n' \
+  "NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH" \
+  "NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=$NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL" \
+  "NEXT_PUBLIC_MEDIA_MONITORING_URL=$NEXT_PUBLIC_MEDIA_MONITORING_URL" \
+  "NEXT_PUBLIC_NLP_URL=$NEXT_PUBLIC_NLP_URL" \
+  "SIPKK_BACKEND_BASE_URL=$SIPKK_BACKEND_BASE_URL" \
+  "SIPKK_DASHBOARD_TTOKEN=$SIPKK_DASHBOARD_TTOKEN" > .env
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 NEXT_TELEMETRY_DISABLED=1
+COPY --from=builder --chown=node:node /app/package*.json ./
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
+COPY --from=builder --chown=node:node /app/.env ./.env
+RUN mkdir /app/node_modules && chown node:node /app/node_modules
+USER node
+EXPOSE 3000
+CMD ["sh", "-c", "if [ ! -x /app/node_modules/.bin/next ]; then npm ci --omit=dev; fi && npm start"]

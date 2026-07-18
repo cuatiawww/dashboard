@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 import {
   Activity,
   AlertTriangle,
@@ -809,7 +811,7 @@ export default function DashboardKejadianPage() {
     }
   }, [trendData, latestMonthIdx])
 
-  const isDbEmpty = !data || data.summary.total_bencana === 0
+  const isDbEmpty = !data?.summary || data.summary.total_bencana === 0
 
   const formattedJenisBencana = useMemo(() => {
     return getTopItemsAndOthers(data?.jenis_bencana)
@@ -1043,14 +1045,15 @@ export default function DashboardKejadianPage() {
       })
 
       const json = await response.json().catch(() => null)
-      if (json !== null) {
+      if (json?.summary) {
         console.log('[fetchData] API response:', json)
         console.log('[fetchData] markers count:', json.markers?.length || 0)
         console.log('[fetchData] first marker:', json.markers?.[0])
         setData(json)
         return
       }
-      throw new Error('Response tidak valid dari server.')
+      setData(null)
+      throw new Error(json?.message || 'Response tidak valid dari server.')
     } catch (err) {
       console.error('[bencana-stats]', err)
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem.')
@@ -1092,6 +1095,7 @@ export default function DashboardKejadianPage() {
     if (data) {
       const topDisaster = data.jenis_bencana[0]?.nama || 'Kebakaran Hutan dan Lahan'
       const topRegion = data.wilayah[0]?.nama || 'Jawa Timur'
+      if (!data.summary) return
       const totalBencana = data.summary.total_bencana
       const totalKrisis = data.summary.total_krisis
       const meninggal = data.summary.total_meninggal
@@ -1158,6 +1162,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
       const topDisaster = data.jenis_bencana[0]?.nama || 'Kebakaran Hutan dan Lahan'
       const topRegion = data.wilayah[0]?.nama || 'Jawa Timur'
+      if (!data.summary) return
       const totalBencana = data.summary.total_bencana
       const totalKrisis = data.summary.total_krisis
       const meninggal = data.summary.total_meninggal
@@ -1642,7 +1647,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
               {/* Icon + Title */}
               <div className="flex items-start gap-3">
                 <Image
-                  src="/insight.svg"
+                  src={`${basePath}/insight.svg`}
                   alt="Insight"
                   width={52}
                   height={52}

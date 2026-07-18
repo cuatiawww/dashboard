@@ -6,6 +6,8 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { ChevronRight, LayoutDashboard, MapPinned, Menu, X } from 'lucide-react'
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
 const menuItems = [
   {
     label: 'NASIONAL',
@@ -50,14 +52,14 @@ export default function Navbar() {
             >
               <div className="flex items-center gap-2">
                 <Image
-                  src="/kemenkes.png"
+                  src={`${basePath}/kemenkes.png`}
                   alt="Kemenkes"
                   width={50}
                   height={50}
                   className="h-11 w-auto"
                 />
                 <div className="w-px h-8 bg-gray-300" />
-                <Image src="/psc.png" alt="Dashboard Puskes" width={50} height={50} className="h-11 w-auto" />
+                <Image src={`${basePath}/psc.png`} alt="Dashboard Puskes" width={50} height={50} className="h-11 w-auto" />
               </div>
               <div className="hidden xl:block leading-tight">
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-primary">Dashboard Puskes</p>
@@ -93,14 +95,14 @@ export default function Navbar() {
             <Link href="/" className="flex min-w-0 items-center gap-2">
               <div className="flex items-center gap-1">
                 <Image
-                  src="/kemenkes.png"
+                  src={`${basePath}/kemenkes.png`}
                   alt="Kemenkes"
                   width={40}
                   height={40}
                   className="h-9 w-auto"
                 />
                 <div className="h-6 w-px bg-gray-300" />
-                <Image src="/psc.png" alt="Dashboard Puskes" width={40} height={40} className="h-9 w-auto" />
+                <Image src={`${basePath}/psc.png`} alt="Dashboard Puskes" width={40} height={40} className="h-9 w-auto" />
               </div>
               <div className="min-w-0">
                 <p className="truncate text-xs font-bold uppercase tracking-[0.16em] text-primary">Dashboard Puskes</p>

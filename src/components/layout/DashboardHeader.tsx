@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/lib/authStore'
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 import {
   Bell,
   Brain,
@@ -243,7 +245,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm">
               <Image
-                src="/kemenkes.png"
+                src={`${basePath}/kemenkes.png`}
                 alt="Logo Kementerian Kesehatan"
                 width={38}
                 height={38}
@@ -476,7 +478,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
             </button>
             <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-5">
               <Image
-                src="/Logo-Kemenkes.png"
+                src={`${basePath}/Logo-Kemenkes.png`}
                 alt="Logo Kemenkes"
                 width={170}
                 height={62}
