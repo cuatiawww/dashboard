@@ -251,6 +251,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [activePopup, setActivePopup] = useState<{
     type: 'provinsi' | 'kabupaten'
     name: string
+    warnings?: any[]
     stats: {
       totalEvents: number
       totalKorban: number
@@ -258,6 +259,49 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       eventsList?: MarkerData[]
     }
   } | null>(null)
+
+  // ── API Indonesia early warnings state ──
+  const [activeWarnings, setActiveWarnings] = useState<any[]>([])
+
+  const warningsByProvince = useMemo(() => {
+    const m = new Map<string, any[]>()
+    if (!Array.isArray(activeWarnings)) return m
+    activeWarnings.forEach((w) => {
+      const provKey = cleanKey(w.province)
+      if (provKey) {
+        const list = m.get(provKey) || []
+        list.push(w)
+        m.set(provKey, list)
+      }
+    })
+    return m
+  }, [activeWarnings])
+
+  // Fetch API Indonesia warnings on mount
+  useEffect(() => {
+    let active = true
+    async function fetchWarnings() {
+      try {
+        const res = await fetch('/api/peringatan-dini')
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && Array.isArray(json.data)) {
+            if (active) {
+              setActiveWarnings(json.data)
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[EWS Map] Failed to fetch Peringatan Dini:', e)
+      }
+    }
+    void fetchWarnings()
+    const interval = setInterval(fetchWarnings, 300000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [])
 
   // ── Sync refs ──
   useEffect(() => {
@@ -532,6 +576,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
         setActivePopup({
           type: 'provinsi',
           name: provName,
+          warnings: warningsByProvince.get(provCleaned) || [],
           stats: {
             totalEvents: provMarkers.length,
             totalKorban: provMarkers.reduce((s, m) => s + (m.total_korban || 0), 0),
@@ -746,8 +791,20 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.4)', width: 1 }),
         })
       }
-      // National choropleth
-      return choroplethStyle(provinceCounts.get(provKey) || 0)
+      // National choropleth style
+      const baseStyle = choroplethStyle(provinceCounts.get(provKey) || 0)
+      const provWarnings = warningsByProvince.get(provKey)
+      if (provWarnings && provWarnings.length > 0) {
+        baseStyle.setStroke(new Stroke({
+          color: '#dc2626',
+          width: 2,
+          lineDash: [4, 4]
+        }))
+        baseStyle.setFill(new Fill({
+          color: 'rgba(239, 68, 68, 0.15)'
+        }))
+      }
+      return baseStyle
     })
 
     kabupatenLayer.setStyle((feature: any) => {
@@ -764,7 +821,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     provinceLayer.changed()
     kabupatenLayer.changed()
-  }, [userScope, provinceCounts, kabupatenCounts])
+  }, [userScope, provinceCounts, kabupatenCounts, warningsByProvince])
 
   // ── BMKG Data Fetch & Proximity Alert EWS ──
   useEffect(() => {
@@ -1718,6 +1775,28 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                   </>
                 )}
               </div>
+
+              {/* Warnings from API Indonesia */}
+              {activePopup.type === 'provinsi' && activePopup.warnings && activePopup.warnings.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                    PERINGATAN CUACA BMKG:
+                  </p>
+                  <div className="max-h-[80px] overflow-y-auto space-y-1 pr-1">
+                    {activePopup.warnings.map((w, idx) => (
+                      <div key={idx} className="bg-red-50/50 border border-red-100 rounded-lg p-2 text-[10px] text-slate-700">
+                        <strong className="text-red-750 block">{w.event}</strong>
+                        <span className="block mt-0.5 text-slate-550 leading-relaxed font-normal">{w.area}</span>
+                        <span className="block mt-1 text-[8.5px] text-slate-400 font-semibold uppercase">Berlaku s/d {w.expires}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Footer action */}
               {activePopup.type === 'provinsi' && (

@@ -247,9 +247,9 @@ const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number)
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2)
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
 }
@@ -416,7 +416,7 @@ export default function DashboardKejadianPage() {
       }
     }
   }, [alertIntervalId])
-  
+
   useNewEventDetection(
     data?.markers || [],
     (items) => {
@@ -524,7 +524,7 @@ export default function DashboardKejadianPage() {
     })
     if (!tableSearchQuery) return sorted
     const q = tableSearchQuery.toLowerCase()
-    return sorted.filter(m => 
+    return sorted.filter(m =>
       (m.jenis_bencana || '').toLowerCase().includes(q) ||
       (m.kabupaten || '').toLowerCase().includes(q) ||
       (m.provinsi || '').toLowerCase().includes(q) ||
@@ -1243,25 +1243,25 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
     // Parse structured sections from AI response
     const sectionDefs = [
-      { key: 'executive',    label: 'Executive Summary & Situasi Terkini',        num: '1', color: 'teal',    icon: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 01.182 12C.182 17.627 4.82 22.2 10.5 22.2c4.17 0 7.8-2.294 9.697-5.65' },
-      { key: 'epidemiology', label: 'Analisis Epidemiologis & Dampak Kesehatan',  num: '2', color: 'amber',   icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z' },
-      { key: 'severity',     label: 'Klasifikasi Tingkat Keparahan',               num: '3', color: 'red',     icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' },
-      { key: 'global',       label: 'Komparasi Internasional & Benchmark',         num: '4', color: 'indigo',  icon: 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418' },
-      { key: 'healthsystem', label: 'Dampak Terhadap Sistem Kesehatan Nasional',   num: '5', color: 'orange',  icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' },
-      { key: 'gap',          label: 'Gap Analysis Respons Darurat',                num: '6', color: 'rose',    icon: 'M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z' },
-      { key: 'recommendations', label: 'Rekomendasi Strategis Terstruktur',       num: '7', color: 'green',   icon: 'M9 12.75L11.25 15 15 9.75M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z' },
-      { key: 'conclusion',   label: 'Kesimpulan Strategis EOC',                    num: '8', color: 'slate',   icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
+      { key: 'executive', label: 'Executive Summary & Situasi Terkini', num: '1', color: 'teal', icon: 'M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.955 11.955 0 01.182 12C.182 17.627 4.82 22.2 10.5 22.2c4.17 0 7.8-2.294 9.697-5.65' },
+      { key: 'epidemiology', label: 'Analisis Epidemiologis & Dampak Kesehatan', num: '2', color: 'amber', icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z' },
+      { key: 'severity', label: 'Klasifikasi Tingkat Keparahan', num: '3', color: 'red', icon: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' },
+      { key: 'global', label: 'Komparasi Internasional & Benchmark', num: '4', color: 'indigo', icon: 'M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418' },
+      { key: 'healthsystem', label: 'Dampak Terhadap Sistem Kesehatan Nasional', num: '5', color: 'orange', icon: 'M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25' },
+      { key: 'gap', label: 'Gap Analysis Respons Darurat', num: '6', color: 'rose', icon: 'M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z' },
+      { key: 'recommendations', label: 'Rekomendasi Strategis Terstruktur', num: '7', color: 'green', icon: 'M9 12.75L11.25 15 15 9.75M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z' },
+      { key: 'conclusion', label: 'Kesimpulan Strategis EOC', num: '8', color: 'slate', icon: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' },
     ]
 
     const colorMap: Record<string, { bg: string; border: string; badge: string; text: string; heading: string }> = {
-      teal:    { bg: 'bg-teal-50/40',   border: 'border-teal-100',   badge: 'bg-teal-700',   text: 'text-slate-700', heading: 'text-teal-800'   },
-      amber:   { bg: 'bg-amber-50/40',  border: 'border-amber-100',  badge: 'bg-amber-600',  text: 'text-slate-700', heading: 'text-amber-800'  },
-      red:     { bg: 'bg-red-50/40',    border: 'border-red-100',    badge: 'bg-red-700',    text: 'text-slate-700', heading: 'text-red-800'    },
-      indigo:  { bg: 'bg-indigo-50/40', border: 'border-indigo-100', badge: 'bg-indigo-700', text: 'text-slate-700', heading: 'text-indigo-800' },
-      orange:  { bg: 'bg-orange-50/40', border: 'border-orange-100', badge: 'bg-orange-600', text: 'text-slate-700', heading: 'text-orange-800' },
-      rose:    { bg: 'bg-rose-50/40',   border: 'border-rose-100',   badge: 'bg-rose-700',   text: 'text-slate-700', heading: 'text-rose-800'   },
-      green:   { bg: 'bg-green-50/40',  border: 'border-green-100',  badge: 'bg-green-700',  text: 'text-slate-700', heading: 'text-green-800'  },
-      slate:   { bg: 'bg-slate-50/60',  border: 'border-slate-200',  badge: 'bg-slate-700',  text: 'text-slate-700', heading: 'text-slate-800'  },
+      teal: { bg: 'bg-teal-50/40', border: 'border-teal-100', badge: 'bg-teal-700', text: 'text-slate-700', heading: 'text-teal-800' },
+      amber: { bg: 'bg-amber-50/40', border: 'border-amber-100', badge: 'bg-amber-600', text: 'text-slate-700', heading: 'text-amber-800' },
+      red: { bg: 'bg-red-50/40', border: 'border-red-100', badge: 'bg-red-700', text: 'text-slate-700', heading: 'text-red-800' },
+      indigo: { bg: 'bg-indigo-50/40', border: 'border-indigo-100', badge: 'bg-indigo-700', text: 'text-slate-700', heading: 'text-indigo-800' },
+      orange: { bg: 'bg-orange-50/40', border: 'border-orange-100', badge: 'bg-orange-600', text: 'text-slate-700', heading: 'text-orange-800' },
+      rose: { bg: 'bg-rose-50/40', border: 'border-rose-100', badge: 'bg-rose-700', text: 'text-slate-700', heading: 'text-rose-800' },
+      green: { bg: 'bg-green-50/40', border: 'border-green-100', badge: 'bg-green-700', text: 'text-slate-700', heading: 'text-green-800' },
+      slate: { bg: 'bg-slate-50/60', border: 'border-slate-200', badge: 'bg-slate-700', text: 'text-slate-700', heading: 'text-slate-800' },
     }
 
     // Extract numbered sections from AI text
@@ -1277,24 +1277,24 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
     const extractGuidelines = (text: string): { short: string; medium: string; long: string } => {
       const guidelineBlock = text.split(/PANDUAN KLINIS & RESPONS CEPAT:/i)[1] || ''
-      const short  = guidelineBlock.split(/JANGKA MENENGAH/i)[0]?.replace(/JANGKA PENDEK[^:]*:/i, '').trim() || ''
+      const short = guidelineBlock.split(/JANGKA MENENGAH/i)[0]?.replace(/JANGKA PENDEK[^:]*:/i, '').trim() || ''
       const medium = (guidelineBlock.split(/JANGKA MENENGAH/i)[1] || '').split(/JANGKA PANJANG/i)[0]?.replace(/[^:]*:/i, '').trim() || ''
       const longTerm = (guidelineBlock.split(/JANGKA PANJANG/i)[1] || '').split(/\d+\./)[0]?.replace(/[^:]*:/i, '').trim() || ''
       return { short, medium, long: longTerm }
     }
 
     const guidelines = extractGuidelines(aiInsight)
-    const cleanText  = aiInsight.replace('[ANALISIS RISK ASSESSMENT]', '').replace('PANDUAN KLINIS & RESPONS CEPAT:', '')
+    const cleanText = aiInsight.replace('[ANALISIS RISK ASSESSMENT]', '').replace('PANDUAN KLINIS & RESPONS CEPAT:', '')
 
     const sectionTexts: Record<string, string> = {
-      executive:        extractSection(cleanText, 1),
-      epidemiology:     extractSection(cleanText, 2),
-      severity:         extractSection(cleanText, 3),
-      global:           extractSection(cleanText, 4),
-      healthsystem:     extractSection(cleanText, 5),
-      gap:              extractSection(cleanText, 6),
-      recommendations:  '',  // special handling below
-      conclusion:       extractSection(cleanText, 8),
+      executive: extractSection(cleanText, 1),
+      epidemiology: extractSection(cleanText, 2),
+      severity: extractSection(cleanText, 3),
+      global: extractSection(cleanText, 4),
+      healthsystem: extractSection(cleanText, 5),
+      gap: extractSection(cleanText, 6),
+      recommendations: '',  // special handling below
+      conclusion: extractSection(cleanText, 8),
     }
 
     return (
@@ -1313,9 +1313,9 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   {[
-                    { label: '⚡ Jangka Pendek (0–72 Jam)', text: guidelines.short,  bg: 'bg-red-50 border-red-200',    badge: 'text-red-700'    },
-                    { label: '🔧 Jangka Menengah (1–4 Minggu)', text: guidelines.medium, bg: 'bg-amber-50 border-amber-200', badge: 'text-amber-700'  },
-                    { label: '🏗 Jangka Panjang (1–6 Bulan)', text: guidelines.long,   bg: 'bg-green-50 border-green-200', badge: 'text-green-700'  },
+                    { label: '⚡ Jangka Pendek (0–72 Jam)', text: guidelines.short, bg: 'bg-red-50 border-red-200', badge: 'text-red-700' },
+                    { label: '🔧 Jangka Menengah (1–4 Minggu)', text: guidelines.medium, bg: 'bg-amber-50 border-amber-200', badge: 'text-amber-700' },
+                    { label: '🏗 Jangka Panjang (1–6 Bulan)', text: guidelines.long, bg: 'bg-green-50 border-green-200', badge: 'text-green-700' },
                   ].map((g) => (
                     <div key={g.label} className={`rounded-xl border ${g.bg} p-4`}>
                       <p className={`text-xs font-bold mb-2 ${g.badge}`}>{g.label}</p>
@@ -2157,9 +2157,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     return (
                       <tr
                         key={m.kode_trans ? `${m.kode_trans}-${idx}` : `event-${idx}`}
-                        className={`transition-colors text-xs cursor-pointer ${
-                          isEven ? 'bg-slate-50/50 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-100/70'
-                        }`}
+                        className={`transition-colors text-xs cursor-pointer ${isEven ? 'bg-slate-50/50 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-100/70'
+                          }`}
                         onClick={() => setSelectedEvent(m)}
                       >
                         <td className="py-3 px-5 text-center font-bold text-slate-400">{absoluteIdx}</td>
@@ -2189,7 +2188,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 `Menampilkan ${((tableCurrentPage - 1) * itemsPerPage) + 1} - ${Math.min(tableCurrentPage * itemsPerPage, filteredMarkersForTable.length)} dari total ${filteredMarkersForTable.length} laporan`
               )}
             </div>
-            
+
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5 self-end sm:self-auto">
                 <button
@@ -2199,7 +2198,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 >
                   Sebelumnya
                 </button>
-                
+
                 {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
                   let pageNum = i + 1
                   if (totalPages > 5) {
@@ -2210,23 +2209,22 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                       }
                     }
                   }
-                  
+
                   const isCurrent = pageNum === tableCurrentPage
                   return (
                     <button
                       key={pageNum}
                       onClick={() => setTableCurrentPage(pageNum)}
-                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition ${
-                        isCurrent
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition ${isCurrent
                           ? 'bg-[#047D78] text-white'
                           : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>
                   )
                 })}
-                
+
                 <button
                   disabled={tableCurrentPage === totalPages}
                   onClick={() => setTableCurrentPage(prev => Math.min(totalPages, prev + 1))}
@@ -2253,9 +2251,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             </button>
             <div className="p-6 space-y-5">
               <div className="flex flex-col items-center text-center space-y-2.5">
-                <span className="text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-650 px-3 py-1 rounded-full border border-red-200/50">
-                  EARLY WARNING SYSTEM (EWS)
-                </span>
                 <h3 className="text-[17px] font-extrabold uppercase tracking-wide text-red-600 mt-1">
                   ⚠️ BAHAYA RADIUS DEKAT!
                 </h3>
@@ -2516,11 +2511,10 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                               <td className="py-3 px-4 font-semibold text-slate-600">{location}</td>
                               <td className="py-3 px-4 text-center font-extrabold text-slate-800">{m.total_korban || 0} Jiwa</td>
                               <td className="py-3 px-4 text-center">
-                                <span className={`inline-block px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${
-                                  m.is_krisis === 1
+                                <span className={`inline-block px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider ${m.is_krisis === 1
                                     ? 'bg-[#fee2e2] text-[#ef4444] border border-[#fecaca]'
                                     : 'bg-[#f0fdf4] text-[#16a34a] border border-[#dcfce7]'
-                                }`}>
+                                  }`}>
                                   {m.is_krisis === 1 ? 'Krisis' : 'Non-Krisis'}
                                 </span>
                               </td>
@@ -2595,11 +2589,10 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                   <button
                     key={tab.id}
                     onClick={() => setAiModalTab(tab.id as 'report' | 'video' | 'info')}
-                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 border-b-2 outline-none ${
-                      isActive
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-3.5 text-xs font-bold uppercase tracking-wider transition-all duration-200 border-b-2 outline-none ${isActive
                         ? 'border-teal-600 text-teal-700 bg-white'
                         : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
-                    }`}
+                      }`}
                   >
                     <TabIcon className="h-4.5 w-4.5" />
                     <span className="hidden sm:inline">{tab.label}</span>
@@ -2691,7 +2684,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         REKOMENDASI UTAMA: STATUS SIAGA / PERLU ANTISIPASI
                       </h4>
                       <p className="text-xs md:text-sm text-amber-850 leading-relaxed font-semibold">
-                        Wilayah {getRegionLabel()} berada dalam status SIAGA (perlu perhatian sedang) karena: Tingkat fatalitas kasus (CFR) terpantau di angka {( ((data?.summary?.total_meninggal || 0) / ((data?.summary?.total_meninggal || 0) + (data?.summary?.total_luka || 0) || 1)) * 100 ).toFixed(1)}%, serta besarnya populasi terdampak ({(data?.summary?.total_terdampak || 0).toLocaleString('id-ID')} jiwa) dan pengungsi ({(data?.summary?.total_pengungsi || 0).toLocaleString('id-ID')} jiwa) di posko pengungsian memerlukan pemantauan sanitasi lingkungan ketat mencegah KLB penyakit menular.
+                        Wilayah {getRegionLabel()} berada dalam status SIAGA (perlu perhatian sedang) karena: Tingkat fatalitas kasus (CFR) terpantau di angka {(((data?.summary?.total_meninggal || 0) / ((data?.summary?.total_meninggal || 0) + (data?.summary?.total_luka || 0) || 1)) * 100).toFixed(1)}%, serta besarnya populasi terdampak ({(data?.summary?.total_terdampak || 0).toLocaleString('id-ID')} jiwa) dan pengungsi ({(data?.summary?.total_pengungsi || 0).toLocaleString('id-ID')} jiwa) di posko pengungsian memerlukan pemantauan sanitasi lingkungan ketat mencegah KLB penyakit menular.
                       </p>
                     </div>
                   </div>
