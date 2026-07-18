@@ -302,7 +302,12 @@ export default function DashboardKejadianPage() {
   const [kabupaten, setKabupaten] = useState('')
   const [tahun, setTahun] = useState('2026')
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
-  const [activeEwsProximityAlert, setActiveEwsProximityAlert] = useState<any | null>(null)
+  const [ewsAlertQueue, setEwsAlertQueue] = useState<any[]>([])
+  const activeEwsProximityAlert = ewsAlertQueue[0] || null
+
+  const dismissFirstAlert = () => {
+    setEwsAlertQueue(prev => prev.slice(1))
+  }
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [aiModalTab, setAiModalTab] = useState<'report' | 'video' | 'info'>('report')
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
@@ -505,8 +510,7 @@ export default function DashboardKejadianPage() {
           .sort((a, b) => a.distance - b.distance)
 
         if (closeEvents.length > 0) {
-          const closest = closeEvents[0]
-          setActiveEwsProximityAlert(closest)
+          setEwsAlertQueue(closeEvents)
           playSound('alert')
         }
       }
@@ -514,6 +518,14 @@ export default function DashboardKejadianPage() {
       console.error('[EWS Load Check] Failed to run radius check:', e)
     }
   }, [data?.markers])
+
+  // Clear sound interval when EWS alert queue becomes empty
+  useEffect(() => {
+    if (ewsAlertQueue.length === 0 && alertIntervalId) {
+      window.clearInterval(alertIntervalId)
+      setAlertIntervalId(null)
+    }
+  }, [ewsAlertQueue.length, alertIntervalId])
 
   const filteredMarkersForTable = useMemo(() => {
     if (!data?.markers) return []
@@ -2243,7 +2255,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 text-slate-800">
             <button
-              onClick={() => setActiveEwsProximityAlert(null)}
+              onClick={dismissFirstAlert}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition"
               aria-label="Tutup"
             >
@@ -2252,7 +2264,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="p-6 space-y-5">
               <div className="flex flex-col items-center text-center space-y-2.5">
                 <h3 className="text-[17px] font-extrabold uppercase tracking-wide text-red-600 mt-1">
-                  ⚠️ BAHAYA RADIUS DEKAT!
+                  ⚠️ BAHAYA RADIUS DEKAT! {ewsAlertQueue.length > 1 ? `(1 dari ${ewsAlertQueue.length})` : ''}
                 </h3>
               </div>
               <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3">
@@ -2289,14 +2301,14 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 <button
                   onClick={() => {
                     setSelectedEvent(activeEwsProximityAlert)
-                    setActiveEwsProximityAlert(null)
+                    dismissFirstAlert()
                   }}
                   className="w-full py-3 bg-red-600 hover:bg-red-750 text-white rounded-xl text-xs font-black uppercase tracking-wider transition duration-300 shadow-md hover:scale-[1.02]"
                 >
                   Buka Detail Kejadian
                 </button>
                 <button
-                  onClick={() => setActiveEwsProximityAlert(null)}
+                  onClick={dismissFirstAlert}
                   className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-650 hover:text-slate-800 rounded-xl text-xs font-bold transition duration-300"
                 >
                   Tutup & Pantau Peta
