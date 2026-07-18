@@ -73,6 +73,17 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     }
   })
 
+  // Append system TTOKEN and Authorization headers if defined in .env
+  const systemToken = process.env.SIPKK_DASHBOARD_TTOKEN || ''
+  if (systemToken) {
+    if (!forwardHeaders.has('ttoken')) {
+      forwardHeaders.set('TTOKEN', systemToken)
+    }
+    if (!forwardHeaders.has('authorization')) {
+      forwardHeaders.set('Authorization', `Bearer ${systemToken}`)
+    }
+  }
+
   let body: BodyInit | null = null
   if (!['GET', 'HEAD'].includes(req.method)) {
     body = await req.arrayBuffer()

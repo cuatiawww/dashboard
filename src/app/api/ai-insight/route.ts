@@ -108,11 +108,18 @@ export async function POST(req: Request) {
 
       console.log(`[ai-insight] Fetching daily cached EOC AI analysis for province: "${province || ''}", kabupaten: "${kabupaten || ''}"...`)
       
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      }
+      const systemToken = process.env.SIPKK_DASHBOARD_TTOKEN || ''
+      if (systemToken) {
+        headers['TTOKEN'] = systemToken
+        headers['Authorization'] = `Bearer ${systemToken}`
+      }
+
       const res = await fetch(`${backendBaseUrl}/api/ai-insight?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        }
+        headers: headers
       })
 
       if (!res.ok) {
