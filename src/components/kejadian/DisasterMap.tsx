@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 
@@ -173,7 +173,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const provinceLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const kabupatenLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const markerLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
-  const pulseOverlayRef = useRef<Overlay | null>(null)
+  const pulseOverlaysRef = useRef<Overlay[]>([])
   const lastFetchedProvinceRef = useRef<string | null>(null)
 
   // BNPB layers refs
@@ -218,6 +218,42 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [bmkgGempas, setBmkgGempas] = useState<any[]>([])
   const [activeBmkgAlert, setActiveBmkgAlert] = useState<any | null>(null)
   const [showEwsPulse, setShowEwsPulse] = useState(true)
+
+  // Callback to create a pulsing overlay dynamically
+  const createPulseOverlay = useCallback((lng: number, lat: number, type: 'danger' | 'warning' | 'gempa') => {
+    const map = mapInstanceRef.current || mapInstance
+    if (!map) return
+
+    const pulseEl = document.createElement('div')
+    pulseEl.className = 'ews-pulse-overlay pointer-events-none'
+
+    let ringColor = 'bg-red-500 bg-opacity-75'
+    let dotColor = 'bg-red-600'
+    if (type === 'warning') {
+      ringColor = 'bg-amber-500 bg-opacity-70'
+      dotColor = 'bg-amber-600'
+    } else if (type === 'gempa') {
+      ringColor = 'bg-orange-500 bg-opacity-70'
+      dotColor = 'bg-orange-600'
+    }
+
+    pulseEl.innerHTML = `
+      <div class="relative flex h-14 w-14 items-center justify-center">
+        <div class="animate-ping absolute inline-flex h-full w-full rounded-full ${ringColor}"></div>
+        <div class="relative inline-flex rounded-full h-3 w-3 ${dotColor}"></div>
+      </div>
+    `
+
+    const overlay = new Overlay({
+      element: pulseEl,
+      positioning: 'center-center',
+      stopEvent: false,
+      position: fromLonLat([lng, lat])
+    })
+
+    map.addOverlay(overlay)
+    pulseOverlaysRef.current.push(overlay)
+  }, [mapInstance])
 
   // ── Filter states ──
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
@@ -495,22 +531,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       }),
     })
 
-    // Create pulse overlay element for EWS
-    const pulseEl = document.createElement('div')
-    pulseEl.className = 'ews-pulse-overlay pointer-events-none'
-    pulseEl.innerHTML = `
-      <div class="relative flex h-14 w-14 items-center justify-center">
-        <div class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></div>
-        <div class="relative inline-flex rounded-full h-3 w-3 bg-red-600"></div>
-      </div>
-    `
-    const pulseOverlay = new Overlay({
-      element: pulseEl,
-      positioning: 'center-center',
-      stopEvent: false
-    })
-    map.addOverlay(pulseOverlay)
-    pulseOverlayRef.current = pulseOverlay
+    // Overlay elements will be added dynamically on render hook
 
     // ── Click handler ──
     map.on('singleclick', (evt) => {
@@ -611,7 +632,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
-      pulseOverlayRef.current = null
+      pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
+      pulseOverlaysRef.current = []
       setMapInstance(null)
       bnpbAdminLayerRef.current = null
       bnpbHillshadeLayerRef.current = null
@@ -908,14 +930,15 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     const markerLayer = markerLayerRef.current
     if (!markerLayer) return
 
-    const map = mapInstanceRef.current
     const source = markerLayer.getSource()!
     source.clear()
 
     if (!showMarkers) {
       markerLayer.setVisible(false)
-      if (pulseOverlayRef.current) {
-        pulseOverlayRef.current.setPosition(undefined)
+      const map = mapInstanceRef.current
+      if (map) {
+        pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
+        pulseOverlaysRef.current = []
       }
       return
     }
@@ -931,6 +954,13 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       feature.setStyle(markerStyle(m.icon_file, m.total_korban))
       return feature
     })
+
+    // Clear old pulse overlays
+    const map = mapInstanceRef.current
+    if (map) {
+      pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
+      pulseOverlaysRef.current = []
+    }
 
     // Draw proximity EWS warning circles if enabled
     if (showEwsPulse) {
@@ -954,6 +984,8 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           let drawRadius: number | null = null
           let fillColor = 'rgba(239, 68, 68, 0.04)'
           let strokeColor = 'rgba(239, 68, 68, 0.25)'
+          let isNear = false
+          let nearType: 'danger' | 'warning' = 'warning'
 
           if (userCoords) {
             const mLat = Number(m.lat)
@@ -965,11 +997,15 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
               drawRadius = 25000
               fillColor = 'rgba(239, 68, 68, 0.08)'
               strokeColor = 'rgba(239, 68, 68, 0.45)'
+              isNear = true
+              nearType = 'danger'
             } else if (dist <= 50) {
               // Dalam 50km: peringatan waspada (lingkaran 50km radius oranye)
               drawRadius = 50000
               fillColor = 'rgba(245, 158, 11, 0.05)'
               strokeColor = 'rgba(245, 158, 11, 0.35)'
+              isNear = true
+              nearType = 'warning'
             }
           }
 
@@ -982,9 +1018,27 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
               stroke: new Stroke({ color: strokeColor, width: 1.2, lineDash: [4, 4] })
             }))
             features.push(circleFeature)
+
+            // Dynamic pulsing radar ring for dangerous proximity events!
+            if (isNear) {
+              createPulseOverlay(m.lng, m.lat, nearType)
+            }
           }
         }
       })
+
+      // Fallback pulse overlay for the latest disaster if user location is not set yet
+      if (!userCoords && validMarkers.length > 0) {
+        const sorted = [...validMarkers].sort((a, b) => {
+          const dateA = a.tgl_kejadian ? new Date(a.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
+          const dateB = b.tgl_kejadian ? new Date(b.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
+          return dateB - dateA
+        })
+        const latest = sorted[0]
+        if (latest && latest.lat && latest.lng) {
+          createPulseOverlay(latest.lng, latest.lat, 'danger')
+        }
+      }
     }
 
     // Add User Current GPS Location blue pin
@@ -1059,6 +1113,12 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                 stroke: new Stroke({ color: 'rgba(249, 115, 22, 0.3)', width: 1.2, lineDash: [3, 3] })
               }))
               features.push(warningCircle)
+
+              // Dynamic pulse overlay for BMKG earthquakes (M >= 5.0)
+              const mag = parseFloat(g.Magnitude)
+              if (mag >= 5.0) {
+                createPulseOverlay(glng, glat, 'gempa')
+              }
             }
           }
         }
@@ -1067,23 +1127,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     source.addFeatures(features)
 
-    // Position EWS pulse overlay on the latest disaster event if EWS circles are enabled
-    if (showEwsPulse && pulseOverlayRef.current && validMarkers.length > 0) {
-      const sorted = [...validMarkers].sort((a, b) => {
-        const dateA = a.tgl_kejadian ? new Date(a.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
-        const dateB = b.tgl_kejadian ? new Date(b.tgl_kejadian.replace(/\s*WIB/gi, '').trim()).getTime() : 0
-        return dateB - dateA
-      })
-      const latest = sorted[0]
-      if (latest && latest.lat && latest.lng) {
-        pulseOverlayRef.current.setPosition(fromLonLat([latest.lng, latest.lat]))
-      } else {
-        pulseOverlayRef.current.setPosition(undefined)
-      }
-    } else if (pulseOverlayRef.current) {
-      pulseOverlayRef.current.setPosition(undefined)
-    }
-  }, [filteredMarkers, showMarkers, showBmkg, bmkgGempas, showEwsPulse])
+  }, [filteredMarkers, showMarkers, showBmkg, bmkgGempas, showEwsPulse, createPulseOverlay])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -1154,10 +1198,11 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
       {/* ── Settings button ── */}
       <button
         onClick={() => { setShowSettings(true); setMarkerPopup(null) }}
-        className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 border border-slate-200 shadow-md text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 transition-all"
+        className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-xl bg-white/95 border border-slate-300 px-3 py-2 shadow-lg text-slate-750 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all active:scale-95 animate-in fade-in duration-200"
         title="Pengaturan Peta"
       >
-        <Settings className="h-4 w-4" />
+        <Settings className="h-4 w-4 text-teal-650" />
+        <span className="text-xs font-black tracking-wide">Pengaturan Peta</span>
       </button>
 
       {/* ── Settings panel (slide from right) ── */}
