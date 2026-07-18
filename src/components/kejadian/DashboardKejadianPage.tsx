@@ -302,6 +302,7 @@ export default function DashboardKejadianPage() {
   const [kabupaten, setKabupaten] = useState('')
   const [tahun, setTahun] = useState('2026')
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
+  const [activeEwsProximityAlert, setActiveEwsProximityAlert] = useState<any | null>(null)
   const [isAiModalOpen, setIsAiModalOpen] = useState(false)
   const [aiModalTab, setAiModalTab] = useState<'report' | 'video' | 'info'>('report')
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
@@ -481,6 +482,38 @@ export default function DashboardKejadianPage() {
       setAlertIntervalId(intervalId)
     }
   )
+
+  // Trigger EWS proximity modal on load/refresh for existing active close disasters
+  useEffect(() => {
+    if (!data?.markers || data.markers.length === 0) return
+
+    const savedCoords = localStorage.getItem('user_coords')
+    if (!savedCoords) return
+
+    try {
+      const userCoords = JSON.parse(savedCoords)
+      if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
+        const closeEvents = data.markers
+          .map(m => {
+            if (m.lat && m.lng) {
+              const dist = getDistanceInKm(userCoords.lat, userCoords.lng, m.lat, m.lng)
+              return { ...m, distance: dist }
+            }
+            return null
+          })
+          .filter((m): m is any => m !== null && m.distance <= 100)
+          .sort((a, b) => a.distance - b.distance)
+
+        if (closeEvents.length > 0) {
+          const closest = closeEvents[0]
+          setActiveEwsProximityAlert(closest)
+          playSound('alert')
+        }
+      }
+    } catch (e) {
+      console.error('[EWS Load Check] Failed to run radius check:', e)
+    }
+  }, [data?.markers])
 
   const filteredMarkersForTable = useMemo(() => {
     if (!data?.markers) return []
@@ -2206,6 +2239,84 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           </div>
         </div>
       </section>
+
+      {/* EWS Proximity Warning Modal */}
+      {activeEwsProximityAlert && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md rounded-3xl border border-red-500/30 bg-slate-900 overflow-hidden shadow-[0_25px_60px_rgba(220,38,38,0.3)] text-white animate-in zoom-in-95 duration-300">
+            <div className="h-2 bg-gradient-to-r from-red-650 via-amber-500 to-red-600 animate-pulse" />
+            <button
+              onClick={() => setActiveEwsProximityAlert(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+              aria-label="Tutup"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="p-6 space-y-5">
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 animate-bounce">
+                  <ShieldAlert className="h-10 w-10" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest bg-red-550/20 text-red-400 px-3 py-1 rounded-full border border-red-500/10">
+                    EARLY WARNING SYSTEM (EWS)
+                  </span>
+                  <h3 className="text-lg font-black uppercase tracking-wide text-red-500 mt-2">
+                    ⚠️ BAHAYA RADIUS DEKAT!
+                  </h3>
+                </div>
+              </div>
+              <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+                  <span className="text-[10px] text-slate-450 uppercase font-black tracking-wider">Jenis Bencana</span>
+                  <span className="text-xs font-black text-rose-450 uppercase tracking-wide">
+                    {activeEwsProximityAlert.jenis_bencana}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+                  <span className="text-[10px] text-slate-450 uppercase font-black tracking-wider">Lokasi Wilayah</span>
+                  <span className="text-xs font-bold text-slate-200">
+                    {activeEwsProximityAlert.kabupaten || activeEwsProximityAlert.provinsi}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+                  <span className="text-[10px] text-slate-450 uppercase font-black tracking-wider">Jarak dari Anda</span>
+                  <span className="text-xs font-extrabold text-amber-450 flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                    Radius {Math.round(activeEwsProximityAlert.distance)} km!
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-450 uppercase font-black tracking-wider">Jumlah Korban</span>
+                  <span className="text-xs font-bold text-slate-200">
+                    {activeEwsProximityAlert.total_korban || 0} Jiwa Terdampak
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed font-normal">
+                Segera aktifkan koordinasi klaster kesehatan setempat dan ambil tindakan kesiapsiagaan darurat!
+              </p>
+              <div className="flex flex-col gap-2.5 pt-2">
+                <button
+                  onClick={() => {
+                    setSelectedEvent(activeEwsProximityAlert)
+                    setActiveEwsProximityAlert(null)
+                  }}
+                  className="w-full py-3 bg-gradient-to-r from-red-650 to-orange-600 hover:from-red-750 hover:to-orange-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition duration-300 shadow-md shadow-red-950/40 hover:scale-[1.02]"
+                >
+                  Buka Detail Kejadian
+                </button>
+                <button
+                  onClick={() => setActiveEwsProximityAlert(null)}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition duration-300"
+                >
+                  Tutup & Pantau Peta
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Warning Alert Modal */}
       {isWarningModalOpen && (
