@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { AlertCircle, CheckCircle2, Loader2, ArrowLeft, Mail, KeyRound, LockKeyhole, Check, X } from 'lucide-react'
 import { buildApiUrl } from '@/lib/utils/api'
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
 type ResetResponse = {
   success?: boolean
   message?: string
@@ -143,7 +145,7 @@ export default function ForgotPasswordPage() {
     <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       {/* Background image */}
       <Image
-        src="/pkk.png"
+        src={`${basePath}/pkk.png`}
         alt="Background"
         fill
         priority

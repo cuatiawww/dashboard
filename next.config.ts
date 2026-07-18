@@ -7,6 +7,14 @@ const backendBaseUrl = (
 
 const nextConfig: NextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'sipkk-new.mediaciptainformasi.co.id',
+      },
+    ],
+  },
   serverExternalPackages: ['svg-captcha'],
   async rewrites() {
     return {

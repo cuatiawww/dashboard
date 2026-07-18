@@ -15,14 +15,25 @@ type LoginResponse = {
   user?: User
 }
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+const localAsset = (path: string) => `${basePath}/${path.replace(/^\/+/, '')}`
+const backendBaseUrl = (process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id').replace(/\/+$/, '')
+const backendHost = new URL(backendBaseUrl).host
+
 // Helper to format assets URL from backend
 const getAssetUrl = (url: string) => {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-    return url
+    if (url.startsWith('data:')) return url
+    const parsed = new URL(url)
+    const path = parsed.pathname.replace(/^\/+/, '')
+    if (parsed.hostname === backendHost && path.startsWith(`${backendHost}/`)) {
+      parsed.pathname = `/${path.slice(backendHost.length + 1)}`
+    }
+    return parsed.toString()
   }
-  const baseUrl = (process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || 'https://sipkk-new.mediaciptainformasi.co.id').replace(/\/+$/, '')
-  return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`
+  const path = url.replace(/^\/+/, '')
+  return `${backendBaseUrl}/${path.startsWith(`${backendHost}/`) ? path.slice(backendHost.length + 1) : path}`
 }
 
 
@@ -33,8 +44,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   
-  const [bgSrc, setBgSrc] = useState<string>('/pkk.png')
-  const [logoSrc, setLogoSrc] = useState<string>('/Logo-Kemenkes.png')
+  const [bgSrc, setBgSrc] = useState<string>(localAsset('pkk.png'))
+  const [logoSrc, setLogoSrc] = useState<string>(localAsset('Logo-Kemenkes.png'))
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,8 +63,8 @@ export default function LoginPage() {
     frontend_login_card_subtitle: 'Silakan masuk untuk mengakses data fasilitas kesehatan.',
     frontend_login_note: 'Akses terbatas untuk pengguna yang berwenang.\nHubungi admin jika mengalami kendala masuk.',
     frontend_footer_text: '© 2026 Kementerian Kesehatan Republik Indonesia',
-    login_logo: '/Logo-Kemenkes.png',
-    login_background: '/pkk.png',
+    login_logo: localAsset('Logo-Kemenkes.png'),
+    login_background: localAsset('pkk.png'),
   })
 
   useEffect(() => {
@@ -175,13 +186,13 @@ export default function LoginPage() {
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
-          src={bgSrc || "/pkk.png"}
+          src={bgSrc || localAsset('pkk.png')}
           alt="Dashboard fasilitas kesehatan"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
-          onError={() => setBgSrc('/pkk.png')}
+          onError={() => setBgSrc(localAsset('pkk.png'))}
         />
 
         {/* Overlay gradient â€” matches dashboard's teal palette */}
@@ -201,13 +212,13 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src={logoSrc || "/Logo-Kemenkes.png"}
+              src={logoSrc || localAsset('Logo-Kemenkes.png')}
               alt="Logo Kementerian Kesehatan"
               width={160}
               height={58}
               className="h-auto w-[160px] brightness-0 invert"
               priority
-              onError={() => setLogoSrc('/Logo-Kemenkes.png')}
+              onError={() => setLogoSrc(localAsset('Logo-Kemenkes.png'))}
             />
           </div>
 
@@ -237,13 +248,13 @@ export default function LoginPage() {
           {/* Mobile-only logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
-              src={logoSrc || "/Logo-Kemenkes.png"}
+              src={logoSrc || localAsset('Logo-Kemenkes.png')}
               alt="Logo Kementerian Kesehatan"
               width={140}
               height={50}
               className="h-auto w-[140px]"
               priority
-              onError={() => setLogoSrc('/Logo-Kemenkes.png')}
+              onError={() => setLogoSrc(localAsset('Logo-Kemenkes.png'))}
             />
           </div>
 

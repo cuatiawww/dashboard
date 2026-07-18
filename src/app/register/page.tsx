@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { AlertCircle, CheckCircle2, Loader2, UserPlus, ArrowLeft, Building2, Briefcase, MapPin, Phone, Mail, UserRound, LockKeyhole, KeyRound, Check, X, RefreshCw } from 'lucide-react'
 import { buildApiUrl, buildRegionsUrl } from '@/lib/utils/api'
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
 type Region = {
   id: string
   code?: string
@@ -372,7 +374,7 @@ export default function RegisterPage() {
     <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       {/* Background image */}
       <Image
-        src="/pkk.png"
+        src={`${basePath}/pkk.png`}
         alt="Background"
         fill
         priority
