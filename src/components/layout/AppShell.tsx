@@ -28,6 +28,30 @@ export default function AppShell({ children }: AppShellProps) {
     initialize()
   }, [initialize])
 
+  // Intercept global fetch to automatically prefix basePath to relative api calls
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+      if (basePath && !window.hasOwnProperty('__fetch_intercepted__')) {
+        const originalFetch = window.fetch
+        window.fetch = function (input, init) {
+          if (typeof input === 'string' && input.startsWith('/api/')) {
+            return originalFetch(`${basePath}${input}`, init)
+          }
+          if (input instanceof URL && input.pathname.startsWith('/api/')) {
+            return originalFetch(`${basePath}${input.pathname}${input.search}`, init)
+          }
+          return originalFetch(input, init)
+        }
+        Object.defineProperty(window, '__fetch_intercepted__', {
+          value: true,
+          writable: false,
+          configurable: false
+        })
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (isInitialized && !isAuthenticated && !isGuest && !isPublicRoute) {
       router.push('/login')

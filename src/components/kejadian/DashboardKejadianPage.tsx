@@ -1626,7 +1626,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           <article
             className="relative overflow-hidden border border-[#b7d9d8] p-5 xl:h-[550px] xl:w-[381px] flex flex-col"
             style={{
-              backgroundImage: "url('/bg insght.png')",
+              backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg insght.png')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center bottom',
               backgroundRepeat: 'no-repeat',
@@ -2298,7 +2298,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="relative text-white px-5 py-4 flex items-center justify-between overflow-hidden border-b-2 border-teal-500/20">
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-                style={{ backgroundImage: "url('/bg header.png')" }}
+                style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg header.png')` }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#047D78]/95 via-[#076176]/90 to-[#0f8f96]/95" />
               <div className="relative flex items-center gap-3">
@@ -2404,7 +2404,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="relative text-white px-6 py-5 flex items-center justify-between overflow-hidden border-b border-slate-200 shrink-0">
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-                style={{ backgroundImage: "url('/bg header.png')" }}
+                style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg header.png')` }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#047D78]/95 via-[#076176]/90 to-[#0f8f96]/95" />
               <div className="relative z-10 flex-1 min-w-0">
@@ -2534,7 +2534,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="relative text-white px-6 py-5 flex items-center justify-between overflow-hidden border-b border-slate-200 shrink-0">
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-                style={{ backgroundImage: "url('/bg header.png')" }}
+                style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg header.png')` }}
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#047D78]/95 via-[#076176]/90 to-[#0f8f96]/95" />
               <div className="relative z-10 flex-1 min-w-0 flex items-center gap-3">

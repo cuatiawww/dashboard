@@ -6,6 +6,7 @@ const backendBaseUrl = (
 ).replace(/\/+$/, '')
 
 const nextConfig: NextConfig = {
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   serverExternalPackages: ['svg-captcha'],
   async rewrites() {
     return {

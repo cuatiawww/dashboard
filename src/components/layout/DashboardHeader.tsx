@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/lib/authStore'
 import {
   Bell,
+  Brain,
   ChevronDown,
   ChevronRight,
   Download,
@@ -74,12 +75,23 @@ const sidebarMenu: SidebarMenuGroup[] = [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
     ],
   },
-  // {
-  //   title: 'PEMANTAUAN KRISIS',
-  //   items: [
-  //     { label: 'PETA KRISIS KESEHATAN', href: '/pantauan/krisis-kesehatan', icon: Activity },
-  //   ],
-  // },
+  {
+    title: 'MONITORING & NLP',
+    items: [
+      { 
+        label: 'CRAWLING MEDIA MONITORING', 
+        href: process.env.NEXT_PUBLIC_MEDIA_MONITORING_URL || '#', 
+        icon: Newspaper,
+        isExternal: true
+      },
+      { 
+        label: 'DATA MODELING NLP', 
+        href: process.env.NEXT_PUBLIC_NLP_URL || '#', 
+        icon: Brain,
+        isExternal: true
+      },
+    ],
+  },
   {
     title: 'TENTANG DASHBOARD',
     items: [
@@ -449,7 +461,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
       <div className="relative flex min-h-[118px] items-stretch overflow-visible">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-          style={{ backgroundImage: "url('/bg header.png')" }}
+          style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg header.png')` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/82 to-white/92" />
         <div className="relative grid w-full gap-5 px-4 py-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
