@@ -1397,7 +1397,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                     <p className="text-[10px] text-slate-400 font-medium">Lingkaran radius EWS 25km & 50km dekat GPS</p>
                   </div>
                   <div
-                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showEwsPulse ? 'bg-teal-650' : 'bg-slate-300'}`}
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showEwsPulse ? 'bg-teal-600' : 'bg-slate-300'}`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showEwsPulse ? 'translate-x-4' : 'translate-x-0'}`}
@@ -1414,7 +1414,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                     <p className="text-[10px] text-slate-400 font-medium">Plot seismik realtime & radius bahaya 50km</p>
                   </div>
                   <div
-                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBmkg ? 'bg-teal-650' : 'bg-slate-300'}`}
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBmkg ? 'bg-teal-600' : 'bg-slate-300'}`}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBmkg ? 'translate-x-4' : 'translate-x-0'}`}
