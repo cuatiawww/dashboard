@@ -214,9 +214,9 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [mapInstance, setMapInstance] = useState<OlMap | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
-  const [showBaseMap, setShowBaseMap] = useState(false)
+  const [showBaseMap, setShowBaseMap] = useState(true)
   const [showGeoJson, setShowGeoJson] = useState(true)
-  const [showWindy, setShowWindy] = useState(false)
+  const [showWindy, setShowWindy] = useState(true)
   const [showRegionLegend, setShowRegionLegend] = useState(false)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
@@ -682,10 +682,11 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           },
           fieldOptions: { wrapX: true },
         } as any)
-        ;(windLayer as any).setVisible?.(false)
+        // Default ON: langsung visible dan jalankan animasi partikel
+        ;(windLayer as any).setVisible?.(true)
         try {
-          if (typeof (windLayer as any).stop === 'function') {
-            ;(windLayer as any).stop()
+          if (typeof (windLayer as any).start === 'function') {
+            ;(windLayer as any).start()
           }
         } catch {}
         map.addLayer(windLayer as any)
