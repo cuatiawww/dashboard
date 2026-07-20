@@ -24,30 +24,7 @@ import Point from 'ol/geom/Point'
 import Overlay from 'ol/Overlay'
 import CircleGeom from 'ol/geom/Circle'
 import 'ol/ol.css'
-
-function loadScriptOnce(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') return resolve()
-    const found = document.querySelector<HTMLScriptElement>(`script[data-src="${src}"]`)
-    if (found) {
-      if (found.getAttribute('data-loaded') === '1') resolve()
-      else found.addEventListener('load', () => resolve(), { once: true })
-      return
-    }
-
-    const s = document.createElement('script')
-    s.src = src
-    s.async = true
-    s.defer = true
-    s.setAttribute('data-src', src)
-    s.addEventListener('load', () => {
-      s.setAttribute('data-loaded', '1')
-      resolve()
-    })
-    s.addEventListener('error', () => reject(new Error(`Gagal load script: ${src}`)))
-    document.head.appendChild(s)
-  })
-}
+import { WindLayer } from 'ol-wind'
 
 function destroyWindLayerSafely(wl: any) {
   if (!wl) return
@@ -672,58 +649,49 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     mapInstanceRef.current = map
     setMapInstance(map)
 
-    // Setup Windy Layer
+    // Setup Windy Layer via npm ol-wind (async fetch GFS data)
     async function initWindy() {
-      if (typeof window === 'undefined') return
       try {
-        await loadScriptOnce('/vendor/ol.js')
-        await loadScriptOnce('/vendor/windy.js')
-        await loadScriptOnce('/vendor/ol-wind.js')
-
-        if (window.OlWind?.WindLayer) {
-          const res = await fetch('/api/gfs')
-          if (res.ok) {
-            const windData = await res.json()
-            const baseVelocity = 0.01
-            const windLayer = new window.OlWind.WindLayer(windData, {
-              windOptions: {
-                velocityScale: baseVelocity,
-                paths: 1000,
-                colorScale: [
-                  'rgb(36,104,180)',
-                  'rgb(60,157,194)',
-                  'rgb(128,205,193)',
-                  'rgb(151,218,168)',
-                  'rgb(198,231,181)',
-                  'rgb(238,247,217)',
-                  'rgb(255,238,159)',
-                  'rgb(252,217,125)',
-                  'rgb(255,182,100)',
-                  'rgb(252,150,75)',
-                  'rgb(250,112,52)',
-                  'rgb(245,64,32)',
-                  'rgb(237,45,28)',
-                  'rgb(220,24,32)',
-                  'rgb(180,0,35)',
-                ],
-                lineWidth: 2,
-                generateParticleOption: true,
-              },
-              fieldOptions: { wrapX: true },
-            })
-            ;(windLayer as any).setVisible?.(false)
-            try {
-              if (typeof (windLayer as any).stop === 'function') {
-                ;(windLayer as any).stop()
-              }
-            } catch {}
-            
-            map.addLayer(windLayer as any)
-            windLayerRef.current = windLayer
+        const res = await fetch('/api/gfs')
+        if (!res.ok) return
+        const windData = await res.json()
+        const baseVelocity = 0.01
+        const windLayer = new WindLayer(windData as any, {
+          windOptions: {
+            velocityScale: baseVelocity,
+            paths: 1000,
+            colorScale: [
+              'rgb(36,104,180)',
+              'rgb(60,157,194)',
+              'rgb(128,205,193)',
+              'rgb(151,218,168)',
+              'rgb(198,231,181)',
+              'rgb(238,247,217)',
+              'rgb(255,238,159)',
+              'rgb(252,217,125)',
+              'rgb(255,182,100)',
+              'rgb(252,150,75)',
+              'rgb(250,112,52)',
+              'rgb(245,64,32)',
+              'rgb(237,45,28)',
+              'rgb(220,24,32)',
+              'rgb(180,0,35)',
+            ],
+            lineWidth: 2,
+            generateParticleOption: true,
+          },
+          fieldOptions: { wrapX: true },
+        } as any)
+        ;(windLayer as any).setVisible?.(false)
+        try {
+          if (typeof (windLayer as any).stop === 'function') {
+            ;(windLayer as any).stop()
           }
-        }
+        } catch {}
+        map.addLayer(windLayer as any)
+        windLayerRef.current = windLayer as any
       } catch (err) {
-        console.warn('[DisasterMap] Failed to load Windy Layer:', err)
+        console.warn('[DisasterMap] Windy Layer load error (optional):', err)
       }
     }
     void initWindy()

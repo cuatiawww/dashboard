@@ -1093,8 +1093,8 @@ export default function DashboardKejadianPage() {
   // Efek samping untuk otomatis men-generate laporan darurat yang realistis berbasis data aktual EOC dari API
   useEffect(() => {
     if (data) {
-      const topDisaster = data.jenis_bencana[0]?.nama || 'Kebakaran Hutan dan Lahan'
-      const topRegion = data.wilayah[0]?.nama || 'Jawa Timur'
+      const topDisaster = data?.jenis_bencana?.[0]?.nama || 'Kebakaran Hutan dan Lahan'
+      const topRegion = data?.wilayah?.[0]?.nama || 'Jawa Timur'
       if (!data.summary) return
       const totalBencana = data.summary.total_bencana
       const totalKrisis = data.summary.total_krisis
@@ -1160,8 +1160,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
       // Menstimulasikan durasi berpikir AI selama 1.5 detik agar terlihat premium
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      const topDisaster = data.jenis_bencana[0]?.nama || 'Kebakaran Hutan dan Lahan'
-      const topRegion = data.wilayah[0]?.nama || 'Jawa Timur'
+      const topDisaster = data?.jenis_bencana?.[0]?.nama || 'Kebakaran Hutan dan Lahan'
+      const topRegion = data?.wilayah?.[0]?.nama || 'Jawa Timur'
       if (!data.summary) return
       const totalBencana = data.summary.total_bencana
       const totalKrisis = data.summary.total_krisis
