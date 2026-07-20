@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Activity, Flame, Shield, Users, Database, Plus, RefreshCw, Layers, ShieldAlert, HeartPulse, Stethoscope, Table } from 'lucide-react'
 import PantauanPageTemplate, { PantauanStatWidget } from '../PantauanPageTemplate'
+import { WindLayer } from 'ol-wind'
 
 type JSONObject = Record<string, unknown>
 
@@ -364,8 +365,6 @@ export default function KrisisKesehatanPage() {
 
       loadCssOnce('/vendor/ol.css')
       await loadScriptOnce('/vendor/ol.js')
-      await loadScriptOnce('/vendor/windy.js')
-      await loadScriptOnce('/vendor/ol-wind.js')
 
       if (!window.ol || !isObject(window.ol)) {
         throw new Error('OpenLayers (window.ol) tidak tersedia di sistem.')
@@ -625,52 +624,50 @@ export default function KrisisKesehatanPage() {
         })
       }
 
-      // Wind layer (try-catch, 404 safe)
-      if (window.OlWind?.WindLayer) {
+      // Wind layer via npm ol-wind (try-catch, 404 safe)
+      try {
+        const windData = await fetchJSON(EP.gfs)
+        const baseVelocity = 0.01;
+        const windLayer = new WindLayer(windData as any, {
+          windOptions: {
+            velocityScale: baseVelocity,
+            paths: 1000,
+            colorScale: [
+              'rgb(36,104,180)',
+              'rgb(60,157,194)',
+              'rgb(128,205,193)',
+              'rgb(151,218,168)',
+              'rgb(198,231,181)',
+              'rgb(238,247,217)',
+              'rgb(255,238,159)',
+              'rgb(252,217,125)',
+              'rgb(255,182,100)',
+              'rgb(252,150,75)',
+              'rgb(250,112,52)',
+              'rgb(245,64,32)',
+              'rgb(237,45,28)',
+              'rgb(220,24,32)',
+              'rgb(180,0,35)',
+            ],
+            lineWidth: 2,
+            generateParticleOption: true,
+          },
+          fieldOptions: { wrapX: true },
+        } as any)
+        windLayer.set?.('id', 'wind')
+        windLayer.set?.('name', 'Pola Aliran Angin')
+        windLayer.set?.('group', 'Meteorologi')
+        ;(windLayer as any).setVisible?.(false)
+        
+        ;(windLayer as any).appendTo?.(map) ?? (map as any).addLayer(windLayer)
         try {
-          const windData = await fetchJSON(EP.gfs)
-          const baseVelocity = 0.01;
-          const windLayer = new window.OlWind.WindLayer(windData, {
-            windOptions: {
-              velocityScale: baseVelocity,
-              paths: 1000,
-              colorScale: [
-                'rgb(36,104,180)',
-                'rgb(60,157,194)',
-                'rgb(128,205,193)',
-                'rgb(151,218,168)',
-                'rgb(198,231,181)',
-                'rgb(238,247,217)',
-                'rgb(255,238,159)',
-                'rgb(252,217,125)',
-                'rgb(255,182,100)',
-                'rgb(252,150,75)',
-                'rgb(250,112,52)',
-                'rgb(245,64,32)',
-                'rgb(237,45,28)',
-                'rgb(220,24,32)',
-                'rgb(180,0,35)',
-              ],
-              lineWidth: 2,
-              generateParticleOption: true,
-            },
-            fieldOptions: { wrapX: true },
-          })
-          windLayer.set?.('id', 'wind')
-          windLayer.set?.('name', 'Pola Aliran Angin')
-          windLayer.set?.('group', 'Meteorologi')
-          windLayer.setVisible?.(false)
-          
-          ;(windLayer as any).appendTo?.(map) ?? (map as any).addLayer(windLayer)
-          try {
-            if (typeof (windLayer as any).stop === 'function') {
-              (windLayer as any).stop()
-            }
-          } catch {}
-          windLayerRef.current = windLayer as any
-        } catch (e) {
-          console.warn('GFS Wind layer failed to load (Optional). Error:', e)
-        }
+          if (typeof (windLayer as any).stop === 'function') {
+            (windLayer as any).stop()
+          }
+        } catch {}
+        windLayerRef.current = windLayer as any
+      } catch (e) {
+        console.warn('GFS Wind layer failed to load (Optional). Error:', e)
       }
 
       // Fetch actual data
