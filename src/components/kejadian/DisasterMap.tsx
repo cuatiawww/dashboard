@@ -25,6 +25,47 @@ import Overlay from 'ol/Overlay'
 import CircleGeom from 'ol/geom/Circle'
 import 'ol/ol.css'
 
+function loadScriptOnce(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return resolve()
+    const found = document.querySelector<HTMLScriptElement>(`script[data-src="${src}"]`)
+    if (found) {
+      if (found.getAttribute('data-loaded') === '1') resolve()
+      else found.addEventListener('load', () => resolve(), { once: true })
+      return
+    }
+
+    const s = document.createElement('script')
+    s.src = src
+    s.async = true
+    s.defer = true
+    s.setAttribute('data-src', src)
+    s.addEventListener('load', () => {
+      s.setAttribute('data-loaded', '1')
+      resolve()
+    })
+    s.addEventListener('error', () => reject(new Error(`Gagal load script: ${src}`)))
+    document.head.appendChild(s)
+  })
+}
+
+function destroyWindLayerSafely(wl: any) {
+  if (!wl) return
+  try { wl.setVisible?.(false) } catch {}
+  const obj = wl as unknown as Record<string, unknown>
+  const tryCall = (k: string, arg?: unknown) => {
+    const fn = obj[k]
+    if (typeof fn === 'function') {
+      try { (fn as (a?: unknown) => void)(arg) } catch {}
+    }
+  }
+  tryCall('stop')
+  tryCall('destroy')
+  tryCall('dispose')
+  tryCall('remove')
+  tryCall('setMap', null)
+  tryCall('setTarget', null)
+}
 
 // ─────────────────────────────────────────────
 // Types
@@ -184,6 +225,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const bnpbGempaLayerRef = useRef<any>(null)
   const bnpbLongsorLayerRef = useRef<any>(null)
   const bnpbKarhutlaLayerRef = useRef<any>(null)
+  const windLayerRef = useRef<any>(null)
 
   // Stable callback refs (avoid stale closures inside OL event handlers)
   const onSelectProvinceRef = useRef(onSelectProvince)
@@ -197,6 +239,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
   const [showBaseMap, setShowBaseMap] = useState(false)
   const [showGeoJson, setShowGeoJson] = useState(true)
+  const [showWindy, setShowWindy] = useState(false)
   const [showRegionLegend, setShowRegionLegend] = useState(false)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
@@ -629,12 +672,75 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     mapInstanceRef.current = map
     setMapInstance(map)
 
+    // Setup Windy Layer
+    async function initWindy() {
+      if (typeof window === 'undefined') return
+      try {
+        await loadScriptOnce('/vendor/ol.js')
+        await loadScriptOnce('/vendor/windy.js')
+        await loadScriptOnce('/vendor/ol-wind.js')
+
+        if (window.OlWind?.WindLayer) {
+          const res = await fetch('/api/gfs')
+          if (res.ok) {
+            const windData = await res.json()
+            const baseVelocity = 0.01
+            const windLayer = new window.OlWind.WindLayer(windData, {
+              windOptions: {
+                velocityScale: baseVelocity,
+                paths: 1000,
+                colorScale: [
+                  'rgb(36,104,180)',
+                  'rgb(60,157,194)',
+                  'rgb(128,205,193)',
+                  'rgb(151,218,168)',
+                  'rgb(198,231,181)',
+                  'rgb(238,247,217)',
+                  'rgb(255,238,159)',
+                  'rgb(252,217,125)',
+                  'rgb(255,182,100)',
+                  'rgb(252,150,75)',
+                  'rgb(250,112,52)',
+                  'rgb(245,64,32)',
+                  'rgb(237,45,28)',
+                  'rgb(220,24,32)',
+                  'rgb(180,0,35)',
+                ],
+                lineWidth: 2,
+                generateParticleOption: true,
+              },
+              fieldOptions: { wrapX: true },
+            })
+            ;(windLayer as any).setVisible?.(false)
+            try {
+              if (typeof (windLayer as any).stop === 'function') {
+                ;(windLayer as any).stop()
+              }
+            } catch {}
+            
+            map.addLayer(windLayer as any)
+            windLayerRef.current = windLayer
+          }
+        }
+      } catch (err) {
+        console.warn('[DisasterMap] Failed to load Windy Layer:', err)
+      }
+    }
+    void initWindy()
+
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
       pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
       pulseOverlaysRef.current = []
       setMapInstance(null)
+      
+      // Destroy Windy Layer safely
+      if (windLayerRef.current) {
+        destroyWindLayerSafely(windLayerRef.current)
+        windLayerRef.current = null
+      }
+      
       bnpbAdminLayerRef.current = null
       bnpbHillshadeLayerRef.current = null
       bnpbKepadatanLayerRef.current = null
@@ -679,6 +785,29 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     if (bnpbLongsorLayerRef.current) bnpbLongsorLayerRef.current.setVisible(showBnpbLongsor)
     if (bnpbKarhutlaLayerRef.current) bnpbKarhutlaLayerRef.current.setVisible(showBnpbKarhutla)
   }, [showBnpbAdmin, showBnpbHillshade, showBnpbKepadatan, showBnpbBanjir, showBnpbGempa, showBnpbLongsor, showBnpbKarhutla])
+
+  // ── Sync Windy Layer state ──
+  useEffect(() => {
+    const wl = windLayerRef.current
+    if (wl) {
+      wl.setVisible(showWindy)
+      try {
+        if (showWindy) {
+          if (typeof wl.start === 'function') {
+            wl.start()
+          }
+        } else {
+          if (typeof wl.stop === 'function') {
+            wl.stop()
+          }
+        }
+      } catch (e) {}
+      // Force refresh map
+      try {
+        mapInstance?.renderSync?.()
+      } catch {}
+    }
+  }, [showWindy, mapInstance])
 
 
   // ─────────────────────────────────────────────
@@ -1331,6 +1460,27 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showGeoJson ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle Windy */}
+                <div
+                  onClick={() => setShowWindy((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Globe className="h-4 w-4 text-teal-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Aliran Angin (Windy)</p>
+                      <p className="text-[10px] text-slate-400">Tampilkan pola pergerakan angin GFS</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showWindy ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showWindy ? 'translate-x-4' : 'translate-x-0'}`}
                     />
                   </div>
                 </div>
