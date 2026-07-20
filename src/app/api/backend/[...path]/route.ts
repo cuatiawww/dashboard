@@ -73,6 +73,26 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
     }
   })
 
+  // Append system TTOKEN and Authorization headers if defined in .env
+  const systemToken = process.env.SIPKK_DASHBOARD_TTOKEN || ''
+  if (systemToken) {
+    const clientAuth = forwardHeaders.get('authorization') || ''
+    const isInvalidAuth = !clientAuth || 
+                          clientAuth.trim() === 'Bearer' || 
+                          clientAuth.toLowerCase().includes('null') || 
+                          clientAuth.toLowerCase().includes('undefined')
+
+    if (isInvalidAuth) {
+      forwardHeaders.set('Authorization', `Bearer ${systemToken}`)
+      forwardHeaders.set('TTOKEN', systemToken)
+    } else {
+      // If client auth is valid but TTOKEN is missing, still append TTOKEN for the backend
+      if (!forwardHeaders.has('ttoken')) {
+        forwardHeaders.set('TTOKEN', systemToken)
+      }
+    }
+  }
+
   let body: BodyInit | null = null
   if (!['GET', 'HEAD'].includes(req.method)) {
     body = await req.arrayBuffer()
