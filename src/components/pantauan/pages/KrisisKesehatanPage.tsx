@@ -629,14 +629,32 @@ export default function KrisisKesehatanPage() {
       if (window.OlWind?.WindLayer) {
         try {
           const windData = await fetchJSON(EP.gfs)
+          const baseVelocity = 0.01;
           const windLayer = new window.OlWind.WindLayer(windData, {
             windOptions: {
-              velocityScale: 1 / 100,
-              paths: 800,
-              lineWidth: 1.5,
-              colorScale: ['rgb(36,104,180)', 'rgb(128,205,193)', 'rgb(255,238,159)', 'rgb(245,64,32)']
+              velocityScale: baseVelocity,
+              paths: 1000,
+              colorScale: [
+                'rgb(36,104,180)',
+                'rgb(60,157,194)',
+                'rgb(128,205,193)',
+                'rgb(151,218,168)',
+                'rgb(198,231,181)',
+                'rgb(238,247,217)',
+                'rgb(255,238,159)',
+                'rgb(252,217,125)',
+                'rgb(255,182,100)',
+                'rgb(252,150,75)',
+                'rgb(250,112,52)',
+                'rgb(245,64,32)',
+                'rgb(237,45,28)',
+                'rgb(220,24,32)',
+                'rgb(180,0,35)',
+              ],
+              lineWidth: 2,
+              generateParticleOption: true,
             },
-            fieldOptions: { wrapX: true }
+            fieldOptions: { wrapX: true },
           })
           windLayer.set?.('id', 'wind')
           windLayer.set?.('name', 'Pola Aliran Angin')
@@ -644,6 +662,11 @@ export default function KrisisKesehatanPage() {
           windLayer.setVisible?.(false)
           
           ;(windLayer as any).appendTo?.(map) ?? (map as any).addLayer(windLayer)
+          try {
+            if (typeof (windLayer as any).stop === 'function') {
+              (windLayer as any).stop()
+            }
+          } catch {}
           windLayerRef.current = windLayer as any
         } catch (e) {
           console.warn('GFS Wind layer failed to load (Optional). Error:', e)
@@ -799,6 +822,23 @@ export default function KrisisKesehatanPage() {
     if (!ly) return
     const next = !ly.getVisible?.()
     ly.setVisible?.(next)
+
+    // Special handling for wind layer animation loop
+    if (id === 'wind') {
+      try {
+        if (next) {
+          if (typeof (ly as any).start === 'function') {
+            (ly as any).start()
+          }
+        } else {
+          if (typeof (ly as any).stop === 'function') {
+            (ly as any).stop()
+          }
+        }
+      } catch (err) {
+        console.warn('Gagal memproses start/stop WindLayer:', err)
+      }
+    }
 
     setLayerGroups(prev =>
       prev.map(g => ({
