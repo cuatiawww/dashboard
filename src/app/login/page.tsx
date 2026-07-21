@@ -43,8 +43,8 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  
-  const [bgSrc, setBgSrc] = useState<string>(localAsset('pkk.png'))
+
+  const [bgSrc, setBgSrc] = useState<string>(localAsset('pkk.webp'))
   const [logoSrc, setLogoSrc] = useState<string>(localAsset('Logo-Kemenkes.png'))
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -64,7 +64,7 @@ export default function LoginPage() {
     frontend_login_note: 'Akses terbatas untuk pengguna yang berwenang.\nHubungi admin jika mengalami kendala masuk.',
     frontend_footer_text: '© 2026 Kementerian Kesehatan Republik Indonesia',
     login_logo: localAsset('Logo-Kemenkes.png'),
-    login_background: localAsset('pkk.png'),
+    login_background: localAsset('pkk.webp'),
   })
 
   useEffect(() => {
@@ -186,13 +186,13 @@ export default function LoginPage() {
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
-          src={bgSrc || localAsset('pkk.png')}
+          src={bgSrc || localAsset('pkk.webp')}
           alt="Dashboard fasilitas kesehatan"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
-          onError={() => setBgSrc(localAsset('pkk.png'))}
+          onError={() => setBgSrc(localAsset('pkk.webp'))}
         />
 
         {/* Overlay gradient â€” matches dashboard's teal palette */}

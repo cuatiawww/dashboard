@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
     <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       {/* Background image */}
       <Image
-        src={`${basePath}/pkk.png`}
+        src={`${basePath}/pkk.webp`}
         alt="Background"
         fill
         priority
@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
       />
 
       <div className="relative z-10 w-full max-w-[450px] bg-white rounded-3xl border border-[#c8dedd] shadow-[0_25px_70px_rgba(0,0,0,0.25)] p-7 sm:p-10">
-        
+
         {/* Back Link */}
         <Link href="/login" className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold text-sm mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -291,10 +291,10 @@ export default function ForgotPasswordPage() {
                         <span>Kekuatan Sandi:</span>
                         <span className={
                           strengthScore === 1 ? 'text-red-500 font-extrabold' :
-                          strengthScore === 2 ? 'text-orange-500 font-extrabold' :
-                          strengthScore === 3 ? 'text-yellow-600 font-extrabold' :
-                          strengthScore === 4 ? 'text-blue-600 font-extrabold' :
-                          strengthScore === 5 ? 'text-emerald-600 font-extrabold' : 'text-slate-400'
+                            strengthScore === 2 ? 'text-orange-500 font-extrabold' :
+                              strengthScore === 3 ? 'text-yellow-600 font-extrabold' :
+                                strengthScore === 4 ? 'text-blue-600 font-extrabold' :
+                                  strengthScore === 5 ? 'text-emerald-600 font-extrabold' : 'text-slate-400'
                         }>
                           {strengthScore === 1 && 'Sangat Lemah'}
                           {strengthScore === 2 && 'Lemah'}
@@ -305,13 +305,12 @@ export default function ForgotPasswordPage() {
                       </div>
                       <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                         <div
-                          className={`h-full transition-all duration-300 ${
-                            strengthScore === 1 ? 'bg-red-500 w-1/5' :
-                            strengthScore === 2 ? 'bg-orange-500 w-2/5' :
-                            strengthScore === 3 ? 'bg-yellow-500 w-3/5' :
-                            strengthScore === 4 ? 'bg-blue-500 w-4/5' :
-                            strengthScore === 5 ? 'bg-emerald-500 w-full' : 'w-0'
-                          }`}
+                          className={`h-full transition-all duration-300 ${strengthScore === 1 ? 'bg-red-500 w-1/5' :
+                              strengthScore === 2 ? 'bg-orange-500 w-2/5' :
+                                strengthScore === 3 ? 'bg-yellow-500 w-3/5' :
+                                  strengthScore === 4 ? 'bg-blue-500 w-4/5' :
+                                    strengthScore === 5 ? 'bg-emerald-500 w-full' : 'w-0'
+                            }`}
                         />
                       </div>
                     </div>
