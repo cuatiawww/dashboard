@@ -188,7 +188,7 @@ export default function InfografisPage() {
               Galeri Infografis & Dokumen AI
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Kumpulan dokumen laporan PDF 3 Halaman dan poster infografis hasil generate Gemini AI berdasarkan data riil kebencanaan.
+              Kumpulan dokumen laporan infografis hasil generate Gemini AI berdasarkan data riil kebencanaan.
             </p>
           </div>
         </div>
@@ -373,7 +373,7 @@ export default function InfografisPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4.5 w-4.5 text-[#047D78]" />
                 <h3 className="text-sm font-bold text-slate-800">
-                  Generate Infografis AI (PDF 3 Halaman)
+                  Generate Infografis AI
                 </h3>
               </div>
               <button
@@ -390,7 +390,7 @@ export default function InfografisPage() {
                   <CheckCircle className="h-6 w-6" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-800">Infografis PDF 3 Halaman Berhasil Dibuat</h4>
+                  <h4 className="text-sm font-bold text-slate-800">Infografis AI Berhasil Dibuat</h4>
                   <p className="text-xs text-slate-500">Berkas PDF resmi telah tersimpan di database dan folder aset.</p>
                 </div>
               </div>
@@ -454,12 +454,12 @@ export default function InfografisPage() {
                   {generating ? (
                     <>
                       <Wand2 className="h-4 w-4 animate-spin" />
-                      <span>Sedang Merancang & Menyusun PDF 3 Halaman...</span>
+                      <span>Sedang Merancang Infografis AI...</span>
                     </>
                   ) : (
                     <>
                       <Wand2 className="h-4 w-4" />
-                      <span>Generate Infografis PDF (Gemini AI + mPDF)</span>
+                      <span>Generate Infografis AI</span>
                     </>
                   )}
                 </button>
@@ -536,7 +536,7 @@ export default function InfografisPage() {
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
-                  <span>Download PDF (3 Halaman)</span>
+                  <span>Download PDF</span>
                 </a>
               </div>
             </div>
