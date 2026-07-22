@@ -203,6 +203,24 @@ const earlyWarnings = [
   },
 ]
 
+const presenterVideos = [
+  {
+    id: 1,
+    title: 'Video AI Presenter - Periode Mei 2026',
+    url: 'https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75',
+  },
+  {
+    id: 2,
+    title: 'Video AI Presenter - Periode Juni 2026',
+    url: 'https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75',
+  },
+  {
+    id: 3,
+    title: 'Video AI Presenter - Periode Juli 2026',
+    url: 'https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75',
+  },
+]
+
 const getKorbanBreakdown = (total: number, jenis: string) => {
   const t = total || 0
   if (t === 0) return { meninggal: 0, luka: 0, hilang: 0, pengungsi: 0 }
@@ -295,6 +313,21 @@ export default function DashboardKejadianPage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75') // HeyGen AI video demo
   const [showVideoInput, setShowVideoInput] = useState(false)
+  const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [activeFullscreenVideo, setActiveFullscreenVideo] = useState<string | null>(null)
+
+  const handleShareWa = (title: string, url: string) => {
+    const text = `Halo! Tonton Laporan ${title} dari EOC Krisis Kesehatan Kemenkes RI: ${url}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  const handleCopyLink = (id: number, url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
   const [markerMonths, setMarkerMonths] = useState(1)
 
@@ -2594,66 +2627,84 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
               {aiModalTab === 'report' && renderAiReportContent()}
 
               {aiModalTab === 'video' && (
-                <div className="space-y-5 py-2">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-black shadow-lg">
-                    {videoUrl ? (
-                      isYouTubeUrl(videoUrl) ? (
-                        <iframe
-                          src={getYouTubeEmbedUrl(videoUrl)}
-                          className="h-full w-full border-0"
-                          allow={videoUrl.includes('heygen.com') ? "encrypted-media; fullscreen;" : "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"}
-                          allowFullScreen
-                        />
-                      ) : (
-                        <video
-                          src={videoUrl}
-                          controls
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          className="h-full w-full object-cover"
-                        />
-                      )
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center bg-slate-100 text-slate-400">
-                        <Video className="h-10 w-10 stroke-[1.5]" />
-                        <span className="mt-2 text-sm font-semibold">Belum ada video tersemat</span>
-                      </div>
-                    )}
-
-                    {/*
-                    {/* Settings Overlay Button }
-                    <button
-                      onClick={() => setShowVideoInput(!showVideoInput)}
-                      className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 hover:scale-105 active:scale-95"
-                      title="Ubah URL Video"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </button>
-
-                    {showVideoInput && (
-                      <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/90 p-6 text-white backdrop-blur-sm">
-                        <p className="mb-3 text-sm font-bold text-teal-400">Embed URL Video (MP4 / YouTube)</p>
-                        <input
-                          type="text"
-                          value={videoUrl}
-                          onChange={(e) => setVideoUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full max-w-md rounded-xl bg-white/15 px-4 py-2 text-sm text-white placeholder-white/40 border border-white/20 outline-none focus:border-teal-400 focus:bg-white/20"
-                        />
-                        <div className="mt-4 flex gap-3">
-                          <button
-                            onClick={() => setShowVideoInput(false)}
-                            className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white hover:bg-teal-700 transition"
-                          >
-                            Simpan Perubahan
-                          </button>
+                <div className="space-y-6 py-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {presenterVideos.map((video) => (
+                      <div key={video.id} className="flex flex-col bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
+                        {/* Video Aspect Ratio 9:16 Portrait */}
+                        <div className="relative aspect-[9/16] w-full bg-black overflow-hidden border-b border-slate-200">
+                          <iframe
+                            src={getYouTubeEmbedUrl(video.url)}
+                            className="h-full w-full border-0"
+                            allow="autoplay; encrypted-media; fullscreen;"
+                            allowFullScreen
+                          />
+                        </div>
+                        
+                        {/* Detail & Action Buttons */}
+                        <div className="p-4 flex flex-col flex-grow justify-between gap-3 bg-white">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-slate-800 line-clamp-2">
+                              {video.title}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
+                              EOC Presenter AI
+                            </p>
+                          </div>
+                          
+                          {/* Button Row */}
+                          <div className="flex items-center gap-1.5 pt-3 border-t border-slate-100">
+                            {/* Full View */}
+                            <button
+                              onClick={() => setActiveFullscreenVideo(video.url)}
+                              className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[11px] font-bold rounded-xl transition-all border border-teal-100/50"
+                              title="Tampilan Penuh"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                              </svg>
+                              <span>Full</span>
+                            </button>
+                            
+                            {/* Share to WA */}
+                            <button
+                              onClick={() => handleShareWa(video.title, video.url)}
+                              className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-xl transition-all border border-emerald-100/50"
+                              title="Bagikan ke WhatsApp"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.42 9.864-9.864.002-2.637-1.03-5.115-2.903-6.99-1.871-1.873-4.35-2.906-6.99-2.907-5.439 0-9.87 4.421-9.874 9.865-.001 1.748.496 3.453 1.447 4.962L1.87 22.13l4.777-1.741H6.65z" />
+                              </svg>
+                              <span>WA</span>
+                            </button>
+                            
+                            {/* Copy Link */}
+                            <button
+                              onClick={() => handleCopyLink(video.id, video.url)}
+                              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-2 text-[11px] font-bold rounded-xl transition-all border ${
+                                copiedId === video.id
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-250'
+                              }`}
+                              title="Salin Link"
+                            >
+                              {copiedId === video.id ? (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                                </svg>
+                              )}
+                              <span>{copiedId === video.id ? 'Salin!' : 'Link'}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    )}
-                    */}
+                    ))}
                   </div>
+                  
                   <div className="rounded-xl bg-slate-50 border border-slate-150 p-4">
                     <p className="text-xs text-slate-500 leading-relaxed">
                       💡 <strong>Presenter AI</strong> memvisualisasikan data penilaian risiko bencana dalam format video interaktif yang diperbarui secara periodik oleh EOC Krisis Kesehatan Kemenkes RI.
@@ -2717,6 +2768,27 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 Tutup Analisis
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Video Modal Overlay */}
+      {activeFullscreenVideo && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md aspect-[9/16] bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 animate-in zoom-in-95 duration-200">
+            <iframe
+              src={getYouTubeEmbedUrl(activeFullscreenVideo)}
+              className="h-full w-full border-0"
+              allow="autoplay; encrypted-media; fullscreen;"
+              allowFullScreen
+            />
+            <button
+              onClick={() => setActiveFullscreenVideo(null)}
+              className="absolute top-4 right-4 z-[10000] flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 hover:scale-105 active:scale-95 transition"
+              title="Tutup"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
       )}
