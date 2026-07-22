@@ -75,6 +75,7 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'DASHBOARD EOC',
     items: [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
+      { label: 'INFOGRAFIS AI (PDF)', href: '/infografis-ai', icon: FileText },
     ],
   },
   {

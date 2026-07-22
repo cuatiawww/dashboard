@@ -2628,6 +2628,17 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
               {aiModalTab === 'video' && (
                 <div className="space-y-6 py-2">
+                  {/* Section Title Header */}
+                  <div className="pb-3 border-b border-slate-100 flex flex-col gap-1">
+                    <h3 className="text-sm md:text-base font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-teal-600 animate-pulse"></span>
+                      AI Video Presenter (Periode Bulanan)
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                      Laporan krisis & kesiapsiagaan bencana dalam format video presenter pintar
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {presenterVideos.map((video) => (
                       <div key={video.id} className="flex flex-col bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200">
