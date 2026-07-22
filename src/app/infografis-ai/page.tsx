@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import {
   FileText,
@@ -15,6 +15,7 @@ import {
   X,
   CheckCircle,
   HelpCircle,
+  Loader2,
 } from 'lucide-react'
 
 type InfographicItem = {
@@ -28,7 +29,7 @@ type InfographicItem = {
   pdfUrl: string
 }
 
-const mockInfographics: InfographicItem[] = [
+const fallbackInfographics: InfographicItem[] = [
   {
     id: 1,
     title: 'Poster Kesiapsiagaan Gempa Bumi Banten 2026',
@@ -36,7 +37,7 @@ const mockInfographics: InfographicItem[] = [
     description: 'Panduan infografis kesiapsiagaan mandiri masyarakat saat gempa bumi, jalur evakuasi, dan koordinasi EMT di Pandeglang.',
     date: '22 Juli 2026',
     fileSize: '2.4 MB',
-    pages: 1,
+    pages: 3,
     pdfUrl: '#',
   },
   {
@@ -46,7 +47,7 @@ const mockInfographics: InfographicItem[] = [
     description: 'Buku panduan taktis sanitasi darurat pengungsian, pencegahan KLB penyakit menular, dan air bersih.',
     date: '21 Juli 2026',
     fileSize: '4.1 MB',
-    pages: 12,
+    pages: 3,
     pdfUrl: '#',
   },
   {
@@ -56,7 +57,7 @@ const mockInfographics: InfographicItem[] = [
     description: 'Infografis komparatif statistika kejadian bencana nasional, tingkat fatalitas kasus (CFR), dan efisiensi respon.',
     date: '18 Juli 2026',
     fileSize: '6.8 MB',
-    pages: 8,
+    pages: 3,
     pdfUrl: '#',
   },
   {
@@ -66,33 +67,14 @@ const mockInfographics: InfographicItem[] = [
     description: 'Poster edukasi perilaku hidup bersih sehat di posko pengungsian mandiri guna menekan risiko penularan diare.',
     date: '10 Juli 2026',
     fileSize: '1.8 MB',
-    pages: 1,
-    pdfUrl: '#',
-  },
-  {
-    id: 5,
-    title: 'Infografis Kesiapan Faskes Rujukan Jawa Barat',
-    category: 'Laporan EOC',
-    description: 'Pemetaan kapasitas pelayanan IGD darurat, ketersediaan obat esensial, dan BOR faskes rujukan.',
-    date: '05 Juli 2026',
-    fileSize: '3.5 MB',
     pages: 3,
-    pdfUrl: '#',
-  },
-  {
-    id: 6,
-    title: 'Poster Mitigasi Kesehatan Erupsi Gunung Berapi',
-    category: 'Mitigasi Bencana',
-    description: 'Panduan visual perlindungan pernapasan abu vulkanik, titik kumpul medis darurat, dan zonasi merah.',
-    date: '28 Juni 2026',
-    fileSize: '2.1 MB',
-    pages: 1,
     pdfUrl: '#',
   },
 ]
 
 export default function InfografisPage() {
-  const [infographics, setInfographics] = useState<InfographicItem[]>(mockInfographics)
+  const [infographics, setInfographics] = useState<InfographicItem[]>(fallbackInfographics)
+  const [isLoadingData, setIsLoadingData] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Semua')
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
@@ -104,6 +86,27 @@ export default function InfografisPage() {
   const [genPrompt, setGenPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genSuccess, setGenSuccess] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
+
+  // Fetch real infographics list from DB
+  const loadInfographics = async () => {
+    try {
+      setIsLoadingData(true)
+      const res = await fetch('/api/infografis-list')
+      const json = await res.json()
+      if (json?.success && Array.isArray(json?.data) && json.data.length > 0) {
+        setInfographics(json.data)
+      }
+    } catch (e) {
+      console.error('Failed loading infographics from DB:', e)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
+
+  useEffect(() => {
+    loadInfographics()
+  }, [])
 
   // Categories list
   const categories = useMemo(() => {
@@ -125,36 +128,44 @@ export default function InfografisPage() {
     })
   }, [infographics, searchQuery, selectedCategory])
 
-  // Simple Generator simulation
-  const handleGenerate = (e: React.FormEvent) => {
+  // Real Generator PDF submission via Gemini AI & mPDF
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!genTitle.trim()) return
 
     setGenerating(true)
-    setTimeout(() => {
-      const newInfographic: InfographicItem = {
-        id: Date.now(),
-        title: genTitle,
-        category: genCategory,
-        description: genPrompt || `Dokumen infografis yang dibuat berdasarkan analisis data bencana terkini.`,
-        date: 'Hari ini',
-        fileSize: `${(Math.random() * 3 + 1.5).toFixed(1)} MB`,
-        pages: Math.random() > 0.5 ? 1 : Math.floor(Math.random() * 4) + 2,
-        pdfUrl: '#',
+    setGenError(null)
+
+    try {
+      const res = await fetch('/api/generate-infografis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: genTitle,
+          category: genCategory,
+          prompt: genPrompt,
+        }),
+      })
+
+      const json = await res.json()
+      if (json?.success && json?.data) {
+        setInfographics((prev) => [json.data, ...prev])
+        setGenSuccess(true)
+        setGenTitle('')
+        setGenPrompt('')
+
+        setTimeout(() => {
+          setGenSuccess(false)
+          setIsGeneratorOpen(false)
+        }, 1800)
+      } else {
+        setGenError(json?.message || 'Gagal membuat file PDF. Silakan coba lagi.')
       }
-
-      setInfographics((prev) => [newInfographic, ...prev])
+    } catch (err: any) {
+      setGenError(err?.message || 'Terjadi kesalahan jaringan saat memicu generator.')
+    } finally {
       setGenerating(false)
-      setGenSuccess(true)
-      
-      setGenTitle('')
-      setGenPrompt('')
-
-      setTimeout(() => {
-        setGenSuccess(false)
-        setIsGeneratorOpen(false)
-      }, 1500)
-    }, 2000)
+    }
   }
 
   return (
@@ -177,13 +188,17 @@ export default function InfografisPage() {
               Galeri Infografis & Dokumen AI
             </h1>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Kumpulan dokumen laporan PDF dan poster infografis hasil generate Gemini AI berdasarkan data riil kebencanaan.
+              Kumpulan dokumen laporan PDF 3 Halaman dan poster infografis hasil generate Gemini AI berdasarkan data riil kebencanaan.
             </p>
           </div>
         </div>
 
         <button
-          onClick={() => setIsGeneratorOpen(true)}
+          onClick={() => {
+            setGenError(null)
+            setGenSuccess(false)
+            setIsGeneratorOpen(true)
+          }}
           className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#047D78] hover:bg-[#03605c] text-white rounded-xl text-xs font-bold transition shadow-sm shrink-0"
         >
           <Sparkles className="h-4 w-4" />
@@ -226,7 +241,12 @@ export default function InfografisPage() {
       </div>
 
       {/* Compact Grid Layout (6 columns on XL, 5 on LG, 4 on MD, 3 on SM, 2 on Mobile) */}
-      {filteredItems.length > 0 ? (
+      {isLoadingData ? (
+        <div className="w-full min-h-[300px] flex flex-col items-center justify-center space-y-3 bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
+          <Loader2 className="h-8 w-8 animate-spin text-[#047D78]" />
+          <p className="text-xs font-semibold text-slate-500">Memuat berkas infografis dari database...</p>
+        </div>
+      ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
           {filteredItems.map((item) => (
             <div
@@ -260,7 +280,7 @@ export default function InfografisPage() {
                   {/* Page count */}
                   <div className="w-full text-center border-t border-slate-100 pt-1">
                     <span className="text-[8px] font-bold text-slate-400">
-                      {item.pages} {item.pages === 1 ? 'Hlm' : 'Hlm'}
+                      {item.pages} Hlm
                     </span>
                   </div>
                 </div>
@@ -283,6 +303,8 @@ export default function InfografisPage() {
                   </button>
                   <a
                     href={item.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
                     title="Unduh PDF"
                   >
@@ -318,6 +340,8 @@ export default function InfografisPage() {
 
                   <a
                     href={item.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
                     <FileDown className="h-3 w-3" />
@@ -349,7 +373,7 @@ export default function InfografisPage() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4.5 w-4.5 text-[#047D78]" />
                 <h3 className="text-sm font-bold text-slate-800">
-                  Generate Infografis AI Baru
+                  Generate Infografis AI (PDF 3 Halaman)
                 </h3>
               </div>
               <button
@@ -366,23 +390,29 @@ export default function InfografisPage() {
                   <CheckCircle className="h-6 w-6" />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-800">Infografis Berhasil Dibuat</h4>
-                  <p className="text-xs text-slate-500">Dokumen PDF dan poster baru telah ditambahkan.</p>
+                  <h4 className="text-sm font-bold text-slate-800">Infografis PDF 3 Halaman Berhasil Dibuat</h4>
+                  <p className="text-xs text-slate-500">Berkas PDF resmi telah tersimpan di database dan folder aset.</p>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleGenerate} className="p-5 space-y-4">
                 
+                {genError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
+                    {genError}
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700">
-                    Judul Dokumen / Poster
+                    Judul Laporan Infografis
                   </label>
                   <input
                     type="text"
                     required
                     value={genTitle}
                     onChange={(e) => setGenTitle(e.target.value)}
-                    placeholder="Contoh: Poster Kesiapsiagaan Longsor Sukabumi"
+                    placeholder="Contoh: Laporan Analisis Respon Cepat Bencana EOC"
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none"
                   />
                 </div>
@@ -405,13 +435,13 @@ export default function InfografisPage() {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700">
-                    Instruksi Khusus untuk AI (Opsional)
+                    Instruksi Khusus ke Gemini AI (Opsional)
                   </label>
                   <textarea
                     rows={3}
                     value={genPrompt}
                     onChange={(e) => setGenPrompt(e.target.value)}
-                    placeholder="Jelaskan data spesifik yang ingin dianalisis oleh AI menjadi infografis..."
+                    placeholder="Masukkan instruksi khusus atau area fokus yang ingin disorot oleh AI..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none resize-none"
                   />
                 </div>
@@ -424,12 +454,12 @@ export default function InfografisPage() {
                   {generating ? (
                     <>
                       <Wand2 className="h-4 w-4 animate-spin" />
-                      <span>Sedang Merancang Infografis...</span>
+                      <span>Sedang Merancang & Menyusun PDF 3 Halaman...</span>
                     </>
                   ) : (
                     <>
                       <Wand2 className="h-4 w-4" />
-                      <span>Generate via Gemini AI</span>
+                      <span>Generate Infografis PDF (Gemini AI + mPDF)</span>
                     </>
                   )}
                 </button>
@@ -501,10 +531,12 @@ export default function InfografisPage() {
 
                 <a
                   href={activePreview.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
-                  <span>Download PDF</span>
+                  <span>Download PDF (3 Halaman)</span>
                 </a>
               </div>
             </div>

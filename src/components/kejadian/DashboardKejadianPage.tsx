@@ -206,8 +206,8 @@ const earlyWarnings = [
 const presenterVideos = [
   {
     id: 1,
-    title: 'Video AI Presenter - Periode Mei 2026',
-    url: 'https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75',
+    title: 'Video AI Presenter - Periode Juli 2026',
+    url: 'https://app.heygen.com/embeds/07445718ccb54423a319f7df5d830a0f',
   },
   {
     id: 2,
@@ -216,7 +216,7 @@ const presenterVideos = [
   },
   {
     id: 3,
-    title: 'Video AI Presenter - Periode Juli 2026',
+    title: 'Video AI Presenter - Periode Mei 2026',
     url: 'https://app.heygen.com/embeds/cbfda07fa0ad4e338dbe19d7eff5be75',
   },
 ]
