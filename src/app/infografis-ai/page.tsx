@@ -25,8 +25,6 @@ type InfographicItem = {
   date: string
   fileSize: string
   pages: number
-  accentColor: string
-  iconBg: string
   pdfUrl: string
 }
 
@@ -39,68 +37,56 @@ const mockInfographics: InfographicItem[] = [
     date: '22 Juli 2026',
     fileSize: '2.4 MB',
     pages: 1,
-    accentColor: 'text-rose-700 bg-rose-50 border-rose-200',
-    iconBg: 'bg-rose-600',
     pdfUrl: '#',
   },
   {
     id: 2,
-    title: 'Panduan Respon Cepat Kesehatan Darurat Pasca-Banjir DKI',
+    title: 'Panduan Respon Cepat Kesehatan Pasca-Banjir DKI',
     category: 'Panduan Klinis',
     description: 'Buku panduan taktis sanitasi darurat pengungsian, pencegahan KLB penyakit menular, dan air bersih.',
     date: '21 Juli 2026',
     fileSize: '4.1 MB',
     pages: 12,
-    accentColor: 'text-teal-700 bg-teal-50 border-teal-200',
-    iconBg: 'bg-[#047D78]',
     pdfUrl: '#',
   },
   {
     id: 3,
     title: 'Analisis Tren & Evaluasi Fatalitas Bencana Kuartal II',
     category: 'Laporan EOC',
-    description: 'Infografis komparatif statistika kejadian bencana nasional, tingkat fatalitas kasus (CFR), dan efisiensi waktu respon.',
+    description: 'Infografis komparatif statistika kejadian bencana nasional, tingkat fatalitas kasus (CFR), dan efisiensi respon.',
     date: '18 Juli 2026',
     fileSize: '6.8 MB',
     pages: 8,
-    accentColor: 'text-blue-700 bg-blue-50 border-blue-200',
-    iconBg: 'bg-blue-600',
     pdfUrl: '#',
   },
   {
     id: 4,
-    title: 'Poster Higienitas & PHBS di Kamp Pengungsian Terpusat',
+    title: 'Poster Higienitas & PHBS di Kamp Pengungsian',
     category: 'Promosi Kesehatan',
-    description: 'Poster edukasi perilaku hidup bersih sehat di posko pengungsian mandiri guna menekan risiko penularan diare & ISPA.',
+    description: 'Poster edukasi perilaku hidup bersih sehat di posko pengungsian mandiri guna menekan risiko penularan diare.',
     date: '10 Juli 2026',
     fileSize: '1.8 MB',
     pages: 1,
-    accentColor: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-    iconBg: 'bg-emerald-600',
     pdfUrl: '#',
   },
   {
     id: 5,
-    title: 'Infografis Kesiapan Kapasitas Faskes Rujukan Jawa Barat',
+    title: 'Infografis Kesiapan Faskes Rujukan Jawa Barat',
     category: 'Laporan EOC',
-    description: 'Pemetaan kapasitas pelayanan IGD darurat, ketersediaan obat esensial, dan BOR faskes rujukan di zona rawan gempa.',
+    description: 'Pemetaan kapasitas pelayanan IGD darurat, ketersediaan obat esensial, dan BOR faskes rujukan.',
     date: '05 Juli 2026',
     fileSize: '3.5 MB',
     pages: 3,
-    accentColor: 'text-purple-700 bg-purple-50 border-purple-200',
-    iconBg: 'bg-purple-600',
     pdfUrl: '#',
   },
   {
     id: 6,
-    title: 'Poster Mitigasi Kesehatan Erupsi Gunung Berapi Aktif',
+    title: 'Poster Mitigasi Kesehatan Erupsi Gunung Berapi',
     category: 'Mitigasi Bencana',
-    description: 'Panduan visual perlindungan pernapasan abu vulkanik, titik kumpul medis darurat, dan zonasi risiko wilayah merah.',
+    description: 'Panduan visual perlindungan pernapasan abu vulkanik, titik kumpul medis darurat, dan zonasi merah.',
     date: '28 Juni 2026',
     fileSize: '2.1 MB',
     pages: 1,
-    accentColor: 'text-amber-700 bg-amber-50 border-amber-200',
-    iconBg: 'bg-amber-600',
     pdfUrl: '#',
   },
 ]
@@ -154,8 +140,6 @@ export default function InfografisPage() {
         date: 'Hari ini',
         fileSize: `${(Math.random() * 3 + 1.5).toFixed(1)} MB`,
         pages: Math.random() > 0.5 ? 1 : Math.floor(Math.random() * 4) + 2,
-        accentColor: 'text-teal-700 bg-teal-50 border-teal-200',
-        iconBg: 'bg-[#047D78]',
         pdfUrl: '#',
       }
 
@@ -241,106 +225,103 @@ export default function InfografisPage() {
         </div>
       </div>
 
-      {/* Clean PDF Document Cards Grid (4:5 ratio, No stock photos) */}
+      {/* Compact Grid Layout (6 columns on XL, 5 on LG, 4 on MD, 3 on SM, 2 on Mobile) */}
       {filteredItems.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="flex flex-col bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 group"
+              className="flex flex-col bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
             >
               
-              {/* PDF Document Vector Cover (4:5 Aspect Ratio) */}
-              <div className="relative aspect-[4/5] w-full bg-slate-50 border-b border-slate-150 flex flex-col items-center justify-center p-6 text-center select-none group">
+              {/* PDF Vector Cover (4:5 Aspect Ratio, Compact) */}
+              <div className="relative aspect-[4/5] w-full bg-slate-50 border-b border-slate-150 flex flex-col items-center justify-center p-3 text-center select-none group">
                 
-                {/* PDF Paper Sheet Illustration */}
-                <div className="relative w-full max-w-[130px] aspect-[3/4] bg-white rounded-xl border border-slate-200/90 shadow-sm p-4 flex flex-col items-center justify-between group-hover:shadow-md group-hover:scale-105 transition-all duration-200">
+                {/* Paper Illustration with RED PDF Icon */}
+                <div className="relative w-full max-w-[85px] aspect-[3/4] bg-white rounded-lg border border-slate-200/90 shadow-2xs p-2 flex flex-col items-center justify-between group-hover:shadow-sm group-hover:scale-105 transition-all duration-200">
                   
-                  {/* PDF Top Bar */}
-                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-2">
-                    <div className={`p-1.5 rounded-lg ${item.iconBg} text-white shadow-sm`}>
-                      <FileText className="h-4 w-4" />
+                  {/* Top Bar with RED PDF Badge */}
+                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1">
+                    <div className="p-1 rounded-md bg-red-600 text-white shadow-2xs">
+                      <FileText className="h-3.5 w-3.5" />
                     </div>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <span className="text-[8px] font-black text-red-600 uppercase tracking-wider">
                       PDF
                     </span>
                   </div>
 
-                  {/* Simulated PDF Document Text Lines */}
-                  <div className="w-full space-y-1.5 py-3">
-                    <div className="h-1.5 w-full bg-slate-200 rounded-full" />
-                    <div className="h-1.5 w-4/5 bg-slate-200 rounded-full" />
-                    <div className="h-1.5 w-3/5 bg-slate-200 rounded-full text-slate-300" />
+                  {/* Simulated Document Lines */}
+                  <div className="w-full space-y-1 py-1.5">
+                    <div className="h-1 w-full bg-slate-200 rounded-full" />
+                    <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
+                    <div className="h-1 w-3/5 bg-slate-200 rounded-full text-slate-300" />
                   </div>
 
-                  {/* Bottom Pages Info */}
-                  <div className="w-full text-center border-t border-slate-100 pt-1.5">
-                    <span className="text-[9px] font-bold text-slate-400">
-                      {item.pages} {item.pages === 1 ? 'Halaman' : 'Hlm'}
+                  {/* Page count */}
+                  <div className="w-full text-center border-t border-slate-100 pt-1">
+                    <span className="text-[8px] font-bold text-slate-400">
+                      {item.pages} {item.pages === 1 ? 'Hlm' : 'Hlm'}
                     </span>
                   </div>
                 </div>
 
-                {/* Subtle Top Category Badge */}
-                <div className="absolute top-3 left-3 z-10">
-                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border shadow-xs ${item.accentColor}`}>
+                {/* Top Category Badge */}
+                <div className="absolute top-2 left-2 z-10">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border border-slate-200 bg-white/90 text-slate-700 shadow-2xs">
                     {item.category}
                   </span>
                 </div>
 
                 {/* Hover Quick Action Screen */}
-                <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity duration-200 z-20">
+                <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity duration-200 z-20">
                   <button
                     onClick={() => setActivePreview(item)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-md hover:scale-105 transition"
-                    title="Pratinjau Dokumen"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-800 shadow-md hover:scale-105 transition"
+                    title="Pratinjau"
                   >
-                    <Eye className="h-4.5 w-4.5" />
+                    <Eye className="h-3.5 w-3.5" />
                   </button>
                   <a
                     href={item.pdfUrl}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#047D78] text-white shadow-md hover:scale-105 transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
                     title="Unduh PDF"
                   >
-                    <Download className="h-4.5 w-4.5" />
+                    <Download className="h-3.5 w-3.5" />
                   </a>
                 </div>
               </div>
 
-              {/* Simple Card Details */}
-              <div className="p-4 flex flex-col flex-grow justify-between gap-3 bg-white">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+              {/* Compact Card Details */}
+              <div className="p-2.5 flex flex-col flex-grow justify-between gap-2 bg-white">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {item.date}
                     </span>
                     <span>{item.fileSize}</span>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-800 line-clamp-2 leading-snug">
+                  <h3 className="text-xs font-bold text-slate-800 line-clamp-2 leading-snug" title={item.title}>
                     {item.title}
                   </h3>
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                    {item.description}
-                  </p>
                 </div>
 
-                {/* Simple Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                {/* Action Buttons */}
+                <div className="flex gap-1.5 pt-1.5 border-t border-slate-100">
                   <button
                     onClick={() => setActivePreview(item)}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition"
+                    className="flex-1 flex items-center justify-center gap-1 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-md transition"
                   >
-                    <Eye className="h-3.5 w-3.5" />
-                    <span>Pratinjau</span>
+                    <Eye className="h-3 w-3" />
+                    <span>Lihat</span>
                   </button>
 
                   <a
                     href={item.pdfUrl}
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-[#047D78] hover:bg-[#03605c] text-white text-xs font-semibold rounded-lg transition shadow-sm"
+                    className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
-                    <FileDown className="h-3.5 w-3.5" />
-                    <span>Unduh PDF</span>
+                    <FileDown className="h-3 w-3" />
+                    <span>PDF</span>
                   </a>
                 </div>
               </div>
@@ -482,19 +463,19 @@ export default function InfografisPage() {
 
             <div className="p-5 overflow-y-auto space-y-4">
               <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
-                <div className="w-[120px] aspect-[3/4] bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col items-center justify-between">
-                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-2">
-                    <div className={`p-1.5 rounded-lg ${activePreview.iconBg} text-white`}>
-                      <FileText className="h-4 w-4" />
+                <div className="w-[100px] aspect-[3/4] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-between">
+                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1.5">
+                    <div className="p-1 rounded-md bg-red-600 text-white">
+                      <FileText className="h-3.5 w-3.5" />
                     </div>
-                    <span className="text-[9px] font-black text-slate-400">PDF</span>
+                    <span className="text-[8px] font-black text-red-600">PDF</span>
                   </div>
-                  <div className="w-full space-y-1.5 py-3">
-                    <div className="h-1.5 w-full bg-slate-200 rounded-full" />
-                    <div className="h-1.5 w-4/5 bg-slate-200 rounded-full" />
-                    <div className="h-1.5 w-3/5 bg-slate-200 rounded-full" />
+                  <div className="w-full space-y-1 py-2">
+                    <div className="h-1 w-full bg-slate-200 rounded-full" />
+                    <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
+                    <div className="h-1 w-3/5 bg-slate-200 rounded-full" />
                   </div>
-                  <span className="text-[9px] font-bold text-slate-400">{activePreview.pages} Hlm</span>
+                  <span className="text-[8px] font-bold text-slate-400">{activePreview.pages} Hlm</span>
                 </div>
               </div>
 
@@ -520,7 +501,7 @@ export default function InfografisPage() {
 
                 <a
                   href={activePreview.pdfUrl}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#047D78] hover:bg-[#03605c] text-white text-xs font-semibold rounded-xl transition shadow-sm"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
                   <span>Download PDF</span>
