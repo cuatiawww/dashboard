@@ -16,6 +16,7 @@ import {
   CheckCircle,
   HelpCircle,
   Loader2,
+  ExternalLink,
 } from 'lucide-react'
 
 type InfographicItem = {
