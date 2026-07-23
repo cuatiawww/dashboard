@@ -288,40 +288,17 @@ export default function InfografisPage() {
               className="flex flex-col bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
             >
 
-              {/* PDF Vector Cover (4:5 Aspect Ratio, Compact) */}
-              <div className="relative aspect-[4/5] w-full bg-slate-50 border-b border-slate-150 flex flex-col items-center justify-center p-3 text-center select-none group">
-
-                {/* Paper Illustration with RED PDF Icon */}
-                <div className="relative w-full max-w-[85px] aspect-[3/4] bg-white rounded-lg border border-slate-200/90 shadow-2xs p-2 flex flex-col items-center justify-between group-hover:shadow-sm group-hover:scale-105 transition-all duration-200">
-
-                  {/* Top Bar with RED PDF Badge */}
-                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1">
-                    <div className="p-1 rounded-md bg-red-600 text-white shadow-2xs">
-                      <FileText className="h-3.5 w-3.5" />
-                    </div>
-                    <span className="text-[8px] font-black text-red-600 uppercase tracking-wider">
-                      PDF
-                    </span>
-                  </div>
-
-                  {/* Simulated Document Lines */}
-                  <div className="w-full space-y-1 py-1.5">
-                    <div className="h-1 w-full bg-slate-200 rounded-full" />
-                    <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
-                    <div className="h-1 w-3/5 bg-slate-200 rounded-full text-slate-300" />
-                  </div>
-
-                  {/* Page count */}
-                  <div className="w-full text-center border-t border-slate-100 pt-1">
-                    <span className="text-[8px] font-bold text-slate-400">
-                      {item.pages} Hlm
-                    </span>
-                  </div>
-                </div>
+              {/* Real Image Cover (4:5 Aspect Ratio, Premium Preview) */}
+              <div className="relative aspect-[4/5] w-full bg-slate-100 border-b border-slate-200 overflow-hidden select-none group">
+                <img
+                  src="/Lap_Juni.jpeg"
+                  alt={item.title}
+                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
+                />
 
                 {/* Top Category Badge */}
                 <div className="absolute top-2 left-2 z-10">
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold border border-slate-200 bg-white/90 text-slate-700 shadow-2xs">
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-extrabold border border-slate-200/80 bg-white/95 text-slate-800 shadow-sm backdrop-blur-xs">
                     {item.category}
                   </span>
                 </div>
