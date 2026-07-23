@@ -106,6 +106,14 @@ export default function InfografisPage() {
     }
   }
 
+  // Helper to open PDF/HTML documents safely without page reload
+  const handleOpenDoc = (e: React.MouseEvent, url: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const targetUrl = (!url || url === '#' || url.trim() === '') ? '/laporan_eoc_kemenkes.html' : url
+    window.open(targetUrl, '_blank')
+  }
+
   useEffect(() => {
     loadInfographics()
   }, [])
@@ -299,21 +307,24 @@ export default function InfografisPage() {
                 {/* Hover Quick Action Screen */}
                 <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity duration-200 z-20">
                   <button
-                    onClick={() => setActivePreview(item)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActivePreview(item)
+                    }}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-800 shadow-md hover:scale-105 transition"
                     title="Pratinjau"
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </button>
-                  <a
-                    href={item.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenDoc(e, item.pdfUrl)}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
-                    title="Unduh PDF"
+                    title="Buka Dokumen PDF/HTML"
                   >
                     <Download className="h-3.5 w-3.5" />
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -335,22 +346,25 @@ export default function InfografisPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-1.5 pt-1.5 border-t border-slate-100">
                   <button
-                    onClick={() => setActivePreview(item)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActivePreview(item)
+                    }}
                     className="flex-1 flex items-center justify-center gap-1 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-md transition"
                   >
                     <Eye className="h-3 w-3" />
                     <span>Lihat</span>
                   </button>
 
-                  <a
-                    href={item.pdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenDoc(e, item.pdfUrl)}
                     className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
                     <FileDown className="h-3 w-3" />
                     <span>PDF</span>
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -579,21 +593,21 @@ export default function InfografisPage() {
 
               <div className="flex gap-2 pt-2">
                 <button
+                  type="button"
                   onClick={() => setActivePreview(null)}
                   className="flex-1 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition"
                 >
                   Tutup
                 </button>
 
-                <a
-                  href={activePreview.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={(e) => handleOpenDoc(e, activePreview.pdfUrl)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
                   <span>Buka / Unduh Dokumen</span>
-                </a>
+                </button>
               </div>
             </div>
           </div>
