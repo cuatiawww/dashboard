@@ -1675,7 +1675,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
       {/* Smart Search, Info Filter & Reset Button Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-[10fr_8fr_2fr] gap-4 w-full items-end z-20 relative">
+      <section className="grid grid-cols-1 md:grid-cols-[10fr_8fr_2fr] gap-4 w-full items-start z-20 relative">
 
         {/* Column 1: Smart Search Bar */}
         <div className="relative w-full z-20">
