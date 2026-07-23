@@ -27,8 +27,43 @@ type NotificationItemCallback = (item: NotificationItem) => void
 const notificationListeners = new Set<NotificationCallback>()
 const notificationItemListeners = new Set<NotificationItemCallback>()
 
-// Global items storage (outside of React)
+// Global items storage with LocalStorage persistence
+const NOTIFICATION_HISTORY_KEY = 'sipkk_notification_history_v2'
+
 let globalNotificationItems: NotificationItem[] = []
+let isItemsInitialized = false
+
+const readStoredNotificationItems = (): NotificationItem[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATION_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((item: any) => ({
+      ...item,
+      timestamp: new Date(item.timestamp)
+    }))
+  } catch (e) {
+    return []
+  }
+}
+
+const saveStoredNotificationItems = (items: NotificationItem[]) => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(NOTIFICATION_HISTORY_KEY, JSON.stringify(items.slice(0, 100)))
+  } catch (e) {
+    // Ignore storage quota errors
+  }
+}
+
+const initGlobalNotificationItems = () => {
+  if (!isItemsInitialized && typeof window !== 'undefined') {
+    globalNotificationItems = readStoredNotificationItems()
+    isItemsInitialized = true
+  }
+}
 
 export function useNotification() {
   const notificationIdRef = useRef(0)
@@ -72,6 +107,8 @@ export function useNotificationItems() {
 
   const fetchNotifications = useCallback(async () => {
     if (typeof window === 'undefined') return
+    initGlobalNotificationItems()
+    
     const token = localStorage.getItem('auth_token')
     if (!token) return
 
@@ -89,7 +126,29 @@ export function useNotificationItems() {
           timestamp: new Date(n.timestamp)
         }))
 
-        globalNotificationItems = items
+        // Merge strategy: map existing items, update read status, append new ones, keep local items
+        const map = new Map<string, NotificationItem>()
+        globalNotificationItems.forEach(item => map.set(item.id, item))
+        
+        items.forEach(item => {
+          const existing = map.get(item.id)
+          if (existing) {
+            map.set(item.id, {
+              ...existing,
+              ...item,
+              read: typeof item.read === 'boolean' ? item.read : existing.read
+            })
+          } else {
+            map.set(item.id, item)
+          }
+        })
+
+        const merged = Array.from(map.values())
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 100)
+
+        globalNotificationItems = merged
+        saveStoredNotificationItems(merged)
 
         // Broadcast to listeners
         notificationItemListeners.forEach(listener => {
@@ -133,26 +192,47 @@ export function useNotificationItems() {
     type: 'success' | 'error' | 'info' | 'warning' | 'alert' = 'info',
     data?: any
   ): string => {
+    initGlobalNotificationItems()
     const id = data?.kode_trans || `notif-item-${++notificationIdRef.current}`
-    const item: NotificationItem = {
-      id,
-      title,
-      message,
-      type,
-      timestamp: new Date(),
-      read: false,
-      data,
+    
+    const existingIndex = globalNotificationItems.findIndex(i => i.id === id)
+    let updated: NotificationItem[] = []
+
+    if (existingIndex >= 0) {
+      const existing = globalNotificationItems[existingIndex]
+      const updatedItem: NotificationItem = {
+        ...existing,
+        title,
+        message,
+        type,
+        timestamp: new Date(),
+        read: false,
+        data: data || existing.data,
+      }
+      updated = [updatedItem, ...globalNotificationItems.filter(i => i.id !== id)].slice(0, 100)
+    } else {
+      const item: NotificationItem = {
+        id,
+        title,
+        message,
+        type,
+        timestamp: new Date(),
+        read: false,
+        data,
+      }
+      updated = [item, ...globalNotificationItems].slice(0, 100)
     }
 
-    console.log('[addNotificationItem] Adding notification:', item)
-
-    // Add to beginning of array (newest first)
-    globalNotificationItems = [item, ...globalNotificationItems].slice(0, 100)
-    console.log('[addNotificationItem] Total notifications now:', globalNotificationItems.length)
+    console.log('[addNotificationItem] Adding/updating notification item:', id)
+    globalNotificationItems = updated
+    saveStoredNotificationItems(updated)
 
     // Broadcast to all listeners
-    notificationItemListeners.forEach(listener => listener(item))
-    console.log('[addNotificationItem] Broadcast to listeners:', notificationItemListeners.size)
+    notificationItemListeners.forEach(listener => {
+      try {
+        listener(null as any)
+      } catch (e) {}
+    })
 
     return id
   }, [])
@@ -165,14 +245,18 @@ export function useNotificationItems() {
   }, [])
 
   const getItems = useCallback(() => {
+    initGlobalNotificationItems()
     return [...globalNotificationItems]
   }, [])
 
   const markAsRead = useCallback(async (id: string) => {
+    initGlobalNotificationItems()
     // Update local state first
     globalNotificationItems = globalNotificationItems.map(item =>
       item.id === id ? { ...item, read: true } : item
     )
+    saveStoredNotificationItems(globalNotificationItems)
+
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
@@ -199,7 +283,10 @@ export function useNotificationItems() {
   }, [])
 
   const markAllAsRead = useCallback(async () => {
+    initGlobalNotificationItems()
     globalNotificationItems = globalNotificationItems.map(item => ({ ...item, read: true }))
+    saveStoredNotificationItems(globalNotificationItems)
+
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
@@ -225,6 +312,8 @@ export function useNotificationItems() {
 
   const clearAll = useCallback(async () => {
     globalNotificationItems = []
+    saveStoredNotificationItems([])
+
     notificationItemListeners.forEach(listener => {
       try {
         listener(null as any)
