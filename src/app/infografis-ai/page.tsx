@@ -88,28 +88,24 @@ export default function InfografisPage() {
   const [genSuccess, setGenSuccess] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
-  // Fetch real infographics list from DB
-  const loadInfographics = async () => {
-    try {
-      setIsLoadingData(true)
-      const res = await fetch('/api/infografis-list')
-      const json = await res.json()
-      if (json?.success && Array.isArray(json?.data) && json.data.length > 0) {
-        const mapped = json.data.map((item: InfographicItem) => ({
-          ...item,
-          pdfUrl: '/laporan_eoc_kemenkes.pdf',
-        }))
-        setInfographics(mapped)
-      }
-    } catch (e) {
-      console.error('Failed loading infographics from DB:', e)
-    } finally {
-      setIsLoadingData(false)
-    }
+  // Static mode: Disable API loading and use pure static data
+  const handleDownloadPdf = (e: React.MouseEvent, title?: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const fileName = title
+      ? `${title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`
+      : 'Laporan_Infografis_EOC_Kemenkes.pdf'
+
+    const a = document.createElement('a')
+    a.href = '/laporan_eoc_kemenkes.pdf'
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   useEffect(() => {
-    loadInfographics()
+    setIsLoadingData(false)
   }, [])
 
   // Categories list
@@ -302,22 +298,24 @@ export default function InfografisPage() {
                 {/* Hover Quick Action Screen */}
                 <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity duration-200 z-20">
                   <button
-                    onClick={() => setActivePreview(item)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActivePreview(item)
+                    }}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-800 shadow-md hover:scale-105 transition"
                     title="Pratinjau"
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </button>
-                  <a
-                    href={item.pdfUrl}
-                    download={`${item.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={(e) => handleDownloadPdf(e, item.title)}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
                     title="Unduh PDF"
                   >
                     <Download className="h-3.5 w-3.5" />
-                  </a>
+                  </button>
                 </div>
               </div>
 
@@ -339,23 +337,25 @@ export default function InfografisPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-1.5 pt-1.5 border-t border-slate-100">
                   <button
-                    onClick={() => setActivePreview(item)}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setActivePreview(item)
+                    }}
                     className="flex-1 flex items-center justify-center gap-1 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-md transition"
                   >
                     <Eye className="h-3 w-3" />
                     <span>Lihat</span>
                   </button>
 
-                  <a
-                    href={item.pdfUrl}
-                    download={`${item.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={(e) => handleDownloadPdf(e, item.title)}
                     className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
                     <FileDown className="h-3 w-3" />
                     <span>PDF</span>
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -529,16 +529,14 @@ export default function InfografisPage() {
                   Tutup
                 </button>
 
-                <a
-                  href="/laporan_eoc_kemenkes.pdf"
-                  download="Laporan_Infografis_EOC_Kemenkes.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={(e) => handleDownloadPdf(e, activePreview?.title)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
                   <span>Download PDF</span>
-                </a>
+                </button>
               </div>
             </div>
           </div>
