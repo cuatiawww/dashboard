@@ -311,7 +311,7 @@ export default function InfografisPage() {
             </p>
           </div>
         </div>
-
+        {/* 
         <button
           onClick={() => {
             setGenError(null)
@@ -322,7 +322,7 @@ export default function InfografisPage() {
         >
           <Sparkles className="h-4 w-4" />
           <span>Generate Infografis AI</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Clean Filter and Search Bar */}
@@ -348,8 +348,8 @@ export default function InfografisPage() {
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition shrink-0 ${selectedCategory === cat
-                  ? 'bg-[#047D78] text-white border-[#047D78] shadow-sm'
-                  : 'bg-white hover:bg-slate-50 text-slate-650 border-slate-200'
+                ? 'bg-[#047D78] text-white border-[#047D78] shadow-sm'
+                : 'bg-white hover:bg-slate-50 text-slate-650 border-slate-200'
                 }`}
             >
               {cat}
