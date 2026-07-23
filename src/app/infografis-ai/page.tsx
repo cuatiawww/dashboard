@@ -28,6 +28,7 @@ type InfographicItem = {
   fileSize: string
   pages: number
   pdfUrl: string
+  imageCover?: string
 }
 
 const INFOGRAPHIC_CATEGORIES = [
@@ -51,6 +52,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '3.5 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/jun.png',
   },
   {
     id: 2,
@@ -61,6 +63,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '3.2 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/mei.png',
   },
   {
     id: 3,
@@ -71,6 +74,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '2.9 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/apr.png',
   },
   {
     id: 4,
@@ -81,6 +85,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '3.1 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/mar.png',
   },
   {
     id: 5,
@@ -91,6 +96,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '2.8 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/feb.png',
   },
   {
     id: 6,
@@ -101,6 +107,7 @@ const fallbackInfographics: InfographicItem[] = [
     fileSize: '3.4 MB',
     pages: 3,
     pdfUrl: '/laporan_eoc_kemenkes.pdf',
+    imageCover: '/jan.png',
   },
 ]
 
@@ -291,7 +298,7 @@ export default function InfografisPage() {
               {/* Real Image Cover (4:5 Aspect Ratio, Premium Preview) */}
               <div className="relative aspect-[4/5] w-full bg-slate-100 border-b border-slate-200 overflow-hidden select-none group">
                 <img
-                  src="/Lap_Juni.jpeg"
+                  src={item.imageCover || '/jun.png'}
                   alt={item.title}
                   className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
                 />
