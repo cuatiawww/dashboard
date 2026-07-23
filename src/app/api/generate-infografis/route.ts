@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
       if (jsonBody.title) params.append('title', jsonBody.title)
       if (jsonBody.category) params.append('category', jsonBody.category)
       if (jsonBody.prompt) params.append('prompt', jsonBody.prompt)
+      if (jsonBody.month) params.append('month', String(jsonBody.month))
+      if (jsonBody.year) params.append('year', String(jsonBody.year))
 
       res = await fetch(targetUrl, {
         method: 'POST',

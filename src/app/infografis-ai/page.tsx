@@ -38,7 +38,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '22 Juli 2026',
     fileSize: '2.4 MB',
     pages: 3,
-    pdfUrl: '#',
+    pdfUrl: '/laporan_eoc_kemenkes.html',
   },
   {
     id: 2,
@@ -48,7 +48,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '21 Juli 2026',
     fileSize: '4.1 MB',
     pages: 3,
-    pdfUrl: '#',
+    pdfUrl: '/laporan_eoc_kemenkes.html',
   },
   {
     id: 3,
@@ -58,7 +58,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '18 Juli 2026',
     fileSize: '6.8 MB',
     pages: 3,
-    pdfUrl: '#',
+    pdfUrl: '/laporan_eoc_kemenkes.html',
   },
   {
     id: 4,
@@ -68,7 +68,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '10 Juli 2026',
     fileSize: '1.8 MB',
     pages: 3,
-    pdfUrl: '#',
+    pdfUrl: '/laporan_eoc_kemenkes.html',
   },
 ]
 
@@ -84,6 +84,8 @@ export default function InfografisPage() {
   const [genTitle, setGenTitle] = useState('')
   const [genCategory, setGenCategory] = useState('Mitigasi Bencana')
   const [genPrompt, setGenPrompt] = useState('')
+  const [genMonth, setGenMonth] = useState<number>(7) // Default Juli
+  const [genYear, setGenYear] = useState<number>(2026) // Default 2026
   const [generating, setGenerating] = useState(false)
   const [genSuccess, setGenSuccess] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
@@ -144,6 +146,8 @@ export default function InfografisPage() {
           title: genTitle,
           category: genCategory,
           prompt: genPrompt,
+          month: genMonth,
+          year: genYear,
         }),
       })
 
@@ -433,6 +437,48 @@ export default function InfografisPage() {
                   </select>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Periode Bulan Data
+                    </label>
+                    <select
+                      value={genMonth}
+                      onChange={(e) => setGenMonth(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
+                    >
+                      <option value={1}>Januari</option>
+                      <option value={2}>Februari</option>
+                      <option value={3}>Maret</option>
+                      <option value={4}>April</option>
+                      <option value={5}>Mei</option>
+                      <option value={6}>Juni</option>
+                      <option value={7}>Juli</option>
+                      <option value={8}>Agustus</option>
+                      <option value={9}>September</option>
+                      <option value={10}>Oktober</option>
+                      <option value={11}>November</option>
+                      <option value={12}>Desember</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Periode Tahun Data
+                    </label>
+                    <select
+                      value={genYear}
+                      onChange={(e) => setGenYear(Number(e.target.value))}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
+                    >
+                      <option value={2026}>2026</option>
+                      <option value={2025}>2025</option>
+                      <option value={2024}>2024</option>
+                      <option value={2023}>2023</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-slate-700">
                     Instruksi Khusus ke Gemini AI (Opsional)
@@ -492,21 +538,31 @@ export default function InfografisPage() {
             </div>
 
             <div className="p-5 overflow-y-auto space-y-4">
-              <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center">
-                <div className="w-[100px] aspect-[3/4] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-between">
-                  <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1.5">
-                    <div className="p-1 rounded-md bg-red-600 text-white">
-                      <FileText className="h-3.5 w-3.5" />
+              <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative">
+                {activePreview.pdfUrl.endsWith('.html') || activePreview.pdfUrl.includes('html') ? (
+                  <iframe
+                    src={activePreview.pdfUrl}
+                    className="w-full h-full border-0 rounded-xl"
+                    title="Pratinjau Template Infografis EOC"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
+                    <div className="w-[100px] aspect-[3/4] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-between">
+                      <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1.5">
+                        <div className="p-1 rounded-md bg-red-600 text-white">
+                          <FileText className="h-3.5 w-3.5" />
+                        </div>
+                        <span className="text-[8px] font-black text-red-600">PDF</span>
+                      </div>
+                      <div className="w-full space-y-1 py-2">
+                        <div className="h-1 w-full bg-slate-200 rounded-full" />
+                        <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
+                        <div className="h-1 w-3/5 bg-slate-200 rounded-full" />
+                      </div>
+                      <span className="text-[8px] font-bold text-slate-400">{activePreview.pages} Hlm</span>
                     </div>
-                    <span className="text-[8px] font-black text-red-600">PDF</span>
                   </div>
-                  <div className="w-full space-y-1 py-2">
-                    <div className="h-1 w-full bg-slate-200 rounded-full" />
-                    <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
-                    <div className="h-1 w-3/5 bg-slate-200 rounded-full" />
-                  </div>
-                  <span className="text-[8px] font-bold text-slate-400">{activePreview.pages} Hlm</span>
-                </div>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -536,7 +592,7 @@ export default function InfografisPage() {
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
-                  <span>Download PDF</span>
+                  <span>Buka / Unduh Dokumen</span>
                 </a>
               </div>
             </div>
