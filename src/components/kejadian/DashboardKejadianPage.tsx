@@ -304,6 +304,16 @@ const getYouTubeEmbedUrl = (url: string) => {
   return url
 }
 
+export type SelectedRegionItem = {
+  id: string
+  type: 'provinsi' | 'kabupaten' | 'kecamatan' | 'desa'
+  label: string
+  province_name?: string
+  kabupaten_name?: string
+  kecamatan_name?: string
+  desa_name?: string
+}
+
 export default function DashboardKejadianPage() {
   const { token, isInitialized, user } = useAuthStore()
 
@@ -332,6 +342,17 @@ export default function DashboardKejadianPage() {
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
   const [markerMonths, setMarkerMonths] = useState(1)
 
+  // State untuk pencarian & filter multi-wilayah gabungan
+  const [selectedRegions, setSelectedRegions] = useState<SelectedRegionItem[]>([])
+
+  const handleRemoveSelectedRegion = useCallback((id: string) => {
+    setSelectedRegions((prev) => prev.filter((item) => item.id !== id))
+  }, [])
+
+  const handleClearAllSelectedRegions = useCallback(() => {
+    setSelectedRegions([])
+  }, [])
+
   // Primitive string states to avoid reference comparison bugs causing infinite loops
   const [cakupan, setCakupan] = useState('nasional')
   const [province, setProvince] = useState('')
@@ -352,31 +373,154 @@ export default function DashboardKejadianPage() {
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Record<string | number, boolean>>({})
 
-  const filteredDetailMarkers = useMemo(() => {
+  // Filter markers berdasarkan multi-wilayah terpilih (jika ada), atau fallback ke data backend
+  const effectiveMarkers = useMemo(() => {
     if (!data?.markers) return []
+    if (selectedRegions.length === 0) return data.markers
+
+    return data.markers.filter((m) => {
+      return selectedRegions.some((reg) => {
+        const mProv = (m.provinsi || '').toLowerCase()
+        const mKab = (m.kabupaten || '').toLowerCase()
+        const mKec = (m.kecamatan || '').toLowerCase()
+        const mDesa = (m.nama_desa || '').toLowerCase()
+
+        const rProv = (reg.province_name || '').toLowerCase()
+        const rKab = (reg.kabupaten_name || '').toLowerCase()
+        const rKec = (reg.kecamatan_name || '').toLowerCase()
+        const rDesa = (reg.desa_name || '').toLowerCase()
+        const rLabel = (reg.label || '').toLowerCase()
+
+        if (reg.type === 'provinsi') {
+          if (rProv && mProv.includes(rProv)) return true
+          if (rLabel && (mProv.includes(rLabel) || rLabel.includes(mProv))) return true
+        }
+        if (reg.type === 'kabupaten') {
+          if (rKab && mKab.includes(rKab)) return true
+          if (rLabel && mKab.includes(rLabel)) return true
+        }
+        if (reg.type === 'kecamatan') {
+          if (rKec && mKec.includes(rKec)) return true
+          if (rLabel && (mKec.includes(rLabel) || mKab.includes(rLabel))) return true
+        }
+        if (reg.type === 'desa') {
+          if (rDesa && mDesa.includes(rDesa)) return true
+          if (rLabel && (mDesa.includes(rLabel) || mKab.includes(rLabel))) return true
+        }
+
+        const cleanLabel = rLabel.replace(/^(provinsi|kabupaten|kab\.|kota|kecamatan|desa)\s+/i, '').trim()
+        if (cleanLabel.length > 2) {
+          if (mKab.includes(cleanLabel) || mProv.includes(cleanLabel) || mDesa.includes(cleanLabel) || mKec.includes(cleanLabel)) {
+            return true
+          }
+        }
+
+        return false
+      })
+    })
+  }, [data?.markers, selectedRegions])
+
+  const effectiveSummary = useMemo(() => {
+    if (selectedRegions.length === 0) return data?.summary
+
+    let total_bencana = effectiveMarkers.length
+    let total_krisis = 0
+    let total_meninggal = 0
+    let total_luka = 0
+    let total_hilang = 0
+    let total_pengungsi = 0
+    let total_terdampak = 0
+
+    effectiveMarkers.forEach((m) => {
+      if (m.is_krisis === 1) total_krisis++
+      const korban = m.total_korban || 0
+      total_terdampak += korban
+      const breakdown = getKorbanBreakdown(korban, m.jenis_bencana)
+      total_meninggal += breakdown.meninggal
+      total_luka += breakdown.luka
+      total_hilang += breakdown.hilang
+      total_pengungsi += breakdown.pengungsi
+    })
+
+    return {
+      total_bencana,
+      total_krisis,
+      total_meninggal,
+      total_luka,
+      total_hilang,
+      total_pengungsi,
+      total_terdampak,
+    }
+  }, [data?.summary, selectedRegions, effectiveMarkers])
+
+  const displayCakupan = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      return `GABUNGAN (${selectedRegions.length} WILAYAH)`
+    }
+    return cakupan.toUpperCase()
+  }, [selectedRegions, cakupan])
+
+  const displayProvinces = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      const provs = Array.from(
+        new Set(
+          selectedRegions
+            .map((r) => r.province_name || (r.type === 'provinsi' ? r.label : ''))
+            .filter((p) => p && p.trim() !== '')
+        )
+      )
+      if (provs.length > 0) {
+        return provs.join(' | ').toUpperCase()
+      }
+    }
+    return (province || 'Semua Provinsi').toUpperCase()
+  }, [selectedRegions, province])
+
+  const displayKabupaten = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      const kabs = Array.from(
+        new Set(
+          selectedRegions
+            .map((r) => {
+              if (r.kabupaten_name && r.kabupaten_name.trim() !== '') return r.kabupaten_name
+              if (r.type === 'kabupaten' || r.type === 'kecamatan' || r.type === 'desa') return r.label
+              return ''
+            })
+            .filter((k) => k && k.trim() !== '')
+        )
+      )
+      if (kabs.length > 0) {
+        return kabs.join(' | ').toUpperCase()
+      }
+    }
+    return (kabupaten || 'Semua Kab/Kota').toUpperCase()
+  }, [selectedRegions, kabupaten])
+
+  const filteredDetailMarkers = useMemo(() => {
+    if (!effectiveMarkers) return []
     if (activeDetailCard === 'Krisis Kesehatan') {
-      return data.markers.filter(m => m.is_krisis === 1)
+      return effectiveMarkers.filter(m => m.is_krisis === 1)
     }
     if (activeDetailCard?.startsWith('Korban') || activeDetailCard === 'Jumlah Pengungsi') {
-      return data.markers.filter(m => (m.total_korban || 0) > 0)
+      return effectiveMarkers.filter(m => (m.total_korban || 0) > 0)
     }
-    return data.markers
-  }, [data?.markers, activeDetailCard])
+    return effectiveMarkers
+  }, [effectiveMarkers, activeDetailCard])
 
   const mapMarkers = useMemo(() => {
-    if (!data?.markers) return []
-    if (markerMonths === 0) return data.markers
+    if (!effectiveMarkers) return []
+    if (markerMonths === 0) return effectiveMarkers
 
     const cutoff = new Date()
     cutoff.setMonth(cutoff.getMonth() - markerMonths)
 
-    return data.markers.filter((m) => {
+    return effectiveMarkers.filter((m) => {
       if (!m.tgl_kejadian) return false
       const cleanDateStr = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
       const eventDate = new Date(cleanDateStr)
       return eventDate >= cutoff
     })
-  }, [data?.markers, markerMonths])
+  }, [effectiveMarkers, markerMonths])
 
   const dateRangeText = useMemo(() => {
     const formatIndonesianDate = (date: Date) => {
@@ -723,15 +867,25 @@ export default function DashboardKejadianPage() {
     setSuggestions([])
     setShowSuggestions(false)
 
-    // Tangkap data dan filter wilayahnya kesitu
-    setProvince(sug.province_name)
-    if (sug.type === 'provinsi') {
-      setKabupaten('')
-      setCakupan('provinsi')
-    } else {
-      setKabupaten(sug.kabupaten_name)
-      setCakupan('kabupaten')
-    }
+    setSelectedRegions((prev) => {
+      const exists = prev.some(
+        (item) =>
+          (item.label || '').toLowerCase() === (sug.label || '').toLowerCase() &&
+          item.type === sug.type
+      )
+      if (exists) return prev
+
+      const newItem: SelectedRegionItem = {
+        id: `${sug.type || 'region'}-${sug.label || 'item'}-${Date.now()}`,
+        type: sug.type || 'kabupaten',
+        label: sug.label || sug.province_name || sug.kabupaten_name,
+        province_name: sug.province_name || '',
+        kabupaten_name: sug.kabupaten_name || '',
+        kecamatan_name: sug.kecamatan_name || '',
+        desa_name: sug.desa_name || '',
+      }
+      return [...prev, newItem]
+    })
   }, [])
 
   // Agregasi tren bulanan dari markers API dan data krisis
@@ -753,8 +907,8 @@ export default function DashboardKejadianPage() {
 
     let targetYear = tahun || '2026'
 
-    if (data?.markers && data.markers.length > 0) {
-      data.markers.forEach((m) => {
+    if (effectiveMarkers && effectiveMarkers.length > 0) {
+      effectiveMarkers.forEach((m) => {
         if (!m.tgl_kejadian) return
         const clean = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
         let year = ''
@@ -783,7 +937,7 @@ export default function DashboardKejadianPage() {
     }
 
     return { trendData: months, targetYear }
-  }, [data, tahun])
+  }, [effectiveMarkers, tahun])
 
   const latestMonthIdx = useMemo(() => {
     let latestIdx = 5 // default ke Juni (indeks 5) jika tidak ada data
@@ -873,20 +1027,38 @@ export default function DashboardKejadianPage() {
   const isDbEmpty = !data?.summary || data.summary.total_bencana === 0
 
   const formattedJenisBencana = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      const counts: Record<string, number> = {}
+      effectiveMarkers.forEach((m) => {
+        const jenis = m.jenis_bencana || 'Lainnya'
+        counts[jenis] = (counts[jenis] || 0) + 1
+      })
+      const items = Object.entries(counts).map(([nama, jumlah]) => ({ nama, jumlah }))
+      return getTopItemsAndOthers(items)
+    }
     return getTopItemsAndOthers(data?.jenis_bencana)
-  }, [data?.jenis_bencana])
+  }, [data?.jenis_bencana, selectedRegions, effectiveMarkers])
 
   const formattedWilayah = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      const counts: Record<string, number> = {}
+      effectiveMarkers.forEach((m) => {
+        const wil = m.kabupaten || m.provinsi || 'Lainnya'
+        counts[wil] = (counts[wil] || 0) + 1
+      })
+      const items = Object.entries(counts).map(([nama, jumlah]) => ({ nama, jumlah }))
+      return getTopItemsAndOthers(items)
+    }
     return getTopItemsAndOthers(data?.wilayah)
-  }, [data?.wilayah])
+  }, [data?.wilayah, selectedRegions, effectiveMarkers])
 
   const categoryChartData = useMemo(() => {
     let alam = 0
     let nonAlam = 0
     let sosial = 0
 
-    if (data?.markers) {
-      data.markers.forEach((m) => {
+    if (effectiveMarkers && effectiveMarkers.length > 0) {
+      effectiveMarkers.forEach((m) => {
         const cat = String(m.kategori_bencana || '').trim()
         if (cat === '1') {
           alam++
@@ -903,7 +1075,7 @@ export default function DashboardKejadianPage() {
       { nama: 'Bencana Non-Alam', jumlah: nonAlam },
       { nama: 'Bencana Sosial', jumlah: sosial },
     ]
-  }, [data?.markers])
+  }, [effectiveMarkers])
 
   const isCategoryDataEmpty = useMemo(() => {
     return categoryChartData.every(item => item.jumlah === 0)
@@ -931,13 +1103,15 @@ export default function DashboardKejadianPage() {
 
   // When should the reset button show?
   const showResetButton = useMemo(() => {
+    if (selectedRegions.length > 0) return true
     if (tahun !== '2026') return true
     if (isKabLocked) return false
     if (isProvLocked) return kabupaten !== ''
     return province !== ''
-  }, [isKabLocked, isProvLocked, province, kabupaten, tahun])
+  }, [selectedRegions.length, isKabLocked, isProvLocked, province, kabupaten, tahun])
 
   const handleResetFilter = () => {
+    setSelectedRegions([])
     if (isProvLocked && user?.wilayah_scope?.provinsi?.label) {
       setKabupaten('')
       setCakupan('provinsi')
@@ -947,6 +1121,7 @@ export default function DashboardKejadianPage() {
       setCakupan('nasional')
     }
     setTahun('2026')
+    setSearchQuery('')
   }
 
   const getResetButtonLabel = () => {
@@ -1065,6 +1240,10 @@ export default function DashboardKejadianPage() {
     const kab = (summary.kabkota !== 'SEMUA KAB/KOTA' && !summary.kabkota.toUpperCase().includes('MEMUAT')) ? summary.kabkota : ''
     const cak = summary.cakupan.toLowerCase()
     const yr = summary.tahun || '2026'
+
+    if (prov || kab) {
+      setSelectedRegions([])
+    }
 
     setCakupan(cak)
     setProvince(prov)
@@ -1553,6 +1732,48 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
               </div>
             </>
           )}
+
+          {/* Selected Regions Chips */}
+          {selectedRegions.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 z-10">
+              <span className="text-[11px] font-bold text-slate-500 mr-1">Terpilih ({selectedRegions.length}):</span>
+              {selectedRegions.map((reg) => {
+                let badgeStyle = 'bg-teal-50 text-teal-800 border-teal-200'
+                if (reg.type === 'provinsi') badgeStyle = 'bg-teal-100/70 text-teal-800 border-teal-300'
+                if (reg.type === 'kabupaten') badgeStyle = 'bg-blue-100/70 text-blue-800 border-blue-300'
+                if (reg.type === 'kecamatan') badgeStyle = 'bg-purple-100/70 text-purple-800 border-purple-300'
+                if (reg.type === 'desa') badgeStyle = 'bg-amber-100/70 text-amber-800 border-amber-300'
+
+                return (
+                  <span
+                    key={reg.id}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold shadow-xs transition-all ${badgeStyle}`}
+                  >
+                    <MapPin className="h-3 w-3 shrink-0 opacity-70" />
+                    <span>{reg.label}</span>
+                    <span className="rounded bg-white/60 px-1 py-0.2 text-[9px] font-black uppercase tracking-wider">
+                      {reg.type}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSelectedRegion(reg.id)}
+                      className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 transition cursor-pointer"
+                      title="Hapus filter wilayah ini"
+                    >
+                      <X className="h-3 w-3 text-slate-500 hover:text-slate-900" />
+                    </button>
+                  </span>
+                )
+              })}
+              <button
+                type="button"
+                onClick={handleClearAllSelectedRegions}
+                className="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
+              >
+                Hapus Semua
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Column 2: Info Filter Panel */}
@@ -1564,15 +1785,15 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex items-center gap-2 text-slate-650 font-semibold w-full whitespace-nowrap">
               <span className="inline-flex items-center gap-1.5 bg-teal-50/60 border border-teal-100/80 px-2.5 py-1 rounded-xl text-[11px]">
                 <span className="text-slate-400 font-semibold">Cakupan:</span>
-                <span className="font-black text-teal-800 uppercase">{cakupan}</span>
+                <span className="font-black text-teal-800 uppercase">{displayCakupan}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 bg-teal-50/60 border border-teal-100/80 px-2.5 py-1 rounded-xl text-[11px]">
                 <span className="text-slate-400 font-semibold">Provinsi:</span>
-                <span className="font-black text-teal-800 uppercase">{province || 'Semua Provinsi'}</span>
+                <span className="font-black text-teal-800 uppercase">{displayProvinces}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 bg-teal-50/60 border border-teal-100/80 px-2.5 py-1 rounded-xl text-[11px]">
                 <span className="text-slate-400 font-semibold">Kab/Kota:</span>
-                <span className="font-black text-teal-800 uppercase">{kabupaten || 'Semua Kab/Kota'}</span>
+                <span className="font-black text-teal-800 uppercase">{displayKabupaten}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 bg-teal-50/60 border border-teal-100/80 px-2.5 py-1 rounded-xl text-[11px]">
                 <span className="text-slate-400 font-semibold">Tahun:</span>
@@ -1634,12 +1855,12 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             </div>
           ))
           : [
-            { label: 'Total Kejadian', value: data?.summary?.total_bencana ?? 0, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
-            { label: 'Krisis Kesehatan', value: data?.summary?.total_krisis ?? 0, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50/80' },
-            { label: 'Korban Meninggal', value: data?.summary?.total_meninggal ?? 0, color: 'text-red-600', icon: ShieldAlert, bg: 'bg-red-50/80' },
-            { label: 'Korban Luka', value: data?.summary?.total_luka ?? 0, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
-            { label: 'Korban Hilang', value: data?.summary?.total_hilang ?? 0, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
-            { label: 'Jumlah Pengungsi', value: data?.summary?.total_pengungsi ?? 0, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
+            { label: 'Total Kejadian', value: effectiveSummary?.total_bencana ?? 0, color: 'text-teal-700', icon: Flame, bg: 'bg-teal-50/80' },
+            { label: 'Krisis Kesehatan', value: effectiveSummary?.total_krisis ?? 0, color: 'text-red-600', icon: AlertTriangle, bg: 'bg-red-50/80' },
+            { label: 'Korban Meninggal', value: effectiveSummary?.total_meninggal ?? 0, color: 'text-red-600', icon: ShieldAlert, bg: 'bg-red-50/80' },
+            { label: 'Korban Luka', value: effectiveSummary?.total_luka ?? 0, color: 'text-amber-600', icon: Heart, bg: 'bg-amber-50/80' },
+            { label: 'Korban Hilang', value: effectiveSummary?.total_hilang ?? 0, color: 'text-indigo-650', icon: HelpCircle, bg: 'bg-indigo-50/80' },
+            { label: 'Jumlah Pengungsi', value: effectiveSummary?.total_pengungsi ?? 0, color: 'text-sky-650', icon: Users, bg: 'bg-sky-50/80' },
           ].map((card, idx) => {
             const Icon = card.icon
             const trend = getDynamicTrend(card.label)
