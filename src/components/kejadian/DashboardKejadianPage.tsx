@@ -798,20 +798,33 @@ export default function DashboardKejadianPage() {
   }, [trendData])
 
   const getDynamicTrend = useCallback((cardLabel: string) => {
+    const fullMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+    const prevMonthIdx = latestMonthIdx > 0 ? latestMonthIdx - 1 : 0
+    const prevMonthName = fullMonthNames[prevMonthIdx] || 'Bulan lalu'
+
     if (latestMonthIdx < 1) {
-      return { value: '0,0%', isUp: false, label: 'dari bulan sebelumnya' }
+      return {
+        value: '0,0%',
+        isUp: false,
+        label: 'dari bulan sebelumnya',
+        prevMonthName,
+        prevVal: 0,
+      }
     }
 
-    const prevMonthIdx = latestMonthIdx - 1
     const curr = trendData[latestMonthIdx]
     const prev = trendData[prevMonthIdx]
 
     let currVal = 0
     let prevVal = 0
 
-    if (cardLabel.toLowerCase().includes('kejadian')) {
+    const labelLower = cardLabel.toLowerCase()
+    if (labelLower.includes('kejadian')) {
       currVal = curr.bencanaCount
       prevVal = prev.bencanaCount
+    } else if (labelLower.includes('krisis')) {
+      currVal = curr.krisisCount
+      prevVal = prev.krisisCount
     } else {
       currVal = curr.bencanaKorban
       prevVal = prev.bencanaKorban
@@ -819,9 +832,21 @@ export default function DashboardKejadianPage() {
 
     if (prevVal === 0) {
       if (currVal === 0) {
-        return { value: '0,0%', isUp: false, label: 'dari bulan sebelumnya' }
+        return {
+          value: '0,0%',
+          isUp: false,
+          label: 'dari bulan sebelumnya',
+          prevMonthName,
+          prevVal: 0,
+        }
       }
-      return { value: '100,0%', isUp: true, label: 'dari bulan sebelumnya' }
+      return {
+        value: '100,0%',
+        isUp: true,
+        label: 'dari bulan sebelumnya',
+        prevMonthName,
+        prevVal: 0,
+      }
     }
 
     const basePercent = ((currVal - prevVal) / prevVal) * 100
@@ -841,6 +866,8 @@ export default function DashboardKejadianPage() {
       value: `${absPercentStr}%`,
       isUp,
       label: 'dari bulan sebelumnya',
+      prevMonthName,
+      prevVal,
     }
   }, [trendData, latestMonthIdx])
 
@@ -1640,6 +1667,14 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     {getCardValue(card.value)}
                   </p>
                   <p className="mt-2 text-[11px] text-[#383838] sm:text-[12px] flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                    {trend.prevMonthName && (
+                      <>
+                        <span className="font-semibold text-slate-700">
+                          {trend.prevMonthName}{trend.prevVal !== undefined ? ` (${trend.prevVal})` : ''}
+                        </span>
+                        <span className="text-slate-400 font-normal">|</span>
+                      </>
+                    )}
                     <span className={`inline-flex items-center gap-0.5 font-bold ${trend.isUp ? 'text-red-600' : 'text-emerald-600'}`}>
                       {trend.isUp ? (
                         <ChevronUp className="h-3 w-3 stroke-[2.8]" />
