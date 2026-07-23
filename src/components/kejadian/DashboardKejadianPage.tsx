@@ -733,7 +733,7 @@ export default function DashboardKejadianPage() {
     }
   }, [])
 
-  // Agregasi tren bulanan dari markers API dan data krisis dummy
+  // Agregasi tren bulanan dari markers API dan data krisis
   const { trendData, targetYear } = useMemo(() => {
     const months = [
       { name: 'Jan', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
@@ -750,34 +750,32 @@ export default function DashboardKejadianPage() {
       { name: 'Des', bencanaCount: 0, bencanaKorban: 0, krisisCount: 0, krisisKorban: 0 },
     ]
 
-    let targetYear = tahun
-    if (data?.markers && data.markers.length > 0) {
-      // Cari tahun yang paling banyak datanya sebagai targetYear
-      const years = data.markers.map(m => m.tgl_kejadian?.split('-')[0]).filter(Boolean)
-      if (years.length > 0) {
-        const counts = years.reduce((acc, y) => {
-          acc[y] = (acc[y] || 0) + 1
-          return acc
-        }, {} as Record<string, number>)
-        const sortedYears = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
-        if (sortedYears[0]) {
-          targetYear = sortedYears[0]
-        }
-      }
+    let targetYear = tahun || '2026'
 
+    if (data?.markers && data.markers.length > 0) {
       data.markers.forEach((m) => {
         if (!m.tgl_kejadian) return
-        const parts = m.tgl_kejadian.split('-')
-        if (parts.length >= 2) {
-          const year = parts[0]
-          const monthIdx = parseInt(parts[1], 10) - 1
-          if (year === targetYear && monthIdx >= 0 && monthIdx < 12) {
-            months[monthIdx].bencanaCount++
-            months[monthIdx].bencanaKorban += m.total_korban || 0
-            if (m.is_krisis) {
-              months[monthIdx].krisisCount++
-              months[monthIdx].krisisKorban += m.total_korban || 0
-            }
+        const clean = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
+        let year = ''
+        let monthIdx = -1
+
+        if (clean.includes('-') || clean.includes('/')) {
+          const parts = clean.split(/[- \/]/)
+          if (parts[0].length === 4) {
+            year = parts[0]
+            monthIdx = parseInt(parts[1], 10) - 1
+          } else if (parts[2] && parts[2].length === 4) {
+            year = parts[2]
+            monthIdx = parseInt(parts[1], 10) - 1
+          }
+        }
+
+        if (year === targetYear && monthIdx >= 0 && monthIdx < 12) {
+          months[monthIdx].bencanaCount++
+          months[monthIdx].bencanaKorban += m.total_korban || 0
+          if (m.is_krisis === 1) {
+            months[monthIdx].krisisCount++
+            months[monthIdx].krisisKorban += m.total_korban || 0
           }
         }
       })
