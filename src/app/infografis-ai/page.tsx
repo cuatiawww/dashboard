@@ -29,11 +29,22 @@ type InfographicItem = {
   pdfUrl: string
 }
 
+const INFOGRAPHIC_CATEGORIES = [
+  'Infografis Bulanan EOC',
+  'Infografis Peringatan Dini',
+  'Tata Kelola Peta Respon & Renkon',
+  'Panduan Krisis Kesehatan',
+  'Infografis Bencana/ Krisis Kesehatan',
+  'Infografis Risiko Krisis',
+  'Infografis Logistik Krisis Kesehatan',
+  'Infografis Upaya Krisis Kesehatan',
+]
+
 const fallbackInfographics: InfographicItem[] = [
   {
     id: 1,
     title: 'Poster Kesiapsiagaan Gempa Bumi Banten 2026',
-    category: 'Mitigasi Bencana',
+    category: 'Infografis Bulanan EOC',
     description: 'Panduan infografis kesiapsiagaan mandiri masyarakat saat gempa bumi, jalur evakuasi, dan koordinasi EMT di Pandeglang.',
     date: '22 Juli 2026',
     fileSize: '2.4 MB',
@@ -43,7 +54,7 @@ const fallbackInfographics: InfographicItem[] = [
   {
     id: 2,
     title: 'Panduan Respon Cepat Kesehatan Pasca-Banjir DKI',
-    category: 'Panduan Klinis',
+    category: 'Panduan Krisis Kesehatan',
     description: 'Buku panduan taktis sanitasi darurat pengungsian, pencegahan KLB penyakit menular, dan air bersih.',
     date: '21 Juli 2026',
     fileSize: '4.1 MB',
@@ -53,7 +64,7 @@ const fallbackInfographics: InfographicItem[] = [
   {
     id: 3,
     title: 'Analisis Tren & Evaluasi Fatalitas Bencana Kuartal II',
-    category: 'Laporan EOC',
+    category: 'Infografis Peringatan Dini',
     description: 'Infografis komparatif statistika kejadian bencana nasional, tingkat fatalitas kasus (CFR), dan efisiensi respon.',
     date: '18 Juli 2026',
     fileSize: '6.8 MB',
@@ -63,7 +74,7 @@ const fallbackInfographics: InfographicItem[] = [
   {
     id: 4,
     title: 'Poster Higienitas & PHBS di Kamp Pengungsian',
-    category: 'Promosi Kesehatan',
+    category: 'Tata Kelola Peta Respon & Renkon',
     description: 'Poster edukasi perilaku hidup bersih sehat di posko pengungsian mandiri guna menekan risiko penularan diare.',
     date: '10 Juli 2026',
     fileSize: '1.8 MB',
@@ -82,7 +93,7 @@ export default function InfografisPage() {
 
   // Generator form states
   const [genTitle, setGenTitle] = useState('')
-  const [genCategory, setGenCategory] = useState('Mitigasi Bencana')
+  const [genCategory, setGenCategory] = useState('Infografis Bulanan EOC')
   const [genPrompt, setGenPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [genSuccess, setGenSuccess] = useState(false)
@@ -110,9 +121,8 @@ export default function InfografisPage() {
 
   // Categories list
   const categories = useMemo(() => {
-    const cats = new Set(infographics.map((i) => i.category))
-    return ['Semua', ...Array.from(cats)]
-  }, [infographics])
+    return ['Semua', ...INFOGRAPHIC_CATEGORIES]
+  }, [])
 
   // Filtered items
   const filteredItems = useMemo(() => {
@@ -435,10 +445,11 @@ export default function InfografisPage() {
                     onChange={(e) => setGenCategory(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
                   >
-                    <option value="Mitigasi Bencana">Mitigasi Bencana</option>
-                    <option value="Panduan Klinis">Panduan Klinis</option>
-                    <option value="Laporan EOC">Laporan EOC</option>
-                    <option value="Promosi Kesehatan">Promosi Kesehatan</option>
+                    {INFOGRAPHIC_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
