@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
+import Link from 'next/link'
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 import {
@@ -1764,19 +1765,31 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 )}
               </div>
 
-              <div className="mt-auto shrink-0">
+              <div className="mt-auto shrink-0 grid grid-cols-2 gap-2.5">
                 <button
                   onClick={handleOpenAiModal}
                   disabled={generatingAi}
-                  className="group flex w-full items-center justify-center gap-3 rounded-[14px] bg-[#047D78] hover:bg-[#03605c] px-4 py-3.5 text-white shadow-[0_4px_14px_rgba(4,125,120,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(4,125,120,0.42)] active:scale-[0.99] disabled:cursor-wait"
+                  className="group flex items-center justify-center gap-2 rounded-[14px] bg-[#047D78] hover:bg-[#03605c] px-3 py-3 text-white shadow-[0_4px_14px_rgba(4,125,120,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(4,125,120,0.42)] active:scale-[0.99] disabled:cursor-wait"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
-                    {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
+                    {generatingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-[0.1em]">
-                    {generatingAi ? 'Sedang Menganalisis...' : 'Lihat Analisis Lengkap'}
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-center leading-tight">
+                    {generatingAi ? 'Menganalisis...' : 'Analisis AI Lengkap'}
                   </span>
                 </button>
+
+                <Link
+                  href="/infografis-ai"
+                  className="group flex items-center justify-center gap-2 rounded-[14px] bg-[#0f766e] hover:bg-[#0d655e] px-3 py-3 text-white shadow-[0_4px_14px_rgba(15,118,110,0.32)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(15,118,110,0.42)] active:scale-[0.99]"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 transition-transform group-hover:scale-110">
+                    <FileText className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-center leading-tight">
+                    Infografis AI
+                  </span>
+                </Link>
               </div>
             </div>
           </article>
