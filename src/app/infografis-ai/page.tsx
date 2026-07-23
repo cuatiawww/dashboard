@@ -38,7 +38,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '22 Juli 2026',
     fileSize: '2.4 MB',
     pages: 3,
-    pdfUrl: '/laporan_eoc_kemenkes.html',
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
   },
   {
     id: 2,
@@ -48,7 +48,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '21 Juli 2026',
     fileSize: '4.1 MB',
     pages: 3,
-    pdfUrl: '/laporan_eoc_kemenkes.html',
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
   },
   {
     id: 3,
@@ -58,7 +58,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '18 Juli 2026',
     fileSize: '6.8 MB',
     pages: 3,
-    pdfUrl: '/laporan_eoc_kemenkes.html',
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
   },
   {
     id: 4,
@@ -68,7 +68,7 @@ const fallbackInfographics: InfographicItem[] = [
     date: '10 Juli 2026',
     fileSize: '1.8 MB',
     pages: 3,
-    pdfUrl: '/laporan_eoc_kemenkes.html',
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
   },
 ]
 
@@ -79,13 +79,11 @@ export default function InfografisPage() {
   const [selectedCategory, setSelectedCategory] = useState('Semua')
   const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
   const [activePreview, setActivePreview] = useState<InfographicItem | null>(null)
-  
+
   // Generator form states
   const [genTitle, setGenTitle] = useState('')
   const [genCategory, setGenCategory] = useState('Mitigasi Bencana')
   const [genPrompt, setGenPrompt] = useState('')
-  const [genMonth, setGenMonth] = useState<number>(7) // Default Juli
-  const [genYear, setGenYear] = useState<number>(2026) // Default 2026
   const [generating, setGenerating] = useState(false)
   const [genSuccess, setGenSuccess] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
@@ -97,21 +95,17 @@ export default function InfografisPage() {
       const res = await fetch('/api/infografis-list')
       const json = await res.json()
       if (json?.success && Array.isArray(json?.data) && json.data.length > 0) {
-        setInfographics(json.data)
+        const mapped = json.data.map((item: InfographicItem) => ({
+          ...item,
+          pdfUrl: '/laporan_eoc_kemenkes.pdf',
+        }))
+        setInfographics(mapped)
       }
     } catch (e) {
       console.error('Failed loading infographics from DB:', e)
     } finally {
       setIsLoadingData(false)
     }
-  }
-
-  // Helper to open PDF/HTML documents safely without page reload
-  const handleOpenDoc = (e: React.MouseEvent, url: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const targetUrl = (!url || url === '#' || url.trim() === '') ? '/laporan_eoc_kemenkes.html' : url
-    window.open(targetUrl, '_blank')
   }
 
   useEffect(() => {
@@ -130,7 +124,7 @@ export default function InfografisPage() {
       const matchesSearch =
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       const matchesCategory =
         selectedCategory === 'Semua' || item.category === selectedCategory
 
@@ -154,14 +148,16 @@ export default function InfografisPage() {
           title: genTitle,
           category: genCategory,
           prompt: genPrompt,
-          month: genMonth,
-          year: genYear,
         }),
       })
 
       const json = await res.json()
       if (json?.success && json?.data) {
-        setInfographics((prev) => [json.data, ...prev])
+        const newItem = {
+          ...json.data,
+          pdfUrl: '/laporan_eoc_kemenkes.pdf',
+        }
+        setInfographics((prev) => [newItem, ...prev])
         setGenSuccess(true)
         setGenTitle('')
         setGenPrompt('')
@@ -182,7 +178,7 @@ export default function InfografisPage() {
 
   return (
     <div className="w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] min-h-[calc(100vh-140px)] animate-in fade-in duration-200">
-      
+
       {/* Header bar matching Detail Kejadian layout with Back Arrow */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
@@ -220,7 +216,7 @@ export default function InfografisPage() {
 
       {/* Clean Filter and Search Bar */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-        
+
         {/* Search */}
         <div className="relative w-full md:max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -240,11 +236,10 @@ export default function InfografisPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition shrink-0 ${
-                selectedCategory === cat
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition shrink-0 ${selectedCategory === cat
                   ? 'bg-[#047D78] text-white border-[#047D78] shadow-sm'
                   : 'bg-white hover:bg-slate-50 text-slate-650 border-slate-200'
-              }`}
+                }`}
             >
               {cat}
             </button>
@@ -265,13 +260,13 @@ export default function InfografisPage() {
               key={item.id}
               className="flex flex-col bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
             >
-              
+
               {/* PDF Vector Cover (4:5 Aspect Ratio, Compact) */}
               <div className="relative aspect-[4/5] w-full bg-slate-50 border-b border-slate-150 flex flex-col items-center justify-center p-3 text-center select-none group">
-                
+
                 {/* Paper Illustration with RED PDF Icon */}
                 <div className="relative w-full max-w-[85px] aspect-[3/4] bg-white rounded-lg border border-slate-200/90 shadow-2xs p-2 flex flex-col items-center justify-between group-hover:shadow-sm group-hover:scale-105 transition-all duration-200">
-                  
+
                   {/* Top Bar with RED PDF Badge */}
                   <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1">
                     <div className="p-1 rounded-md bg-red-600 text-white shadow-2xs">
@@ -307,24 +302,22 @@ export default function InfografisPage() {
                 {/* Hover Quick Action Screen */}
                 <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1.5 transition-opacity duration-200 z-20">
                   <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setActivePreview(item)
-                    }}
+                    onClick={() => setActivePreview(item)}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-800 shadow-md hover:scale-105 transition"
                     title="Pratinjau"
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenDoc(e, item.pdfUrl)}
+                  <a
+                    href={item.pdfUrl}
+                    download={`${item.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
-                    title="Buka Dokumen PDF/HTML"
+                    title="Unduh PDF"
                   >
                     <Download className="h-3.5 w-3.5" />
-                  </button>
+                  </a>
                 </div>
               </div>
 
@@ -346,25 +339,23 @@ export default function InfografisPage() {
                 {/* Action Buttons */}
                 <div className="flex gap-1.5 pt-1.5 border-t border-slate-100">
                   <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setActivePreview(item)
-                    }}
+                    onClick={() => setActivePreview(item)}
                     className="flex-1 flex items-center justify-center gap-1 py-1 border border-slate-200 hover:bg-slate-50 text-slate-700 text-[10px] font-semibold rounded-md transition"
                   >
                     <Eye className="h-3 w-3" />
                     <span>Lihat</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={(e) => handleOpenDoc(e, item.pdfUrl)}
+                  <a
+                    href={item.pdfUrl}
+                    download={`${item.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
                     <FileDown className="h-3 w-3" />
                     <span>PDF</span>
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
@@ -386,7 +377,7 @@ export default function InfografisPage() {
       {isGeneratorOpen && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            
+
             <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4.5 w-4.5 text-[#047D78]" />
@@ -414,7 +405,7 @@ export default function InfografisPage() {
               </div>
             ) : (
               <form onSubmit={handleGenerate} className="p-5 space-y-4">
-                
+
                 {genError && (
                   <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
                     {genError}
@@ -449,48 +440,6 @@ export default function InfografisPage() {
                     <option value="Laporan EOC">Laporan EOC</option>
                     <option value="Promosi Kesehatan">Promosi Kesehatan</option>
                   </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Periode Bulan Data
-                    </label>
-                    <select
-                      value={genMonth}
-                      onChange={(e) => setGenMonth(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
-                    >
-                      <option value={1}>Januari</option>
-                      <option value={2}>Februari</option>
-                      <option value={3}>Maret</option>
-                      <option value={4}>April</option>
-                      <option value={5}>Mei</option>
-                      <option value={6}>Juni</option>
-                      <option value={7}>Juli</option>
-                      <option value={8}>Agustus</option>
-                      <option value={9}>September</option>
-                      <option value={10}>Oktober</option>
-                      <option value={11}>November</option>
-                      <option value={12}>Desember</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Periode Tahun Data
-                    </label>
-                    <select
-                      value={genYear}
-                      onChange={(e) => setGenYear(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
-                    >
-                      <option value={2026}>2026</option>
-                      <option value={2025}>2025</option>
-                      <option value={2024}>2024</option>
-                      <option value={2023}>2023</option>
-                    </select>
-                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -533,7 +482,7 @@ export default function InfografisPage() {
       {activePreview && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/65 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-            
+
             <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-[#047D78] uppercase">
@@ -552,31 +501,12 @@ export default function InfografisPage() {
             </div>
 
             <div className="p-5 overflow-y-auto space-y-4">
-              <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative">
-                {activePreview.pdfUrl.endsWith('.html') || activePreview.pdfUrl.includes('html') ? (
-                  <iframe
-                    src={activePreview.pdfUrl}
-                    className="w-full h-full border-0 rounded-xl"
-                    title="Pratinjau Template Infografis EOC"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center">
-                    <div className="w-[100px] aspect-[3/4] bg-white rounded-lg border border-slate-200 shadow-sm p-3 flex flex-col items-center justify-between">
-                      <div className="w-full flex justify-between items-center border-b border-slate-100 pb-1.5">
-                        <div className="p-1 rounded-md bg-red-600 text-white">
-                          <FileText className="h-3.5 w-3.5" />
-                        </div>
-                        <span className="text-[8px] font-black text-red-600">PDF</span>
-                      </div>
-                      <div className="w-full space-y-1 py-2">
-                        <div className="h-1 w-full bg-slate-200 rounded-full" />
-                        <div className="h-1 w-4/5 bg-slate-200 rounded-full" />
-                        <div className="h-1 w-3/5 bg-slate-200 rounded-full" />
-                      </div>
-                      <span className="text-[8px] font-bold text-slate-400">{activePreview.pages} Hlm</span>
-                    </div>
-                  </div>
-                )}
+              <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative flex items-center justify-center">
+                <iframe
+                  src="/laporan_eoc_kemenkes.pdf"
+                  className="w-full h-full border-0 rounded-xl"
+                  title="Pratinjau Dokumen PDF Infografis EOC"
+                />
               </div>
 
               <div className="space-y-1">
@@ -593,21 +523,22 @@ export default function InfografisPage() {
 
               <div className="flex gap-2 pt-2">
                 <button
-                  type="button"
                   onClick={() => setActivePreview(null)}
                   className="flex-1 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition"
                 >
                   Tutup
                 </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => handleOpenDoc(e, activePreview.pdfUrl)}
+                <a
+                  href="/laporan_eoc_kemenkes.pdf"
+                  download="Laporan_Infografis_EOC_Kemenkes.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
                 >
                   <FileDown className="h-4 w-4" />
-                  <span>Buka / Unduh Dokumen</span>
-                </button>
+                  <span>Download PDF</span>
+                </a>
               </div>
             </div>
           </div>
