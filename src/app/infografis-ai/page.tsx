@@ -511,28 +511,41 @@ export default function InfografisPage() {
 
       {/* ── Preview Modal Overlay ── */}
       {activePreview && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/65 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/70 p-3 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-[95vw] max-w-5xl lg:max-w-6xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[90vh] max-h-[92vh] animate-in zoom-in-95 duration-200">
 
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
+            <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold text-[#047D78] uppercase">
+                <span className="text-[10px] font-bold text-[#047D78] uppercase tracking-wider">
                   {activePreview.category}
                 </span>
-                <h3 className="text-sm font-bold text-slate-800">
+                <h3 className="text-base font-bold text-slate-800">
                   {activePreview.title}
                 </h3>
               </div>
-              <button
-                onClick={() => setActivePreview(null)}
-                className="text-slate-400 hover:bg-slate-100 p-1 rounded-lg transition"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/laporan_eoc_kemenkes.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl transition shadow-2xs"
+                  title="Buka PDF di Tab Baru"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Buka Tab Baru</span>
+                </a>
+                <button
+                  onClick={() => setActivePreview(null)}
+                  className="text-slate-400 hover:bg-slate-200 p-1.5 rounded-xl transition"
+                  title="Tutup"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-4">
-              <div className="aspect-[4/5] w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative flex items-center justify-center">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col space-y-4">
+              <div className="w-full flex-1 min-h-[480px] bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative flex items-center justify-center shadow-inner">
                 <iframe
                   src="/laporan_eoc_kemenkes.pdf"
                   className="w-full h-full border-0 rounded-xl"
@@ -540,34 +553,35 @@ export default function InfografisPage() {
                 />
               </div>
 
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-slate-700">Ringkasan Infografis</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  {activePreview.description}
-                </p>
-              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 shrink-0">
+                <div className="space-y-0.5 max-w-2xl">
+                  <h4 className="text-xs font-bold text-slate-700">Ringkasan Infografis</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                    {activePreview.description}
+                  </p>
+                  <div className="flex gap-4 text-[11px] text-slate-400 font-medium pt-1">
+                    <span>Tanggal: {activePreview.date}</span>
+                    <span>Ukuran: {activePreview.fileSize} ({activePreview.pages} Hlm)</span>
+                  </div>
+                </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                <span>Tanggal: {activePreview.date}</span>
-                <span>Ukuran: {activePreview.fileSize} ({activePreview.pages} Hlm)</span>
-              </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
+                  <button
+                    onClick={() => setActivePreview(null)}
+                    className="flex-1 sm:flex-initial px-5 py-2.5 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition"
+                  >
+                    Tutup
+                  </button>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => setActivePreview(null)}
-                  className="flex-1 py-2 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 transition"
-                >
-                  Tutup
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(e) => handleDownloadPdf(e, activePreview?.title)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
-                >
-                  <FileDown className="h-4 w-4" />
-                  <span>Download PDF</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDownloadPdf(e, activePreview?.title)}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-md"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
