@@ -2077,6 +2077,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             <div className="mt-4 flex-1 min-h-[300px] w-full">
               <DisasterMap
                 markers={mapMarkers}
+                selectedRegions={selectedRegions}
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
                 isGuest={!token || !user}

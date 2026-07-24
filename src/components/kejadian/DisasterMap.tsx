@@ -66,6 +66,7 @@ interface MarkerData {
 
 interface DisasterMapProps {
   markers: MarkerData[]
+  selectedRegions?: any[]
   userScope?: any
   onSelectProvince?: (prov: string) => void
   isGuest?: boolean
@@ -179,7 +180,7 @@ const geojsonCache: Record<string, any> = {}
 // Component
 // ─────────────────────────────────────────────
 
-export default function DisasterMap({ markers, userScope, onSelectProvince, isGuest: propIsGuest, markerMonths, setMarkerMonths, onSelectEvent }: DisasterMapProps) {
+export default function DisasterMap({ markers, selectedRegions = [], userScope, onSelectProvince, isGuest: propIsGuest, markerMonths, setMarkerMonths, onSelectEvent }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
@@ -430,6 +431,30 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
     })
     return { provinceCounts, kabupatenCounts }
   }, [filteredMarkers])
+
+  // Keys wilayah terpilih untuk polygon highlight / arsiran GeoJSON
+  const selectedProvKeys = useMemo(() => {
+    const keys: string[] = []
+    if (Array.isArray(selectedRegions)) {
+      selectedRegions.forEach((r: any) => {
+        const pName = r.province_name || (r.type === 'provinsi' ? r.label : '')
+        if (pName) keys.push(cleanKey(pName))
+        if (r.label) keys.push(cleanKey(r.label))
+      })
+    }
+    return keys
+  }, [selectedRegions])
+
+  const selectedKabKeys = useMemo(() => {
+    const keys: string[] = []
+    if (Array.isArray(selectedRegions)) {
+      selectedRegions.forEach((r: any) => {
+        const kName = r.kabupaten_name || (r.type === 'kabupaten' ? r.label : '')
+        if (kName) keys.push(cleanKey(kName))
+      })
+    }
+    return keys
+  }, [selectedRegions])
 
   // ─────────────────────────────────────────────
   // Initialize Map (once)
@@ -886,7 +911,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
   }, [mapInstance, userScope])
 
   // ─────────────────────────────────────────────
-  // Re-style choropleth layers when data changes
+  // Re-style choropleth & multi-region layers when data/selectedRegions changes
   // ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -901,6 +926,26 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     provinceLayer.setStyle((feature: any) => {
       const provKey = cleanKey(getFeatureName(feature, 'provinsi'))
+
+      // Multi-wilayah terpilih via Smart Search Bar
+      if (selectedRegions && selectedRegions.length > 0) {
+        const isSelectedProv = selectedProvKeys.some(
+          (k) => k && (provKey.includes(k) || k.includes(provKey) || (provKey.includes('jakarta') && k.includes('jakarta')) || (provKey.includes('yogyakarta') && k.includes('yogyakarta')))
+        )
+        if (isSelectedProv) {
+          // Highlight Arsiran GeoJSON Poligon Wilayah Terpilih (Cyan/Teal Gradient Fill)
+          return new Style({
+            fill: new Fill({ color: 'rgba(13, 148, 136, 0.45)' }),
+            stroke: new Stroke({ color: '#0f766e', width: 2.8 }),
+          })
+        }
+        // Wilayah non-terpilih: Muted transparent
+        return new Style({
+          fill: new Fill({ color: 'rgba(241, 245, 249, 0.35)' }),
+          stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.5)', width: 0.8 }),
+        })
+      }
+
       if (isProvMode || isKabMode) {
         // Selected province → transparent (kabupaten layer shows through)
         if (provKey === targetProvKey) {
@@ -912,6 +957,7 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
           stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.4)', width: 1 }),
         })
       }
+
       // National choropleth style
       const baseStyle = choroplethStyle(provinceCounts.get(provKey) || 0)
       const provWarnings = warningsByProvince.get(provKey)
@@ -930,6 +976,19 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     kabupatenLayer.setStyle((feature: any) => {
       const kabKey = cleanKey(getFeatureName(feature, 'kabupaten'))
+
+      if (selectedRegions && selectedRegions.length > 0 && selectedKabKeys.length > 0) {
+        const isSelectedKab = selectedKabKeys.some(
+          (k) => k && (kabKey.includes(k) || k.includes(kabKey))
+        )
+        if (isSelectedKab) {
+          return new Style({
+            fill: new Fill({ color: 'rgba(37, 99, 235, 0.5)' }),
+            stroke: new Stroke({ color: '#1d4ed8', width: 2.5 }),
+          })
+        }
+      }
+
       const count = kabupatenCounts.get(kabKey) || 0
       if (isKabMode && kabKey !== targetKabKey) {
         return new Style({
@@ -942,7 +1001,44 @@ export default function DisasterMap({ markers, userScope, onSelectProvince, isGu
 
     provinceLayer.changed()
     kabupatenLayer.changed()
-  }, [userScope, provinceCounts, kabupatenCounts, warningsByProvince])
+  }, [userScope, provinceCounts, kabupatenCounts, warningsByProvince, selectedRegions, selectedProvKeys, selectedKabKeys])
+
+  // Auto-fit map extent saat wilayah terpilih berubah
+  useEffect(() => {
+    const map = mapInstance
+    const provinceLayer = provinceLayerRef.current
+    if (!map || !provinceLayer || !selectedRegions || selectedRegions.length === 0) return
+
+    const source = provinceLayer.getSource()
+    if (!source) return
+
+    const features = source.getFeatures()
+    if (!features || features.length === 0) return
+
+    const matchedFeatures: any[] = []
+    features.forEach((f: any) => {
+      const provKey = cleanKey(getFeatureName(f, 'provinsi'))
+      const isMatch = selectedProvKeys.some(
+        (k) => k && (provKey.includes(k) || k.includes(provKey) || (provKey.includes('jakarta') && k.includes('jakarta')) || (provKey.includes('yogyakarta') && k.includes('yogyakarta')))
+      )
+      if (isMatch) matchedFeatures.push(f)
+    })
+
+    if (matchedFeatures.length > 0) {
+      const extents = matchedFeatures.map((f: any) => f.getGeometry().getExtent())
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      extents.forEach((e: any) => {
+        if (e[0] < minX) minX = e[0]
+        if (e[1] < minY) minY = e[1]
+        if (e[2] > maxX) maxX = e[2]
+        if (e[3] > maxY) maxY = e[3]
+      })
+
+      if (minX !== Infinity && maxX !== -Infinity) {
+        map.getView().fit([minX, minY, maxX, maxY], { padding: [60, 60, 60, 60], duration: 600 })
+      }
+    }
+  }, [mapInstance, selectedRegions, selectedProvKeys])
 
   // ── BMKG Data Fetch & Proximity Alert EWS ──
   useEffect(() => {
