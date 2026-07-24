@@ -109,19 +109,19 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
   return ''
 }
 
-/** Warna choropleth berdasarkan jumlah kejadian */
-const choroplethColor = (count: number) => {
-  if (count === 0) return 'rgba(241, 245, 249, 0.15)'
-  if (count <= 10) return '#facc15' // Kuning (1 - 10)
-  if (count <= 30) return '#f97316' // Oranye (11 - 30)
-  if (count <= 50) return '#ef4444' // Coral Red (31 - 50)
-  return '#991b1b' // Deep Crimson (> 50)
+/** Warna choropleth berdasarkan jumlah kejadian sesuai legenda */
+const choroplethColor = (count: number, opacity: number = 0.6) => {
+  if (count === 0) return `rgba(241, 245, 249, ${opacity})`
+  if (count <= 10) return `rgba(250, 204, 21, ${opacity})`   // Kuning (1 - 10)
+  if (count <= 30) return `rgba(249, 115, 22, ${opacity})`   // Oranye (11 - 30)
+  if (count <= 50) return `rgba(239, 68, 68, ${opacity})`   // Coral Red (31 - 50)
+  return `rgba(153, 27, 27, ${opacity})`                     // Deep Crimson (> 50)
 }
 
 /** Style choropleth OL */
 const choroplethStyle = (count: number) =>
   new Style({
-    fill: new Fill({ color: choroplethColor(count) }),
+    fill: new Fill({ color: choroplethColor(count, 0.6) }),
     stroke: new Stroke({
       color: count === 0 ? 'rgba(148, 163, 184, 0.4)' : '#ffffff',
       width: count === 0 ? 0.8 : 1.2,
@@ -926,6 +926,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
 
     provinceLayer.setStyle((feature: any) => {
       const provKey = cleanKey(getFeatureName(feature, 'provinsi'))
+      const count = provinceCounts.get(provKey) || 0
 
       // Multi-wilayah terpilih via Smart Search Bar
       if (selectedRegions && selectedRegions.length > 0) {
@@ -933,9 +934,9 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
           (k) => k && (provKey.includes(k) || k.includes(provKey) || (provKey.includes('jakarta') && k.includes('jakarta')) || (provKey.includes('yogyakarta') && k.includes('yogyakarta')))
         )
         if (isSelectedProv) {
-          // Highlight Arsiran GeoJSON Poligon Wilayah Terpilih (Cyan/Teal Gradient Fill)
+          // Fill warna persis sesuai range legenda (Kuning 1-10, Oranye 11-30, Red 31-50, Crimson >50) + Stroke outline tebal penanda terpilih
           return new Style({
-            fill: new Fill({ color: 'rgba(13, 148, 136, 0.45)' }),
+            fill: new Fill({ color: choroplethColor(count, 0.7) }),
             stroke: new Stroke({ color: '#0f766e', width: 2.8 }),
           })
         }
