@@ -864,27 +864,6 @@ export default function DashboardKejadianPage() {
     return () => clearTimeout(handler)
   }, [searchQuery, token])
 
-  const handleApplyFilter = useCallback(() => {
-    setShowSuggestions(false)
-    if (searchQuery.trim().length >= 2) {
-      const text = searchQuery.trim()
-      const exists = selectedRegions.some((item) => (item.label || '').toLowerCase() === text.toLowerCase())
-      if (!exists) {
-        const newItem: SelectedRegionItem = {
-          id: `typed-${text}-${Date.now()}`,
-          type: 'kabupaten',
-          label: text,
-          province_name: text,
-          kabupaten_name: text,
-          kecamatan_name: text,
-          desa_name: text,
-        }
-        setSelectedRegions((prev) => [...prev, newItem])
-      }
-      setSearchQuery('')
-    }
-  }, [searchQuery, selectedRegions])
-
   const handleSelectSuggestion = useCallback((sug: any) => {
     setSearchQuery('')
     setSuggestions([])
@@ -1682,60 +1661,56 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
             Pencarian Wilayah
           </p>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 flex items-center">
-              <Search className="absolute left-4 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setShowSuggestions(true)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleApplyFilter()
-                  }
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Cari Provinsi, Kab/Kota, Kecamatan, atau Desa..."
-                className="w-full rounded-2xl border border-slate-200 bg-white h-12 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
-              />
-              {isSearching ? (
-                <Loader2 className="absolute right-4 h-4 w-4 animate-spin text-teal-600" />
-              ) : searchQuery ? (
-                <button
-                  onClick={() => {
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setShowSuggestions(true)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (searchQuery.trim().length >= 2) {
+                    const text = searchQuery.trim()
+                    const exists = selectedRegions.some((item) => (item.label || '').toLowerCase() === text.toLowerCase())
+                    if (!exists) {
+                      const newItem: SelectedRegionItem = {
+                        id: `typed-${text}-${Date.now()}`,
+                        type: 'kabupaten',
+                        label: text,
+                        province_name: text,
+                        kabupaten_name: text,
+                        kecamatan_name: text,
+                        desa_name: text,
+                      }
+                      setSelectedRegions((prev) => [...prev, newItem])
+                    }
                     setSearchQuery('')
-                    setSuggestions([])
-                  }}
-                  type="button"
-                  className="absolute right-4 rounded-lg p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleApplyFilter}
-              title="Terapkan Filter Wilayah"
-              className={`h-12 px-4 sm:px-5 rounded-2xl font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2 shrink-0 uppercase tracking-wider active:scale-95 cursor-pointer text-white ${
-                selectedRegions.length > 0
-                  ? 'bg-teal-700 hover:bg-teal-800 shadow-teal-700/20 ring-2 ring-teal-500/30'
-                  : 'bg-teal-700 hover:bg-teal-800 shadow-teal-700/10'
-              }`}
-            >
-              <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">TERAPKAN</span>
-              {selectedRegions.length > 0 && (
-                <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-black text-white">
-                  {selectedRegions.length}
-                </span>
-              )}
-            </button>
+                    setShowSuggestions(false)
+                  }
+                }
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Cari Provinsi, Kab/Kota, Kecamatan, atau Desa..."
+              className="w-full rounded-2xl border border-slate-200 bg-white h-12 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+            />
+            {isSearching ? (
+              <Loader2 className="absolute right-4 h-4 w-4 animate-spin text-teal-600" />
+            ) : searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  setSuggestions([])
+                }}
+                type="button"
+                className="absolute right-4 rounded-lg p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
 
           {/* Dropdown Suggestions */}
