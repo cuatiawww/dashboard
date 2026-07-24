@@ -1757,48 +1757,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
               </div>
             </>
           )}
-
-          {/* Selected Regions Chips */}
-          {selectedRegions.length > 0 && (
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 z-10">
-              <span className="text-[11px] font-bold text-slate-500 mr-1">Terpilih ({selectedRegions.length}):</span>
-              {selectedRegions.map((reg) => {
-                let badgeStyle = 'bg-teal-50 text-teal-800 border-teal-200'
-                if (reg.type === 'provinsi') badgeStyle = 'bg-teal-100/70 text-teal-800 border-teal-300'
-                if (reg.type === 'kabupaten') badgeStyle = 'bg-blue-100/70 text-blue-800 border-blue-300'
-                if (reg.type === 'kecamatan') badgeStyle = 'bg-purple-100/70 text-purple-800 border-purple-300'
-                if (reg.type === 'desa') badgeStyle = 'bg-amber-100/70 text-amber-800 border-amber-300'
-
-                return (
-                  <span
-                    key={reg.id}
-                    className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold shadow-xs transition-all ${badgeStyle}`}
-                  >
-                    <MapPin className="h-3 w-3 shrink-0 opacity-70" />
-                    <span>{reg.label}</span>
-                    <span className="rounded bg-white/60 px-1 py-0.2 text-[9px] font-black uppercase tracking-wider">
-                      {reg.type}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSelectedRegion(reg.id)}
-                      className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 transition cursor-pointer"
-                      title="Hapus filter wilayah ini"
-                    >
-                      <X className="h-3 w-3 text-slate-500 hover:text-slate-900" />
-                    </button>
-                  </span>
-                )
-              })}
-              <button
-                type="button"
-                onClick={handleClearAllSelectedRegions}
-                className="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
-              >
-                Hapus Semua
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Column 2: Info Filter Panel */}
@@ -1847,6 +1805,48 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           </button>
         </div>
       </section>
+
+      {/* Selected Regions Chips (Row terpisah agar tidak mempengaruhi pergeseran tinggi / alignment tombol) */}
+      {selectedRegions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 -mt-2.5 z-10">
+          <span className="text-[11px] font-bold text-slate-500 mr-1">Terpilih ({selectedRegions.length}):</span>
+          {selectedRegions.map((reg) => {
+            let badgeStyle = 'bg-teal-50 text-teal-800 border-teal-200'
+            if (reg.type === 'provinsi') badgeStyle = 'bg-teal-100/70 text-teal-800 border-teal-300'
+            if (reg.type === 'kabupaten') badgeStyle = 'bg-blue-100/70 text-blue-800 border-blue-300'
+            if (reg.type === 'kecamatan') badgeStyle = 'bg-purple-100/70 text-purple-800 border-purple-300'
+            if (reg.type === 'desa') badgeStyle = 'bg-amber-100/70 text-amber-800 border-amber-300'
+
+            return (
+              <span
+                key={reg.id}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1 text-xs font-semibold shadow-xs transition-all ${badgeStyle}`}
+              >
+                <MapPin className="h-3 w-3 shrink-0 opacity-70" />
+                <span>{reg.label}</span>
+                <span className="rounded bg-white/60 px-1 py-0.2 text-[9px] font-black uppercase tracking-wider">
+                  {reg.type}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSelectedRegion(reg.id)}
+                  className="ml-0.5 rounded-full p-0.5 hover:bg-black/10 transition cursor-pointer"
+                  title="Hapus filter wilayah ini"
+                >
+                  <X className="h-3 w-3 text-slate-500 hover:text-slate-900" />
+                </button>
+              </span>
+            )
+          })}
+          <button
+            type="button"
+            onClick={handleClearAllSelectedRegions}
+            className="text-[11px] font-bold text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
+          >
+            Hapus Semua
+          </button>
+        </div>
+      )}
 
       {/* Filter Wilayah Section */}
       <section className="w-full bg-[#fbffff] z-10">
