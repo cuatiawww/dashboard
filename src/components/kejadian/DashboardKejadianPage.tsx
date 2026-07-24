@@ -1806,9 +1806,9 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
         </div>
       </section>
 
-      {/* Selected Regions Chips (Row terpisah agar tidak mempengaruhi pergeseran tinggi / alignment tombol) */}
+      {/* Selected Regions Chips (Memanjang ke kanan penuh w-full agar tidak cepat turun baris) */}
       {selectedRegions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 -mt-2.5 z-10">
+        <div className="w-full flex flex-wrap items-center gap-2 -mt-2 z-10">
           <span className="text-[11px] font-bold text-slate-500 mr-1">Terpilih ({selectedRegions.length}):</span>
           {selectedRegions.map((reg) => {
             let badgeStyle = 'bg-teal-50 text-teal-800 border-teal-200'
