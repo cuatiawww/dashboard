@@ -23,8 +23,8 @@ import {
   Building2,
   Users,
   Sparkles,
-  RotateCcw,
   Printer,
+  RotateCcw,
   Info,
   Check,
   FileDown,
@@ -33,6 +33,8 @@ import {
   Home,
 } from 'lucide-react'
 import { useHeaderStore } from '@/lib/headerStore'
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 import { useAuthStore } from '@/lib/authStore'
 import { buildRegionsUrl } from '@/lib/utils/api'
 
@@ -1419,6 +1421,427 @@ export default function UnduhLaporanPage() {
     printWindow.document.close()
   }
 
+  // CREATE DASHBOARD REPORT (EXCLUSIVE HTML / PDF GENERATOR)
+  const handleCreateDashboardHTML = () => {
+    if (filteredReports.length === 0) {
+      showToast('Tidak ada data terfilter untuk membuat laporan dashboard.')
+      return
+    }
+
+    const totalReports = filteredReports.length
+    let totalMeninggal = 0
+    let totalLuka = 0
+    let totalHilang = 0
+    let totalTerdampak = 0
+    let totalPengungsi = 0
+    let totalFaskes = 0
+
+    const jenisCounts: Record<string, number> = {}
+    const statusCounts: Record<string, number> = { Diverifikasi: 0, Proses: 0, Ditolak: 0 }
+    const provCounts: Record<string, number> = {}
+
+    filteredReports.forEach((r) => {
+      totalMeninggal += r.korban_meninggal
+      totalLuka += r.korban_luka_berat + r.korban_luka_ringan
+      totalHilang += r.korban_hilang
+      totalTerdampak += r.penduduk_terdampak
+      totalPengungsi += r.pengungsi
+      totalFaskes += r.faskes_terdampak
+
+      const j = r.jenis_bencana || 'Lainnya'
+      jenisCounts[j] = (jenisCounts[j] || 0) + 1
+
+      const st = r.status_verifikasi || 'Proses'
+      statusCounts[st] = (statusCounts[st] || 0) + 1
+
+      const p = r.provinsi || 'Lainnya'
+      provCounts[p] = (provCounts[p] || 0) + 1
+    })
+
+    const sortedJenis = Object.entries(jenisCounts).sort((a, b) => b[1] - a[1])
+    const maxJenisCount = Math.max(...Object.values(jenisCounts), 1)
+
+    const sortedProvs = Object.entries(provCounts).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    const maxProvCount = Math.max(...Object.values(provCounts), 1)
+
+    const filterWilayahText = selectedRegionPills.length > 0
+      ? selectedRegionPills.map((p) => `${p.level}: ${p.name}`).join(', ')
+      : (selectedProvinces.length > 0 ? selectedProvinces.join(', ') : 'Seluruh Wilayah (Nasional)')
+
+    const filterBencanaText = selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Semua Jenis Bencana'
+
+    let timePresetText = 'Semua Periode'
+    if (selectedDatePreset === '7days') timePresetText = '7 Hari Terakhir'
+    if (selectedDatePreset === '30days') timePresetText = '30 Hari Terakhir'
+
+    const logoUrl = typeof window !== 'undefined' ? `${window.location.origin}${basePath}/Logo-Kemenkes.png` : ''
+
+    const rowsHtml = filteredReports.map((item, idx) => `
+      <tr>
+        <td style="text-align: center; font-weight: bold; border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">${idx + 1}</td>
+        <td style="border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">
+          <strong style="color: #0f172a; font-family: monospace;">${item.kode_laporan}</strong><br/>
+          <span style="color: #64748b; font-size: 9.5px;">${item.tgl_kejadian_formatted} ${item.jam_kejadian}</span>
+        </td>
+        <td style="border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">
+          <strong style="color: #036662; text-transform: uppercase;">${item.provinsi}</strong>, ${item.kabupaten}<br/>
+          <span style="color: #475569; font-size: 9.5px;">KEC. ${item.kecamatan}, DESA ${item.desa}</span>
+        </td>
+        <td style="border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px; font-weight: bold; color: #047D78;">${item.jenis_bencana}</td>
+        <td style="text-align: center; border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">
+          <span style="color: #dc2626; font-weight: bold;">MD: ${item.korban_meninggal}</span> | 
+          <span style="color: #d97706;">Luka: ${item.korban_luka_berat + item.korban_luka_ringan}</span> | 
+          <span style="color: #4f46e5;">Hilang: ${item.korban_hilang}</span>
+        </td>
+        <td style="text-align: center; border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">
+          <strong>${item.penduduk_terdampak + item.pengungsi}</strong> Jiwa
+        </td>
+        <td style="text-align: center; border-bottom: 1px solid #e2e8f0; padding: 7px 8px; font-size: 10.5px;">
+          <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9.5px;">
+            ${item.status_verifikasi}
+          </span>
+        </td>
+      </tr>
+    `).join('')
+
+    const chart1Html = sortedJenis.map(([name, count]) => {
+      const pct = Math.round((count / totalReports) * 100)
+      const barWidth = Math.max(Math.round((count / maxJenisCount) * 100), 6)
+      return `
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 3px;">
+            <span>${name}</span>
+            <span style="color: #047D78;">${count} (${pct}%)</span>
+          </div>
+          <div style="background: #e2e8f0; height: 9px; border-radius: 5px; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #047D78, #0f766e); width: ${barWidth}%; height: 100%; border-radius: 5px;"></div>
+          </div>
+        </div>
+      `
+    }).join('')
+
+    const chart2Html = `
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase;">Diverifikasi</div>
+          <div style="font-size: 18px; font-weight: 900; color: #166534;">${statusCounts.Diverifikasi || 0}</div>
+        </div>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase;">Proses</div>
+          <div style="font-size: 18px; font-weight: 900; color: #d97706;">${statusCounts.Proses || 0}</div>
+        </div>
+      </div>
+      <div style="margin-top: 10px;">
+        <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px;">Top 5 Provinsi Terbanyak:</div>
+        ${sortedProvs.map(([provName, provCount]) => `
+          <div style="display: flex; justify-content: space-between; font-size: 9.5px; color: #334155; padding: 2px 0;">
+            <span style="font-weight: 600;">${provName}</span>
+            <span style="font-weight: bold; color: #0f766e;">${provCount} Lap.</span>
+          </div>
+        `).join('')}
+      </div>
+    `
+
+    const chart3Html = `
+      <div style="space-y: 6px;">
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 10px; font-weight: bold; color: #991b1b;">Korban Meninggal:</span>
+          <span style="font-size: 13px; font-weight: 900; color: #dc2626;">${totalMeninggal} Jiwa</span>
+        </div>
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+          <span style="font-size: 10px; font-weight: bold; color: #92400e;">Luka & Hilang:</span>
+          <span style="font-size: 13px; font-weight: 900; color: #d97706;">${totalLuka + totalHilang} Jiwa</span>
+        </div>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+          <span style="font-size: 10px; font-weight: bold; color: #166534;">Terdampak/Pengungsi:</span>
+          <span style="font-size: 13px; font-weight: 900; color: #16a34a;">${totalTerdampak + totalPengungsi} Jiwa</span>
+        </div>
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+          <span style="font-size: 10px; font-weight: bold; color: #075985;">Faskes Terdampak:</span>
+          <span style="font-size: 13px; font-weight: 900; color: #0284c7;">${totalFaskes} Unit</span>
+        </div>
+      </div>
+    `
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      showToast('Pop-up terblokir oleh browser. Harap izinkan pop-up.')
+      return
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <title>Laporan Dashboard Eksekutif EOC Kemenkes RI</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm 10mm 10mm 10mm;
+          }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #1e293b;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+          
+          .kop-surat {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 3px double #047D78;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+          }
+          .kop-logo {
+            height: 56px;
+            width: auto;
+            flex-shrink: 0;
+          }
+          .kop-text {
+            flex: 1;
+          }
+          .kop-text h1 {
+            font-size: 13.5px;
+            font-weight: 900;
+            color: #047D78;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .kop-text h2 {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #1e293b;
+            margin: 2px 0 0 0;
+            text-transform: uppercase;
+          }
+          .kop-text p {
+            font-size: 9px;
+            color: #64748b;
+            margin: 2px 0 0 0;
+          }
+          .kop-badge {
+            text-align: right;
+            font-size: 9px;
+            color: #64748b;
+          }
+          .kop-badge .status-tag {
+            display: inline-block;
+            background: #047D78;
+            color: white;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 8.5px;
+            margin-top: 4px;
+            text-transform: uppercase;
+          }
+
+          .summary-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+          }
+          .summary-title {
+            font-size: 12px;
+            font-weight: 900;
+            color: #047D78;
+            text-transform: uppercase;
+            margin: 0 0 4px 0;
+          }
+          .filter-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            font-size: 9.5px;
+            color: #475569;
+            border-top: 1px border-dashed #cbd5e1;
+            padding-top: 4px;
+          }
+          .filter-meta b { color: #0f172a; }
+
+          .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+          }
+          .chart-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px;
+            background: #ffffff;
+          }
+          .chart-card h3 {
+            font-size: 10px;
+            font-weight: 800;
+            color: #047D78;
+            margin: 0 0 6px 0;
+            text-transform: uppercase;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 3px;
+          }
+
+          .matrix-section h3 {
+            font-size: 11px;
+            font-weight: 800;
+            color: #1e293b;
+            text-transform: uppercase;
+            margin: 0 0 6px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9.5px;
+          }
+          th {
+            background: #047D78;
+            color: white;
+            padding: 6px 7px;
+            text-align: left;
+            font-size: 9px;
+            text-transform: uppercase;
+            border: 1px solid #036662;
+          }
+
+          .footer-sig {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+            page-break-inside: avoid;
+          }
+          .sig-box {
+            text-align: center;
+            width: 180px;
+          }
+          .sig-space {
+            height: 45px;
+          }
+          .sig-name {
+            font-weight: 800;
+            border-top: 1px solid #1e293b;
+            padding-top: 3px;
+            font-size: 10px;
+          }
+
+          @media print {
+            body { background: white; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="background: #047D78; color: white; padding: 8px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px;">
+          <span style="font-weight: bold; font-size: 11.5px;">Preview Laporan Dashboard EOC Kemenkes RI</span>
+          <button onclick="window.print()" style="background: white; color: #047D78; font-weight: bold; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+            Cetak ke PDF / Print
+          </button>
+        </div>
+
+        <!-- KOP SURAT KEMENKES -->
+        <div class="kop-surat">
+          <img src="${logoUrl}" alt="Logo Kemenkes" class="kop-logo" onerror="this.style.display='none'" />
+          <div class="kop-text">
+            <h1>Kementerian Kesehatan Republik Indonesia</h1>
+            <h2>Direktorat Jenderal Pelayanan Kesehatan — Pusat Krisis Kesehatan</h2>
+            <p>Emergency Operations Center (EOC) | Jl. H.R. Rasuna Said Blok X-5 Kav. 4-9 Jakarta | Call Center: 119 / 0812-1212-3119</p>
+          </div>
+          <div class="kop-badge">
+            <b>NO DOK: EOC/LAP-DASH/${new Date().getFullYear()}</b><br/>
+            <span>TGL CETAK: ${new Date().toLocaleDateString('id-ID')}</span><br/>
+            <span class="status-tag">Laporan Terfilter</span>
+          </div>
+        </div>
+
+        <!-- EXECUTIVE SUMMARY BANNER -->
+        <div class="summary-box">
+          <h2 class="summary-title">LAPORAN EKSEKUTIF PEMANTAUAN KEJADIAN BENCANA & KRISIS KESEHATAN</h2>
+          <div class="filter-meta">
+            <div>Wilayah Terfilter: <b>${filterWilayahText}</b></div>
+            <div>Bencana Terfilter: <b>${filterBencanaText}</b></div>
+            <div>Periode Waktu: <b>${timePresetText}</b></div>
+          </div>
+        </div>
+
+        <!-- 3 VISUAL VECTOR CHARTS -->
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>1. Distribusi Jenis Bencana</h3>
+            ${chart1Html}
+          </div>
+          <div class="chart-card">
+            <h3>2. Verifikasi & Sebaran Provinsi</h3>
+            ${chart2Html}
+          </div>
+          <div class="chart-card">
+            <h3>3. Dampak Korban & Faskes</h3>
+            ${chart3Html}
+          </div>
+        </div>
+
+        <!-- DATA MATRIX TABLE -->
+        <div class="matrix-section">
+          <h3>Matriks Rekapitulasi Laporan Kejadian Bencana Terfilter (${totalReports} Laporan)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 25px; text-align: center;">NO</th>
+                <th>KODE & WAKTU KEJADIAN</th>
+                <th>LOKASI BENCANA</th>
+                <th>JENIS BENCANA</th>
+                <th style="text-align: center;">KORBAN JIWA</th>
+                <th style="text-align: center;">TERDAMPAK</th>
+                <th style="text-align: center;">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SIGNATURE & STAMP FOOTER -->
+        <div class="footer-sig">
+          <div style="font-size: 9px; color: #64748b;">
+            <b>EOC Krisis Kesehatan Kemenkes RI</b><br/>
+            Dokumen ini dihasilkan otomatis berdasarkan hasil filter sistem EOC Kemenkes RI.<br/>
+            Waktu Generasi: ${new Date().toLocaleString('id-ID')} WIB
+          </div>
+          <div class="sig-box">
+            <div style="font-size: 9.5px; color: #475569; margin-bottom: 4px;">Penanggung Jawab EOC,</div>
+            <div class="sig-space"></div>
+            <div class="sig-name">Tim Komando EOC Kemenkes</div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 400);
+          }
+        </script>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+
+    showToast('Berhasil men-generate Dashboard Report HTML/PDF!')
+  }
+
   // DOWNLOAD SINGLE REPORT PDF
   const handleDownloadSinglePDF = (item: LaporanItem) => {
     const printWindow = window.open('', '_blank')
@@ -2008,6 +2431,15 @@ export default function UnduhLaporanPage() {
                   >
                     <FileText className="h-4 w-4 text-rose-700" />
                     <span>Unduh PDF (.PDF)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateDashboardHTML}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-teal-600 bg-[#047D78] hover:bg-[#036662] px-3.5 py-2 text-xs font-bold text-white transition shadow-md cursor-pointer active:scale-95"
+                    title="Generate & cetak laporan HTML/PDF lengkap Kop Kemenkes & 3 Chart"
+                  >
+                    <Sparkles className="h-4 w-4 text-teal-200" />
+                    <span>Cetak Dashboard Report (HTML/PDF)</span>
                   </button>
                 </div>
               </div>
