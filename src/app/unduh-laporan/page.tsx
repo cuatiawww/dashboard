@@ -921,9 +921,7 @@ export default function UnduhLaporanPage() {
     setHeader({
       title: 'REKAP & UNDUH LAPORAN KEJADIAN BENCANA',
       description: 'Pusat filter terpadu dan ekstraksi matriks laporan kejadian bencana kesehatan real-time untuk kebutuhan unduh data (Excel, PDF, CSV).',
-      lastUpdated: 'Baru Saja',
-      sourceLabel: 'SISTEM EOC KEMENKES RI',
-      sourceUrl: '#',
+      lastUpdated: 'Baru Saja'
     })
   }, [setHeader])
 
@@ -936,7 +934,7 @@ export default function UnduhLaporanPage() {
   const [selectedDatePreset, setSelectedDatePreset] = useState<string>('all')
   const [filterKorbanOnly, setFilterKorbanOnly] = useState(false)
   const [filterFaskesOnly, setFilterFaskesOnly] = useState(false)
-  
+
   // Smart Region Autocomplete Search State (PROV, KAB, KEC, DESA)
   const [regionInputQuery, setRegionInputQuery] = useState('')
   const [showRegionDropdown, setShowRegionDropdown] = useState(false)
@@ -1030,7 +1028,7 @@ export default function UnduhLaporanPage() {
   const filteredRegionSuggestions = useMemo(() => {
     if (!regionInputQuery.trim() || regionInputQuery.trim().length < 2) return []
     const q = regionInputQuery.toLowerCase().trim()
-    
+
     // Filter master region suggestions
     const matches = MASTER_REGION_SUGGESTIONS.filter((sug) =>
       sug.fullName.toLowerCase().includes(q) ||
@@ -1998,10 +1996,10 @@ export default function UnduhLaporanPage() {
 
         {/* MAIN LAYOUT: MULTIPLE FILTER SIDEBAR + DATA MATRIX */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
+
           {/* ==================== LEFT MULTI FILTER SIDEBAR ==================== */}
           <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5 sticky top-4">
-            
+
             {/* Filter Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -2089,15 +2087,14 @@ export default function UnduhLaporanPage() {
                               </p>
                             </div>
                             <span
-                              className={`shrink-0 rounded-md text-[9px] font-extrabold px-2 py-0.5 border uppercase tracking-wider ${
-                                isKec
-                                  ? 'bg-purple-50 border-purple-200 text-purple-700'
-                                  : isDesa
+                              className={`shrink-0 rounded-md text-[9px] font-extrabold px-2 py-0.5 border uppercase tracking-wider ${isKec
+                                ? 'bg-purple-50 border-purple-200 text-purple-700'
+                                : isDesa
                                   ? 'bg-amber-50 border-amber-200 text-amber-700'
                                   : isProv
-                                  ? 'bg-teal-50 border-teal-200 text-[#047D78]'
-                                  : 'bg-blue-50 border-blue-200 text-blue-700'
-                              }`}
+                                    ? 'bg-teal-50 border-teal-200 text-[#047D78]'
+                                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                                }`}
                             >
                               {sug.level}
                             </span>
@@ -2185,11 +2182,10 @@ export default function UnduhLaporanPage() {
                         return (
                           <label
                             key={prov.id || prov.name}
-                            className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
-                              isChecked
-                                ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
-                                : 'hover:bg-slate-100/70 text-slate-600'
-                            }`}
+                            className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${isChecked
+                              ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                              : 'hover:bg-slate-100/70 text-slate-600'
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -2230,11 +2226,10 @@ export default function UnduhLaporanPage() {
                     return (
                       <label
                         key={jenis}
-                        className={`flex items-start gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
-                          isChecked
-                            ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
-                            : 'hover:bg-slate-50 text-slate-600'
-                        }`}
+                        className={`flex items-start gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${isChecked
+                          ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                          : 'hover:bg-slate-50 text-slate-600'
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -2275,11 +2270,10 @@ export default function UnduhLaporanPage() {
                   ].map((preset) => (
                     <label
                       key={preset.id}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition ${
-                        selectedDatePreset === preset.id
-                          ? 'bg-teal-700 text-white font-bold'
-                          : 'text-slate-600 hover:bg-slate-100'
-                      }`}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition ${selectedDatePreset === preset.id
+                        ? 'bg-teal-700 text-white font-bold'
+                        : 'text-slate-600 hover:bg-slate-100'
+                        }`}
                     >
                       <input
                         type="radio"
@@ -2322,11 +2316,10 @@ export default function UnduhLaporanPage() {
                     return (
                       <label
                         key={st}
-                        className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
-                          isChecked
-                            ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
-                            : 'hover:bg-slate-50 text-slate-600'
-                        }`}
+                        className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${isChecked
+                          ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                          : 'hover:bg-slate-50 text-slate-600'
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -2403,14 +2396,14 @@ export default function UnduhLaporanPage() {
           {/* ==================== RIGHT MAIN DATA MATRIX ==================== */}
           <main className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              
+
               {/* Header Title & Subtitle */}
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
                   <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">DAFTAR LAPORAN KEJADIAN BENCANA</h1>
                   <p className="text-xs text-slate-500 mt-0.5">Daftar rekapitulasi data laporan kejadian bencana kesehatan yang siap difilter dan diunduh.</p>
                 </div>
-                
+
                 {/* Export Action Buttons */}
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -2618,11 +2611,10 @@ export default function UnduhLaporanPage() {
 
                             {/* KORBAN */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
-                              <span className={`inline-block font-extrabold px-2 py-0.5 rounded-lg text-xs ${
-                                item.korban_meninggal > 0
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'text-slate-700'
-                              }`}>
+                              <span className={`inline-block font-extrabold px-2 py-0.5 rounded-lg text-xs ${item.korban_meninggal > 0
+                                ? 'bg-rose-100 text-rose-700'
+                                : 'text-slate-700'
+                                }`}>
                                 {item.korban_meninggal + item.korban_luka_berat + item.korban_luka_ringan + item.korban_hilang}
                               </span>
                             </td>
@@ -2702,11 +2694,10 @@ export default function UnduhLaporanPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`h-7 w-7 rounded-lg text-xs font-bold transition ${
-                        currentPage === page
-                          ? 'bg-[#047D78] text-white shadow-sm'
-                          : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
+                      className={`h-7 w-7 rounded-lg text-xs font-bold transition ${currentPage === page
+                        ? 'bg-[#047D78] text-white shadow-sm'
+                        : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
+                        }`}
                     >
                       {page}
                     </button>

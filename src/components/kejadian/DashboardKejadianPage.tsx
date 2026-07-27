@@ -381,39 +381,49 @@ export default function DashboardKejadianPage() {
     if (!data?.markers) return []
     if (selectedRegions.length === 0) return data.markers
 
-    return data.markers.filter((m) => {
-      return selectedRegions.some((reg) => {
-        const mProv = (m.provinsi || '').toLowerCase()
-        const mKab = (m.kabupaten || '').toLowerCase()
-        const mKec = (m.kecamatan || '').toLowerCase()
-        const mDesa = (m.nama_desa || '').toLowerCase()
+    const normalize = (str: string) => {
+      if (!str) return ''
+      return str
+        .toLowerCase()
+        .replace(/\s*\([^)]*\)/g, '') // Hapus komentar dalam kurung (misal: (kab. pakpak bharat))
+        .replace(/^(provinsi|prov\.|kabupaten|kab\.|kota|kecamatan|kec\.|desa|kelurahan|nagari)\s+/gi, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim()
+    }
 
-        const rProv = (reg.province_name || '').toLowerCase()
-        const rKab = (reg.kabupaten_name || '').toLowerCase()
-        const rKec = (reg.kecamatan_name || '').toLowerCase()
-        const rDesa = (reg.desa_name || '').toLowerCase()
-        const rLabel = (reg.label || '').toLowerCase()
+    return data.markers.filter((m) => {
+      const mProv = normalize(m.provinsi || '')
+      const mKab = normalize(m.kabupaten || '')
+      const mKec = normalize(m.kecamatan || '')
+      const mDesa = normalize(m.nama_desa || '')
+
+      return selectedRegions.some((reg) => {
+        const rProv = normalize(reg.province_name || '')
+        const rKab = normalize(reg.kabupaten_name || '')
+        const rKec = normalize(reg.kecamatan_name || '')
+        const rDesa = normalize(reg.desa_name || '')
+        const rLabel = normalize(reg.label || '')
 
         if (reg.type === 'provinsi') {
-          if (rProv && mProv.includes(rProv)) return true
+          if (rProv && (mProv.includes(rProv) || rProv.includes(mProv))) return true
           if (rLabel && (mProv.includes(rLabel) || rLabel.includes(mProv))) return true
         }
         if (reg.type === 'kabupaten') {
-          if (rKab && mKab.includes(rKab)) return true
-          if (rLabel && mKab.includes(rLabel)) return true
+          if (rKab && (mKab.includes(rKab) || rKab.includes(mKab))) return true
+          if (rLabel && (mKab.includes(rLabel) || rLabel.includes(mKab))) return true
         }
         if (reg.type === 'kecamatan') {
-          if (rKec && mKec.includes(rKec)) return true
-          if (rLabel && (mKec.includes(rLabel) || mKab.includes(rLabel))) return true
+          if (rKec && (mKec.includes(rKec) || rKec.includes(mKec))) return true
+          if (rLabel && (mKec.includes(rLabel) || rLabel.includes(mKec) || mKab.includes(rLabel))) return true
         }
         if (reg.type === 'desa') {
-          if (rDesa && mDesa.includes(rDesa)) return true
-          if (rLabel && (mDesa.includes(rLabel) || mKab.includes(rLabel))) return true
+          if (rDesa && (mDesa.includes(rDesa) || rDesa.includes(mDesa))) return true
+          if (rLabel && (mDesa.includes(rLabel) || rLabel.includes(mDesa) || mKec.includes(rLabel) || mKab.includes(rLabel))) return true
         }
 
-        const cleanLabel = rLabel.replace(/^(provinsi|kabupaten|kab\.|kota|kecamatan|desa)\s+/i, '').trim()
-        if (cleanLabel.length > 2) {
-          if (mKab.includes(cleanLabel) || mProv.includes(cleanLabel) || mDesa.includes(cleanLabel) || mKec.includes(cleanLabel)) {
+        if (rLabel.length >= 2) {
+          if (mKab.includes(rLabel) || mProv.includes(rLabel) || mDesa.includes(rLabel) || mKec.includes(rLabel) ||
+              rLabel.includes(mKab) || rLabel.includes(mProv) || rLabel.includes(mKec)) {
             return true
           }
         }
@@ -502,11 +512,12 @@ export default function DashboardKejadianPage() {
   const activeRegionConcatenatedLabel = useMemo(() => {
     if (selectedRegions.length > 0) {
       return selectedRegions.map(r => {
-        if (r.type === 'provinsi') return `PROV. ${r.label.toUpperCase()}`
-        if (r.type === 'kabupaten') return `KAB/KOTA ${r.label.toUpperCase()}`
-        if (r.type === 'kecamatan') return `KEC. ${r.label.toUpperCase()}`
-        if (r.type === 'desa') return `DESA/KEL. ${r.label.toUpperCase()}`
-        return r.label.toUpperCase()
+        const cleanName = r.label.replace(/\s*\([^)]*\)/g, '').replace(/^(provinsi|kabupaten|kab\.|kota|kecamatan|kec\.|desa)\s+/gi, '').trim().toUpperCase()
+        if (r.type === 'provinsi') return `PROV. ${cleanName}`
+        if (r.type === 'kabupaten') return `KAB. ${cleanName}`
+        if (r.type === 'kecamatan') return `KEC. ${cleanName}`
+        if (r.type === 'desa') return `DESA/KEL. ${cleanName}`
+        return cleanName
       }).join(', ')
     }
     const parts: string[] = []
@@ -523,6 +534,36 @@ export default function DashboardKejadianPage() {
       return parts.join(', ')
     }
     return 'NASIONAL'
+  }, [selectedRegions, kabupaten, province])
+
+  const activeRegionBadgeLabel = useMemo(() => {
+    if (selectedRegions.length === 0) {
+      const parts: string[] = []
+      const cleanKab = (kabupaten || '').trim().toLowerCase()
+      const cleanProv = (province || '').trim().toLowerCase()
+
+      if (cleanKab && cleanKab !== 'semua-kabkota' && !cleanKab.includes('semua kab')) {
+        parts.push(`KAB. ${kabupaten.toUpperCase()}`)
+      }
+      if (cleanProv && cleanProv !== 'semua-provinsi' && !cleanProv.includes('semua prov')) {
+        parts.push(`PROV. ${province.toUpperCase()}`)
+      }
+      if (parts.length > 0) return parts.join(', ')
+      return 'NASIONAL'
+    }
+
+    if (selectedRegions.length === 1) {
+      const r = selectedRegions[0]
+      const cleanName = r.label.replace(/\s*\([^)]*\)/g, '').trim().toUpperCase()
+      if (r.type === 'provinsi') return `PROV. ${cleanName}`
+      if (r.type === 'kabupaten') return `KAB. ${cleanName}`
+      if (r.type === 'kecamatan') return `KEC. ${cleanName}`
+      if (r.type === 'desa') return `DESA/KEL. ${cleanName}`
+      return cleanName
+    }
+
+    const shortNames = selectedRegions.map(r => r.label.replace(/\s*\([^)]*\)/g, '').replace(/^(provinsi|kabupaten|kab\.|kota|kecamatan|kec\.|desa)\s+/gi, '').trim().toUpperCase())
+    return `${selectedRegions.length} WILAYAH: ${shortNames.join(', ')}`
   }, [selectedRegions, kabupaten, province])
 
   const filteredDetailMarkers = useMemo(() => {
@@ -2093,13 +2134,16 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           >
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div className="flex-1">
-                <h3 className="text-[22px] font-bold leading-tight text-[#2f2f2f] sm:text-[30px] uppercase">
-                  SEBARAN SPASIAL KEJADIAN BENCANA - {getRegionLabel()}
+                <h3 className="text-[22px] font-bold leading-tight text-[#2f2f2f] sm:text-[28px] uppercase">
+                  SEBARAN SPASIAL KEJADIAN BENCANA
                 </h3>
-                <p className="mt-1 text-[14px] leading-relaxed text-[#4b4b4b] sm:text-[16px]">
-                  Pemetaan ini menyajikan gambaran komprehensif mengenai distribusi geografis dan
-                  lokasi kejadian bencana yang dilaporkan pada wilayah {getRegionLabel()}{dateRangeText}.
+                <p className="mt-1 text-[13px] leading-relaxed text-[#4b4b4b] sm:text-[14px]">
+                  Pemetaan ini menyajikan gambaran komprehensif distribusi geografis dan lokasi kejadian bencana{dateRangeText}.
                 </p>
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+                  <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                  <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 self-start md:self-center">
                 <button
@@ -2147,9 +2191,13 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           <h3 className="text-base font-bold text-slate-900 uppercase mb-1 tracking-wider">
             TREND KEJADIAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
           </h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Grafik perbandingan tren jumlah kejadian bencana alam dengan laporan krisis kesehatan bulanan di wilayah {getRegionLabel()}.
+          <p className="text-xs text-slate-500 mb-2">
+            Grafik perbandingan tren jumlah kejadian bencana alam dengan laporan krisis kesehatan bulanan.
           </p>
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+          </div>
           <div className="h-[260px] sm:h-[320px] w-full">
             {loading ? (
               <div className="h-full w-full flex items-end gap-3 px-4 pb-2 border-b border-l border-slate-200 animate-pulse">
@@ -2204,9 +2252,13 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           <h3 className="text-base font-bold text-slate-900 uppercase mb-1 tracking-wider">
             TREND KORBAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
           </h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Grafik perbandingan tren dampak korban (meninggal, luka, hilang, mengungsi, terdampak) akibat bencana alam dan krisis kesehatan bulanan di wilayah {getRegionLabel()}.
+          <p className="text-xs text-slate-500 mb-2">
+            Grafik perbandingan tren dampak korban (meninggal, luka, hilang, mengungsi, terdampak) akibat bencana alam dan krisis kesehatan bulanan.
           </p>
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+          </div>
 
           <div className="h-[260px] sm:h-[320px] w-full">
             {loading ? (
@@ -2270,8 +2322,12 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:grid-cols-3">
         {/* Pie Chart 1: Jenis Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA - {getRegionLabel()}</h3>
-          <p className="text-xs text-slate-500 mb-4">Persentase kejadian berdasarkan tipe bencana di wilayah {getRegionLabel()}.</p>
+          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA</h3>
+          <p className="text-xs text-slate-500 mt-0.5 mb-2">Persentase kejadian berdasarkan tipe bencana.</p>
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+          </div>
           <div className="h-[180px] sm:h-[220px]">
             {loading ? (
               <div className="h-full w-full flex items-center justify-center animate-pulse">
@@ -2310,8 +2366,12 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
         {/* Pie Chart 2: Kategori Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA - {getRegionLabel()}</h3>
-          <p className="text-xs text-slate-500 mb-4">Persentase kejadian berdasarkan kategori bencana di wilayah {getRegionLabel()}.</p>
+          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA</h3>
+          <p className="text-xs text-slate-500 mt-0.5 mb-2">Persentase kejadian berdasarkan kategori bencana.</p>
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+          </div>
           <div className="h-[180px] sm:h-[220px]">
             {loading ? (
               <div className="h-full w-full flex items-center justify-center animate-pulse">
@@ -2350,8 +2410,12 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
         {/* Pie Chart 3: Wilayah Bencana */}
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">{getWilayahChartInfo().title}</h3>
-          <p className="text-xs text-slate-500 mb-4">{getWilayahChartInfo().desc}</p>
+          <h3 className="text-base font-bold text-slate-900 uppercase">SEBARAN KRISIS PER KECAMATAN / WILAYAH</h3>
+          <p className="text-xs text-slate-500 mt-0.5 mb-2">Distribusi kejadian bencana pada tingkat wilayah.</p>
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+          </div>
           <div className="h-[180px] sm:h-[220px]">
             {loading ? (
               <div className="h-full w-full flex items-center justify-center animate-pulse">

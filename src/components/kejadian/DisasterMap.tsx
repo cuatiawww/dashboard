@@ -439,7 +439,11 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       selectedRegions.forEach((r: any) => {
         const pName = r.province_name || (r.type === 'provinsi' ? r.label : '')
         if (pName) keys.push(cleanKey(pName))
-        if (r.label) keys.push(cleanKey(r.label))
+        if (r.label) {
+          const matchProv = r.label.match(/,\s*([A-Za-z\s]+)\)/)
+          if (matchProv && matchProv[1]) keys.push(cleanKey(matchProv[1]))
+          keys.push(cleanKey(r.label))
+        }
       })
     }
     return keys
@@ -451,6 +455,12 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       selectedRegions.forEach((r: any) => {
         const kName = r.kabupaten_name || (r.type === 'kabupaten' ? r.label : '')
         if (kName) keys.push(cleanKey(kName))
+
+        if (r.label) {
+          const matchKab = r.label.match(/\((?:KAB\.|KOTA|KABUPATEN)\s*([^,)]+)/i)
+          if (matchKab && matchKab[1]) keys.push(cleanKey(matchKab[1]))
+          keys.push(cleanKey(r.label))
+        }
       })
     }
     return keys
