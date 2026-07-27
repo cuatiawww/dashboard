@@ -1,0 +1,2380 @@
+'use client'
+
+import { useState, useMemo, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import {
+  Download,
+  Filter,
+  Search,
+  Calendar,
+  MapPin,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  RefreshCw,
+  FileSpreadsheet,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Eye,
+  ExternalLink,
+  ShieldAlert,
+  Building2,
+  Users,
+  Sparkles,
+  RotateCcw,
+  Printer,
+  Info,
+  Check,
+  FileDown,
+  Globe,
+  Loader2,
+  Home,
+} from 'lucide-react'
+import { useHeaderStore } from '@/lib/headerStore'
+import { useAuthStore } from '@/lib/authStore'
+import { buildRegionsUrl } from '@/lib/utils/api'
+
+// Data model type
+export type LaporanItem = {
+  id: number
+  kode_laporan: string
+  tgl_kejadian: string
+  tgl_kejadian_formatted: string
+  jam_kejadian: string
+  tgl_perkembangan: string
+  tgl_perkembangan_formatted: string
+  jam_perkembangan: string
+  tingkat_bencana: string
+  provinsi: string
+  kabupaten: string
+  kecamatan: string
+  desa: string
+  jenis_bencana: string
+  korban_meninggal: number
+  korban_luka_berat: number
+  korban_luka_ringan: number
+  korban_hilang: number
+  penduduk_terdampak: number
+  pengungsi: number
+  faskes_terdampak: number
+  status_verifikasi: 'Diverifikasi' | 'Menunggu Verifikasi' | 'Draft'
+  deskripsi: string
+  petugas: string
+}
+
+// Region Autocomplete Suggestion type
+export type RegionSuggestion = {
+  id: string
+  level: 'PROVINSI' | 'KABUPATEN' | 'KECAMATAN' | 'DESA'
+  name: string
+  fullName: string // e.g. "KEC. Rajadesa (Kab. Ciamis, Jawa Barat)"
+  provinsi: string
+  kabupaten?: string
+  kecamatan?: string
+  desa?: string
+}
+
+// Full 38 Indonesian Provinces list
+const ALL_INDONESIA_PROVINCES = [
+  'ACEH',
+  'SUMATERA UTARA',
+  'SUMATERA BARAT',
+  'RIAU',
+  'KEPULAUAN RIAU',
+  'JAMBI',
+  'SUMATERA SELATAN',
+  'KEPULAUAN BANGKA BELITUNG',
+  'BENGKULU',
+  'LAMPUNG',
+  'DKI JAKARTA',
+  'JAWA BARAT',
+  'BANTEN',
+  'JAWA TENGAH',
+  'DI YOGYAKARTA',
+  'JAWA TIMUR',
+  'BALI',
+  'NUSA TENGGARA BARAT',
+  'NUSA TENGGARA TIMUR',
+  'KALIMANTAN BARAT',
+  'KALIMANTAN TENGAH',
+  'KALIMANTAN SELATAN',
+  'KALIMANTAN TIMUR',
+  'KALIMANTAN UTARA',
+  'SULAWESI UTARA',
+  'GORONTALO',
+  'SULAWESI TENGAH',
+  'SULAWESI BARAT',
+  'SULAWESI SELATAN',
+  'SULAWESI TENGGARA',
+  'MALUKU',
+  'MALUKU UTARA',
+  'PAPUA',
+  'PAPUA BARAT',
+  'PAPUA BARAT DAYA',
+  'PAPUA TENGAH',
+  'PAPUA PEGUNUNGAN',
+  'PAPUA SELATAN',
+]
+
+// Comprehensive Master list of Region Autocomplete Suggestions (PROVINSI, KABUPATEN, KECAMATAN, DESA)
+const MASTER_REGION_SUGGESTIONS: RegionSuggestion[] = [
+  // === PROVINSI ===
+  ...ALL_INDONESIA_PROVINCES.map((prov, i) => ({
+    id: `prov-${i + 1}`,
+    level: 'PROVINSI' as const,
+    name: prov,
+    fullName: `PROV. ${prov}`,
+    provinsi: prov,
+  })),
+
+  // === KABUPATEN / KOTA ===
+  {
+    id: 'kab-1',
+    level: 'KABUPATEN',
+    name: 'Ciamis',
+    fullName: 'KAB. Ciamis (Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIAMIS',
+  },
+  {
+    id: 'kab-2',
+    level: 'KABUPATEN',
+    name: 'Musi Banyuasin',
+    fullName: 'KAB. Musi Banyuasin (Sumatera Selatan)',
+    provinsi: 'SUMATERA SELATAN',
+    kabupaten: 'KAB. MUSI BANYUASIN',
+  },
+  {
+    id: 'kab-3',
+    level: 'KABUPATEN',
+    name: 'Pekalongan',
+    fullName: 'KAB. Pekalongan (Jawa Tengah)',
+    provinsi: 'JAWA TENGAH',
+    kabupaten: 'KAB. PEKALONGAN',
+  },
+  {
+    id: 'kab-4',
+    level: 'KABUPATEN',
+    name: 'Sumbawa',
+    fullName: 'KAB. Sumbawa (Nusa Tenggara Barat)',
+    provinsi: 'NUSA TENGGARA BARAT',
+    kabupaten: 'KAB. SUMBAWA',
+  },
+  {
+    id: 'kab-5',
+    level: 'KABUPATEN',
+    name: 'Cirebon',
+    fullName: 'KAB. Cirebon (Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIREBON',
+  },
+  {
+    id: 'kab-6',
+    level: 'KABUPATEN',
+    name: 'Sarolangun',
+    fullName: 'KAB. Sarolangun (Jambi)',
+    provinsi: 'JAMBI',
+    kabupaten: 'KAB. SAROLANGUN',
+  },
+  {
+    id: 'kab-7',
+    level: 'KABUPATEN',
+    name: 'Kampar',
+    fullName: 'KAB. Kampar (Riau)',
+    provinsi: 'RIAU',
+    kabupaten: 'KAB. KAMPAR',
+  },
+  {
+    id: 'kab-8',
+    level: 'KABUPATEN',
+    name: 'Kota Palangka Raya',
+    fullName: 'KOTA Palangka Raya (Kalimantan Tengah)',
+    provinsi: 'KALIMANTAN TENGAH',
+    kabupaten: 'KOTA PALANGKA RAYA',
+  },
+  {
+    id: 'kab-9',
+    level: 'KABUPATEN',
+    name: 'Probolinggo',
+    fullName: 'KAB. Probolinggo (Jawa Timur)',
+    provinsi: 'JAWA TIMUR',
+    kabupaten: 'KAB. PROBOLINGGO',
+  },
+  {
+    id: 'kab-10',
+    level: 'KABUPATEN',
+    name: 'Cianjur',
+    fullName: 'KAB. Cianjur (Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIANJUR',
+  },
+  {
+    id: 'kab-11',
+    level: 'KABUPATEN',
+    name: 'Gayo Lues',
+    fullName: 'KAB. Gayo Lues (Aceh)',
+    provinsi: 'ACEH',
+    kabupaten: 'KAB. GAYO LUES',
+  },
+  {
+    id: 'kab-12',
+    level: 'KABUPATEN',
+    name: 'Padang Pariaman',
+    fullName: 'KAB. Padang Pariaman (Sumatera Barat)',
+    provinsi: 'SUMATERA BARAT',
+    kabupaten: 'KAB. PADANG PARIAMAN',
+  },
+  {
+    id: 'kab-13',
+    level: 'KABUPATEN',
+    name: 'Flores Timur',
+    fullName: 'KAB. Flores Timur (Nusa Tenggara Timur)',
+    provinsi: 'NUSA TENGGARA TIMUR',
+    kabupaten: 'KAB. FLORES TIMUR',
+  },
+  {
+    id: 'kab-14',
+    level: 'KABUPATEN',
+    name: 'Belitung Timur',
+    fullName: 'KAB. Belitung Timur (Kep. Bangka Belitung)',
+    provinsi: 'KEPULAUAN BANGKA BELITUNG',
+    kabupaten: 'KAB. BELITUNG TIMUR',
+  },
+  {
+    id: 'kab-15',
+    level: 'KABUPATEN',
+    name: 'Kota Banjarbaru',
+    fullName: 'KOTA Banjarbaru (Kalimantan Selatan)',
+    provinsi: 'KALIMANTAN SELATAN',
+    kabupaten: 'KOTA BANJAR BARU',
+  },
+  {
+    id: 'kab-16',
+    level: 'KABUPATEN',
+    name: 'Kota Tangerang',
+    fullName: 'KOTA Tangerang (Banten)',
+    provinsi: 'BANTEN',
+    kabupaten: 'KAB. KOTA TANGERANG',
+  },
+  {
+    id: 'kab-17',
+    level: 'KABUPATEN',
+    name: 'Pasaman Barat',
+    fullName: 'KAB. Pasaman Barat (Sumatera Barat)',
+    provinsi: 'SUMATERA BARAT',
+    kabupaten: 'KAB. PASAMAN BARAT',
+  },
+  {
+    id: 'kab-18',
+    level: 'KABUPATEN',
+    name: 'Sukabumi',
+    fullName: 'KAB. Sukabumi (Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. SUKABUMI',
+  },
+  {
+    id: 'kab-19',
+    level: 'KABUPATEN',
+    name: 'Intan Jaya',
+    fullName: 'KAB. Intan Jaya (Papua Tengah)',
+    provinsi: 'PAPUA TENGAH',
+    kabupaten: 'KAB. INTAN JAYA',
+  },
+  {
+    id: 'kab-20',
+    level: 'KABUPATEN',
+    name: 'Sumedang',
+    fullName: 'KAB. Sumedang (Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. SUMEDANG',
+  },
+  {
+    id: 'kab-21',
+    level: 'KABUPATEN',
+    name: 'Luwu Utara',
+    fullName: 'KAB. Luwu Utara (Sulawesi Selatan)',
+    provinsi: 'SULAWESI SELATAN',
+    kabupaten: 'KAB. LUWU UTARA',
+  },
+
+  // === KECAMATAN ===
+  {
+    id: 'sug-1',
+    level: 'KECAMATAN',
+    name: 'Rajadesa',
+    fullName: 'KEC. Rajadesa (Kab. Ciamis, Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIAMIS',
+    kecamatan: 'Rajadesa',
+  },
+  {
+    id: 'sug-2',
+    level: 'KECAMATAN',
+    name: 'Sanga Desa',
+    fullName: 'KEC. Sanga Desa (Kab. Musi Banyuasin, Sumatera Selatan)',
+    provinsi: 'SUMATERA SELATAN',
+    kabupaten: 'KAB. MUSI BANYUASIN',
+    kecamatan: 'Sanga Desa',
+  },
+  {
+    id: 'sug-3',
+    level: 'KECAMATAN',
+    name: 'Wiradesa',
+    fullName: 'KEC. Wiradesa (Kab. Pekalongan, Jawa Tengah)',
+    provinsi: 'JAWA TENGAH',
+    kabupaten: 'KAB. PEKALONGAN',
+    kecamatan: 'Wiradesa',
+  },
+  {
+    id: 'sug-11',
+    level: 'KECAMATAN',
+    name: 'Jekan Raya',
+    fullName: 'KEC. Jekan Raya (Kota Palangka Raya, Kalimantan Tengah)',
+    provinsi: 'KALIMANTAN TENGAH',
+    kabupaten: 'KOTA PALANGKA RAYA',
+    kecamatan: 'Jekan Raya',
+  },
+  {
+    id: 'sug-12',
+    level: 'KECAMATAN',
+    name: 'Cugenang',
+    fullName: 'KEC. Cugenang (Kab. Cianjur, Jawa Barat)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIANJUR',
+    kecamatan: 'Cugenang',
+  },
+  {
+    id: 'sug-13',
+    level: 'KECAMATAN',
+    name: 'Blangkejeren',
+    fullName: 'KEC. Blangkejeren (Kab. Gayo Lues, Aceh)',
+    provinsi: 'ACEH',
+    kabupaten: 'KAB. GAYO LUES',
+    kecamatan: 'Blangkejeren',
+  },
+  {
+    id: 'sug-14',
+    level: 'KECAMATAN',
+    name: 'Tegalwenuan',
+    fullName: 'KEC. Tegalwenuan (Kab. Probolinggo, Jawa Timur)',
+    provinsi: 'JAWA TIMUR',
+    kabupaten: 'KAB. PROBOLINGGO',
+    kecamatan: 'Tegalwenuan',
+  },
+  {
+    id: 'sug-16',
+    level: 'KECAMATAN',
+    name: 'Adonara',
+    fullName: 'KEC. Adonara (Kab. Flores Timur, NTT)',
+    provinsi: 'NUSA TENGGARA TIMUR',
+    kabupaten: 'KAB. FLORES TIMUR',
+    kecamatan: 'Adonara',
+  },
+  {
+    id: 'sug-18',
+    level: 'KECAMATAN',
+    name: 'Batuceper',
+    fullName: 'KEC. Batuceper (Kota Tangerang, Banten)',
+    provinsi: 'BANTEN',
+    kabupaten: 'KAB. KOTA TANGERANG',
+    kecamatan: 'Batuceper',
+  },
+  {
+    id: 'sug-20',
+    level: 'KECAMATAN',
+    name: 'Masamba',
+    fullName: 'KEC. Masamba (Kab. Luwu Utara, Sulawesi Selatan)',
+    provinsi: 'SULAWESI SELATAN',
+    kabupaten: 'KAB. LUWU UTARA',
+    kecamatan: 'Masamba',
+  },
+
+  // === DESA / KELURAHAN ===
+  {
+    id: 'sug-4',
+    level: 'DESA',
+    name: 'Bao Desa',
+    fullName: 'DESA/KEL. Bao Desa (KEC. Batu Lanteh, Kab. Sumbawa)',
+    provinsi: 'NUSA TENGGARA BARAT',
+    kabupaten: 'KAB. SUMBAWA',
+    kecamatan: 'Batu Lanteh',
+    desa: 'Bao Desa',
+  },
+  {
+    id: 'sug-5',
+    level: 'DESA',
+    name: 'Bodesari',
+    fullName: 'DESA/KEL. Bodesari (KEC. Plumbon, Kab. Cirebon)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIREBON',
+    kecamatan: 'Plumbon',
+    desa: 'Bodesari',
+  },
+  {
+    id: 'sug-6',
+    level: 'DESA',
+    name: 'Desa Baru',
+    fullName: 'DESA/KEL. Desa Baru (KEC. Air Hitam, Kab. Sarolangun)',
+    provinsi: 'JAMBI',
+    kabupaten: 'KAB. SAROLANGUN',
+    kecamatan: 'Air Hitam',
+    desa: 'Desa Baru',
+  },
+  {
+    id: 'sug-7',
+    level: 'DESA',
+    name: 'Desa Baru',
+    fullName: 'DESA/KEL. Desa Baru (KEC. Siak Hulu, Kab. Kampar)',
+    provinsi: 'RIAU',
+    kabupaten: 'KAB. KAMPAR',
+    kecamatan: 'Siak Hulu',
+    desa: 'Desa Baru',
+  },
+  {
+    id: 'sug-8',
+    level: 'DESA',
+    name: 'Kelurahan Palangka',
+    fullName: 'DESA/KEL. Kelurahan Palangka (KEC. Jekan Raya, Kota Palangka Raya)',
+    provinsi: 'KALIMANTAN TENGAH',
+    kabupaten: 'KOTA PALANGKA RAYA',
+    kecamatan: 'Jekan Raya',
+    desa: 'Kelurahan Palangka',
+  },
+  {
+    id: 'sug-9',
+    level: 'DESA',
+    name: 'Desa Gasol',
+    fullName: 'DESA/KEL. Desa Gasol (KEC. Cugenang, Kab. Cianjur)',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'KAB. CIANJUR',
+    kecamatan: 'Cugenang',
+    desa: 'Desa Gasol',
+  },
+  {
+    id: 'sug-10',
+    level: 'DESA',
+    name: 'Gampong Kutelintang',
+    fullName: 'DESA/KEL. Gampong Kutelintang (KEC. Blangkejeren, Kab. Gayo Lues)',
+    provinsi: 'ACEH',
+    kabupaten: 'KAB. GAYO LUES',
+    kecamatan: 'Blangkejeren',
+    desa: 'Gampong Kutelintang',
+  },
+  {
+    id: 'sug-15',
+    level: 'DESA',
+    name: 'Desa Tegalwenuan Wetan',
+    fullName: 'DESA/KEL. Desa Tegalwenuan Wetan (KEC. Tegalwenuan, Kab. Probolinggo)',
+    provinsi: 'JAWA TIMUR',
+    kabupaten: 'KAB. PROBOLINGGO',
+    kecamatan: 'Tegalwenuan',
+    desa: 'Desa Tegalwenuan Wetan',
+  },
+  {
+    id: 'sug-17',
+    level: 'DESA',
+    name: 'Desa Klatanlo',
+    fullName: 'DESA/KEL. Desa Klatanlo (KEC. Adonara, Kab. Flores Timur)',
+    provinsi: 'NUSA TENGGARA TIMUR',
+    kabupaten: 'KAB. FLORES TIMUR',
+    kecamatan: 'Adonara',
+    desa: 'Desa Klatanlo',
+  },
+  {
+    id: 'sug-19',
+    level: 'DESA',
+    name: 'Kelurahan Batuceper',
+    fullName: 'DESA/KEL. Kelurahan Batuceper (KEC. Batuceper, Kota Tangerang)',
+    provinsi: 'BANTEN',
+    kabupaten: 'KAB. KOTA TANGERANG',
+    kecamatan: 'Batuceper',
+    desa: 'Kelurahan Batuceper',
+  },
+  {
+    id: 'sug-21',
+    level: 'DESA',
+    name: 'Kelurahan Bone',
+    fullName: 'DESA/KEL. Kelurahan Bone (KEC. Masamba, Kab. Luwu Utara)',
+    provinsi: 'SULAWESI SELATAN',
+    kabupaten: 'KAB. LUWU UTARA',
+    kecamatan: 'Masamba',
+    desa: 'Kelurahan Bone',
+  },
+]
+
+// Initial mock dataset with deep location hierarchy down to Desa/Kelurahan
+const INITIAL_DATA: LaporanItem[] = [
+  {
+    id: 1,
+    kode_laporan: 'LAP-2026-07-001',
+    tgl_kejadian: '2026-07-22 09:13:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '09:13 WIB',
+    tgl_perkembangan: '2026-07-22 09:13:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '09:13 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'KALIMANTAN TENGAH',
+    kabupaten: 'KOTA PALANGKA RAYA',
+    kecamatan: 'Jekan Raya',
+    desa: 'Kelurahan Palangka',
+    jenis_bencana: 'Kebakaran Hutan dan Lahan',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Kebakaran lahan gambut terdeteksi di sekitar Jalan Mahir Mahar. Tim TRC Dinas Kesehatan dan Puskesmas Jekan Raya melakukan pemantauan asap dan pembagian masker.',
+    petugas: 'Siti Rahmawati, S.Kep',
+  },
+  {
+    id: 2,
+    kode_laporan: 'LAP-2026-07-002',
+    tgl_kejadian: '2026-07-22 14:00:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '14:00 WIB',
+    tgl_perkembangan: '2026-07-22 14:00:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '14:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'JAWA TIMUR',
+    kabupaten: 'PROBOLINGGO',
+    kecamatan: 'Tegalwenuan',
+    desa: 'Desa Tegalwenuan Wetan',
+    jenis_bencana: 'Banjir',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 2,
+    korban_hilang: 0,
+    penduduk_terdampak: 4,
+    pengungsi: 12,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Luapan Sungai Welang menggenangi perumahan warga setinggi 40-70 cm. 2 warga luka ringan akibat tergelincir dan telah ditangani Puskesmas Tegalwenuan.',
+    petugas: 'Budi Santoso, SKM',
+  },
+  {
+    id: 3,
+    kode_laporan: 'LAP-2026-07-003',
+    tgl_kejadian: '2026-07-22 11:18:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '11:18 WIB',
+    tgl_perkembangan: '2026-07-22 11:18:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '11:18 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'ACEH',
+    kabupaten: 'GAYO LUES',
+    kecamatan: 'Blangkejeren',
+    desa: 'Gampong Kutelintang',
+    jenis_bencana: 'Gempa Bumi',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Guncangan gempa dangkal M 4.8 dirasakan skala III-IV MMI di Blangkejeren. Tidak ada kerusakan fasilitas kesehatan atau korban jiwa.',
+    petugas: 'Ahmad Fauzi, A.Md',
+  },
+  {
+    id: 4,
+    kode_laporan: 'LAP-2026-07-004',
+    tgl_kejadian: '2026-07-22 10:15:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '10:15 WIB',
+    tgl_perkembangan: '2026-07-22 10:15:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '10:15 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'SUMATERA BARAT',
+    kabupaten: 'PADANG PARIAMAN',
+    kecamatan: '2 x 11 Kayu Tanam',
+    desa: 'Nagari Kayu Tanam',
+    jenis_bencana: 'Kebakaran Hutan dan Lahan',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 26,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Kebakaran lahan perkebunan warga seluas 3 hektar. 26 jiwa terpapar kabut asap tipis. Dinkes mendirikan posko pelayanan kesehatan darurat.',
+    petugas: 'Ns. Dewi Kartika, S.Kep',
+  },
+  {
+    id: 5,
+    kode_laporan: 'LAP-2026-07-005',
+    tgl_kejadian: '2026-07-22 10:29:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '10:29 WIB',
+    tgl_perkembangan: '2026-07-22 10:29:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '10:29 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'NUSA TENGGARA TIMUR',
+    kabupaten: 'FLORES TIMUR',
+    kecamatan: 'Adonara',
+    desa: 'Desa Klatanlo',
+    jenis_bencana: 'Letusan Gunung Api',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 150,
+    faskes_terdampak: 1,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Erupsi Gunung Lewotobi Laki-laki memuntahkan abu vulkanik setinggi 1.500m. Puskesmas Pembantu terpaksa dikosongkan sementara.',
+    petugas: 'Dr. Maria Goretti',
+  },
+  {
+    id: 6,
+    kode_laporan: 'LAP-2026-07-006',
+    tgl_kejadian: '2026-07-22 08:40:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '08:40 WIB',
+    tgl_perkembangan: '2026-07-22 08:40:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '08:40 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'KEPULAUAN BANGKA BELITUNG',
+    kabupaten: 'BELITUNG TIMUR',
+    kecamatan: 'Manggar',
+    desa: 'Desa Lalang',
+    jenis_bencana: 'Kebakaran Hutan dan Lahan',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Kebakaran semak belukar di pinggir jalan utama Manggar. Api berhasil dipadamkan BPBD dan Damkar dalam kurun 2 jam.',
+    petugas: 'Hendra Gunawan',
+  },
+  {
+    id: 7,
+    kode_laporan: 'LAP-2026-07-007',
+    tgl_kejadian: '2026-07-22 15:00:00',
+    tgl_kejadian_formatted: '22 Jul 2026',
+    jam_kejadian: '15:00 WIB',
+    tgl_perkembangan: '2026-07-22 15:00:00',
+    tgl_perkembangan_formatted: '22 Jul 2026',
+    jam_perkembangan: '15:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'JAWA TIMUR',
+    kabupaten: 'PROBOLINGGO',
+    kecamatan: 'Gending',
+    desa: 'Desa Gending',
+    jenis_bencana: 'Kebakaran Hutan dan Lahan',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Menunggu Verifikasi',
+    deskripsi: 'Laporan awal titik panas (hotspot) di kawasan hutan bambu Desa Gending. Petugas kesehatan lapangan sedang meluncur ke lokasi.',
+    petugas: 'Rahmat Hidayat, Amd.Kep',
+  },
+  {
+    id: 8,
+    kode_laporan: 'LAP-2026-07-008',
+    tgl_kejadian: '2026-07-21 14:29:00',
+    tgl_kejadian_formatted: '21 Jul 2026',
+    jam_kejadian: '14:29 WIB',
+    tgl_perkembangan: '2026-07-21 14:29:00',
+    tgl_perkembangan_formatted: '21 Jul 2026',
+    jam_perkembangan: '14:29 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'KALIMANTAN SELATAN',
+    kabupaten: 'KOTA BANJAR BARU',
+    kecamatan: 'Cempaka',
+    desa: 'Kelurahan Cempaka',
+    jenis_bencana: 'Kebakaran Hutan dan Lahan',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_hilang: 0,
+    penduduk_terdampak: 0,
+    pengungsi: 0,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Karhutla seluas 1.2 hektar mengancam pemukiman pinggiran Cempaka. Dinkes membagikan 500 masker N95 bagi masyarakat sekitar.',
+    petugas: 'Fitriani, SKM',
+  },
+  {
+    id: 9,
+    kode_laporan: 'LAP-2026-07-009',
+    tgl_kejadian: '2026-07-21 08:51:00',
+    tgl_kejadian_formatted: '21 Jul 2026',
+    jam_kejadian: '08:51 WIB',
+    tgl_perkembangan: '2026-07-21 08:51:00',
+    tgl_perkembangan_formatted: '21 Jul 2026',
+    jam_perkembangan: '08:51 WIB',
+    tingkat_bencana: 'Provinsi',
+    provinsi: 'BANTEN',
+    kabupaten: 'KAB. KOTA TANGERANG',
+    kecamatan: 'Batuceper',
+    desa: 'Kelurahan Batuceper',
+    jenis_bencana: 'Angin Puting Beliung',
+    korban_meninggal: 1,
+    korban_luka_berat: 5,
+    korban_luka_ringan: 195,
+    korban_hilang: 0,
+    penduduk_terdampak: 232,
+    pengungsi: 45,
+    faskes_terdampak: 1,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Hujan deras disertai angin kencang merobohkan 18 atap rumah warga dan merusak pagar Puskesmas Pembantu. 1 korban meninggal tertimpa pohon.',
+    petugas: 'Dr. Erna Wijaya',
+  },
+  {
+    id: 10,
+    kode_laporan: 'LAP-2026-07-010',
+    tgl_kejadian: '2026-07-20 19:30:00',
+    tgl_kejadian_formatted: '20 Jul 2026',
+    jam_kejadian: '19:30 WIB',
+    tgl_perkembangan: '2026-07-21 07:00:00',
+    tgl_perkembangan_formatted: '21 Jul 2026',
+    jam_perkembangan: '07:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'CIANJUR',
+    kecamatan: 'Cugenang',
+    desa: 'Desa Gasol',
+    jenis_bencana: 'Tanah Longsor',
+    korban_meninggal: 2,
+    korban_luka_berat: 3,
+    korban_luka_ringan: 12,
+    korban_hilang: 1,
+    penduduk_terdampak: 140,
+    pengungsi: 85,
+    faskes_terdampak: 2,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Tebing setinggi 15 meter longsor usai hujan intensitas tinggi menimbun akses jalan utama dan membentur gedung Poskesdes.',
+    petugas: 'Usep Supriatna',
+  },
+  {
+    id: 11,
+    kode_laporan: 'LAP-2026-07-011',
+    tgl_kejadian: '2026-07-19 06:15:00',
+    tgl_kejadian_formatted: '19 Jul 2026',
+    jam_kejadian: '06:15 WIB',
+    tgl_perkembangan: '2026-07-19 12:00:00',
+    tgl_perkembangan_formatted: '19 Jul 2026',
+    jam_perkembangan: '12:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'SUMATERA BARAT',
+    kabupaten: 'PASAMAN BARAT',
+    kecamatan: 'Talamau',
+    desa: 'Nagari Sinuruik',
+    jenis_bencana: 'Banjir Bandang',
+    korban_meninggal: 0,
+    korban_luka_berat: 1,
+    korban_luka_ringan: 8,
+    korban_hilang: 0,
+    penduduk_terdampak: 310,
+    pengungsi: 120,
+    faskes_terdampak: 1,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Air bah membawa lumpur memutus akses jembatan desa dan merendam Klinik Desa. Tim EMT Dinkes telah mendirikan tenda medis lapangan.',
+    petugas: 'Syamsul Bahri',
+  },
+  {
+    id: 12,
+    kode_laporan: 'LAP-2026-07-012',
+    tgl_kejadian: '2026-07-18 21:00:00',
+    tgl_kejadian_formatted: '18 Jul 2026',
+    jam_kejadian: '21:00 WIB',
+    tgl_perkembangan: '2026-07-19 08:00:00',
+    tgl_perkembangan_formatted: '19 Jul 2026',
+    jam_perkembangan: '08:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'SUKABUMI',
+    kecamatan: 'Palabuhanratu',
+    desa: 'Kelurahan Palabuhanratu',
+    jenis_bencana: 'Gelombang Tinggi / Abrasi',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 4,
+    korban_hilang: 0,
+    penduduk_terdampak: 65,
+    pengungsi: 20,
+    faskes_terdampak: 0,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Gelombang laut pasang merusak 12 perahu nelayan dan warung pesisir pantai. Petugas Puskesmas Palabuhanratu melayani rawat jalan luka lecet.',
+    petugas: 'Deri Herdian',
+  },
+  {
+    id: 13,
+    kode_laporan: 'LAP-2026-07-013',
+    tgl_kejadian: '2026-07-17 13:40:00',
+    tgl_kejadian_formatted: '17 Jul 2026',
+    jam_kejadian: '13:40 WIB',
+    tgl_perkembangan: '2026-07-17 18:00:00',
+    tgl_perkembangan_formatted: '17 Jul 2026',
+    jam_perkembangan: '18:00 WIB',
+    tingkat_bencana: 'Provinsi',
+    provinsi: 'PAPUA TENGAH',
+    kabupaten: 'INTAN JAYA',
+    kecamatan: 'Sugapa',
+    desa: 'Kampung Bilogai',
+    jenis_bencana: 'Konflik Sosial atau Kerusuhan Sosial',
+    korban_meninggal: 0,
+    korban_luka_berat: 2,
+    korban_luka_ringan: 5,
+    korban_hilang: 0,
+    penduduk_terdampak: 180,
+    pengungsi: 140,
+    faskes_terdampak: 1,
+    status_verifikasi: 'Menunggu Verifikasi',
+    deskripsi: 'Eskalasi keamanan mengganggu operasional Puskesmas Sugapa. Nakes dievakuasi sementara ke posko gabungan TNI/Polri.',
+    petugas: 'Yance Kogoya',
+  },
+  {
+    id: 14,
+    kode_laporan: 'LAP-2026-07-014',
+    tgl_kejadian: '2026-07-15 16:20:00',
+    tgl_kejadian_formatted: '15 Jul 2026',
+    jam_kejadian: '16:20 WIB',
+    tgl_perkembangan: '2026-07-16 09:00:00',
+    tgl_perkembangan_formatted: '16 Jul 2026',
+    jam_perkembangan: '09:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'JAWA BARAT',
+    kabupaten: 'SUMEDANG',
+    kecamatan: 'Sumedang Utara',
+    desa: 'Desa Rancamulya',
+    jenis_bencana: 'Gempa Bumi',
+    korban_meninggal: 0,
+    korban_luka_berat: 1,
+    korban_luka_ringan: 14,
+    korban_hilang: 0,
+    penduduk_terdampak: 520,
+    pengungsi: 210,
+    faskes_terdampak: 3,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Gempa kerak dangkal M 4.8 meretakkan dinding RSUD Sumedang dan 2 Puskesmas. Pasien rawat inap sempat dievakuasi ke halaman RS.',
+    petugas: 'Hj. Nenden Hernawati',
+  },
+  {
+    id: 15,
+    kode_laporan: 'LAP-2026-07-015',
+    tgl_kejadian: '2026-07-12 04:10:00',
+    tgl_kejadian_formatted: '12 Jul 2026',
+    jam_kejadian: '04:10 WIB',
+    tgl_perkembangan: '2026-07-12 10:00:00',
+    tgl_perkembangan_formatted: '12 Jul 2026',
+    jam_perkembangan: '10:00 WIB',
+    tingkat_bencana: 'Kab/Kota',
+    provinsi: 'SULAWESI SELATAN',
+    kabupaten: 'LUWU UTARA',
+    kecamatan: 'Masamba',
+    desa: 'Kelurahan Bone',
+    jenis_bencana: 'Banjir',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 3,
+    korban_hilang: 0,
+    penduduk_terdampak: 410,
+    pengungsi: 95,
+    faskes_terdampak: 1,
+    status_verifikasi: 'Diverifikasi',
+    deskripsi: 'Meluapnya Sungai Masamba merendam 120 rumah dan pelataran Puskesmas Masamba. Pelayanan dishift ke lantai 2.',
+    petugas: 'Nurlaila, SKM',
+  },
+]
+
+const ALL_JENIS_BENCANA = [
+  'Banjir',
+  'Kebakaran Hutan dan Lahan',
+  'Gempa Bumi',
+  'Letusan Gunung Api',
+  'Angin Puting Beliung',
+  'Tanah Longsor',
+  'Banjir Bandang',
+  'Gelombang Tinggi / Abrasi',
+  'Konflik Sosial atau Kerusuhan Sosial',
+]
+
+export default function UnduhLaporanPage() {
+  const { setHeader } = useHeaderStore()
+  const { user } = useAuthStore()
+
+  // Initialize Header store titles on mount
+  useEffect(() => {
+    setHeader({
+      title: 'REKAP & UNDUH LAPORAN KEJADIAN BENCANA',
+      description: 'Pusat filter terpadu dan ekstraksi matriks laporan kejadian bencana kesehatan real-time untuk kebutuhan unduh data (Excel, PDF, CSV).',
+      lastUpdated: 'Baru Saja',
+      sourceLabel: 'SISTEM EOC KEMENKES RI',
+      sourceUrl: '#',
+    })
+  }, [setHeader])
+
+  // MULTIPLE SELECT FILTER STATES
+  const [reports] = useState<LaporanItem[]>(INITIAL_DATA)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([])
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedDatePreset, setSelectedDatePreset] = useState<string>('all')
+  const [filterKorbanOnly, setFilterKorbanOnly] = useState(false)
+  const [filterFaskesOnly, setFilterFaskesOnly] = useState(false)
+  
+  // Smart Region Autocomplete Search State (PROV, KAB, KEC, DESA)
+  const [regionInputQuery, setRegionInputQuery] = useState('')
+  const [showRegionDropdown, setShowRegionDropdown] = useState(false)
+  const [selectedRegionPills, setSelectedRegionPills] = useState<RegionSuggestion[]>([])
+  const regionDropdownRef = useRef<HTMLDivElement>(null)
+
+  const [provinceSearch, setProvinceSearch] = useState('')
+  const [provinceList, setProvinceList] = useState<Array<{ id: string; name: string }>>([])
+  const [loadingProvinces, setLoadingProvinces] = useState(true)
+
+  // Close region autocomplete dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (regionDropdownRef.current && !regionDropdownRef.current.contains(e.target as Node)) {
+        setShowRegionDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Fetch live 38 provinces from API or fallback
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLoadingProvinces(true)
+      try {
+        const res = await fetch(buildRegionsUrl())
+        const contentType = res.headers.get('content-type') || ''
+        if (res.ok && contentType.includes('application/json')) {
+          const payload = await res.json()
+          if (payload?.success && Array.isArray(payload?.data) && payload.data.length > 0) {
+            const mapped = payload.data.map((item: any) => ({
+              id: String(item.code || item.id),
+              name: String(item.name).toUpperCase(),
+            }))
+            setProvinceList(mapped)
+            return
+          }
+        }
+      } catch (err) {
+        console.error('Failed loading provinces API, using full fallback list:', err)
+      } finally {
+        setLoadingProvinces(false)
+      }
+
+      setProvinceList(ALL_INDONESIA_PROVINCES.map((p, idx) => ({ id: String(idx + 1), name: p })))
+    }
+
+    fetchProvinces()
+  }, [])
+
+  // Sync initial scope from dashboard user state if present
+  useEffect(() => {
+    if (user?.wilayah_scope?.provinsi?.label) {
+      const activeProvName = user.wilayah_scope.provinsi.label.toUpperCase()
+      const match = provinceList.find(p => p.name.toUpperCase() === activeProvName)
+      if (match && selectedProvinces.length === 0) {
+        setSelectedProvinces([match.name])
+      }
+    }
+  }, [user, provinceList, selectedProvinces.length])
+
+  // Accordion toggle states in Filter Sidebar
+  const [expandedSection, setExpandedSection] = useState<{ [key: string]: boolean }>({
+    smartRegion: true,
+    provinsi: true,
+    jenisBencana: true,
+    tanggal: true,
+    status: true,
+    dampak: true,
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSection((prev) => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  // Pagination state
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+
+  // Selected report for detail modal
+  const [detailItem, setDetailItem] = useState<LaporanItem | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg)
+    setTimeout(() => setToastMessage(null), 4000)
+  }
+
+  // Region Autocomplete Suggestions Calculation (Full PROV, KAB, KEC, DESA)
+  const filteredRegionSuggestions = useMemo(() => {
+    if (!regionInputQuery.trim() || regionInputQuery.trim().length < 2) return []
+    const q = regionInputQuery.toLowerCase().trim()
+    
+    // Filter master region suggestions
+    const matches = MASTER_REGION_SUGGESTIONS.filter((sug) =>
+      sug.fullName.toLowerCase().includes(q) ||
+      sug.name.toLowerCase().includes(q) ||
+      (sug.kabupaten && sug.kabupaten.toLowerCase().includes(q)) ||
+      (sug.kecamatan && sug.kecamatan.toLowerCase().includes(q)) ||
+      (sug.desa && sug.desa.toLowerCase().includes(q))
+    )
+
+    // Deduplicate by fullName
+    const seen = new Set()
+    return matches.filter((item) => {
+      const duplicateKey = item.fullName.toLowerCase()
+      if (seen.has(duplicateKey)) return false
+      seen.add(duplicateKey)
+      return true
+    }).slice(0, 14)
+  }, [regionInputQuery])
+
+  // Select region suggestion handler
+  const handleSelectRegionSuggestion = (sug: RegionSuggestion) => {
+    if (!selectedRegionPills.some((r) => r.id === sug.id || r.fullName === sug.fullName)) {
+      setSelectedRegionPills([...selectedRegionPills, sug])
+    }
+    setRegionInputQuery('')
+    setShowRegionDropdown(false)
+    setCurrentPage(1)
+    showToast(`Filter wilayah "${sug.name}" (${sug.level}) diterapkan!`)
+  }
+
+  const handleRemoveRegionPill = (id: string) => {
+    setSelectedRegionPills(selectedRegionPills.filter((r) => r.id !== id))
+    setCurrentPage(1)
+  }
+
+  // Multiple toggle handlers
+  const handleTypeToggle = (jenis: string) => {
+    if (selectedTypes.includes(jenis)) {
+      setSelectedTypes(selectedTypes.filter((t) => t !== jenis))
+    } else {
+      setSelectedTypes([...selectedTypes, jenis])
+    }
+    setCurrentPage(1)
+  }
+
+  const handleProvinceToggle = (provName: string) => {
+    if (selectedProvinces.includes(provName)) {
+      setSelectedProvinces(selectedProvinces.filter((p) => p !== provName))
+    } else {
+      setSelectedProvinces([...selectedProvinces, provName])
+    }
+    setCurrentPage(1)
+  }
+
+  const handleSelectAllProvinces = () => {
+    if (selectedProvinces.length === provinceList.length) {
+      setSelectedProvinces([])
+    } else {
+      setSelectedProvinces(provinceList.map((p) => p.name))
+    }
+    setCurrentPage(1)
+  }
+
+  const handleStatusToggle = (st: string) => {
+    if (selectedStatuses.includes(st)) {
+      setSelectedStatuses(selectedStatuses.filter((s) => s !== st))
+    } else {
+      setSelectedStatuses([...selectedStatuses, st])
+    }
+    setCurrentPage(1)
+  }
+
+  // Clear all filters
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedTypes([])
+    setSelectedProvinces([])
+    setSelectedStatuses([])
+    setSelectedDatePreset('all')
+    setFilterKorbanOnly(false)
+    setFilterFaskesOnly(false)
+    setProvinceSearch('')
+    setRegionInputQuery('')
+    setSelectedRegionPills([])
+    setCurrentPage(1)
+    showToast('Semua filter telah dibersihkan.')
+  }
+
+  // Active filter count computation
+  const activeFilterCount = useMemo(() => {
+    let count = 0
+    count += selectedTypes.length
+    count += selectedProvinces.length
+    count += selectedStatuses.length
+    count += selectedRegionPills.length
+    if (selectedDatePreset !== 'all') count += 1
+    if (filterKorbanOnly) count += 1
+    if (filterFaskesOnly) count += 1
+    if (searchQuery.trim() !== '') count += 1
+    return count
+  }, [selectedTypes, selectedProvinces, selectedStatuses, selectedRegionPills, selectedDatePreset, filterKorbanOnly, filterFaskesOnly, searchQuery])
+
+  // Filtering engine supporting deep location hierarchy (Prov, Kab, Kec, Desa)
+  const filteredReports = useMemo(() => {
+    return reports.filter((item) => {
+      // 1. Text Search Query (Searches code, disaster, province, kabupaten, kecamatan, desa, narasi)
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase().trim()
+        const matchesSearch =
+          item.kode_laporan.toLowerCase().includes(q) ||
+          item.jenis_bencana.toLowerCase().includes(q) ||
+          item.provinsi.toLowerCase().includes(q) ||
+          item.kabupaten.toLowerCase().includes(q) ||
+          item.kecamatan.toLowerCase().includes(q) ||
+          item.desa.toLowerCase().includes(q) ||
+          item.deskripsi.toLowerCase().includes(q) ||
+          item.petugas.toLowerCase().includes(q)
+        if (!matchesSearch) return false
+      }
+
+      // 2. Multiple Jenis Bencana Checkboxes
+      if (selectedTypes.length > 0) {
+        if (!selectedTypes.includes(item.jenis_bencana)) return false
+      }
+
+      // 3. Multiple Provinsi Checkboxes (38 provinces exact match)
+      if (selectedProvinces.length > 0) {
+        const itemProvUpper = item.provinsi.toUpperCase().trim()
+        const matchesProv = selectedProvinces.some((p) => p.toUpperCase().trim() === itemProvUpper)
+        if (!matchesProv) return false
+      }
+
+      // 4. Smart Region Pills (Autocomplete Pills: Prov, Kab, Kec, Desa)
+      if (selectedRegionPills.length > 0) {
+        const matchesAnyPill = selectedRegionPills.some((pill) => {
+          const nameLower = pill.name.toLowerCase().trim()
+          if (pill.level === 'PROVINSI') {
+            return item.provinsi.toLowerCase().includes(nameLower)
+          }
+          if (pill.level === 'KABUPATEN') {
+            return item.kabupaten.toLowerCase().includes(nameLower)
+          }
+          if (pill.level === 'KECAMATAN') {
+            return item.kecamatan.toLowerCase().includes(nameLower)
+          }
+          if (pill.level === 'DESA') {
+            return item.desa.toLowerCase().includes(nameLower)
+          }
+          return false
+        })
+        if (!matchesAnyPill) return false
+      }
+
+      // 5. Multiple Status Verifikasi
+      if (selectedStatuses.length > 0) {
+        if (!selectedStatuses.includes(item.status_verifikasi)) return false
+      }
+
+      // 6. Korban Only
+      if (filterKorbanOnly) {
+        const totalKorban = item.korban_meninggal + item.korban_luka_berat + item.korban_luka_ringan + item.korban_hilang
+        if (totalKorban === 0) return false
+      }
+
+      // 7. Faskes Terdampak Only
+      if (filterFaskesOnly) {
+        if (item.faskes_terdampak === 0) return false
+      }
+
+      // 8. Date Filter Preset
+      if (selectedDatePreset === '7days') {
+        if (!item.tgl_kejadian_formatted.includes('22 Jul') && !item.tgl_kejadian_formatted.includes('21 Jul') && !item.tgl_kejadian_formatted.includes('20 Jul')) {
+          return false
+        }
+      } else if (selectedDatePreset === '30days') {
+        if (!item.tgl_kejadian_formatted.includes('Jul 2026')) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [reports, searchQuery, selectedTypes, selectedProvinces, selectedRegionPills, selectedStatuses, filterKorbanOnly, filterFaskesOnly, selectedDatePreset])
+
+  // Filtered Province List for Search
+  const filteredProvinceList = useMemo(() => {
+    if (!provinceSearch.trim()) return provinceList
+    const q = provinceSearch.toLowerCase().trim()
+    return provinceList.filter((p) => p.name.toLowerCase().includes(q))
+  }, [provinceList, provinceSearch])
+
+  // Dynamic Metrics Overview Cards
+  const metrics = useMemo(() => {
+    const totalReports = filteredReports.length
+    let totalMeninggal = 0
+    let totalLuka = 0
+    let totalTerdampak = 0
+    let totalFaskes = 0
+
+    filteredReports.forEach((r) => {
+      totalMeninggal += r.korban_meninggal
+      totalLuka += r.korban_luka_berat + r.korban_luka_ringan
+      totalTerdampak += r.penduduk_terdampak + r.pengungsi
+      totalFaskes += r.faskes_terdampak
+    })
+
+    return {
+      totalReports,
+      totalMeninggal,
+      totalLuka,
+      totalTerdampak,
+      totalFaskes,
+    }
+  }, [filteredReports])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage) || 1
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredReports.slice(start, start + itemsPerPage)
+  }, [filteredReports, currentPage, itemsPerPage])
+
+  // EXPORT EXCEL (.CSV format with UTF-8 BOM)
+  const handleExportExcel = () => {
+    if (filteredReports.length === 0) {
+      showToast('Tidak ada data yang sesuai filter untuk diunduh.')
+      return
+    }
+
+    const headers = [
+      'No',
+      'Kode Laporan',
+      'Tanggal Kejadian',
+      'Jam Kejadian',
+      'Tanggal Perkembangan',
+      'Tingkat Bencana',
+      'Provinsi',
+      'Kabupaten/Kota',
+      'Kecamatan',
+      'Desa/Kelurahan',
+      'Jenis Bencana',
+      'Meninggal',
+      'Luka Berat',
+      'Luka Ringan',
+      'Hilang',
+      'Penduduk Terdampak',
+      'Pengungsi',
+      'Faskes Terdampak',
+      'Status Verifikasi',
+      'Petugas Pelapor',
+      'Deskripsi Narasi',
+    ]
+
+    const csvRows = [headers.join(',')]
+
+    filteredReports.forEach((item, index) => {
+      const row = [
+        index + 1,
+        `"${item.kode_laporan}"`,
+        `"${item.tgl_kejadian_formatted}"`,
+        `"${item.jam_kejadian}"`,
+        `"${item.tgl_perkembangan_formatted}"`,
+        `"${item.tingkat_bencana}"`,
+        `"${item.provinsi}"`,
+        `"${item.kabupaten}"`,
+        `"${item.kecamatan}"`,
+        `"${item.desa}"`,
+        `"${item.jenis_bencana}"`,
+        item.korban_meninggal,
+        item.korban_luka_berat,
+        item.korban_luka_ringan,
+        item.korban_hilang,
+        item.penduduk_terdampak,
+        item.pengungsi,
+        item.faskes_terdampak,
+        `"${item.status_verifikasi}"`,
+        `"${item.petugas}"`,
+        `"${item.deskripsi.replace(/"/g, '""')}"`,
+      ]
+      csvRows.push(row.join(','))
+    })
+
+    const csvContent = '\uFEFF' + csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    const timestamp = new Date().toISOString().slice(0, 10)
+    link.setAttribute('download', `Laporan_Kejadian_Bencana_Kemenkes_${timestamp}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    showToast(`Berhasil mengunduh ${filteredReports.length} data dalam format Excel/CSV!`)
+  }
+
+  // EXPORT SUMMARY PDF
+  const handleExportPDF = () => {
+    if (filteredReports.length === 0) {
+      showToast('Tidak ada data terfilter untuk dicetak ke PDF.')
+      return
+    }
+
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      showToast('Pop-up terblokir oleh browser. Harap izinkan pop-up.')
+      return
+    }
+
+    const rowsHtml = filteredReports
+      .map(
+        (item, idx) => `
+      <tr>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 11px;">${idx + 1}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;">
+          <strong>${item.kode_laporan}</strong><br/>
+          <small>${item.tgl_kejadian_formatted} ${item.jam_kejadian}</small>
+        </td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;">
+          <strong>${item.provinsi}</strong><br/>
+          <span>${item.kabupaten}</span><br/>
+          <small style="color: #64748b;">${item.kecamatan}, ${item.desa}</small>
+        </td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; font-size: 11px;"><strong>${item.jenis_bencana}</strong></td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 11px;">
+          MD: ${item.korban_meninggal}<br/>
+          Luka: ${item.korban_luka_berat + item.korban_luka_ringan}
+        </td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 11px;">
+          Terdampak: ${item.penduduk_terdampak}<br/>
+          Pengungsi: ${item.pengungsi}
+        </td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 11px;">${item.faskes_terdampak} Unit</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 11px;">${item.status_verifikasi}</td>
+      </tr>
+    `
+      )
+      .join('')
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Rekap Laporan Bencana Kesehatan - EOC Kemenkes RI</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #1e293b; }
+            h2 { color: #047D78; margin-bottom: 4px; uppercase; }
+            p { font-size: 12px; color: #64748b; margin-top: 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background-color: #047D78; color: white; border: 1px solid #036662; padding: 8px; font-size: 11px; text-transform: uppercase; }
+            .meta-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h2>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h2>
+          <p>PUSAT KRISIS KESEHATAN - REKAPITULASI LAPORAN KEJADIAN BENCANA</p>
+          <div class="meta-box">
+            <strong>Total Data Terfilter:</strong> ${filteredReports.length} Laporan | 
+            <strong>Total Korban Meninggal:</strong> ${metrics.totalMeninggal} | 
+            <strong>Total Pengungsi/Terdampak:</strong> ${metrics.totalTerdampak} | 
+            <strong>Faskes Terdampak:</strong> ${metrics.totalFaskes} Unit<br/>
+            <small>Dicetak pada: ${new Date().toLocaleString('id-ID')}</small>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Kode & Tgl Kejadian</th>
+                <th>Lokasi (s.d. Desa)</th>
+                <th>Jenis Bencana</th>
+                <th>Korban Jiwa</th>
+                <th>Masyarakat Terdampak</th>
+                <th>Faskes</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
+  // DOWNLOAD SINGLE REPORT PDF
+  const handleDownloadSinglePDF = (item: LaporanItem) => {
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Formulir Laporan ${item.kode_laporan}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 25px; color: #0f172a; line-height: 1.5; }
+            .header { text-align: center; border-bottom: 3px double #047D78; padding-bottom: 10px; margin-bottom: 20px; }
+            .header h3 { margin: 0; color: #047D78; font-size: 16px; }
+            .header h4 { margin: 2px 0; color: #334155; font-size: 14px; }
+            .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-weight: bold; font-size: 11px; }
+            .section { margin-bottom: 15px; }
+            .section-title { background: #047D78; color: white; padding: 6px 10px; font-weight: bold; font-size: 12px; margin-bottom: 8px; border-radius: 4px; }
+            table.info { width: 100%; border-collapse: collapse; font-size: 12px; }
+            table.info td { padding: 5px 8px; vertical-align: top; }
+            table.info td.lbl { font-weight: bold; color: #475569; width: 30%; }
+            .narasi { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px; border-radius: 6px; font-size: 12px; }
+            .footer-sig { margin-top: 40px; text-align: right; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h3>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h3>
+            <h4>PUSAT KRISIS KESEHATAN - DOKUMEN LAPORAN BENCANA</h4>
+            <span class="badge">${item.kode_laporan} - ${item.status_verifikasi}</span>
+          </div>
+
+          <div class="section">
+            <div class="section-title">I. INFORMASI KEJADIAN & LOKASI HIERARKI</div>
+            <table class="info">
+              <tr><td class="lbl">Jenis Bencana:</td><td><strong>${item.jenis_bencana}</strong></td></tr>
+              <tr><td class="lbl">Waktu Kejadian:</td><td>${item.tgl_kejadian_formatted} (${item.jam_kejadian})</td></tr>
+              <tr><td class="lbl">Tingkat Bencana:</td><td>${item.tingkat_bencana}</td></tr>
+              <tr><td class="lbl">Provinsi:</td><td>PROV. ${item.provinsi}</td></tr>
+              <tr><td class="lbl">Kabupaten/Kota:</td><td>${item.kabupaten}</td></tr>
+              <tr><td class="lbl">Kecamatan:</td><td>Kec. ${item.kecamatan}</td></tr>
+              <tr><td class="lbl">Desa/Kelurahan:</td><td>${item.desa}</td></tr>
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="section-title">II. DAMPAK KESEHATAN & FASILITAS</div>
+            <table class="info">
+              <tr><td class="lbl">Meninggal Dunia:</td><td>${item.korban_meninggal} Jiwa</td></tr>
+              <tr><td class="lbl">Luka Berat:</td><td>${item.korban_luka_berat} Jiwa</td></tr>
+              <tr><td class="lbl">Luka Ringan:</td><td>${item.korban_luka_ringan} Jiwa</td></tr>
+              <tr><td class="lbl">Penduduk Terdampak:</td><td>${item.penduduk_terdampak} Jiwa</td></tr>
+              <tr><td class="lbl">Pengungsi:</td><td>${item.pengungsi} Jiwa</td></tr>
+              <tr><td class="lbl">Faskes Terdampak:</td><td>${item.faskes_terdampak} Unit</td></tr>
+            </table>
+          </div>
+
+          <div class="section">
+            <div class="section-title">III. NARASI DAN REKOMENDASI PENANGANAN</div>
+            <div class="narasi">${item.deskripsi}</div>
+          </div>
+
+          <div class="footer-sig">
+            <p>Petugas Pelapor:<br/><strong>${item.petugas}</strong></p>
+          </div>
+
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-16">
+      {/* Toast Alert Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 flex items-center gap-3 rounded-xl border border-teal-200 bg-white p-4 shadow-xl shadow-teal-700/10 animate-in slide-in-from-right duration-200">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-teal-50 text-[#047D78]">
+            <CheckCircle2 className="h-5 w-5" />
+          </div>
+          <p className="text-xs font-bold text-slate-800">{toastMessage}</p>
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-slate-400 hover:text-slate-600">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="w-full px-4 sm:px-6 py-6">
+        {/* STATS OVERVIEW CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Card 1 */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Laporan Terfilter</p>
+                <h3 className="mt-1 text-2xl font-extrabold text-[#047D78]">{metrics.totalReports} <span className="text-xs font-semibold text-slate-500">Laporan</span></h3>
+              </div>
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-teal-50 text-[#047D78] border border-teal-100">
+                <FileText className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500 flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-teal-600" />
+              {activeFilterCount > 0 ? `${activeFilterCount} kriteria filter aktif` : 'Menampilkan seluruh database'}
+            </p>
+          </div>
+
+          {/* Card 2 */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Korban Jiwa (MD / Luka)</p>
+                <h3 className="mt-1 text-2xl font-extrabold text-rose-600">
+                  {metrics.totalMeninggal} <span className="text-xs font-semibold text-slate-500">MD</span> / {metrics.totalLuka} <span className="text-xs font-semibold text-slate-500">Luka</span>
+                </h3>
+              </div>
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">Terlibat dalam {metrics.totalReports} kejadian terfilter</p>
+          </div>
+
+          {/* Card 3 */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Penduduk Terdampak</p>
+                <h3 className="mt-1 text-2xl font-extrabold text-amber-600">{metrics.totalTerdampak.toLocaleString('id-ID')} <span className="text-xs font-semibold text-slate-500">Jiwa</span></h3>
+              </div>
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">Mencakup pengungsi & warga terpapar</p>
+          </div>
+
+          {/* Card 4 */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Faskes Terdampak</p>
+                <h3 className="mt-1 text-2xl font-extrabold text-cyan-700">{metrics.totalFaskes} <span className="text-xs font-semibold text-slate-500">Unit Faskes</span></h3>
+              </div>
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-50 text-cyan-700 border border-cyan-100">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">Puskesmas, Pustu, Klinik, RSUD</p>
+          </div>
+        </div>
+
+        {/* MAIN LAYOUT: MULTIPLE FILTER SIDEBAR + DATA MATRIX */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* ==================== LEFT MULTI FILTER SIDEBAR ==================== */}
+          <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5 sticky top-4">
+            
+            {/* Filter Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-[#047D78]" />
+                <h2 className="text-sm font-extrabold tracking-wide text-slate-800 uppercase">Filter Laporan</h2>
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 transition"
+                  title="Reset Semua Filter"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {/* SECTION 1: SMART AUTOCOMPLETE REGION SEARCH (FULL: PROV, KAB, KEC, DESA) */}
+            <div className="space-y-3 relative" ref={regionDropdownRef}>
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('smartRegion')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Search className="h-3.5 w-3.5 text-purple-600" />
+                  Cari Wilayah (Prov s.d. Desa)
+                </span>
+                {expandedSection.smartRegion ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.smartRegion && (
+                <div className="pt-1 relative">
+                  <div className="relative">
+                    <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={regionInputQuery}
+                      onChange={(e) => {
+                        setRegionInputQuery(e.target.value)
+                        setShowRegionDropdown(true)
+                      }}
+                      onFocus={() => setShowRegionDropdown(true)}
+                      placeholder="Cari Prov, Kab, Kec, Desa..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:border-purple-600 focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    />
+                    {regionInputQuery && (
+                      <button
+                        onClick={() => setRegionInputQuery('')}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* AUTOCOMPLETE SUGGESTIONS DROPDOWN (MATCHING EXACT USER SCREENSHOT DESIGN) */}
+                  {showRegionDropdown && filteredRegionSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl animate-in fade-in slide-in-from-top-1 duration-150 divide-y divide-slate-100">
+                      {filteredRegionSuggestions.map((sug) => {
+                        const isKec = sug.level === 'KECAMATAN'
+                        const isDesa = sug.level === 'DESA'
+                        const isProv = sug.level === 'PROVINSI'
+
+                        return (
+                          <div
+                            key={sug.id}
+                            onClick={() => handleSelectRegionSuggestion(sug)}
+                            className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-purple-50/60 transition cursor-pointer group"
+                          >
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <MapPin className="h-4 w-4 text-slate-400 group-hover:text-purple-600 shrink-0 mt-0.5 transition" />
+                              <p className="text-xs font-bold text-slate-800 group-hover:text-purple-900 leading-snug truncate">
+                                {sug.fullName}
+                              </p>
+                            </div>
+                            <span
+                              className={`shrink-0 rounded-md text-[9px] font-extrabold px-2 py-0.5 border uppercase tracking-wider ${
+                                isKec
+                                  ? 'bg-purple-50 border-purple-200 text-purple-700'
+                                  : isDesa
+                                  ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                  : isProv
+                                  ? 'bg-teal-50 border-teal-200 text-[#047D78]'
+                                  : 'bg-blue-50 border-blue-200 text-blue-700'
+                              }`}
+                            >
+                              {sug.level}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* Selected Smart Region Pills */}
+                  {selectedRegionPills.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {selectedRegionPills.map((pill) => (
+                        <span
+                          key={pill.id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-purple-100 border border-purple-200 px-2 py-1 text-[11px] font-bold text-purple-900"
+                        >
+                          <MapPin className="h-3 w-3 text-purple-700" />
+                          <span className="truncate max-w-[140px]">{pill.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRegionPill(pill.id)}
+                            className="text-purple-600 hover:text-purple-900"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* SECTION 2: Multiple Provinsi (Full 38 Provinces from API) */}
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('provinsi')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-blue-600" />
+                  Provinsi ({selectedProvinces.length > 0 ? selectedProvinces.length : 'Semua'})
+                </span>
+                {expandedSection.provinsi ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.provinsi && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">{provinceList.length} Provinsi</span>
+                    <button
+                      type="button"
+                      onClick={handleSelectAllProvinces}
+                      className="text-[#047D78] font-bold hover:underline"
+                    >
+                      {selectedProvinces.length === provinceList.length ? 'Batalkan Semua' : 'Pilih Semua'}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={provinceSearch}
+                      onChange={(e) => setProvinceSearch(e.target.value)}
+                      placeholder="Cari provinsi..."
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50/50 pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:border-[#047D78] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 no-scrollbar border border-slate-100 rounded-xl p-1.5 bg-slate-50/30">
+                    {loadingProvinces ? (
+                      <div className="py-4 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#047D78]" />
+                        <span>Memuat daftar provinsi...</span>
+                      </div>
+                    ) : (
+                      filteredProvinceList.map((prov) => {
+                        const isChecked = selectedProvinces.includes(prov.name)
+                        return (
+                          <label
+                            key={prov.id || prov.name}
+                            className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
+                              isChecked
+                                ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                                : 'hover:bg-slate-100/70 text-slate-600'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleProvinceToggle(prov.name)}
+                              className="h-3.5 w-3.5 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78]"
+                            />
+                            <span className="truncate uppercase leading-tight text-[11px]">{prov.name}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* SECTION 3: Multiple Jenis Bencana */}
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('jenisBencana')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Jenis Bencana</span>
+                {expandedSection.jenisBencana ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.jenisBencana && (
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar pt-1">
+                  {ALL_JENIS_BENCANA.map((jenis) => {
+                    const isChecked = selectedTypes.includes(jenis)
+                    return (
+                      <label
+                        key={jenis}
+                        className={`flex items-start gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
+                          isChecked
+                            ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                            : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleTypeToggle(jenis)}
+                          className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78]"
+                        />
+                        <span className="leading-tight flex-1">{jenis}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* SECTION 4: Tanggal Kejadian */}
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('tanggal')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Rentang Waktu</span>
+                {expandedSection.tanggal ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.tanggal && (
+                <div className="space-y-1.5 pt-1">
+                  {[
+                    { id: 'all', label: 'Semua Tanggal' },
+                    { id: '7days', label: '7 Hari Terakhir' },
+                    { id: '30days', label: '30 Hari Terakhir' },
+                  ].map((preset) => (
+                    <label
+                      key={preset.id}
+                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition ${
+                        selectedDatePreset === preset.id
+                          ? 'bg-teal-700 text-white font-bold'
+                          : 'text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="datePreset"
+                        checked={selectedDatePreset === preset.id}
+                        onChange={() => {
+                          setSelectedDatePreset(preset.id)
+                          setCurrentPage(1)
+                        }}
+                        className="hidden"
+                      />
+                      <Calendar className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                      <span>{preset.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* SECTION 5: Status Verifikasi */}
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('status')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Status Verifikasi</span>
+                {expandedSection.status ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.status && (
+                <div className="space-y-1.5 pt-1">
+                  {['Diverifikasi', 'Menunggu Verifikasi'].map((st) => {
+                    const isChecked = selectedStatuses.includes(st)
+                    return (
+                      <label
+                        key={st}
+                        className={`flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer transition ${
+                          isChecked
+                            ? 'bg-teal-50 border border-teal-200 font-bold text-teal-900'
+                            : 'hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleStatusToggle(st)}
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78]"
+                        />
+                        <span>{st}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-100" />
+
+            {/* SECTION 6: Filter Spesifik */}
+            <div className="space-y-3">
+              <div
+                className="flex items-center justify-between cursor-pointer select-none py-1"
+                onClick={() => toggleSection('dampak')}
+              >
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Dampak Spesifik</span>
+                {expandedSection.dampak ? (
+                  <ChevronUp className="h-4 w-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                )}
+              </div>
+
+              {expandedSection.dampak && (
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterKorbanOnly}
+                      onChange={(e) => {
+                        setFilterKorbanOnly(e.target.checked)
+                        setCurrentPage(1)
+                      }}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78]"
+                    />
+                    <span>Ada Korban Jiwa / Luka</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterFaskesOnly}
+                      onChange={(e) => {
+                        setFilterFaskesOnly(e.target.checked)
+                        setCurrentPage(1)
+                      }}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78]"
+                    />
+                    <span>Ada Faskes Terdampak</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* Reset Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="w-full py-2.5 px-3 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-extrabold text-xs uppercase tracking-wider transition text-center"
+              >
+                Clear All Filter
+              </button>
+            </div>
+          </aside>
+
+          {/* ==================== RIGHT MAIN DATA MATRIX ==================== */}
+          <main className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              
+              {/* Header Title & Subtitle */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">DAFTAR LAPORAN KEJADIAN BENCANA</h1>
+                  <p className="text-xs text-slate-500 mt-0.5">Daftar rekapitulasi data laporan kejadian bencana kesehatan yang siap difilter dan diunduh.</p>
+                </div>
+                
+                {/* Export Action Buttons */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-sm"
+                    title="Unduh format Excel / CSV terfilter"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-700" />
+                    <span>Unduh Excel (.XLSX)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportPDF}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-800 hover:bg-rose-100 transition shadow-sm"
+                    title="Cetak atau unduh dokumen PDF ringkasan"
+                  >
+                    <FileText className="h-4 w-4 text-rose-700" />
+                    <span>Unduh PDF (.PDF)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ACTIVE FILTER PILLS BAR */}
+              {activeFilterCount > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100">
+                  <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wider mr-1">Filter Aktif:</span>
+
+                  {selectedRegionPills.map((pill) => (
+                    <span key={pill.id} className="inline-flex items-center gap-1 rounded-lg bg-purple-700 text-white px-2 py-0.5 text-xs font-semibold">
+                      {pill.level}: {pill.name}
+                      <button onClick={() => handleRemoveRegionPill(pill.id)} className="hover:text-rose-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedProvinces.map((prov) => (
+                    <span key={prov} className="inline-flex items-center gap-1 rounded-lg bg-teal-700 text-white px-2 py-0.5 text-xs font-semibold">
+                      Prov: {prov}
+                      <button onClick={() => handleProvinceToggle(prov)} className="hover:text-rose-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedTypes.map((jenis) => (
+                    <span key={jenis} className="inline-flex items-center gap-1 rounded-lg bg-[#047D78] text-white px-2 py-0.5 text-xs font-semibold">
+                      Bencana: {jenis}
+                      <button onClick={() => handleTypeToggle(jenis)} className="hover:text-rose-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {selectedStatuses.map((st) => (
+                    <span key={st} className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 text-white px-2 py-0.5 text-xs font-semibold">
+                      Status: {st}
+                      <button onClick={() => handleStatusToggle(st)} className="hover:text-rose-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  {searchQuery && (
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-slate-700 text-white px-2 py-0.5 text-xs font-semibold">
+                      Cari: &quot;{searchQuery}&quot;
+                      <button onClick={() => setSearchQuery('')} className="hover:text-rose-200">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+
+                  <button
+                    onClick={handleResetFilters}
+                    className="ml-auto text-[11px] font-extrabold text-rose-600 hover:underline"
+                  >
+                    Reset Semua
+                  </button>
+                </div>
+              )}
+
+              {/* Controls Row: Items Per Page & Live Search */}
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-2 text-xs text-slate-600 font-semibold">
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value))
+                      setCurrentPage(1)
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#047D78]"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>Data per halaman</span>
+                </div>
+
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    placeholder="Pencarian lokasi s.d. Desa, kode, narasi..."
+                    className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-[#047D78] focus:outline-none focus:ring-1 focus:ring-[#047D78]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* DATA MATRIX TABLE WITH DEEP HIERARCHY */}
+              <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#047D78] text-white uppercase text-[10px] tracking-wider font-extrabold">
+                      <th className="py-3 px-3 border-b border-[#036662] text-center w-10">NO</th>
+                      <th className="py-3 px-3 border-b border-[#036662]">TGL KEJADIAN</th>
+                      <th className="py-3 px-3 border-b border-[#036662]">TGL PERKEMBANGAN</th>
+                      <th className="py-3 px-3 border-b border-[#036662]">LEVEL / LOKASI (PROV, KAB, KEC, DESA)</th>
+                      <th className="py-3 px-3 border-b border-[#036662]">JENIS BENCANA</th>
+                      <th className="py-3 px-3 border-b border-[#036662] text-center">KORBAN</th>
+                      <th className="py-3 px-3 border-b border-[#036662] text-center">PENDUDUK TERDAMPAK</th>
+                      <th className="py-3 px-3 border-b border-[#036662] text-center">FASKES TERDAMPAK</th>
+                      <th className="py-3 px-3 border-b border-[#036662] text-center">DETAIL</th>
+                      <th className="py-3 px-3 border-b border-[#036662] text-center">UNDUH DOKUMEN</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                    {paginatedReports.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="py-12 text-center text-slate-400">
+                          <Info className="mx-auto h-8 w-8 opacity-40 mb-2" />
+                          <p className="text-sm font-semibold">Tidak ada laporan kejadian yang sesuai dengan kriteria filter lokasi/bencana.</p>
+                          <button
+                            type="button"
+                            onClick={handleResetFilters}
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 px-3 py-1.5 text-xs font-bold text-[#047D78] hover:bg-teal-100 transition"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Reset Semua Filter
+                          </button>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedReports.map((item, idx) => {
+                        const globalIndex = (currentPage - 1) * itemsPerPage + idx + 1
+                        return (
+                          <tr key={item.id} className="hover:bg-teal-50/30 transition">
+                            {/* NO */}
+                            <td className="py-3 px-3 text-center font-bold text-slate-600">{globalIndex}</td>
+
+                            {/* TGL KEJADIAN */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <p className="font-extrabold text-slate-800">{item.tgl_kejadian_formatted}</p>
+                              <span className="text-[10px] text-slate-400 font-medium">{item.jam_kejadian}</span>
+                            </td>
+
+                            {/* TGL PERKEMBANGAN */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <p className="font-extrabold text-slate-800">{item.tgl_perkembangan_formatted}</p>
+                              <span className="text-[10px] text-slate-400 font-medium">{item.jam_perkembangan}</span>
+                            </td>
+
+                            {/* LEVEL / LOKASI DEEP HIERARCHY */}
+                            <td className="py-3 px-3">
+                              <span className="inline-block text-[9px] font-bold text-rose-600 uppercase tracking-wider mb-0.5">
+                                {item.tingkat_bencana}
+                              </span>
+                              <p className="font-extrabold text-slate-900 leading-snug">{item.kabupaten}</p>
+                              <p className="text-[10px] text-slate-600 font-semibold">
+                                Kec. {item.kecamatan}, <span className="text-teal-700 font-bold">{item.desa}</span>
+                              </p>
+                              <p className="text-[9px] text-slate-400 uppercase">Prov. {item.provinsi}</p>
+                            </td>
+
+                            {/* JENIS BENCANA */}
+                            <td className="py-3 px-3">
+                              <span className="inline-flex items-center gap-1 font-semibold text-slate-800">
+                                {item.jenis_bencana}
+                              </span>
+                            </td>
+
+                            {/* KORBAN */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <span className={`inline-block font-extrabold px-2 py-0.5 rounded-lg text-xs ${
+                                item.korban_meninggal > 0
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'text-slate-700'
+                              }`}>
+                                {item.korban_meninggal + item.korban_luka_berat + item.korban_luka_ringan + item.korban_hilang}
+                              </span>
+                            </td>
+
+                            {/* PENDUDUK TERDAMPAK */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap font-semibold text-slate-800">
+                              {item.penduduk_terdampak + item.pengungsi > 0 ? (
+                                item.penduduk_terdampak + item.pengungsi
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+
+                            {/* FASKES TERDAMPAK */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap font-semibold">
+                              {item.faskes_terdampak > 0 ? (
+                                <span className="rounded-full bg-cyan-50 border border-cyan-200 px-2 py-0.5 text-xs font-bold text-cyan-800">
+                                  {item.faskes_terdampak} Unit
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+
+                            {/* DETAIL FORMULIR BUTTON */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setDetailItem(item)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-teal-50 border border-teal-200 hover:bg-teal-100 px-2.5 py-1 text-[11px] font-bold text-[#047D78] transition"
+                              >
+                                <Eye className="h-3 w-3" />
+                                <span>Pratinjau</span>
+                              </button>
+                            </td>
+
+                            {/* UNDUH DOKUMEN PER ITEM */}
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSinglePDF(item)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-[#047D78] hover:bg-[#036662] px-2.5 py-1 text-[11px] font-bold text-white transition uppercase tracking-wider"
+                                title="Unduh Dokumen Laporan PDF"
+                              >
+                                <FileDown className="h-3.5 w-3.5" />
+                                <span>Unduh PDF</span>
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* FOOTER & PAGINATION */}
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-slate-100">
+                <p className="text-xs text-slate-500">
+                  Menampilkan <strong className="text-slate-800">{filteredReports.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</strong> sampai{' '}
+                  <strong className="text-slate-800">{Math.min(currentPage * itemsPerPage, filteredReports.length)}</strong> dari{' '}
+                  <strong className="text-slate-800">{filteredReports.length}</strong> laporan terfilter
+                </p>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    className="px-3 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    Sebelumnya
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-7 w-7 rounded-lg text-xs font-bold transition ${
+                        currentPage === page
+                          ? 'bg-[#047D78] text-white shadow-sm'
+                          : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    className="px-3 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    Selanjutnya
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      {/* DETAIL MODAL PREVIEW WITH DEEP HIERARCHY */}
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="rounded-full bg-teal-50 border border-teal-200 px-2.5 py-0.5 text-[10px] font-extrabold text-[#047D78] uppercase tracking-wider">
+                  {detailItem.kode_laporan}
+                </span>
+                <h3 className="text-lg font-extrabold text-slate-900 mt-1">{detailItem.jenis_bencana}</h3>
+                <p className="text-xs text-slate-600 font-semibold">
+                  Lokasi: <span className="text-teal-700 font-bold">{detailItem.desa}</span>, Kec. {detailItem.kecamatan}, {detailItem.kabupaten}, Prov. {detailItem.provinsi}
+                </p>
+              </div>
+              <button
+                onClick={() => setDetailItem(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Waktu Kejadian</p>
+                <p className="font-extrabold text-slate-800 mt-0.5">{detailItem.tgl_kejadian_formatted} ({detailItem.jam_kejadian})</p>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Status Verifikasi</p>
+                <p className="font-extrabold text-emerald-700 mt-0.5">{detailItem.status_verifikasi}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-700 uppercase">Rincian Dampak Kesehatan & Korban</h4>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="bg-rose-50 border border-rose-100 p-2 rounded-xl">
+                  <p className="text-[10px] font-bold text-rose-600">Meninggal</p>
+                  <p className="text-base font-black text-rose-700">{detailItem.korban_meninggal}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-2 rounded-xl">
+                  <p className="text-[10px] font-bold text-amber-600">Luka Berat</p>
+                  <p className="text-base font-black text-amber-700">{detailItem.korban_luka_berat}</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 p-2 rounded-xl">
+                  <p className="text-[10px] font-bold text-blue-600">Luka Ringan</p>
+                  <p className="text-base font-black text-blue-700">{detailItem.korban_luka_ringan}</p>
+                </div>
+                <div className="bg-slate-100 border border-slate-200 p-2 rounded-xl">
+                  <p className="text-[10px] font-bold text-slate-600">Faskes Rusak</p>
+                  <p className="text-base font-black text-slate-800">{detailItem.faskes_terdampak}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-slate-700 uppercase">Narasi Perkembangan Kejadian</h4>
+              <p className="text-xs leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-700">
+                {detailItem.deskripsi}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <span className="text-[11px] text-slate-400">Petugas: <strong>{detailItem.petugas}</strong></span>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = detailItem
+                  setDetailItem(null)
+                  handleDownloadSinglePDF(target)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#047D78] hover:bg-[#036662] px-4 py-2 text-xs font-bold text-white transition"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Cetak & Unduh Laporan Ini</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

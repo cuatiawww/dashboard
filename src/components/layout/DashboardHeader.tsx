@@ -75,6 +75,7 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'DASHBOARD EOC',
     items: [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
+      { label: 'UNDUH LAPORAN BENCANA', href: '/unduh-laporan', icon: Download },
       { label: 'INFOGRAFIS AI (PDF)', href: '/infografis-ai', icon: FileText },
     ],
   },
@@ -670,15 +671,22 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                className="inline-flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2.5 whitespace-nowrap rounded-xl border border-teal-200 bg-white/95 px-3 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-[0.05em] text-teal-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-teal-50 hover:shadow-md"
+              <Link
+                href="/unduh-laporan"
+                className={`inline-flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2.5 whitespace-nowrap rounded-xl border px-3 sm:px-4 text-[10px] sm:text-xs font-bold uppercase tracking-[0.05em] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                  pathname === '/unduh-laporan'
+                    ? 'border-teal-600 bg-teal-700 text-white shadow-teal-700/20'
+                    : 'border-teal-200 bg-white/95 text-teal-700 hover:bg-teal-50'
+                }`}
+                title="Halaman Unduh Laporan Bencana"
               >
-                <span className="grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-lg bg-teal-50 text-teal-600">
+                <span className={`grid h-6 w-6 sm:h-7 sm:w-7 place-items-center rounded-lg ${
+                  pathname === '/unduh-laporan' ? 'bg-teal-800 text-white' : 'bg-teal-50 text-teal-600'
+                }`}>
                   <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </span>
                 <span className="hidden sm:inline">Unduh Laporan</span>
-              </button>
+              </Link>
               <div className="relative" ref={profileRef}>
                 <button
                   type="button"
