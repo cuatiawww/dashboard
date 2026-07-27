@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Globe, MapPin, Building2, ChevronDown, Info, Calendar } from 'lucide-react'
+import { Globe, MapPin, Building2, ChevronDown, Calendar, CheckCircle2, Check, Clock, CalendarDays, SlidersHorizontal } from 'lucide-react'
 import { useAuthStore, type WilayahScope } from '@/lib/authStore'
 import { buildRegionsUrl } from '@/lib/utils/api'
 
@@ -19,6 +19,8 @@ export type FilterSummary = {
   provinsi: string
   kabkota: string
   tahun: string
+  startDate?: string
+  endDate?: string
 }
 
 type FilterDropdownBarProps = {
@@ -55,21 +57,31 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, '')
 }
 
-// Mode-mode scope yang dianggap valid & terkunci ke wilayah tertentu.
 const SCOPED_MODES: WilayahScope['mode'][] = ['provinsi', 'kabupaten']
 
 function hasValidScopedMode(scope?: WilayahScope): scope is WilayahScope {
   return !!scope && SCOPED_MODES.includes(scope.mode)
 }
 
+const MONTH_NAMES = [
+  { value: '1', label: 'Januari' },
+  { value: '2', label: 'Februari' },
+  { value: '3', label: 'Maret' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'Mei' },
+  { value: '6', label: 'Juni' },
+  { value: '7', label: 'Juli' },
+  { value: '8', label: 'Agustus' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'Oktober' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'Desember' },
+]
+
 export default function FilterDropdownBar({ onSummaryChange, selectedProvinceName, selectedKabupatenName }: FilterDropdownBarProps = {}) {
   const userScope = useAuthStore((state) => state.user?.wilayah_scope)
-
-  // Hanya benar-benar "scoped" jika mode dikenal (provinsi/kabupaten).
-  // Selain itu (termasuk 'all' atau mode tak terduga/aneh) -> treat sebagai nasional.
   const isScoped = hasValidScopedMode(userScope)
 
-  // Mulai KOSONG (selain "Semua ..."), bukan array statis fallback.
   const [dynamicProvinces, setDynamicProvinces] = useState<Array<{ value: string; label: string }>>([
     { value: 'semua-provinsi', label: 'Semua Provinsi' },
   ])
@@ -80,10 +92,18 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   const [loadingProvinces, setLoadingProvinces] = useState(true)
   const [loadingKabkota, setLoadingKabkota] = useState(false)
 
+  // Time Filter Detailed States (2-Column Tabbed Layout)
+  const [timeCategoryTab, setTimeCategoryTab] = useState<'tahun' | 'bulan' | 'hari' | 'custom'>('tahun')
+  const [selectedYear, setSelectedYear] = useState('2026')
+  const [selectedMonth, setSelectedMonth] = useState('7')
+  const [selectedMonthYear, setSelectedMonthYear] = useState('2026')
+  const [selectedDayPreset, setSelectedDayPreset] = useState('30-hari')
+  const [customStartDate, setCustomStartDate] = useState('2026-01-01')
+  const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0])
+
   const activeFilterData = useMemo<FilterItem[]>(() => {
     let result: FilterItem[] = []
     if (!isScoped) {
-      // Nasional / tamu / mode tidak dikenal -> dropdown aktif & dinamis dari API.
       result = [
         {
           id: 'cakupan',
@@ -117,18 +137,12 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
         {
           id: 'tahun',
           icon: 'calendar',
-          sublabel: 'Tahun',
+          sublabel: 'Rentang Waktu',
           defaultValue: '2026',
-          options: [
-            { value: '2026', label: '2026' },
-            { value: '2025', label: '2025' },
-            { value: '2024', label: '2024' },
-            { value: '2023', label: '2023' },
-          ],
+          options: [],
         },
       ]
     } else {
-      // userScope dipastikan ada & mode-nya valid (provinsi/kabupaten) di sini.
       const scope = userScope as WilayahScope
 
       const cakupanValue = scope.cakupan.value || scope.mode
@@ -178,14 +192,9 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
         {
           id: 'tahun',
           icon: 'calendar',
-          sublabel: 'Tahun',
+          sublabel: 'Rentang Waktu',
           defaultValue: '2026',
-          options: [
-            { value: '2026', label: '2026' },
-            { value: '2025', label: '2025' },
-            { value: '2024', label: '2024' },
-            { value: '2023', label: '2023' },
-          ],
+          options: [],
         },
       ]
     }
@@ -229,7 +238,6 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   const lastProvinceNameRef = useRef<string | null | undefined>(undefined)
   const lastKabupatenNameRef = useRef<string | null | undefined>(undefined)
 
-  // Only update selected values when the default values change (e.g., user scope loads or changes)
   const defaultSelectedStr = JSON.stringify(defaultSelected)
   useEffect(() => {
     const parsed = JSON.parse(defaultSelectedStr)
@@ -237,7 +245,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
     setOpenId(null)
   }, [defaultSelectedStr])
 
-  // Synchronize external selectedProvinceName & selectedKabupatenName changes (e.g., map clicks, resets, smart search)
+  // Synchronize external selectedProvinceName & selectedKabupatenName changes
   useEffect(() => {
     if (lastProvinceNameRef.current === undefined || lastKabupatenNameRef.current === undefined) {
       lastProvinceNameRef.current = selectedProvinceName
@@ -254,24 +262,24 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
         const foundProv = dynamicProvinces.find(
           (p) => p.label.toUpperCase().trim() === cleanProv
         )
-        
+
         if (foundProv) {
           const nextProv = foundProv.value
-          
+
           if (selectedKabupatenName) {
             const cleanKab = selectedKabupatenName.toUpperCase().trim()
             const foundKab = dynamicKabkota.find(
               (k) => k.label.toUpperCase().trim() === cleanKab
             )
-            
+
             if (foundKab) {
               setSelected({
                 cakupan: 'kabupaten-kota',
                 provinsi: nextProv,
                 kabkota: foundKab.value,
+                tahun: selected.tahun || '2026',
               })
             } else {
-              // Jika kabkota belum termuat di dynamicKabkota, set provinsi dulu dan tunggu Cascade
               setSelected((prev) => ({
                 ...prev,
                 cakupan: 'kabupaten-kota',
@@ -284,32 +292,20 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
               cakupan: 'provinsi',
               provinsi: nextProv,
               kabkota: 'semua-kabkota',
+              tahun: selected.tahun || '2026',
             })
           }
         }
       } else {
-        const parsed = JSON.parse(defaultSelectedStr)
-        setSelected(parsed)
+        setSelected({
+          cakupan: 'nasional',
+          provinsi: 'semua-provinsi',
+          kabkota: 'semua-kabkota',
+          tahun: selected.tahun || '2026',
+        })
       }
     }
-  }, [selectedProvinceName, selectedKabupatenName, dynamicProvinces, dynamicKabkota, defaultSelectedStr])
-
-  // Sinkronisasi cascade saat data dynamicKabkota selesai termuat di faskes/provinsi yang baru terpilih
-  useEffect(() => {
-    if (selectedKabupatenName && selectedProvinceName) {
-      const cleanKab = selectedKabupatenName.toUpperCase().trim()
-      const foundKab = dynamicKabkota.find(
-        (k) => k.label.toUpperCase().trim() === cleanKab
-      )
-      if (foundKab && selected.kabkota !== foundKab.value) {
-        setSelected((prev) => ({
-          ...prev,
-          kabkota: foundKab.value,
-          cakupan: 'kabupaten-kota',
-        }))
-      }
-    }
-  }, [dynamicKabkota, selectedKabupatenName, selectedProvinceName, selected.kabkota])
+  }, [dynamicKabkota, dynamicProvinces, selectedKabupatenName, selectedProvinceName, selected.tahun])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -321,7 +317,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Fetch provinsi hanya jika TIDAK scoped (nasional/tamu/mode tak dikenal).
+  // Fetch provinsi dari API backend
   useEffect(() => {
     if (isScoped) return
 
@@ -360,7 +356,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
 
   const selectedProvince = selected['provinsi']
 
-  // Fetch kab/kota cascade hanya jika TIDAK scoped.
+  // Fetch kab/kota cascade
   useEffect(() => {
     if (isScoped) return
 
@@ -394,7 +390,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
           setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
         }
       } catch (err) {
-        console.error('Gagal mengambil data kabkota', err)
+        console.error('Gagal mengambil data kabupaten/kota', err)
         setDynamicKabkota([{ value: 'semua-kabkota', label: 'Semua Kab/Kota' }])
       } finally {
         setLoadingKabkota(false)
@@ -403,46 +399,50 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
     fetchKabkota()
   }, [selectedProvince, isScoped])
 
-  const summaryItems = useMemo(
-    () =>
-      activeFilterData.map((filter) => {
-        const activeOption =
-          filter.options.find((option) => option.value === selected[filter.id]) ?? filter.options[0]
+  // Formatted Label for the Time Button
+  const timeButtonDisplayLabel = useMemo(() => {
+    if (timeCategoryTab === 'tahun') {
+      return `TAHUN ${selectedYear}`
+    }
+    if (timeCategoryTab === 'bulan') {
+      const monthObj = MONTH_NAMES.find(m => m.value === selectedMonth)
+      return `${(monthObj?.label || 'Juli').toUpperCase()} ${selectedMonthYear}`
+    }
+    if (timeCategoryTab === 'hari') {
+      if (selectedDayPreset === 'hari-ini') return 'HARI INI'
+      if (selectedDayPreset === '7-hari') return '7 HARI TERAKHIR'
+      return '30 HARI TERAKHIR'
+    }
+    if (timeCategoryTab === 'custom') {
+      return `${customStartDate} S.D ${customEndDate}`
+    }
+    return `TAHUN ${selectedYear}`
+  }, [timeCategoryTab, selectedYear, selectedMonth, selectedMonthYear, selectedDayPreset, customStartDate, customEndDate])
 
-        return {
-          id: filter.id,
-          label: filter.sublabel,
-          value: activeOption.label,
-        }
-      }),
-    [activeFilterData, selected]
-  )
+  const summary = useMemo<FilterSummary>(() => {
+    const provOpt = dynamicProvinces.find((p) => p.value === selected.provinsi)
+    const kabOpt = dynamicKabkota.find((k) => k.value === selected.kabkota)
 
-  const summary = useMemo<FilterSummary>(
-    () => {
-      const parentProv = (selectedProvinceName && !selectedProvinceName.toUpperCase().includes('MEMUAT')) ? selectedProvinceName.toUpperCase() : null
-      const parentKab = (selectedKabupatenName && !selectedKabupatenName.toUpperCase().includes('MEMUAT')) ? selectedKabupatenName.toUpperCase() : null
+    return {
+      cakupan: selected.cakupan || 'nasional',
+      provinsi: provOpt ? provOpt.label : selected.provinsi || 'semua-provinsi',
+      kabkota: kabOpt ? kabOpt.label : selected.kabkota || 'semua-kabkota',
+      tahun: timeButtonDisplayLabel,
+      startDate: timeCategoryTab === 'custom' ? customStartDate : undefined,
+      endDate: timeCategoryTab === 'custom' ? customEndDate : undefined,
+    }
+  }, [dynamicKabkota, dynamicProvinces, selected, timeButtonDisplayLabel, timeCategoryTab, customStartDate, customEndDate])
 
-      const defaultProv = summaryItems.find((item) => item.id === 'provinsi')?.value || 'Semua Provinsi'
-      const defaultKab = summaryItems.find((item) => item.id === 'kabkota')?.value || 'Semua Kab/Kota'
+  const handleApply = () => {
+    onSummaryChange?.(summary)
+  }
 
-      return {
-        cakupan: summaryItems.find((item) => item.id === 'cakupan')?.value || 'Nasional',
-        provinsi: parentProv || defaultProv,
-        kabkota: parentKab || defaultKab,
-        tahun: summaryItems.find((item) => item.id === 'tahun')?.value || '2026',
-      }
-    },
-    [summaryItems, selectedProvinceName, selectedKabupatenName]
-  )
+  const isInitialMount = useRef(true)
 
-  // Keep track of the last emitted summary to prevent infinite loops
-  const lastSummaryRef = useRef<string>('')
-
+  // Only trigger on initial mount once
   useEffect(() => {
-    const summaryStr = JSON.stringify(summary)
-    if (summaryStr !== lastSummaryRef.current) {
-      lastSummaryRef.current = summaryStr
+    if (isInitialMount.current) {
+      isInitialMount.current = false
       onSummaryChange?.(summary)
     }
   }, [onSummaryChange, summary])
@@ -450,15 +450,19 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   return (
     <div ref={rootRef}>
       {/* Single unified label */}
-      <p className="mb-2 text-[11px] font-medium uppercase tracking-widest text-[#6b7280]">
-        Filter Wilayah
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-medium uppercase tracking-widest text-[#6b7280]">
+          Filter Wilayah & Waktu
+        </p>
+      </div>
 
-      {/* Unified pill bar */}
-      <div className="grid grid-cols-2 sm:flex sm:items-center rounded-2xl border border-[#e5e7eb] bg-white p-1 sm:p-1.5 gap-y-1 sm:gap-y-0">
+      {/* Unified pill bar with TERAPKAN button */}
+      <div className="grid grid-cols-2 sm:flex sm:items-center rounded-2xl border border-[#e5e7eb] bg-white p-1 sm:p-1.5 gap-y-1 sm:gap-y-0 shadow-sm">
         {activeFilterData.map((filter, idx) => {
-          const activeOption =
-            filter.options.find((o) => o.value === selected[filter.id]) ?? filter.options[0]
+          const activeOption = filter.id === 'tahun'
+            ? { label: timeButtonDisplayLabel }
+            : (filter.options.find((o) => o.value === selected[filter.id]) ?? filter.options[0])
+
           const isOpen = openId === filter.id
           const { bg, color } = iconStyles[filter.icon]
           const locked = Boolean(filter.locked)
@@ -521,15 +525,15 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                 />
               </button>
 
-              {/* Dropdown */}
-              {isOpen && (
+              {/* Standard Dropdowns (Cakupan, Provinsi, Kab/Kota) */}
+              {isOpen && filter.id !== 'tahun' && (
                 <div
                   role="listbox"
                   className={`
-                    absolute top-[calc(100%+8px)] z-30 min-w-[180px]
+                    absolute top-[calc(100%+8px)] z-30 min-w-[200px]
                     overflow-hidden rounded-2xl border border-[#e5e7eb]
-                    bg-white shadow-[0_8px_24px_rgba(0,0,0,0.10)]
-                    max-h-[300px] overflow-y-auto scrollbar-thin
+                    bg-white shadow-[0_12px_32px_rgba(0,0,0,0.12)]
+                    max-h-[300px] overflow-y-auto scrollbar-thin p-1
                     ${idx % 2 !== 0 ? 'right-0' : 'left-0'}
                   `}
                 >
@@ -574,10 +578,10 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                           setOpenId(null)
                         }}
                         className={`
-                          flex w-full items-center gap-2.5 px-4 py-2.5 text-left
-                          text-[13px] transition-colors duration-100
+                          flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left rounded-xl
+                          text-[12px] transition-colors duration-100 mb-0.5
                           ${isSelected
-                            ? 'bg-[#f0fdf9] font-semibold text-[#0F6E56]'
+                            ? 'bg-[#f0fdf9] font-bold text-[#0F6E56]'
                             : 'text-[#374151] hover:bg-[#f9fafb]'
                           }
                         `}
@@ -594,9 +598,197 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                   })}
                 </div>
               )}
+
+              {/* 2-COLUMN ELEGANT TABBED PANEL FOR TIME FILTER (filter.id === 'tahun') */}
+              {isOpen && filter.id === 'tahun' && (
+                <div
+                  className="absolute top-[calc(100%+8px)] right-0 z-40 w-[360px] sm:w-[440px] rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_16px_40px_rgba(0,0,0,0.16)] text-xs animate-in fade-in slide-in-from-top-2 duration-150"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 px-1 mb-3">
+                    <span className="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <SlidersHorizontal className="h-3.5 w-3.5 text-[#047D78]" />
+                      Pilih Filter Rentang Waktu
+                    </span>
+
+                  </div>
+
+                  <div className="grid grid-cols-[140px_1fr] sm:grid-cols-[160px_1fr] gap-3">
+                    {/* LEFT COLUMN: Categories */}
+                    <div className="space-y-1 border-r border-slate-100 pr-2">
+                      {[
+                        { id: 'tahun', label: 'Berdasarkan Tahun', icon: Calendar },
+                        { id: 'bulan', label: 'Berdasarkan Bulan', icon: CalendarDays },
+                        { id: 'hari', label: 'Berdasarkan Hari', icon: Clock },
+                        { id: 'custom', label: 'Rentang Custom', icon: SlidersHorizontal },
+                      ].map((cat) => {
+                        const Icon = cat.icon
+                        const isActive = timeCategoryTab === cat.id
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setTimeCategoryTab(cat.id as any)}
+                            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-left text-[11px] font-bold transition-all ${isActive
+                                ? 'bg-[#047D78] text-white shadow-sm'
+                                : 'text-slate-600 hover:bg-slate-100/80'
+                              }`}
+                          >
+                            <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                            <span className="truncate">{cat.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* RIGHT COLUMN: Specific Options */}
+                    <div className="pl-1 space-y-2">
+                      {/* TAB 1: Berdasarkan Tahun */}
+                      {timeCategoryTab === 'tahun' && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pilih Tahun Kejadian:</p>
+                          {['2026', '2025', '2024', '2023'].map((yr) => {
+                            const isSelected = selectedYear === yr
+                            return (
+                              <button
+                                key={yr}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedYear(yr)
+                                  setOpenId(null)
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs font-bold transition ${isSelected
+                                    ? 'bg-teal-50 border border-teal-200 text-[#047D78]'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                                  }`}
+                              >
+                                <span>Tahun {yr}</span>
+                                {isSelected && <Check className="h-4 w-4 text-[#047D78]" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* TAB 2: Berdasarkan Bulan */}
+                      {timeCategoryTab === 'bulan' && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Tahun:</span>
+                            <select
+                              value={selectedMonthYear}
+                              onChange={(e) => setSelectedMonthYear(e.target.value)}
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-800"
+                            >
+                              <option value="2026">2026</option>
+                              <option value="2025">2025</option>
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 max-h-[180px] overflow-y-auto pr-1">
+                            {MONTH_NAMES.map((m) => {
+                              const isSelected = selectedMonth === m.value
+                              return (
+                                <button
+                                  key={m.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMonth(m.value)
+                                    setOpenId(null)
+                                  }}
+                                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-[11px] font-semibold transition ${isSelected
+                                      ? 'bg-teal-50 border border-teal-200 font-bold text-[#047D78]'
+                                      : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                >
+                                  <span className="truncate">{m.label}</span>
+                                  {isSelected && <Check className="h-3 w-3 text-[#047D78] shrink-0" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* TAB 3: Berdasarkan Hari */}
+                      {timeCategoryTab === 'hari' && (
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Preset Hari:</p>
+                          {[
+                            { id: '30-hari', label: '30 Hari Terakhir' },
+                            { id: '7-hari', label: '7 Hari Terakhir' },
+                            { id: 'hari-ini', label: 'Hari Ini' },
+                          ].map((p) => {
+                            const isSelected = selectedDayPreset === p.id
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedDayPreset(p.id)
+                                  setOpenId(null)
+                                }}
+                                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs font-bold transition ${isSelected
+                                    ? 'bg-teal-50 border border-teal-200 text-[#047D78]'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                                  }`}
+                              >
+                                <span>{p.label}</span>
+                                {isSelected && <Check className="h-4 w-4 text-[#047D78]" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* TAB 4: Custom Rentang Tanggal */}
+                      {timeCategoryTab === 'custom' && (
+                        <div className="space-y-2 pt-0.5">
+                          <p className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Rentang Tanggal Custom:</p>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Dari Tanggal:</label>
+                            <input
+                              type="date"
+                              value={customStartDate}
+                              onChange={(e) => setCustomStartDate(e.target.value)}
+                              className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#047D78]"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">Sampai Tanggal:</label>
+                            <input
+                              type="date"
+                              value={customEndDate}
+                              onChange={(e) => setCustomEndDate(e.target.value)}
+                              className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#047D78]"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setOpenId(null)}
+                            className="w-full py-2 bg-[#047D78] hover:bg-[#036662] text-white font-black rounded-xl text-xs uppercase tracking-wider shadow-sm transition mt-2 text-center"
+                          >
+                            Simpan Tanggal
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
+
+        {/* Action Button: TERAPKAN FILTER */}
+        <div className="col-span-2 sm:col-span-1 sm:ml-auto pl-1 sm:pl-2 flex items-center justify-end w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={handleApply}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#047D78] hover:bg-[#036662] px-4 py-2.5 text-xs font-black text-white shadow-md transition active:scale-95 uppercase tracking-wider cursor-pointer"
+          >
+            <CheckCircle2 className="h-4 w-4 text-teal-200 shrink-0" />
+            <span>TERAPKAN</span>
+          </button>
+        </div>
       </div>
     </div>
   )

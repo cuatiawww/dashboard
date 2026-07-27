@@ -28,6 +28,7 @@ import {
   Bug,
   Skull,
   ChevronRight,
+  CheckCircle2,
   Download,
   Video,
   Settings,
@@ -497,6 +498,32 @@ export default function DashboardKejadianPage() {
     }
     return (kabupaten || 'Semua Kab/Kota').toUpperCase()
   }, [selectedRegions, kabupaten])
+
+  const activeRegionConcatenatedLabel = useMemo(() => {
+    if (selectedRegions.length > 0) {
+      return selectedRegions.map(r => {
+        if (r.type === 'provinsi') return `PROV. ${r.label.toUpperCase()}`
+        if (r.type === 'kabupaten') return `KAB/KOTA ${r.label.toUpperCase()}`
+        if (r.type === 'kecamatan') return `KEC. ${r.label.toUpperCase()}`
+        if (r.type === 'desa') return `DESA/KEL. ${r.label.toUpperCase()}`
+        return r.label.toUpperCase()
+      }).join(', ')
+    }
+    const parts: string[] = []
+    const cleanKab = (kabupaten || '').trim().toLowerCase()
+    const cleanProv = (province || '').trim().toLowerCase()
+
+    if (cleanKab && cleanKab !== 'semua-kabkota' && !cleanKab.includes('semua kab')) {
+      parts.push(`KAB. ${kabupaten.toUpperCase()}`)
+    }
+    if (cleanProv && cleanProv !== 'semua-provinsi' && !cleanProv.includes('semua prov')) {
+      parts.push(`PROV. ${province.toUpperCase()}`)
+    }
+    if (parts.length > 0) {
+      return parts.join(', ')
+    }
+    return 'NASIONAL'
+  }, [selectedRegions, kabupaten, province])
 
   const filteredDetailMarkers = useMemo(() => {
     if (!effectiveMarkers) return []
@@ -1149,14 +1176,8 @@ export default function DashboardKejadianPage() {
   }, [province, kabupaten, user])
 
   const getRegionLabel = useCallback(() => {
-    if (kabupaten) {
-      return `${kabupaten.toUpperCase()}, PROV. ${province.toUpperCase()}`
-    }
-    if (province) {
-      return `PROV. ${province.toUpperCase()}`
-    }
-    return cakupan.toUpperCase()
-  }, [province, kabupaten, cakupan])
+    return activeRegionConcatenatedLabel
+  }, [activeRegionConcatenatedLabel])
 
   const getCardDetailInfo = useCallback((label: string) => {
     const region = getRegionLabel()
@@ -1691,26 +1712,43 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     setSearchQuery('')
                     setShowSuggestions(false)
                   }
+                  fetchData()
                 }
               }}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Cari Provinsi, Kab/Kota, Kecamatan, atau Desa..."
-              className="w-full rounded-2xl border border-slate-200 bg-white h-12 pl-11 pr-10 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
+              className="w-full rounded-2xl border border-slate-200 bg-white h-12 pl-11 pr-36 text-sm font-medium shadow-sm outline-none placeholder:text-slate-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
             />
-            {isSearching ? (
-              <Loader2 className="absolute right-4 h-4 w-4 animate-spin text-teal-600" />
-            ) : searchQuery ? (
+            
+            {/* Action buttons inside the search bar */}
+            <div className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1">
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin text-teal-600 mr-2" />
+              ) : searchQuery ? (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSuggestions([])
+                  }}
+                  type="button"
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition mr-0.5"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+
               <button
-                onClick={() => {
-                  setSearchQuery('')
-                  setSuggestions([])
-                }}
                 type="button"
-                className="absolute right-4 rounded-lg p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                onClick={() => {
+                  fetchData()
+                }}
+                className="h-9 px-3.5 rounded-xl bg-[#047D78] hover:bg-[#036662] text-white text-xs font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-sm transition active:scale-95 cursor-pointer"
+                title="Terapkan Filter Wilayah"
               >
-                <X className="h-4 w-4" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-teal-200" />
+                <span>TERAPKAN</span>
               </button>
-            ) : null}
+            </div>
           </div>
 
           {/* Dropdown Suggestions */}
@@ -1910,6 +1948,9 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                   </p>
                   <p className={`mt-2 text-[30px] font-bold leading-[0.92] tracking-[-0.02em] ${card.color} sm:text-[34px] xl:text-[28px] 2xl:text-[34px] truncate`}>
                     {getCardValue(card.value)}
+                  </p>
+                  <p className="mt-1 text-[10px] text-teal-800 font-extrabold truncate uppercase">
+                    di wilayah {activeRegionConcatenatedLabel}
                   </p>
                   <p className="mt-2 text-[11px] text-[#383838] sm:text-[12px] flex flex-wrap items-center gap-x-1 gap-y-0.5">
                     {trend.prevMonthName && (
