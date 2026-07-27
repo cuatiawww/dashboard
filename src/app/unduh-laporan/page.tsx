@@ -1502,61 +1502,136 @@ export default function UnduhLaporanPage() {
       </tr>
     `).join('')
 
-    const chart1Html = sortedJenis.map(([name, count]) => {
-      const pct = Math.round((count / totalReports) * 100)
-      const barWidth = Math.max(Math.round((count / maxJenisCount) * 100), 6)
-      return `
-        <div style="margin-bottom: 8px;">
-          <div style="display: flex; justify-content: space-between; font-size: 10.5px; font-weight: bold; color: #334155; margin-bottom: 3px;">
-            <span>${name}</span>
-            <span style="color: #047D78;">${count} (${pct}%)</span>
+    // RENDER PURE VECTOR SVG DONUT CHART
+    const renderSvgDonutChart = (items: [string, number][], total: number) => {
+      if (total === 0 || items.length === 0) {
+        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 35px 0;">Tidak Ada Data</div>`
+      }
+
+      const colors = ['#047D78', '#0f766e', '#d97706', '#dc2626', '#4f46e5', '#2563eb', '#059669', '#6366f1']
+      let accumulatedAngle = -Math.PI / 2
+      const cx = 75
+      const cy = 75
+      const rOut = 65
+      const rIn = 40
+
+      const paths: string[] = []
+      const legends: string[] = []
+
+      items.slice(0, 5).forEach(([label, val], i) => {
+        const pct = val / total
+        const angle = pct * 2 * Math.PI
+        const startAngle = accumulatedAngle
+        const endAngle = accumulatedAngle + angle
+        accumulatedAngle += angle
+
+        const color = colors[i % colors.length]
+
+        if (pct >= 0.999) {
+          paths.push(`
+            <circle cx="${cx}" cy="${cy}" r="${rOut}" fill="${color}" />
+            <circle cx="${cx}" cy="${cy}" r="${rIn}" fill="#ffffff" />
+          `)
+        } else {
+          const x1 = cx + rOut * Math.cos(startAngle)
+          const y1 = cy + rOut * Math.sin(startAngle)
+          const x2 = cx + rOut * Math.cos(endAngle)
+          const y2 = cy + rOut * Math.sin(endAngle)
+          const x3 = cx + rIn * Math.cos(endAngle)
+          const y3 = cy + rIn * Math.sin(endAngle)
+          const x4 = cx + rIn * Math.cos(startAngle)
+          const y4 = cy + rIn * Math.sin(startAngle)
+          const largeArc = angle > Math.PI ? 1 : 0
+
+          const d = `M ${x1} ${y1} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x4} ${y4} Z`
+          paths.push(`<path d="${d}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />`)
+        }
+
+        const pctText = Math.round(pct * 100)
+        legends.push(`
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 9px; margin-bottom: 3px;">
+            <span style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: ${color}; flex-shrink: 0;"></span>
+              <span style="color: #334155; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95px;">${label}</span>
+            </span>
+            <span style="font-weight: 800; color: #0f172a; margin-left: 4px;">${val} (${pctText}%)</span>
           </div>
-          <div style="background: #e2e8f0; height: 9px; border-radius: 5px; overflow: hidden;">
-            <div style="background: linear-gradient(90deg, #047D78, #0f766e); width: ${barWidth}%; height: 100%; border-radius: 5px;"></div>
+        `)
+      })
+
+      return `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="150" height="150" viewBox="0 0 150 150" style="flex-shrink: 0;">
+            ${paths.join('')}
+            <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="15" font-weight="900" fill="#047D78">${total}</text>
+            <text x="${cx}" y="${cy + 11}" text-anchor="middle" font-size="7.5" font-weight="bold" fill="#64748b">LAPORAN</text>
+          </svg>
+          <div style="flex: 1; min-width: 0;">
+            ${legends.join('')}
           </div>
         </div>
       `
-    }).join('')
+    }
 
-    const chart2Html = `
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase;">Diverifikasi</div>
-          <div style="font-size: 18px; font-weight: 900; color: #166534;">${statusCounts.Diverifikasi || 0}</div>
-        </div>
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; text-align: center;">
-          <div style="font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase;">Proses</div>
-          <div style="font-size: 18px; font-weight: 900; color: #d97706;">${statusCounts.Proses || 0}</div>
-        </div>
-      </div>
-      <div style="margin-top: 10px;">
-        <div style="font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px;">Top 5 Provinsi Terbanyak:</div>
-        ${sortedProvs.map(([provName, provCount]) => `
-          <div style="display: flex; justify-content: space-between; font-size: 9.5px; color: #334155; padding: 2px 0;">
-            <span style="font-weight: 600;">${provName}</span>
-            <span style="font-weight: bold; color: #0f766e;">${provCount} Lap.</span>
-          </div>
-        `).join('')}
-      </div>
-    `
+    // RENDER PURE VECTOR SVG BAR CHART
+    const renderSvgBarChart = (items: [string, number][], maxVal: number) => {
+      if (items.length === 0) {
+        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 35px 0;">Tidak Ada Data</div>`
+      }
+
+      const svgWidth = 230
+      const svgHeight = 140
+      const margin = { top: 15, right: 10, bottom: 30, left: 10 }
+      const chartW = svgWidth - margin.left - margin.right
+      const chartH = svgHeight - margin.top - margin.bottom
+
+      const sliceItems = items.slice(0, 5)
+      const barWidth = Math.floor(chartW / sliceItems.length) - 8
+
+      const barElements: string[] = []
+
+      sliceItems.forEach(([label, val], idx) => {
+        const barH = maxVal > 0 ? Math.round((val / maxVal) * chartH) : 0
+        const x = margin.left + idx * (barWidth + 8) + 4
+        const y = margin.top + (chartH - barH)
+
+        const shortLabel = label.length > 7 ? label.substring(0, 7) + '..' : label
+
+        barElements.push(`
+          <rect x="${x}" y="${y}" width="${barWidth}" height="${barH}" rx="3" fill="#047D78" />
+          <text x="${x + barWidth / 2}" y="${y - 3}" text-anchor="middle" font-size="8.5" font-weight="bold" fill="#047D78">${val}</text>
+          <text x="${x + barWidth / 2}" y="${svgHeight - 10}" text-anchor="middle" font-size="7.5" font-weight="bold" fill="#475569">${shortLabel}</text>
+        `)
+      })
+
+      return `
+        <svg width="100%" height="140" viewBox="0 0 ${svgWidth} ${svgHeight}">
+          <line x1="${margin.left}" y1="${margin.top + chartH}" x2="${svgWidth - margin.right}" y2="${margin.top + chartH}" stroke="#cbd5e1" stroke-width="1" />
+          ${barElements.join('')}
+        </svg>
+      `
+    }
+
+    const chart1Html = renderSvgDonutChart(sortedJenis, totalReports)
+    const chart2Html = renderSvgBarChart(sortedProvs, maxProvCount)
 
     const chart3Html = `
-      <div style="space-y: 6px;">
-        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 10px; font-weight: bold; color: #991b1b;">Korban Meninggal:</span>
-          <span style="font-size: 13px; font-weight: 900; color: #dc2626;">${totalMeninggal} Jiwa</span>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9.5px; font-weight: bold; color: #991b1b;">Korban Meninggal:</span>
+          <span style="font-size: 12.5px; font-weight: 900; color: #dc2626;">${totalMeninggal} Jiwa</span>
         </div>
-        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-          <span style="font-size: 10px; font-weight: bold; color: #92400e;">Luka & Hilang:</span>
-          <span style="font-size: 13px; font-weight: 900; color: #d97706;">${totalLuka + totalHilang} Jiwa</span>
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9.5px; font-weight: bold; color: #92400e;">Luka & Hilang:</span>
+          <span style="font-size: 12.5px; font-weight: 900; color: #d97706;">${totalLuka + totalHilang} Jiwa</span>
         </div>
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-          <span style="font-size: 10px; font-weight: bold; color: #166534;">Terdampak/Pengungsi:</span>
-          <span style="font-size: 13px; font-weight: 900; color: #16a34a;">${totalTerdampak + totalPengungsi} Jiwa</span>
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9.5px; font-weight: bold; color: #166534;">Terdampak/Pengungsi:</span>
+          <span style="font-size: 12.5px; font-weight: 900; color: #16a34a;">${totalTerdampak + totalPengungsi} Jiwa</span>
         </div>
-        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 7px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-          <span style="font-size: 10px; font-weight: bold; color: #075985;">Faskes Terdampak:</span>
-          <span style="font-size: 13px; font-weight: 900; color: #0284c7;">${totalFaskes} Unit</span>
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 6px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9.5px; font-weight: bold; color: #075985;">Faskes Terdampak:</span>
+          <span style="font-size: 12.5px; font-weight: 900; color: #0284c7;">${totalFaskes} Unit</span>
         </div>
       </div>
     `
@@ -1585,7 +1660,7 @@ export default function UnduhLaporanPage() {
             background: #fff;
             margin: 0;
             padding: 0;
-            font-size: 11px;
+            font-size: 10.5px;
             line-height: 1.4;
           }
           
@@ -1598,7 +1673,7 @@ export default function UnduhLaporanPage() {
             margin-bottom: 10px;
           }
           .kop-logo {
-            height: 56px;
+            height: 54px;
             width: auto;
             flex-shrink: 0;
           }
@@ -1606,7 +1681,7 @@ export default function UnduhLaporanPage() {
             flex: 1;
           }
           .kop-text h1 {
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: 900;
             color: #047D78;
             margin: 0;
@@ -1614,20 +1689,20 @@ export default function UnduhLaporanPage() {
             letter-spacing: 0.5px;
           }
           .kop-text h2 {
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 800;
             color: #1e293b;
             margin: 2px 0 0 0;
             text-transform: uppercase;
           }
           .kop-text p {
-            font-size: 9px;
+            font-size: 8.5px;
             color: #64748b;
             margin: 2px 0 0 0;
           }
           .kop-badge {
             text-align: right;
-            font-size: 9px;
+            font-size: 8.5px;
             color: #64748b;
           }
           .kop-badge .status-tag {
@@ -1637,16 +1712,16 @@ export default function UnduhLaporanPage() {
             font-weight: 800;
             padding: 3px 8px;
             border-radius: 4px;
-            font-size: 8.5px;
+            font-size: 8px;
             margin-top: 4px;
             text-transform: uppercase;
           }
 
           .summary-box {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 10px 12px;
             margin-bottom: 12px;
           }
           .summary-title {
@@ -1654,18 +1729,40 @@ export default function UnduhLaporanPage() {
             font-weight: 900;
             color: #047D78;
             text-transform: uppercase;
-            margin: 0 0 4px 0;
+            margin: 0 0 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4px;
           }
-          .filter-meta {
+          .filter-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
+            gap: 8px;
             font-size: 9.5px;
-            color: #475569;
-            border-top: 1px border-dashed #cbd5e1;
-            padding-top: 4px;
           }
-          .filter-meta b { color: #0f172a; }
+          .filter-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            border-radius: 6px;
+          }
+          .filter-card .lbl { font-size: 8.5px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+          .filter-card .val { font-size: 10px; color: #0f172a; font-weight: 800; margin-top: 2px; }
+
+          .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+          .kpi-card {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+          }
+          .kpi-card .kpi-lbl { font-size: 8.5px; color: #166534; font-weight: bold; text-transform: uppercase; }
+          .kpi-card .kpi-val { font-size: 15px; font-weight: 900; color: #047D78; }
 
           .charts-grid {
             display: grid;
@@ -1681,7 +1778,7 @@ export default function UnduhLaporanPage() {
             background: #ffffff;
           }
           .chart-card h3 {
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 800;
             color: #047D78;
             margin: 0 0 6px 0;
@@ -1691,7 +1788,7 @@ export default function UnduhLaporanPage() {
           }
 
           .matrix-section h3 {
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #1e293b;
             text-transform: uppercase;
@@ -1700,25 +1797,25 @@ export default function UnduhLaporanPage() {
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9.5px;
+            font-size: 9px;
           }
           th {
             background: #047D78;
             color: white;
             padding: 6px 7px;
             text-align: left;
-            font-size: 9px;
+            font-size: 8.5px;
             text-transform: uppercase;
             border: 1px solid #036662;
           }
 
           .footer-sig {
-            margin-top: 16px;
+            margin-top: 14px;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             border-top: 1px solid #e2e8f0;
-            padding-top: 10px;
+            padding-top: 8px;
             page-break-inside: avoid;
           }
           .sig-box {
@@ -1726,13 +1823,13 @@ export default function UnduhLaporanPage() {
             width: 180px;
           }
           .sig-space {
-            height: 45px;
+            height: 40px;
           }
           .sig-name {
             font-weight: 800;
             border-top: 1px solid #1e293b;
             padding-top: 3px;
-            font-size: 10px;
+            font-size: 9.5px;
           }
 
           @media print {
@@ -1743,8 +1840,8 @@ export default function UnduhLaporanPage() {
       </head>
       <body>
         <div class="no-print" style="background: #047D78; color: white; padding: 8px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px;">
-          <span style="font-weight: bold; font-size: 11.5px;">Preview Laporan Dashboard EOC Kemenkes RI</span>
-          <button onclick="window.print()" style="background: white; color: #047D78; font-weight: bold; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px;">
+          <span style="font-weight: bold; font-size: 11px;">Preview Laporan Eksekutif EOC Kemenkes RI</span>
+          <button onclick="window.print()" style="background: white; color: #047D78; font-weight: bold; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 10.5px;">
             Cetak ke PDF / Print
           </button>
         </div>
@@ -1764,24 +1861,53 @@ export default function UnduhLaporanPage() {
           </div>
         </div>
 
-        <!-- EXECUTIVE SUMMARY BANNER -->
+        <!-- DETAILED EXECUTIVE METADATA BANNER -->
         <div class="summary-box">
           <h2 class="summary-title">LAPORAN EKSEKUTIF PEMANTAUAN KEJADIAN BENCANA & KRISIS KESEHATAN</h2>
-          <div class="filter-meta">
-            <div>Wilayah Terfilter: <b>${filterWilayahText}</b></div>
-            <div>Bencana Terfilter: <b>${filterBencanaText}</b></div>
-            <div>Periode Waktu: <b>${timePresetText}</b></div>
+          <div class="filter-grid">
+            <div class="filter-card">
+              <div class="lbl">Cakupan Wilayah:</div>
+              <div class="val">${filterWilayahText}</div>
+            </div>
+            <div class="filter-card">
+              <div class="lbl">Jenis Bencana:</div>
+              <div class="val">${filterBencanaText}</div>
+            </div>
+            <div class="filter-card">
+              <div class="lbl">Periode Waktu Filter:</div>
+              <div class="val">${timePresetText}</div>
+            </div>
           </div>
         </div>
 
-        <!-- 3 VISUAL VECTOR CHARTS -->
+        <!-- KPI SUMMARY CARDS -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-lbl">Total Laporan Bencana</div>
+            <div class="kpi-val">${totalReports}</div>
+          </div>
+          <div class="kpi-card" style="background: #fef2f2; border-color: #fecaca;">
+            <div class="kpi-lbl" style="color: #991b1b;">Korban Meninggal</div>
+            <div class="kpi-val" style="color: #dc2626;">${totalMeninggal} <span style="font-size: 10px;">Jiwa</span></div>
+          </div>
+          <div class="kpi-card" style="background: #fffbeb; border-color: #fef3c7;">
+            <div class="kpi-lbl" style="color: #92400e;">Luka & Hilang</div>
+            <div class="kpi-val" style="color: #d97706;">${totalLuka + totalHilang} <span style="font-size: 10px;">Jiwa</span></div>
+          </div>
+          <div class="kpi-card" style="background: #f0f9ff; border-color: #bae6fd;">
+            <div class="kpi-lbl" style="color: #075985;">Terdampak & Pengungsi</div>
+            <div class="kpi-val" style="color: #0284c7;">${totalTerdampak + totalPengungsi} <span style="font-size: 10px;">Jiwa</span></div>
+          </div>
+        </div>
+
+        <!-- 3 REAL SVG VECTOR CHARTS -->
         <div class="charts-grid">
           <div class="chart-card">
-            <h3>1. Distribusi Jenis Bencana</h3>
+            <h3>1. Pie Donut Distribusi Bencana</h3>
             ${chart1Html}
           </div>
           <div class="chart-card">
-            <h3>2. Verifikasi & Sebaran Provinsi</h3>
+            <h3>2. Bar Chart Top 5 Provinsi</h3>
             ${chart2Html}
           </div>
           <div class="chart-card">
@@ -1813,13 +1939,13 @@ export default function UnduhLaporanPage() {
 
         <!-- SIGNATURE & STAMP FOOTER -->
         <div class="footer-sig">
-          <div style="font-size: 9px; color: #64748b;">
+          <div style="font-size: 8.5px; color: #64748b;">
             <b>EOC Krisis Kesehatan Kemenkes RI</b><br/>
             Dokumen ini dihasilkan otomatis berdasarkan hasil filter sistem EOC Kemenkes RI.<br/>
             Waktu Generasi: ${new Date().toLocaleString('id-ID')} WIB
           </div>
           <div class="sig-box">
-            <div style="font-size: 9.5px; color: #475569; margin-bottom: 4px;">Penanggung Jawab EOC,</div>
+            <div style="font-size: 9px; color: #475569; margin-bottom: 4px;">Penanggung Jawab EOC,</div>
             <div class="sig-space"></div>
             <div class="sig-name">Tim Komando EOC Kemenkes</div>
           </div>
