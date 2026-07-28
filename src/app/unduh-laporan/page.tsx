@@ -1408,35 +1408,122 @@ export default function UnduhLaporanPage() {
       return
     }
 
-    const rowsHtml = filteredReports
-      .map(
-        (item, idx) => `
+    type RegionGroup = {
+      name: string
+      total_laporan: number
+      korban_meninggal: number
+      korban_luka: number
+      korban_hilang: number
+      penduduk_terdampak: number
+      pengungsi: number
+      faskes_terdampak: number
+      bencana_counts: Record<string, number>
+      bencana_dominan: string
+    }
+
+    const isSingleProvSelected = selectedProvinces.length === 1 || selectedRegionPills.some(p => p.level === 'PROVINSI')
+    const isSingleKabSelected = selectedRegionPills.some(p => p.level === 'KABUPATEN')
+
+    let groupByLabel = 'PROVINSI'
+    if (isSingleKabSelected) {
+      groupByLabel = 'KECAMATAN'
+    } else if (isSingleProvSelected) {
+      groupByLabel = 'KABUPATEN / KOTA'
+    }
+
+    const regionMap: Record<string, RegionGroup> = {}
+
+    filteredReports.forEach((r) => {
+      let key = (r.provinsi || 'LAINNYA').toUpperCase()
+      if (isSingleKabSelected) {
+        key = (r.kecamatan || 'KECAMATAN LAINNYA').toUpperCase()
+      } else if (isSingleProvSelected) {
+        key = (r.kabupaten || 'KABUPATEN LAINNYA').toUpperCase()
+      }
+
+      if (!regionMap[key]) {
+        regionMap[key] = {
+          name: key,
+          total_laporan: 0,
+          korban_meninggal: 0,
+          korban_luka: 0,
+          korban_hilang: 0,
+          penduduk_terdampak: 0,
+          pengungsi: 0,
+          faskes_terdampak: 0,
+          bencana_counts: {},
+          bencana_dominan: '-',
+        }
+      }
+
+      const g = regionMap[key]
+      g.total_laporan += 1
+      g.korban_meninggal += r.korban_meninggal
+      g.korban_luka += (r.korban_luka_berat + r.korban_luka_ringan)
+      g.korban_hilang += r.korban_hilang
+      g.penduduk_terdampak += r.penduduk_terdampak
+      g.pengungsi += r.pengungsi
+      g.faskes_terdampak += r.faskes_terdampak
+
+      const j = r.jenis_bencana || 'Lainnya'
+      g.bencana_counts[j] = (g.bencana_counts[j] || 0) + 1
+    })
+
+    Object.values(regionMap).forEach((g) => {
+      const sortedBencana = Object.entries(g.bencana_counts).sort((a, b) => b[1] - a[1])
+      if (sortedBencana.length > 0) {
+        g.bencana_dominan = `${sortedBencana[0][0]} (${sortedBencana[0][1]})`
+      }
+    })
+
+    const sortedRegions = Object.values(regionMap).sort((a, b) => b.total_laporan - a.total_laporan)
+    const totalHilang = filteredReports.reduce((acc, r) => acc + r.korban_hilang, 0)
+
+    const matrixRowsHtml = sortedRegions.map((g, idx) => `
       <tr>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 10px; font-weight: bold;">${idx + 1}</td>
+        <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #0f172a; font-family: monospace;">${item.kode_laporan}</strong><br/>
-          <small style="color: #64748b;">${item.tgl_kejadian_formatted} ${item.jam_kejadian}</small>
+          <strong style="color: #047D78; text-transform: uppercase;">📍 ${g.name}</strong>
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #036662;">PROV. ${item.provinsi}</strong><br/>
-          <span>${item.kabupaten}</span><br/>
-          <small style="color: #64748b;">KEC. ${item.kecamatan}, DESA ${item.desa}</small>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
+          ${g.total_laporan} Kejadian
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: bold; color: #047D78;">${item.jenis_bencana}</td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 10px;">
-          <span style="color: #dc2626; font-weight: bold;">MD: ${item.korban_meninggal}</span><br/>
-          <span style="color: #d97706;">Luka: ${item.korban_luka_berat + item.korban_luka_ringan}</span>
+        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 700; color: #334155;">
+          ${g.bencana_dominan}
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 10px;">
-          Terdampak: ${item.penduduk_terdampak}<br/>
-          Pengungsi: ${item.pengungsi}
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
+          ${g.korban_meninggal > 0 
+            ? `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 4px; font-weight: 900; font-size: 9.5px; display: inline-block;">MD: ${g.korban_meninggal} Jiwa</span>`
+            : `<span style="color: #64748b; font-size: 9px;">0</span>`
+          }
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 10px; font-weight: bold;">${item.faskes_terdampak} Unit</td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 10px; font-weight: bold;">${item.status_verifikasi}</td>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
+          <span style="color: #d97706; font-weight: 600; font-size: 9px;">Luka: ${g.korban_luka}</span> | 
+          <span style="color: #4f46e5; font-weight: 600; font-size: 9px;">Hilang: ${g.korban_hilang}</span>
+        </td>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
+          <strong>${(g.penduduk_terdampak + g.pengungsi).toLocaleString('id-ID')}</strong> Jiwa<br/>
+          <small style="color: #64748b; font-size: 8.5px;">(Terdampak: ${g.penduduk_terdampak}, Pengungsi: ${g.pengungsi})</small>
+        </td>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: bold;">
+          ${g.faskes_terdampak} Unit
+        </td>
+      </tr>
+    `).join('')
+
+    const summaryRowHtml = `
+      <tr style="background: #047D78; color: #ffffff; font-weight: 900; font-size: 10px;">
+        <td colspan="2" style="text-align: right; padding: 8px 10px; border: 1px solid #036662; text-transform: uppercase; letter-spacing: 0.5px;">
+          TOTAL REKAPITULASI (${sortedRegions.length} ${groupByLabel})
+        </td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${metrics.totalReports} Kejadian</td>
+        <td style="padding: 8px; border: 1px solid #036662; text-align: center;">-</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${metrics.totalMeninggal > 0 ? `${metrics.totalMeninggal} Jiwa` : '0'}</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">Luka: ${metrics.totalLuka} | Hilang: ${totalHilang}</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${metrics.totalTerdampak.toLocaleString('id-ID')} Jiwa</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${metrics.totalFaskes} Unit</td>
       </tr>
     `
-      )
-      .join('')
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -1478,9 +1565,9 @@ export default function UnduhLaporanPage() {
           </div>
 
           <h2>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h2>
-          <p>PUSAT KRISIS KESEHATAN — REKAPITULASI LAPORAN KEJADIAN BENCANA</p>
+          <p>PUSAT KRISIS KESEHATAN — REKAPITULASI LAPORAN KEJADIAN BENCANA (BERDASARKAN ${groupByLabel})</p>
           <div class="meta-box">
-            <strong>Total Data Terfilter:</strong> ${filteredReports.length} Laporan | 
+            <strong>Total Data Terfilter:</strong> ${filteredReports.length} Laporan (${sortedRegions.length} ${groupByLabel}) | 
             <strong>Total Korban Meninggal:</strong> ${metrics.totalMeninggal} | 
             <strong>Total Pengungsi/Terdampak:</strong> ${metrics.totalTerdampak} | 
             <strong>Faskes Terdampak:</strong> ${metrics.totalFaskes} Unit<br/>
@@ -1489,18 +1576,19 @@ export default function UnduhLaporanPage() {
           <table>
             <thead>
               <tr>
-                <th style="width: 30px; text-align: center;">NO</th>
-                <th>KODE & TGL KEJADIAN</th>
-                <th>LOKASI (S.D. DESA)</th>
-                <th>JENIS BENCANA</th>
-                <th style="text-align: center;">KORBAN JIWA</th>
-                <th style="text-align: center;">MASYARAKAT TERDAMPAK</th>
-                <th style="text-align: center;">FASKES</th>
-                <th style="text-align: center;">STATUS</th>
+                <th style="width: 32px; text-align: center;">NO</th>
+                <th>WILAYAH (${groupByLabel})</th>
+                <th style="text-align: center;">TOTAL KEJADIAN</th>
+                <th>BENCANA DOMINAN</th>
+                <th style="text-align: center;">MENINGGAL (MD)</th>
+                <th style="text-align: center;">LUKA & HILANG</th>
+                <th style="text-align: center;">TERDAMPAK / PENGUNGSI</th>
+                <th style="text-align: center;">FASKES TERDAMPAK</th>
               </tr>
             </thead>
             <tbody>
-              ${rowsHtml}
+              ${matrixRowsHtml}
+              ${summaryRowHtml}
             </tbody>
           </table>
         </body>
@@ -1557,42 +1645,214 @@ export default function UnduhLaporanPage() {
       : (selectedProvinces.length > 0 ? selectedProvinces.join(', ') : 'Seluruh Wilayah (Nasional)')
 
     const filterBencanaText = selectedTypes.length > 0 ? selectedTypes.join(', ') : 'Semua Jenis Bencana'
-
     let timePresetText = 'Semua Periode'
     if (selectedDatePreset === '7days') timePresetText = '7 Hari Terakhir'
     if (selectedDatePreset === '30days') timePresetText = '30 Hari Terakhir'
 
     const logoUrl = typeof window !== 'undefined' ? `${window.location.origin}${basePath}/Logo-Kemenkes.png` : ''
 
-    const rowsHtml = filteredReports.map((item, idx) => `
+    // REGIONAL AGGREGATION GROUPING (NASIONAL -> PROVINSI, SINGLE PROV -> KABUPATEN, SINGLE KAB -> KECAMATAN)
+    type RegionGroup = {
+      name: string
+      total_laporan: number
+      korban_meninggal: number
+      korban_luka: number
+      korban_hilang: number
+      penduduk_terdampak: number
+      pengungsi: number
+      faskes_terdampak: number
+      bencana_counts: Record<string, number>
+      bencana_dominan: string
+    }
+
+    const isSingleProvSelected = selectedProvinces.length === 1 || selectedRegionPills.some(p => p.level === 'PROVINSI')
+    const isSingleKabSelected = selectedRegionPills.some(p => p.level === 'KABUPATEN')
+
+    let groupByLabel = 'PROVINSI'
+    if (isSingleKabSelected) {
+      groupByLabel = 'KECAMATAN'
+    } else if (isSingleProvSelected) {
+      groupByLabel = 'KABUPATEN / KOTA'
+    }
+
+    const regionMap: Record<string, RegionGroup> = {}
+
+    filteredReports.forEach((r) => {
+      let key = (r.provinsi || 'LAINNYA').toUpperCase()
+      if (isSingleKabSelected) {
+        key = (r.kecamatan || 'KECAMATAN LAINNYA').toUpperCase()
+      } else if (isSingleProvSelected) {
+        key = (r.kabupaten || 'KABUPATEN LAINNYA').toUpperCase()
+      }
+
+      if (!regionMap[key]) {
+        regionMap[key] = {
+          name: key,
+          total_laporan: 0,
+          korban_meninggal: 0,
+          korban_luka: 0,
+          korban_hilang: 0,
+          penduduk_terdampak: 0,
+          pengungsi: 0,
+          faskes_terdampak: 0,
+          bencana_counts: {},
+          bencana_dominan: '-',
+        }
+      }
+
+      const g = regionMap[key]
+      g.total_laporan += 1
+      g.korban_meninggal += r.korban_meninggal
+      g.korban_luka += (r.korban_luka_berat + r.korban_luka_ringan)
+      g.korban_hilang += r.korban_hilang
+      g.penduduk_terdampak += r.penduduk_terdampak
+      g.pengungsi += r.pengungsi
+      g.faskes_terdampak += r.faskes_terdampak
+
+      const j = r.jenis_bencana || 'Lainnya'
+      g.bencana_counts[j] = (g.bencana_counts[j] || 0) + 1
+    })
+
+    Object.values(regionMap).forEach((g) => {
+      const sortedBencana = Object.entries(g.bencana_counts).sort((a, b) => b[1] - a[1])
+      if (sortedBencana.length > 0) {
+        g.bencana_dominan = `${sortedBencana[0][0]} (${sortedBencana[0][1]})`
+      }
+    })
+
+    const sortedRegions = Object.values(regionMap).sort((a, b) => b.total_laporan - a.total_laporan)
+
+    const matrixRowsHtml = sortedRegions.map((g, idx) => `
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #0f172a; font-family: monospace;">${item.kode_laporan}</strong><br/>
-          <span style="color: #64748b; font-size: 9px;">${item.tgl_kejadian_formatted} ${item.jam_kejadian}</span>
+          <strong style="color: #047D78; text-transform: uppercase;">📍 ${g.name}</strong>
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #036662; text-transform: uppercase;">${item.provinsi}</strong>, ${item.kabupaten}<br/>
-          <span style="color: #475569; font-size: 9px;">KEC. ${item.kecamatan}, DESA ${item.desa}</span>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
+          ${g.total_laporan} Kejadian
         </td>
-        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: bold; color: #047D78;">${item.jenis_bencana}</td>
-        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <span style="color: #dc2626; font-weight: bold;">MD: ${item.korban_meninggal}</span> | 
-          <span style="color: #d97706;">Luka: ${item.korban_luka_berat + item.korban_luka_ringan}</span> | 
-          <span style="color: #4f46e5;">Hilang: ${item.korban_hilang}</span>
+        <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 700; color: #334155;">
+          ${g.bencana_dominan}
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong>${item.penduduk_terdampak + item.pengungsi}</strong> Jiwa
+          ${g.korban_meninggal > 0 
+            ? `<span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 4px; font-weight: 900; font-size: 9.5px; display: inline-block;">MD: ${g.korban_meninggal} Jiwa</span>`
+            : `<span style="color: #64748b; font-size: 9px;">0</span>`
+          }
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <span style="background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;">
-            ${item.status_verifikasi}
-          </span>
+          <span style="color: #d97706; font-weight: 600; font-size: 9px;">Luka: ${g.korban_luka}</span> | 
+          <span style="color: #4f46e5; font-weight: 600; font-size: 9px;">Hilang: ${g.korban_hilang}</span>
+        </td>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
+          <strong>${(g.penduduk_terdampak + g.pengungsi).toLocaleString('id-ID')}</strong> Jiwa<br/>
+          <small style="color: #64748b; font-size: 8.5px;">(Terdampak: ${g.penduduk_terdampak}, Pengungsi: ${g.pengungsi})</small>
+        </td>
+        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: bold;">
+          ${g.faskes_terdampak} Unit
         </td>
       </tr>
     `).join('')
 
-    // RENDER PURE VECTOR SVG DONUT CHART (TOP 7 JENIS BENCANA REAL FROM API)
+    const summaryRowHtml = `
+      <tr style="background: #047D78; color: #ffffff; font-weight: 900; font-size: 10px;">
+        <td colspan="2" style="text-align: right; padding: 8px 10px; border: 1px solid #036662; text-transform: uppercase; letter-spacing: 0.5px;">
+          TOTAL REKAPITULASI (${sortedRegions.length} ${groupByLabel})
+        </td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${totalReports} Kejadian</td>
+        <td style="padding: 8px; border: 1px solid #036662; text-align: center;">-</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${totalMeninggal > 0 ? `${totalMeninggal} Jiwa` : '0'}</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">Luka: ${totalLuka} | Hilang: ${totalHilang}</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${(totalTerdampak + totalPengungsi).toLocaleString('id-ID')} Jiwa</td>
+        <td style="text-align: center; padding: 8px; border: 1px solid #036662;">${totalFaskes} Unit</td>
+      </tr>
+    `
+
+    // RENDER PURE VECTOR SVG INDONESIA SPATIAL HOTSPOT MAP
+    const renderSvgIndonesiaMap = (provList: [string, number][], total: number) => {
+      const provCoords: Record<string, { x: number; y: number }> = {
+        'JAWA TIMUR': { x: 220, y: 145 },
+        'JAWA BARAT': { x: 150, y: 142 },
+        'JAWA TENGAH': { x: 185, y: 144 },
+        'KALIMANTAN SELATAN': { x: 200, y: 102 },
+        'KALIMANTAN TENGAH': { x: 185, y: 85 },
+        'KALIMANTAN BARAT': { x: 165, y: 75 },
+        'KALIMANTAN TIMUR': { x: 220, y: 75 },
+        'KALIMANTAN UTARA': { x: 225, y: 50 },
+        'SUMATERA SELATAN': { x: 115, y: 105 },
+        'SUMATERA BARAT': { x: 75, y: 75 },
+        'SUMATERA UTARA': { x: 60, y: 55 },
+        'ACEH': { x: 45, y: 40 },
+        'RIAU': { x: 90, y: 70 },
+        'BANTEN': { x: 135, y: 140 },
+        'DKI JAKARTA': { x: 145, y: 140 },
+        'D.I. YOGYAKARTA': { x: 180, y: 146 },
+        'BALI': { x: 252, y: 146 },
+        'NUSA TENGGARA BARAT': { x: 270, y: 147 },
+        'NUSA TENGGARA TIMUR': { x: 300, y: 148 },
+        'SULAWESI SELATAN': { x: 275, y: 110 },
+        'SULAWESI TENGAH': { x: 275, y: 85 },
+        'SULAWESI UTARA': { x: 295, y: 60 },
+        'MALUKU': { x: 345, y: 95 },
+        'MALUKU UTARA': { x: 345, y: 65 },
+        'PAPUA': { x: 430, y: 90 },
+        'PAPUA BARAT': { x: 390, y: 75 },
+      }
+
+      const hotspotMarkers: string[] = []
+      provList.slice(0, 6).forEach(([provName, count], idx) => {
+        const cleanProv = provName.toUpperCase().trim()
+        const coords = provCoords[cleanProv] || { x: 150 + idx * 30, y: 90 }
+        
+        let color = '#047D78'
+        let radius = 5
+        if (idx === 0) { color = '#dc2626'; radius = 9 }
+        else if (idx <= 2) { color = '#d97706'; radius = 7 }
+
+        hotspotMarkers.push(`
+          <g>
+            <circle cx="${coords.x}" cy="${coords.y}" r="${radius + 4}" fill="${color}" opacity="0.25" />
+            <circle cx="${coords.x}" cy="${coords.y}" r="${radius}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />
+            <text x="${coords.x}" y="${coords.y - radius - 2}" font-size="7" font-weight="900" fill="#0f172a" text-anchor="middle">
+              ${cleanProv.replace('PROVINSI ', '')} (${count})
+            </text>
+          </g>
+        `)
+      })
+
+      return `
+        <svg viewBox="0 0 500 170" width="100%" height="150" style="background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; font-family: sans-serif;">
+          <line x1="0" y1="40" x2="500" y2="40" stroke="#f1f5f9" stroke-width="1" />
+          <line x1="0" y1="85" x2="500" y2="85" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
+          <text x="5" y="81" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0°)</text>
+
+          <path d="M 35 100 L 75 45 L 115 65 L 135 110 L 115 130 L 80 115 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="65" y="80" font-size="7" fill="#64748b" font-weight="bold">SUMATERA</text>
+
+          <path d="M 130 135 L 180 135 L 220 138 L 245 140 L 240 146 L 135 145 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="175" y="156" font-size="7" fill="#64748b" font-weight="bold">JAWA</text>
+
+          <path d="M 155 60 L 210 40 L 245 65 L 235 115 L 175 115 L 150 85 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="175" y="85" font-size="7" fill="#64748b" font-weight="bold">KALIMANTAN</text>
+
+          <path d="M 260 60 L 285 60 L 280 85 L 305 85 L 305 95 L 280 95 L 285 125 L 270 125 L 265 95 L 255 95 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="270" y="75" font-size="7" fill="#64748b" font-weight="bold">SULAWESI</text>
+
+          <path d="M 250 142 L 320 142 L 320 148 L 250 148 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="260" y="156" font-size="6.5" fill="#64748b" font-weight="bold">NUSA TENGGARA</text>
+
+          <path d="M 335 65 L 355 65 L 355 115 L 335 115 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="333" y="92" font-size="6" fill="#64748b" font-weight="bold">MALUKU</text>
+
+          <path d="M 375 65 L 435 50 L 485 75 L 480 125 L 435 125 L 400 100 L 375 90 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+          <text x="420" y="88" font-size="7" fill="#64748b" font-weight="bold">PAPUA</text>
+
+          ${hotspotMarkers.join('')}
+        </svg>
+      `
+    }
+
+    // RENDER PURE VECTOR SVG DONUT CHART (EXECUTIVE ENHANCED)
     const renderSvgDonutChart = (items: [string, number][], total: number) => {
       if (total === 0 || items.length === 0) {
         return `<div style="text-align: center; color: #94a3b8; font-size: 11px; padding: 40px 0;">Tidak Ada Data</div>`
@@ -1600,16 +1860,16 @@ export default function UnduhLaporanPage() {
 
       const colors = ['#047D78', '#0d9488', '#d97706', '#dc2626', '#4f46e5', '#2563eb', '#059669', '#9333ea']
       let accumulatedAngle = -Math.PI / 2
-      const cx = 85
-      const cy = 85
-      const rOut = 75
-      const rIn = 48
+      const cx = 75
+      const cy = 75
+      const rOut = 65
+      const rIn = 42
 
       const paths: string[] = []
       const legends: string[] = []
 
-      // Slice top 7 jenis bencana
-      items.slice(0, 7).forEach(([label, val], i) => {
+      // Slice top 6 jenis bencana
+      items.slice(0, 6).forEach(([label, val], i) => {
         const pct = val / total
         const angle = pct * 2 * Math.PI
         const startAngle = accumulatedAngle
@@ -1635,28 +1895,30 @@ export default function UnduhLaporanPage() {
           const largeArc = angle > Math.PI ? 1 : 0
 
           const d = `M ${x1} ${y1} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x4} ${y4} Z`
-          paths.push(`<path d="${d}" fill="${color}" stroke="#ffffff" stroke-width="1.8" />`)
+          paths.push(`<path d="${d}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />`)
         }
 
         const pctText = Math.round(pct * 100)
         legends.push(`
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 9px; padding: 2px 0; border-bottom: 1px dashed #f1f5f9;">
-            <span style="display: flex; align-items: center; gap: 5px; overflow: hidden;">
-              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: ${color}; flex-shrink: 0;"></span>
-              <span style="color: #334155; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 145px;" title="${label}">${label}</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; padding: 2px 0; border-bottom: 1px dashed #f1f5f9;">
+            <span style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
+              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: ${color}; flex-shrink: 0;"></span>
+              <span style="color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;" title="${label}">${label}</span>
             </span>
-            <span style="font-weight: 900; color: #0f172a; margin-left: 6px; flex-shrink: 0;">${val} <small style="color: #64748b; font-weight: bold;">(${pctText}%)</small></span>
+            <span style="font-weight: 900; color: #047D78; margin-left: 4px; flex-shrink: 0; font-size: 8.5px;">
+              ${val} <small style="color: #64748b; font-weight: bold;">(${pctText}%)</small>
+            </span>
           </div>
         `)
       })
 
       return `
-        <div style="display: flex; align-items: center; gap: 12px; padding: 2px 0;">
-          <svg width="160" height="160" viewBox="0 0 170 170" style="flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
+          <svg width="145" height="145" viewBox="0 0 150 150" style="flex-shrink: 0;">
             ${paths.join('')}
             <circle cx="${cx}" cy="${cy}" r="${rIn - 2}" fill="#ffffff" />
-            <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="18" font-weight="900" fill="#047D78">${total}</text>
-            <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="8" font-weight="800" fill="#64748b" letter-spacing="0.5">LAPORAN</text>
+            <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="16" font-weight="900" fill="#047D78">${total}</text>
+            <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="7.5" font-weight="800" fill="#64748b" letter-spacing="0.4">LAPORAN</text>
           </svg>
           <div style="flex: 1; min-width: 0;">
             ${legends.join('')}
@@ -1665,46 +1927,14 @@ export default function UnduhLaporanPage() {
       `
     }
 
-    // RENDER PURE VECTOR SVG HORIZONTAL BAR CHART (TOP 7 PROVINSI)
-    const renderSvgHorizontalBarChart = (items: [string, number][], maxVal: number, total: number) => {
-      if (items.length === 0) {
-        return `<div style="text-align: center; color: #94a3b8; font-size: 11px; padding: 40px 0;">Tidak Ada Data</div>`
-      }
-
-      // Slice top 7 provinsi
-      const sliceItems = items.slice(0, 7)
-      const rows: string[] = []
-
-      sliceItems.forEach(([label, val]) => {
-        const pct = maxVal > 0 ? Math.round((val / maxVal) * 100) : 0
-        const sharePct = total > 0 ? Math.round((val / total) * 100) : 0
-
-        rows.push(`
-          <div style="margin-bottom: 5px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1px; font-size: 9px;">
-              <span style="font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px;" title="${label}">
-                📍 PROV. ${label}
-              </span>
-              <span style="font-weight: 900; color: #047D78;">
-                ${val} Laporan <span style="color: #64748b; font-weight: 600; font-size: 8.5px;">(${sharePct}%)</span>
-              </span>
-            </div>
-            <div style="width: 100%; background: #f1f5f9; border-radius: 4px; height: 11px; overflow: hidden; border: 1px solid #e2e8f0;">
-              <div style="width: ${Math.max(pct, 6)}%; background: linear-gradient(90deg, #047D78, #0d9488); height: 100%; border-radius: 3px;"></div>
-            </div>
-          </div>
-        `)
-      })
-
-      return `
-        <div style="padding: 1px 0;">
-          ${rows.join('')}
-        </div>
-      `
-    }
-
     const chart1Html = renderSvgDonutChart(sortedJenis, totalReports)
-    const chart2Html = renderSvgHorizontalBarChart(sortedProvs, maxProvCount, totalReports)
+    const map1Html = renderSvgIndonesiaMap(sortedProvs, totalReports)
+
+    const topHotspotRegion = sortedProvs.length > 0 ? sortedProvs[0][0] : 'NASIONAL'
+    const topHotspotCount = sortedProvs.length > 0 ? sortedProvs[0][1] : 0
+    const topDisasterName = sortedJenis.length > 0 ? sortedJenis[0][0] : 'TIDAK ADA'
+    const topDisasterCount = sortedJenis.length > 0 ? sortedJenis[0][1] : 0
+    const topDisasterPct = totalReports > 0 ? Math.round((topDisasterCount / totalReports) * 100) : 0
 
     const printWindow = window.open('', '_blank')
     if (!printWindow) {
@@ -1721,7 +1951,7 @@ export default function UnduhLaporanPage() {
         <style>
           @page {
             size: A4 portrait;
-            margin: 12mm 10mm 12mm 10mm;
+            margin: 10mm 10mm 10mm 10mm;
           }
           * { box-sizing: border-box; }
           body {
@@ -1730,20 +1960,20 @@ export default function UnduhLaporanPage() {
             background: #fff;
             margin: 0;
             padding: 0;
-            font-size: 10.5px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.35;
           }
           
           .kop-surat {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             border-bottom: 3px double #047D78;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
           }
           .kop-logo {
-            height: 54px;
+            height: 48px;
             width: auto;
             flex-shrink: 0;
           }
@@ -1751,7 +1981,7 @@ export default function UnduhLaporanPage() {
             flex: 1;
           }
           .kop-text h1 {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 900;
             color: #047D78;
             margin: 0;
@@ -1759,20 +1989,20 @@ export default function UnduhLaporanPage() {
             letter-spacing: 0.5px;
           }
           .kop-text h2 {
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 800;
             color: #1e293b;
             margin: 2px 0 0 0;
             text-transform: uppercase;
           }
           .kop-text p {
-            font-size: 8.5px;
+            font-size: 8px;
             color: #64748b;
-            margin: 2px 0 0 0;
+            margin: 1px 0 0 0;
           }
           .kop-badge {
             text-align: right;
-            font-size: 8.5px;
+            font-size: 8px;
             color: #64748b;
           }
           .kop-badge .status-tag {
@@ -1780,89 +2010,89 @@ export default function UnduhLaporanPage() {
             background: #047D78;
             color: white;
             font-weight: 800;
-            padding: 3px 8px;
+            padding: 2px 7px;
             border-radius: 4px;
-            font-size: 8px;
-            margin-top: 4px;
+            font-size: 7.5px;
+            margin-top: 3px;
             text-transform: uppercase;
           }
 
           .summary-box {
             background: #f8fafc;
             border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
           }
           .summary-title {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             color: #047D78;
             text-transform: uppercase;
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
             border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 4px;
+            padding-bottom: 3px;
           }
           .filter-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            font-size: 9.5px;
+            gap: 6px;
+            font-size: 9px;
           }
           .filter-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 6px 8px;
-            border-radius: 6px;
+            padding: 4px 6px;
+            border-radius: 4px;
           }
-          .filter-card .lbl { font-size: 8.5px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-          .filter-card .val { font-size: 10px; color: #0f172a; font-weight: 800; margin-top: 2px; }
+          .filter-card .lbl { font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+          .filter-card .val { font-size: 9.5px; color: #0f172a; font-weight: 800; margin-top: 1px; }
 
           .kpi-row {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 10px;
           }
           .kpi-card {
-            padding: 8px 6px;
-            border-radius: 8px;
+            padding: 6px 4px;
+            border-radius: 6px;
             text-align: center;
             border: 1px solid #cbd5e1;
           }
-          .kpi-card .kpi-lbl { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2px; }
-          .kpi-card .kpi-val { font-size: 15px; font-weight: 900; margin-top: 2px; }
+          .kpi-card .kpi-lbl { font-size: 7.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2px; }
+          .kpi-card .kpi-val { font-size: 14px; font-weight: 900; margin-top: 1px; }
 
           .charts-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 10px;
+            margin-bottom: 10px;
             page-break-inside: avoid;
           }
           .chart-card {
             border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            padding: 10px 12px;
+            border-radius: 8px;
+            padding: 8px 10px;
             background: #ffffff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.03);
           }
           .chart-card h3 {
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 900;
             color: #047D78;
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 4px;
+            padding-bottom: 3px;
           }
 
           /* MATRIKS SECTION DENGAN PAGE BREAK KE HALAMAN 2 */
           .matrix-section {
             page-break-before: always;
             break-before: page;
-            margin-top: 15px;
+            margin-top: 12px;
           }
           .matrix-section h3 {
             font-size: 11px;
@@ -1876,23 +2106,23 @@ export default function UnduhLaporanPage() {
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9.5px;
+            font-size: 9px;
             border: 1px solid #94a3b8;
           }
           th {
             background: #047D78;
             color: white;
-            padding: 7px 8px;
+            padding: 6px 7px;
             text-align: left;
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 800;
             text-transform: uppercase;
             border: 1px solid #036662;
           }
           td {
             border: 1px solid #cbd5e1;
-            padding: 7px 8px;
-            font-size: 9.5px;
+            padding: 6px 7px;
+            font-size: 9px;
             vertical-align: middle;
           }
           tbody tr:nth-child(even) {
@@ -1900,26 +2130,26 @@ export default function UnduhLaporanPage() {
           }
 
           .footer-sig {
-            margin-top: 16px;
+            margin-top: 14px;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             border-top: 1px solid #cbd5e1;
-            padding-top: 10px;
+            padding-top: 8px;
             page-break-inside: avoid;
           }
           .sig-box {
             text-align: center;
-            width: 180px;
+            width: 170px;
           }
           .sig-space {
-            height: 40px;
+            height: 35px;
           }
           .sig-name {
             font-weight: 800;
             border-top: 1px solid #1e293b;
-            padding-top: 3px;
-            font-size: 9.5px;
+            padding-top: 2px;
+            font-size: 9px;
           }
 
           @media print {
@@ -1933,7 +2163,7 @@ export default function UnduhLaporanPage() {
         </style>
       </head>
       <body>
-        <div class="no-print" style="position: sticky; top: 0; z-index: 9999; background: #047D78; color: white; padding: 10px 16px; margin: 0 0 15px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div class="no-print" style="position: sticky; top: 0; z-index: 9999; background: #047D78; color: white; padding: 10px 16px; margin: 0 0 12px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-weight: 800; font-size: 13px;">Preview Laporan Eksekutif EOC Kemenkes RI</span>
             <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View (Tampilan Siap Cetak)</span>
@@ -1943,7 +2173,7 @@ export default function UnduhLaporanPage() {
           </button>
         </div>
 
-        <!-- HALAMAN 1: KOP SURAT, RINGKASAN FILTER & METRIKS & 2 HIGH-IMPACT CHARTS (TOP 7) -->
+        <!-- HALAMAN 1: KOP SURAT, RINGKASAN FILTER, METRIKS, 2-COLUMN SPATIAL CHARTS, & EOC HOTSPOT INSIGHT BANNER -->
         <div class="page-1-content">
           <!-- KOP SURAT KEMENKES -->
           <div class="kop-surat">
@@ -1987,52 +2217,86 @@ export default function UnduhLaporanPage() {
             </div>
             <div class="kpi-card" style="background: #fef2f2; border-color: #fecaca;">
               <div class="kpi-lbl" style="color: #991b1b;">Korban Meninggal</div>
-              <div class="kpi-val" style="color: #dc2626;">${totalMeninggal} <span style="font-size: 9px;">Jiwa</span></div>
+              <div class="kpi-val" style="color: #dc2626;">${totalMeninggal} <span style="font-size: 8px;">Jiwa</span></div>
             </div>
             <div class="kpi-card" style="background: #fffbeb; border-color: #fef3c7;">
               <div class="kpi-lbl" style="color: #92400e;">Luka & Hilang</div>
-              <div class="kpi-val" style="color: #d97706;">${totalLuka + totalHilang} <span style="font-size: 9px;">Jiwa</span></div>
+              <div class="kpi-val" style="color: #d97706;">${totalLuka + totalHilang} <span style="font-size: 8px;">Jiwa</span></div>
             </div>
             <div class="kpi-card" style="background: #f0f9ff; border-color: #bae6fd;">
               <div class="kpi-lbl" style="color: #075985;">Terdampak/Pengungsi</div>
-              <div class="kpi-val" style="color: #0284c7;">${totalTerdampak + totalPengungsi} <span style="font-size: 9px;">Jiwa</span></div>
+              <div class="kpi-val" style="color: #0284c7;">${totalTerdampak + totalPengungsi} <span style="font-size: 8px;">Jiwa</span></div>
             </div>
             <div class="kpi-card" style="background: #fdf4ff; border-color: #f5d0fe;">
               <div class="kpi-lbl" style="color: #86198f;">Faskes Terdampak</div>
-              <div class="kpi-val" style="color: #a21caf;">${totalFaskes} <span style="font-size: 9px;">Unit</span></div>
+              <div class="kpi-val" style="color: #a21caf;">${totalFaskes} <span style="font-size: 8px;">Unit</span></div>
             </div>
           </div>
 
-          <!-- 2 REAL HIGH-IMPACT SVG VECTOR CHARTS (TOP 7) -->
+          <!-- 2-COLUMN DASHBOARD SPATIAL SECTION: DONUT CHART + PETA INDONESIA SVG -->
           <div class="charts-grid">
             <div class="chart-card">
-              <h3>1. Distribusi Proporsi Jenis Bencana (Top 7)</h3>
+              <h3>1. PROP. BENCANA TERBANYAK (TOP 6)</h3>
               ${chart1Html}
             </div>
             <div class="chart-card">
-              <h3>2. Top 7 Provinsi Terdampak Bencana</h3>
-              ${chart2Html}
+              <h3>2. PETA SPASIAL HOTSPOT BENCANA</h3>
+              ${map1Html}
+            </div>
+          </div>
+
+          <!-- EXECUTIVE EOC CRISIS HOTSPOT BANNER -->
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #cbd5e1; border-left: 5px solid #047D78; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <span style="font-weight: 900; font-size: 10px; color: #047D78; text-transform: uppercase; letter-spacing: 0.3px;">
+                🚨 ANALISIS HOTSPOT SPASIAL & STATUS SIAGA KRISIS EOC
+              </span>
+              <span style="background: #047D78; color: #ffffff; font-size: 8px; font-weight: 800; padding: 2px 7px; border-radius: 8px;">
+                STATUS: SIAGA KRISIS TERINTEGRASI
+              </span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 9px;">
+              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">PROVINSI HOTSPOT UTAMA</div>
+                <div style="font-weight: 900; color: #dc2626; font-size: 10px; margin-top: 1px;">
+                  📍 PROV. ${topHotspotRegion} (${topHotspotCount} Insiden)
+                </div>
+              </div>
+              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">BENCANA PALING DOMINAN</div>
+                <div style="font-weight: 900; color: #047D78; font-size: 10px; margin-top: 1px;">
+                  🔥 ${topDisasterName} (${topDisasterCount} Laporan - ${topDisasterPct}%)
+                </div>
+              </div>
+              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">REKOMENDASI OPERASIONAL EOC</div>
+                <div style="font-weight: 800; color: #0f172a; font-size: 8.5px; margin-top: 1px;">
+                  Mobilisasi Tim EMT & Distribusi Obat Logistik
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- HALAMAN 2 DST: MATRIKS REKAPITULASI DENGAN PAGE-BREAK-BEFORE & FULL GRID BORDERS -->
         <div class="matrix-section">
-          <h3>Matriks Rekapitulasi Laporan Kejadian Bencana Terfilter (${totalReports} Laporan)</h3>
+          <h3>Matriks Rekapitulasi Pemantauan Bencana Berdasarkan ${groupByLabel} (${totalReports} Total Laporan)</h3>
           <table>
             <thead>
               <tr>
-                <th style="width: 30px; text-align: center;">NO</th>
-                <th>KODE & WAKTU KEJADIAN</th>
-                <th>LOKASI BENCANA</th>
-                <th>JENIS BENCANA</th>
-                <th style="text-align: center;">KORBAN JIWA</th>
-                <th style="text-align: center;">TERDAMPAK</th>
-                <th style="text-align: center;">STATUS</th>
+                <th style="width: 32px; text-align: center;">NO</th>
+                <th>WILAYAH (${groupByLabel})</th>
+                <th style="text-align: center;">TOTAL KEJADIAN</th>
+                <th>BENCANA DOMINAN</th>
+                <th style="text-align: center;">MENINGGAL (MD)</th>
+                <th style="text-align: center;">LUKA & HILANG</th>
+                <th style="text-align: center;">TERDAMPAK / PENGUNGSI</th>
+                <th style="text-align: center;">FASKES TERDAMPAK</th>
               </tr>
             </thead>
             <tbody>
-              ${rowsHtml}
+              ${matrixRowsHtml}
+              ${summaryRowHtml}
             </tbody>
           </table>
 

@@ -16,7 +16,7 @@ import VectorSource from 'ol/source/Vector'
 import TileLayer from 'ol/layer/Tile'
 import OSM from 'ol/source/OSM'
 import TileArcGISRest from 'ol/source/TileArcGISRest'
-import { Fill, Stroke, Style, Circle as CircleStyle, Icon } from 'ol/style'
+import { Fill, Stroke, Style, Circle as CircleStyle, Icon, Text as OlText } from 'ol/style'
 import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
 import Feature from 'ol/Feature'
@@ -110,34 +110,42 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
   if (!feature) return ''
   const props = feature.getProperties() || {}
   const keys = level === 'provinsi'
-    ? ['provinsi', 'PROVINSI', 'Propinsi', 'nama_prov', 'nama', 'prov_single', 'prov_multi', 'WADMPR', 'NAMOBJ', 'NAME_1']
-    : ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'kab_single', 'kab_multi', 'nama', 'WADMMP', 'NAMOBJ', 'NAME_2']
+    ? ['provinsi', 'PROVINSI', 'nama_prov', 'prov_single', 'prov_multi', 'WADMPR', 'NAME_1', 'NAMOBJ', 'Propinsi']
+    : ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'kab_single', 'kab_multi', 'WADMMP', 'NAME_2', 'NAMOBJ', 'nama']
   for (const key of keys) {
     if (props[key] !== undefined && props[key] !== null && String(props[key]).trim() !== '') return String(props[key]).trim()
   }
   return ''
 }
 
-/** Warna choropleth berdasarkan jumlah kejadian sesuai legenda */
-const choroplethColor = (count: number, opacity: number = 0.85) => {
-  if (count === 0) return `rgba(226, 232, 240, ${opacity * 0.4})` // Soft slate fill agar bentuk wilayah terlihat
-  if (count <= 10) return `rgba(234, 179, 8, ${opacity})`        // Kuning tebal (1 - 10)
+/** Warna choropleth berdasarkan jumlah kejadian sesuai legenda (Kemenkes / Inarisk Style seperti D:\project\puskes) */
+const choroplethColor = (count: number, opacity: number = 0.92) => {
+  if (count === 0) return `rgba(241, 245, 249, ${opacity * 0.6})`
+  if (count <= 10) return `rgba(234, 179, 8, ${opacity})`        // Kuning (1 - 10)
   if (count <= 30) return `rgba(249, 115, 22, ${opacity})`       // Oranye (11 - 30)
   if (count <= 50) return `rgba(239, 68, 68, ${opacity})`        // Coral Red (31 - 50)
-  return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson (> 50)
+  return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson Red (> 50)
 }
 
-/** Style choropleth OL untuk tingkat kejadian */
-const choroplethStyle = (count: number, hasWarning: boolean = false) => {
-  const baseColor = choroplethColor(count, 0.85)
+/** Style choropleth OL untuk tingkat kejadian dengan label angka per wilayah (seperti D:\project\puskes) */
+const choroplethStyle = (count: number, hasWarning: boolean = false, labelText?: string) => {
+  const baseColor = choroplethColor(count, 0.92)
 
   return new Style({
     fill: new Fill({ color: baseColor }),
     stroke: new Stroke({
-      color: hasWarning ? '#dc2626' : count === 0 ? 'rgba(71, 85, 105, 0.6)' : '#ffffff',
-      width: hasWarning ? 2.5 : count === 0 ? 1.0 : 1.5,
+      color: hasWarning ? '#dc2626' : count === 0 ? 'rgba(148, 163, 184, 0.5)' : '#ffffff',
+      width: hasWarning ? 2.5 : count === 0 ? 0.8 : 1.5,
       lineDash: hasWarning ? [5, 5] : count > 50 ? [8, 4] : undefined,
     }),
+    text: count > 0 ? new OlText({
+      text: labelText || String(count),
+      font: 'bold 11px Inter, sans-serif',
+      fill: new Fill({ color: '#ffffff' }),
+      stroke: new Stroke({ color: 'rgba(15, 23, 42, 0.8)', width: 2.5 }),
+      textAlign: 'center',
+      textBaseline: 'middle',
+    }) : undefined,
   })
 }
 
@@ -443,8 +451,13 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
     const provinceCounts = new Map<string, number>()
     const kabupatenCounts = new Map<string, number>()
     filteredMarkers.forEach((m) => {
-      if (m.provinsi) provinceCounts.set(cleanKey(m.provinsi), (provinceCounts.get(cleanKey(m.provinsi)) || 0) + 1)
-      if (m.kabupaten) kabupatenCounts.set(cleanKey(m.kabupaten), (kabupatenCounts.get(cleanKey(m.kabupaten)) || 0) + 1)
+      const pStr = m.provinsi || (m as any).prov_single || (m as any).nama_prov || (m as any).prov || ''
+      const kStr = m.kabupaten || (m as any).kab_single || (m as any).nama_kab || (m as any).kab || ''
+      const pKey = cleanKey(pStr)
+      const kKey = cleanKey(kStr)
+
+      if (pKey) provinceCounts.set(pKey, (provinceCounts.get(pKey) || 0) + 1)
+      if (kKey) kabupatenCounts.set(kKey, (kabupatenCounts.get(kKey) || 0) + 1)
     })
     return { provinceCounts, kabupatenCounts }
   }, [filteredMarkers])
@@ -891,7 +904,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       // National choropleth style
       const provWarnings = warningsByProvince.get(provKey)
       const hasWarning = !!(provWarnings && provWarnings.length > 0)
-      return choroplethStyle(count, hasWarning)
+      return choroplethStyle(count, hasWarning, count > 0 ? String(count) : undefined)
     })
 
     kabupatenLayer.setStyle((feature: any) => {
