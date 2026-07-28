@@ -1768,86 +1768,128 @@ export default function UnduhLaporanPage() {
       </tr>
     `
 
-    // RENDER PURE VECTOR SVG INDONESIA SPATIAL HOTSPOT MAP
+    // RENDER PURE VECTOR SVG INDONESIA SPATIAL HOTSPOT MAP (HIGH-RESOLUTION EXECUTIVE DESIGN)
     const renderSvgIndonesiaMap = (provList: [string, number][], total: number) => {
-      const provCoords: Record<string, { x: number; y: number }> = {
-        'JAWA TIMUR': { x: 220, y: 145 },
-        'JAWA BARAT': { x: 150, y: 142 },
-        'JAWA TENGAH': { x: 185, y: 144 },
-        'KALIMANTAN SELATAN': { x: 200, y: 102 },
-        'KALIMANTAN TENGAH': { x: 185, y: 85 },
-        'KALIMANTAN BARAT': { x: 165, y: 75 },
-        'KALIMANTAN TIMUR': { x: 220, y: 75 },
-        'KALIMANTAN UTARA': { x: 225, y: 50 },
-        'SUMATERA SELATAN': { x: 115, y: 105 },
-        'SUMATERA BARAT': { x: 75, y: 75 },
-        'SUMATERA UTARA': { x: 60, y: 55 },
-        'ACEH': { x: 45, y: 40 },
-        'RIAU': { x: 90, y: 70 },
-        'BANTEN': { x: 135, y: 140 },
-        'DKI JAKARTA': { x: 145, y: 140 },
-        'D.I. YOGYAKARTA': { x: 180, y: 146 },
-        'BALI': { x: 252, y: 146 },
-        'NUSA TENGGARA BARAT': { x: 270, y: 147 },
-        'NUSA TENGGARA TIMUR': { x: 300, y: 148 },
-        'SULAWESI SELATAN': { x: 275, y: 110 },
-        'SULAWESI TENGAH': { x: 275, y: 85 },
-        'SULAWESI UTARA': { x: 295, y: 60 },
-        'MALUKU': { x: 345, y: 95 },
-        'MALUKU UTARA': { x: 345, y: 65 },
-        'PAPUA': { x: 430, y: 90 },
-        'PAPUA BARAT': { x: 390, y: 75 },
+      // Map provinsi ke count
+      const provMap = new Map<string, number>()
+      provList.forEach(([pName, cnt]) => {
+        const cleanP = pName.toUpperCase().replace(/^(PROVINSI|PROV\.|PROV)\s+/gi, '').trim()
+        provMap.set(cleanP, cnt)
+      })
+
+      const getProvColor = (name: string) => {
+        const cnt = provMap.get(name) || 0
+        if (cnt === 0) return '#e2e8f0'
+        if (cnt <= 10) return '#eab308' // Kuning
+        if (cnt <= 30) return '#f97316' // Oranye
+        if (cnt <= 50) return '#ef4444' // Coral Red
+        return '#b91c1c'                // Deep Crimson Red
       }
 
-      const hotspotMarkers: string[] = []
-      provList.slice(0, 6).forEach(([provName, count], idx) => {
-        const cleanProv = provName.toUpperCase().trim()
-        const coords = provCoords[cleanProv] || { x: 150 + idx * 30, y: 90 }
-        
-        let color = '#047D78'
-        let radius = 5
-        if (idx === 0) { color = '#dc2626'; radius = 9 }
-        else if (idx <= 2) { color = '#d97706'; radius = 7 }
+      // Island paths with realistic proportions
+      const sumateraColor = getProvColor('SUMATERA UTARA') !== '#e2e8f0' ? getProvColor('SUMATERA UTARA') : getProvColor('SUMATERA BARAT') !== '#e2e8f0' ? getProvColor('SUMATERA BARAT') : getProvColor('ACEH')
+      const jawaColor = getProvColor('JAWA TIMUR') !== '#e2e8f0' ? getProvColor('JAWA TIMUR') : getProvColor('JAWA BARAT') !== '#e2e8f0' ? getProvColor('JAWA BARAT') : getProvColor('JAWA TENGAH')
+      const kalimantanColor = getProvColor('KALIMANTAN SELATAN') !== '#e2e8f0' ? getProvColor('KALIMANTAN SELATAN') : getProvColor('KALIMANTAN BARAT') !== '#e2e8f0' ? getProvColor('KALIMANTAN BARAT') : getProvColor('KALIMANTAN TIMUR')
+      const sulawesiColor = getProvColor('SULAWESI SELATAN') !== '#e2e8f0' ? getProvColor('SULAWESI SELATAN') : getProvColor('SULAWESI TENGAH')
+      const nusaTenggaraColor = getProvColor('NUSA TENGGARA BARAT') !== '#e2e8f0' ? getProvColor('NUSA TENGGARA BARAT') : getProvColor('NUSA TENGGARA TIMUR')
+      const malukuColor = getProvColor('MALUKU') !== '#e2e8f0' ? getProvColor('MALUKU') : getProvColor('MALUKU UTARA')
+      const papuaColor = getProvColor('PAPUA') !== '#e2e8f0' ? getProvColor('PAPUA') : getProvColor('PAPUA BARAT')
 
-        hotspotMarkers.push(`
-          <g>
-            <circle cx="${coords.x}" cy="${coords.y}" r="${radius + 4}" fill="${color}" opacity="0.25" />
-            <circle cx="${coords.x}" cy="${coords.y}" r="${radius}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />
-            <text x="${coords.x}" y="${coords.y - radius - 2}" font-size="7" font-weight="900" fill="#0f172a" text-anchor="middle">
-              ${cleanProv.replace('PROVINSI ', '')} (${count})
+      const provCoords: Record<string, { x: number; y: number; label: string }> = {
+        'JAWA TIMUR': { x: 220, y: 145, label: 'JATIM' },
+        'JAWA BARAT': { x: 150, y: 142, label: 'JABAR' },
+        'JAWA TENGAH': { x: 185, y: 144, label: 'JATENG' },
+        'MALUKU': { x: 345, y: 95, label: 'MALUKU' },
+        'KALIMANTAN SELATAN': { x: 200, y: 102, label: 'KALSEL' },
+        'NUSA TENGGARA BARAT': { x: 270, y: 147, label: 'NTB' },
+        'NUSA TENGGARA TIMUR': { x: 300, y: 148, label: 'NTT' },
+        'SULAWESI SELATAN': { x: 275, y: 110, label: 'SULSEL' },
+        'KALIMANTAN BARAT': { x: 165, y: 75, label: 'KALBAR' },
+        'SULAWESI TENGAH': { x: 275, y: 85, label: 'SULTENG' },
+        'SULAWESI UTARA': { x: 295, y: 60, label: 'SULUT' },
+        'BANTEN': { x: 135, y: 140, label: 'BANTEN' },
+        'KALIMANTAN TENGAH': { x: 185, y: 85, label: 'KALTENG' },
+        'MALUKU UTARA': { x: 345, y: 65, label: 'MALUT' },
+        'D.I. YOGYAKARTA': { x: 180, y: 146, label: 'DIY' },
+        'ACEH': { x: 45, y: 40, label: 'ACEH' },
+        'RIAU': { x: 90, y: 70, label: 'RIAU' },
+        'SUMATERA BARAT': { x: 75, y: 75, label: 'SUMBAR' },
+        'SUMATERA UTARA': { x: 60, y: 55, label: 'SUMUT' },
+        'SUMATERA SELATAN': { x: 115, y: 105, label: 'SUMSEL' },
+        'LAMPUNG': { x: 125, y: 125, label: 'LAMPUNG' },
+        'KALIMANTAN TIMUR': { x: 220, y: 75, label: 'KALTIM' },
+        'PAPUA': { x: 430, y: 90, label: 'PAPUA' },
+      }
+
+      const hotspotBadges: string[] = []
+      provList.slice(0, 5).forEach(([provName, count], idx) => {
+        const cleanProv = provName.toUpperCase().replace(/^(PROVINSI|PROV\.|PROV)\s+/gi, '').trim()
+        const info = provCoords[cleanProv] || { x: 150 + idx * 45, y: 70 + (idx % 2) * 20, label: cleanProv.substring(0, 6) }
+        
+        let color = '#b91c1c'
+        if (idx === 0) color = '#b91c1c'
+        else if (idx <= 2) color = '#ef4444'
+        else color = '#f97316'
+
+        hotspotBadges.push(`
+          <g transform="translate(${info.x}, ${info.y})">
+            <circle cx="0" cy="0" r="7" fill="${color}" stroke="#ffffff" stroke-width="1.5" />
+            <circle cx="0" cy="0" r="10" fill="${color}" opacity="0.25" />
+            <rect x="-24" y="-20" width="48" height="12" rx="4" fill="#0f172a" opacity="0.9" />
+            <text x="0" y="-12" font-size="6.5" font-weight="900" fill="#ffffff" text-anchor="middle">
+              ${info.label} (${count})
             </text>
           </g>
         `)
       })
 
       return `
-        <svg viewBox="0 0 500 170" width="100%" height="150" style="background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; font-family: sans-serif;">
-          <line x1="0" y1="40" x2="500" y2="40" stroke="#f1f5f9" stroke-width="1" />
-          <line x1="0" y1="85" x2="500" y2="85" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
-          <text x="5" y="81" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0°)</text>
+        <svg viewBox="0 0 500 175" width="100%" height="155" style="background: #f0fdfa; border-radius: 8px; border: 1px solid #ccfbf1; font-family: sans-serif;">
+          <!-- Grid lines -->
+          <line x1="0" y1="45" x2="500" y2="45" stroke="#e6fffa" stroke-width="1" />
+          <line x1="0" y1="90" x2="500" y2="90" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
+          <text x="6" y="86" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0°)</text>
 
-          <path d="M 35 100 L 75 45 L 115 65 L 135 110 L 115 130 L 80 115 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="65" y="80" font-size="7" fill="#64748b" font-weight="bold">SUMATERA</text>
+          <!-- REALISTIC ISLAND VECTOR PATHS -->
+          <!-- SUMATERA -->
+          <path d="M 32 38 L 48 28 L 65 35 L 85 55 L 110 82 L 132 110 L 125 125 L 110 120 L 90 95 L 68 70 L 48 55 L 35 44 Z" fill="${sumateraColor}" stroke="#ffffff" stroke-width="1.5" />
+          <!-- JAWA & BALI -->
+          <path d="M 128 138 L 155 138 L 185 140 L 225 142 L 248 145 L 246 150 L 220 148 L 180 146 L 150 144 L 128 142 Z" fill="${jawaColor}" stroke="#ffffff" stroke-width="1.5" />
+          <path d="M 250 144 L 258 144 L 258 148 L 250 148 Z" fill="${getProvColor('BALI')}" stroke="#ffffff" stroke-width="1" />
 
-          <path d="M 130 135 L 180 135 L 220 138 L 245 140 L 240 146 L 135 145 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="175" y="156" font-size="7" fill="#64748b" font-weight="bold">JAWA</text>
+          <!-- KALIMANTAN -->
+          <path d="M 152 70 L 180 50 L 220 48 L 235 60 L 232 90 L 210 115 L 185 118 L 158 98 L 148 80 Z" fill="${kalimantanColor}" stroke="#ffffff" stroke-width="1.5" />
 
-          <path d="M 155 60 L 210 40 L 245 65 L 235 115 L 175 115 L 150 85 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="175" y="85" font-size="7" fill="#64748b" font-weight="bold">KALIMANTAN</text>
+          <!-- SULAWESI (K-SHAPE) -->
+          <path d="M 252 82 L 268 78 L 272 58 L 285 58 L 295 50 L 298 56 L 282 68 L 275 80 L 290 85 L 305 85 L 302 92 L 278 92 L 276 102 L 285 118 L 272 122 L 265 105 L 260 88 Z" fill="${sulawesiColor}" stroke="#ffffff" stroke-width="1.5" />
 
-          <path d="M 260 60 L 285 60 L 280 85 L 305 85 L 305 95 L 280 95 L 285 125 L 270 125 L 265 95 L 255 95 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="270" y="75" font-size="7" fill="#64748b" font-weight="bold">SULAWESI</text>
+          <!-- NUSA TENGGARA CHAIN -->
+          <path d="M 262 145 L 280 145 L 280 149 L 262 149 Z" fill="${nusaTenggaraColor}" stroke="#ffffff" stroke-width="1" />
+          <path d="M 283 146 L 315 146 L 315 150 L 283 150 Z" fill="${getProvColor('NUSA TENGGARA TIMUR')}" stroke="#ffffff" stroke-width="1" />
 
-          <path d="M 250 142 L 320 142 L 320 148 L 250 148 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="260" y="156" font-size="6.5" fill="#64748b" font-weight="bold">NUSA TENGGARA</text>
+          <!-- MALUKU CLUSTER -->
+          <path d="M 335 60 L 350 60 L 348 78 L 335 78 Z" fill="${malukuColor}" stroke="#ffffff" stroke-width="1" />
+          <path d="M 338 88 L 355 88 L 355 115 L 338 115 Z" fill="${malukuColor}" stroke="#ffffff" stroke-width="1" />
 
-          <path d="M 335 65 L 355 65 L 355 115 L 335 115 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="333" y="92" font-size="6" fill="#64748b" font-weight="bold">MALUKU</text>
+          <!-- PAPUA (BIRD'S HEAD & BODY) -->
+          <path d="M 365 72 C 370 60 380 62 385 70 L 395 72 L 440 55 L 485 75 L 480 130 L 435 130 L 398 98 L 375 88 Z" fill="${papuaColor}" stroke="#ffffff" stroke-width="1.5" />
 
-          <path d="M 375 65 L 435 50 L 485 75 L 480 125 L 435 125 L 400 100 L 375 90 Z" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-          <text x="420" y="88" font-size="7" fill="#64748b" font-weight="bold">PAPUA</text>
+          <!-- HOTSPOT CALLOUT BADGES -->
+          ${hotspotBadges.join('')}
 
-          ${hotspotMarkers.join('')}
+          <!-- MAP CHOROPLETH LEGEND CARD -->
+          <g transform="translate(10, 142)">
+            <rect x="0" y="0" width="165" height="26" rx="5" fill="#ffffff" opacity="0.95" stroke="#cbd5e1" stroke-width="1" />
+            <text x="6" y="9" font-size="6" font-weight="900" fill="#0f172a">SEBARAN INTENSITAS KEJADIAN BENCANA:</text>
+            <circle cx="10" cy="18" r="3.5" fill="#eab308" />
+            <text x="16" y="20" font-size="5.5" font-weight="800" fill="#334155">1-10</text>
+            <circle cx="45" cy="18" r="3.5" fill="#f97316" />
+            <text x="51" y="20" font-size="5.5" font-weight="800" fill="#334155">11-30</text>
+            <circle cx="85" cy="18" r="3.5" fill="#ef4444" />
+            <text x="91" y="20" font-size="5.5" font-weight="800" fill="#334155">31-50</text>
+            <circle cx="125" cy="18" r="3.5" fill="#b91c1c" />
+            <text x="131" y="20" font-size="5.5" font-weight="900" fill="#b91c1c">>50</text>
+          </g>
         </svg>
       `
     }
@@ -1855,21 +1897,20 @@ export default function UnduhLaporanPage() {
     // RENDER PURE VECTOR SVG DONUT CHART (EXECUTIVE ENHANCED)
     const renderSvgDonutChart = (items: [string, number][], total: number) => {
       if (total === 0 || items.length === 0) {
-        return `<div style="text-align: center; color: #94a3b8; font-size: 11px; padding: 40px 0;">Tidak Ada Data</div>`
+        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 40px 0;">Tidak Ada Data Kejadian</div>`
       }
 
       const colors = ['#047D78', '#0d9488', '#d97706', '#dc2626', '#4f46e5', '#2563eb', '#059669', '#9333ea']
       let accumulatedAngle = -Math.PI / 2
-      const cx = 75
-      const cy = 75
-      const rOut = 65
-      const rIn = 42
+      const cx = 65
+      const cy = 65
+      const rOut = 58
+      const rIn = 36
 
       const paths: string[] = []
       const legends: string[] = []
 
-      // Slice top 6 jenis bencana
-      items.slice(0, 6).forEach(([label, val], i) => {
+      items.slice(0, 5).forEach(([label, val], i) => {
         const pct = val / total
         const angle = pct * 2 * Math.PI
         const startAngle = accumulatedAngle
@@ -1900,12 +1941,12 @@ export default function UnduhLaporanPage() {
 
         const pctText = Math.round(pct * 100)
         legends.push(`
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 8.5px; padding: 2px 0; border-bottom: 1px dashed #f1f5f9;">
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 8px; padding: 2px 0; border-bottom: 1px dashed #f1f5f9;">
             <span style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
               <span style="display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: ${color}; flex-shrink: 0;"></span>
-              <span style="color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;" title="${label}">${label}</span>
+              <span style="color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 105px;" title="${label}">${label}</span>
             </span>
-            <span style="font-weight: 900; color: #047D78; margin-left: 4px; flex-shrink: 0; font-size: 8.5px;">
+            <span style="font-weight: 900; color: #047D78; margin-left: 4px; flex-shrink: 0; font-size: 8px;">
               ${val} <small style="color: #64748b; font-weight: bold;">(${pctText}%)</small>
             </span>
           </div>
@@ -1913,12 +1954,12 @@ export default function UnduhLaporanPage() {
       })
 
       return `
-        <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
-          <svg width="145" height="145" viewBox="0 0 150 150" style="flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">
+          <svg width="130" height="130" viewBox="0 0 130 130" style="flex-shrink: 0;">
             ${paths.join('')}
             <circle cx="${cx}" cy="${cy}" r="${rIn - 2}" fill="#ffffff" />
-            <text x="${cx}" y="${cy - 3}" text-anchor="middle" font-size="16" font-weight="900" fill="#047D78">${total}</text>
-            <text x="${cx}" y="${cy + 10}" text-anchor="middle" font-size="7.5" font-weight="800" fill="#64748b" letter-spacing="0.4">LAPORAN</text>
+            <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="14" font-weight="900" fill="#047D78">${total}</text>
+            <text x="${cx}" y="${cy + 9}" text-anchor="middle" font-size="7" font-weight="800" fill="#64748b" letter-spacing="0.3">LAPORAN</text>
           </svg>
           <div style="flex: 1; min-width: 0;">
             ${legends.join('')}
@@ -1927,14 +1968,56 @@ export default function UnduhLaporanPage() {
       `
     }
 
-    const chart1Html = renderSvgDonutChart(sortedJenis, totalReports)
-    const map1Html = renderSvgIndonesiaMap(sortedProvs, totalReports)
+    // RENDER PURE VECTOR SVG HORIZONTAL BAR CHART FOR TOP AFFECTED REGIONS
+    const renderSvgTopRegionsChart = (regions: RegionGroup[], total: number) => {
+      if (total === 0 || regions.length === 0) {
+        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 40px 0;">Tidak Ada Data Wilayah</div>`
+      }
 
-    const topHotspotRegion = sortedProvs.length > 0 ? sortedProvs[0][0] : 'NASIONAL'
-    const topHotspotCount = sortedProvs.length > 0 ? sortedProvs[0][1] : 0
+      const top5 = regions.slice(0, 5)
+      const maxCount = top5[0]?.total_laporan || 1
+
+      const bars = top5.map((g, idx) => {
+        const pct = Math.round((g.total_laporan / total) * 100)
+        const barWidth = Math.max(8, Math.round((g.total_laporan / maxCount) * 135))
+        const y = 4 + idx * 25
+
+        const colors = ['#047D78', '#0d9488', '#0284c7', '#d97706', '#dc2626']
+        const color = colors[idx % colors.length]
+        const cleanName = g.name.replace(/^(PROVINSI|KABUPATEN|KOTA)\s+/gi, '').trim()
+
+        return `
+          <g transform="translate(0, ${y})">
+            <text x="85" y="11" font-size="7.5" font-weight="800" fill="#1e293b" text-anchor="end">${cleanName.substring(0, 15)}</text>
+            <rect x="92" y="2" width="140" height="11" rx="3" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5" />
+            <rect x="92" y="2" width="${barWidth}" height="11" rx="3" fill="${color}" />
+            <text x="${97 + barWidth}" y="11" font-size="7.5" font-weight="900" fill="#047D78">${g.total_laporan} <tspan font-size="6.5" font-weight="bold" fill="#64748b">(${pct}%)</tspan></text>
+          </g>
+        `
+      })
+
+      return `
+        <svg viewBox="0 0 290 130" width="100%" height="130" style="font-family: sans-serif;">
+          ${bars.join('')}
+        </svg>
+      `
+    }
+
+    const chart1Html = renderSvgDonutChart(sortedJenis, totalReports)
+    const bar1Html = renderSvgTopRegionsChart(sortedRegions, totalReports)
+
+    // DYNAMIC COMPUTATIONS DIRECTLY FROM REAL FILTERED DATA
+    const topRegionName = sortedRegions.length > 0 ? sortedRegions[0].name : 'NASIONAL'
+    const topRegionCount = sortedRegions.length > 0 ? sortedRegions[0].total_laporan : 0
+    const topRegionPct = totalReports > 0 ? Math.round((topRegionCount / totalReports) * 100) : 0
+
     const topDisasterName = sortedJenis.length > 0 ? sortedJenis[0][0] : 'TIDAK ADA'
     const topDisasterCount = sortedJenis.length > 0 ? sortedJenis[0][1] : 0
     const topDisasterPct = totalReports > 0 ? Math.round((topDisasterCount / totalReports) * 100) : 0
+
+    const secondDisasterName = sortedJenis.length > 1 ? sortedJenis[1][0] : ''
+    const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
+    const secondDisasterPct = totalReports > 0 && sortedJenis.length > 1 ? Math.round((secondDisasterCount / totalReports) * 100) : 0
 
     const printWindow = window.open('', '_blank')
     if (!printWindow) {
@@ -2233,47 +2316,41 @@ export default function UnduhLaporanPage() {
             </div>
           </div>
 
-          <!-- 2-COLUMN DASHBOARD SPATIAL SECTION: DONUT CHART + PETA INDONESIA SVG -->
+          <!-- 2-COLUMN DASHBOARD VISUAL CHARTS SECTION (DONUT CHART + TOP REGIONS BAR CHART) -->
           <div class="charts-grid">
             <div class="chart-card">
-              <h3>1. PROP. BENCANA TERBANYAK (TOP 6)</h3>
+              <h3>1. PROP. BENCANA TERBANYAK (TOP 5)</h3>
               ${chart1Html}
             </div>
             <div class="chart-card">
-              <h3>2. PETA SPASIAL HOTSPOT BENCANA</h3>
-              ${map1Html}
+              <h3>2. TOP 5 WILAYAH KEJADIAN TERBANYAK</h3>
+              ${bar1Html}
             </div>
           </div>
 
-          <!-- EXECUTIVE EOC CRISIS HOTSPOT BANNER -->
-          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #cbd5e1; border-left: 5px solid #047D78; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-              <span style="font-weight: 900; font-size: 10px; color: #047D78; text-transform: uppercase; letter-spacing: 0.3px;">
-                🚨 ANALISIS HOTSPOT SPASIAL & STATUS SIAGA KRISIS EOC
-              </span>
-              <span style="background: #047D78; color: #ffffff; font-size: 8px; font-weight: 800; padding: 2px 7px; border-radius: 8px;">
-                STATUS: SIAGA KRISIS TERINTEGRASI
-              </span>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 9px;">
-              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">PROVINSI HOTSPOT UTAMA</div>
-                <div style="font-weight: 900; color: #dc2626; font-size: 10px; margin-top: 1px;">
-                  📍 PROV. ${topHotspotRegion} (${topHotspotCount} Insiden)
-                </div>
-              </div>
-              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">BENCANA PALING DOMINAN</div>
-                <div style="font-weight: 900; color: #047D78; font-size: 10px; margin-top: 1px;">
-                  🔥 ${topDisasterName} (${topDisasterCount} Laporan - ${topDisasterPct}%)
-                </div>
-              </div>
-              <div style="background: #ffffff; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                <div style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">REKOMENDASI OPERASIONAL EOC</div>
-                <div style="font-weight: 800; color: #0f172a; font-size: 8.5px; margin-top: 1px;">
-                  Mobilisasi Tim EMT & Distribusi Obat Logistik
-                </div>
-              </div>
+          <!-- NARRATIVE EXECUTIVE REPORT PARAGRAPHS (FORMAL DOCUMENT TEXT - 100% DYNAMIC) -->
+          <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; background: #ffffff; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <h3 style="font-size: 10px; font-weight: 900; color: #047D78; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #047D78; padding-bottom: 3px;">
+              RINGKASAN EKSEKUTIF & REKOMENDASI TANGGAP KRISIS KESEHATAN
+            </h3>
+            
+            <div style="font-size: 8.5px; line-height: 1.5; color: #1e293b; text-align: justify;">
+              <p style="margin: 0 0 5px 0;">
+                <b>1. Gambaran Umum & Dispersi Kejadian:</b> Berdasarkan hasil pemantauan terpadu Emergency Operations Center (EOC) Pusat Krisis Kesehatan Kementerian Kesehatan RI di cakupan wilayah <b>${filterWilayahText}</b> untuk periode pemantauan <b>${timePresetText}</b>, tercatat akumulasi sebanyak <b>${totalReports} total laporan</b> kejadian bencana. Jenis bencana yang paling dominan di daerah pemantauan adalah <b style="color: #047D78;">${topDisasterName}</b> dengan total <b>${topDisasterCount} kejadian (${topDisasterPct}%)</b> dari keseluruhan laporan yang terverifikasi di sistem EOC${secondDisasterName ? `, diikuti oleh <b>${secondDisasterName}</b> sebanyak <b>${secondDisasterCount} kejadian (${secondDisasterPct}%)` : ''}. Wilayah dengan frekuensi laporan tertinggi adalah <b style="color: #dc2626;">${topRegionName}</b> dengan <b>${topRegionCount} kejadian (${topRegionPct}%)</b>.
+              </p>
+              
+              <p style="margin: 0 0 5px 0;">
+                <b>2. Penilaian Dampak Kesehatan Populasi & Fasilitas:</b> Akumulasi dampak krisis kesehatan mencakup <b>${totalMeninggal} jiwa meninggal dunia</b>, <b>${totalLuka} jiwa korban luka-luka</b>, <b>${totalHilang} jiwa hilang</b>, serta <b>${(totalPengungsi + totalTerdampak).toLocaleString('id-ID')} jiwa warga terpaksa mengungsi / terdampak krisis</b>. Terdata pula sebanyak <b>${totalFaskes} unit fasilitas pelayanan kesehatan</b> (Puskesmas, Poskesdes, dan Rumah Sakit) yang mengalami keretakan fisik, terendam air, atau mengalami penurunan kapasitas operasional pelayanan kesehatan darurat.
+              </p>
+              
+              <p style="margin: 0;">
+                <b>3. Rekomendasi Operasional Tanggap Darurat EOC:</b>
+                <span style="display: block; margin-top: 2px; padding-left: 8px;">
+                  a. <b>Penetapan Status & Posko:</b> Memperkuat siaga operasional Posko EOC Klaster Kesehatan Dinas Kesehatan Kab/Kota dan Tim Regional Pusat Krisis Kesehatan.<br/>
+                  b. <b>Mobilisasi Tim Kesehatan:</b> Meniagakan Tim Rapid Health Assessment (RHA) dan Emergency Medical Team (EMT) untuk penanganan medis di lokasi terdampak utama.<br/>
+                  c. <b>Dukungan Logistik & Obat-obatan:</b> Mengirimkan buffer stock logistik kesehatan (paket obat darurat, MP-ASI, Hygiene Kits, dan kaporit) sesuai estimasi kebutuhan riil.
+                </span>
+              </p>
             </div>
           </div>
         </div>
