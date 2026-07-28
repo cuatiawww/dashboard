@@ -361,6 +361,8 @@ export default function DashboardKejadianPage() {
   const [province, setProvince] = useState('')
   const [kabupaten, setKabupaten] = useState('')
   const [tahun, setTahun] = useState('2026')
+  const [filterStartDate, setFilterStartDate] = useState<string | undefined>(undefined)
+  const [filterEndDate, setFilterEndDate] = useState<string | undefined>(undefined)
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
   const [ewsAlertQueue, setEwsAlertQueue] = useState<any[]>([])
   const activeEwsProximityAlert = ewsAlertQueue[0] || null
@@ -376,22 +378,52 @@ export default function DashboardKejadianPage() {
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Record<string | number, boolean>>({})
 
-  // Filter markers berdasarkan multi-wilayah terpilih (jika ada), atau fallback ke data backend
+  // Helper parse tanggal marker
+  const parseMarkerDate = (tgl: string | undefined): Date | null => {
+    if (!tgl) return null
+    const clean = tgl.replace(/\s*WIB/gi, '').trim()
+    const d = new Date(clean)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // Filter markers berdasarkan multi-wilayah terpilih DAN date range (jika ada)
   const effectiveMarkers = useMemo(() => {
     if (!data?.markers) return []
-    if (selectedRegions.length === 0) return data.markers
+
+    let result = data.markers
+
+    // 1. Filter berdasarkan date range (frontend filtering karena backend tidak support)
+    if (filterStartDate && filterEndDate) {
+      const startMs = new Date(filterStartDate).getTime()
+      const endMs = new Date(filterEndDate).getTime() + 86399999 // end of day
+      result = result.filter((m) => {
+        const d = parseMarkerDate(m.tgl_kejadian)
+        if (!d) return false
+        return d.getTime() >= startMs && d.getTime() <= endMs
+      })
+    } else if (tahun && /^\d{4}$/.test(tahun)) {
+      // Filter berdasarkan tahun saja
+      result = result.filter((m) => {
+        const d = parseMarkerDate(m.tgl_kejadian)
+        if (!d) return false
+        return String(d.getFullYear()) === tahun
+      })
+    }
+
+    // 2. Filter berdasarkan wilayah terpilih
+    if (selectedRegions.length === 0) return result
 
     const normalize = (str: string) => {
       if (!str) return ''
       return str
         .toLowerCase()
-        .replace(/\s*\([^)]*\)/g, '') // Hapus komentar dalam kurung (misal: (kab. pakpak bharat))
+        .replace(/\s*\([^)]*\)/g, '')
         .replace(/^(provinsi|prov\.|kabupaten|kab\.|kota|kecamatan|kec\.|desa|kelurahan|nagari)\s+/gi, '')
         .replace(/[^a-z0-9]/g, '')
         .trim()
     }
 
-    return data.markers.filter((m) => {
+    return result.filter((m) => {
       const mProv = normalize(m.provinsi || '')
       const mKab = normalize(m.kabupaten || '')
       const mKec = normalize(m.kecamatan || '')
@@ -431,7 +463,7 @@ export default function DashboardKejadianPage() {
         return false
       })
     })
-  }, [data?.markers, selectedRegions])
+  }, [data?.markers, selectedRegions, filterStartDate, filterEndDate, tahun])
 
   const effectiveSummary = useMemo(() => {
     if (selectedRegions.length === 0) return data?.summary
@@ -1182,6 +1214,8 @@ export default function DashboardKejadianPage() {
 
   const handleResetFilter = () => {
     setSelectedRegions([])
+    setFilterStartDate(undefined)
+    setFilterEndDate(undefined)
     if (isProvLocked && user?.wilayah_scope?.provinsi?.label) {
       setKabupaten('')
       setCakupan('provinsi')
@@ -1303,7 +1337,66 @@ export default function DashboardKejadianPage() {
     const prov = (summary.provinsi !== 'SEMUA PROVINSI' && !summary.provinsi.toUpperCase().includes('MEMUAT')) ? summary.provinsi : ''
     const kab = (summary.kabkota !== 'SEMUA KAB/KOTA' && !summary.kabkota.toUpperCase().includes('MEMUAT')) ? summary.kabkota : ''
     const cak = summary.cakupan.toLowerCase()
-    const yr = summary.tahun || '2026'
+
+    // Parse tahun: ekstrak hanya angka tahun dari string format apapun ("TAHUN 2026", "JULI 2026", "30 HARI TERAKHIR", "2026-01-01 S.D 2026-07-27")
+    let yr = '2026'
+    const rawTahun = summary.tahun || ''
+
+    // Cek apakah format custom date range
+    if (summary.startDate && summary.endDate) {
+      // Custom range - ambil tahun dari startDate
+      yr = summary.startDate.split('-')[0] || '2026'
+      setFilterStartDate(summary.startDate)
+      setFilterEndDate(summary.endDate)
+    } else {
+      // Ekstrak 4-digit tahun dari string ("TAHUN 2026" → "2026", "JULI 2026" → "2026")
+      const yearMatch = rawTahun.match(/(\d{4})/)
+      if (yearMatch) {
+        yr = yearMatch[1]
+      }
+
+      // Cek apakah filter berdasarkan HARI → konversi ke date range
+      if (rawTahun.includes('HARI INI')) {
+        const today = new Date().toISOString().split('T')[0]
+        setFilterStartDate(today)
+        setFilterEndDate(today)
+      } else if (rawTahun.includes('7 HARI')) {
+        const end = new Date()
+        const start = new Date(end)
+        start.setDate(start.getDate() - 7)
+        setFilterStartDate(start.toISOString().split('T')[0])
+        setFilterEndDate(end.toISOString().split('T')[0])
+      } else if (rawTahun.includes('30 HARI')) {
+        const end = new Date()
+        const start = new Date(end)
+        start.setDate(start.getDate() - 30)
+        setFilterStartDate(start.toISOString().split('T')[0])
+        setFilterEndDate(end.toISOString().split('T')[0])
+      } else if (rawTahun.match(/^[A-Z]+ \d{4}$/)) {
+        // Bulan spesifik: "JULI 2026" → konversi ke date range bulan itu
+        const BULAN: Record<string, number> = {
+          JANUARI: 1, FEBRUARI: 2, MARET: 3, APRIL: 4, MEI: 5, JUNI: 6,
+          JULI: 7, AGUSTUS: 8, SEPTEMBER: 9, OKTOBER: 10, NOVEMBER: 11, DESEMBER: 12,
+        }
+        const parts = rawTahun.split(' ')
+        const monthNum = BULAN[parts[0]]
+        const yearNum = parseInt(parts[1], 10)
+        if (monthNum && yearNum) {
+          const startDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-01`
+          const lastDay = new Date(yearNum, monthNum, 0).getDate()
+          const endDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-${lastDay}`
+          setFilterStartDate(startDate)
+          setFilterEndDate(endDate)
+        } else {
+          setFilterStartDate(undefined)
+          setFilterEndDate(undefined)
+        }
+      } else {
+        // Hanya tahun ("TAHUN 2026") → tidak ada date range
+        setFilterStartDate(undefined)
+        setFilterEndDate(undefined)
+      }
+    }
 
     if (prov || kab) {
       setSelectedRegions([])
@@ -1329,7 +1422,9 @@ export default function DashboardKejadianPage() {
       if (kabupaten) {
         queryParams.push(`kabupaten=${encodeURIComponent(kabupaten)}`)
       }
-      if (tahun) {
+      // Selalu kirim year yang valid ke backend (backend hanya support year param)
+      // Filter date range dilakukan di frontend setelah data diterima
+      if (tahun && /^\d{4}$/.test(tahun)) {
         queryParams.push(`year=${encodeURIComponent(tahun)}`)
       }
 
@@ -1340,6 +1435,7 @@ export default function DashboardKejadianPage() {
       const headers: Record<string, string> = { Accept: 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
 
+      console.log('[fetchData] Fetching:', url)
       const response = await fetch(url, {
         method: 'GET',
         headers,
@@ -1348,9 +1444,7 @@ export default function DashboardKejadianPage() {
 
       const json = await response.json().catch(() => null)
       if (json?.summary) {
-        console.log('[fetchData] API response:', json)
         console.log('[fetchData] markers count:', json.markers?.length || 0)
-        console.log('[fetchData] first marker:', json.markers?.[0])
         setData(json)
         return
       }

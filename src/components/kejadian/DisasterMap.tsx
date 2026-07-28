@@ -89,11 +89,20 @@ interface MarkerPopupState {
 /** Normalisasi nama wilayah → key perbandingan (strip prefix, uppercase, tanpa spasi/simbol) */
 const cleanKey = (name?: string | null) => {
   if (!name) return ''
-  return name
+  let cleaned = name
     .toUpperCase()
-    .replace(/^(KAB\.|KABUPATEN|KOTA|PROVINSI|PROV|PRO|DAERAH ISTIMEWA|DI)\s+/gi, '')
-    .replace(/[^A-Z0-9]/g, '')
+    .replace(/\./g, '')
+    .replace(/^(KABUPATEN|KAB|KOTA|PROVINSI|PROV|DAERAH ISTIMEWA|DI|DKI)\s+/gi, '')
     .trim()
+
+  if (cleaned.includes('JAKARTA')) return 'JAKARTA'
+  if (cleaned.includes('YOGYAKARTA')) return 'YOGYAKARTA'
+  if (cleaned.includes('BANGKA')) return 'BANGKABELITUNG'
+  if (cleaned.includes('KEPULAUAN RIAU') || cleaned === 'KEPRI') return 'KEPULAUANRIAU'
+  if (cleaned === 'NTB' || cleaned.includes('NUSA TENGGARA BARAT')) return 'NUSATENGGARABARAT'
+  if (cleaned === 'NTT' || cleaned.includes('NUSA TENGGARA TIMUR')) return 'NUSATENGGARATIMUR'
+
+  return cleaned.replace(/[^A-Z0-9]/g, '')
 }
 
 /** Ambil nama provinsi dari properties feature OL (berbagai kemungkinan key) */
@@ -110,21 +119,21 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
 }
 
 /** Warna choropleth berdasarkan jumlah kejadian sesuai legenda */
-const choroplethColor = (count: number, opacity: number = 0.6) => {
-  if (count === 0) return `rgba(241, 245, 249, ${opacity})`
-  if (count <= 10) return `rgba(250, 204, 21, ${opacity})`   // Kuning (1 - 10)
-  if (count <= 30) return `rgba(249, 115, 22, ${opacity})`   // Oranye (11 - 30)
-  if (count <= 50) return `rgba(239, 68, 68, ${opacity})`   // Coral Red (31 - 50)
-  return `rgba(153, 27, 27, ${opacity})`                     // Deep Crimson (> 50)
+const choroplethColor = (count: number, opacity: number = 0.75) => {
+  if (count === 0) return `rgba(203, 213, 225, ${opacity * 0.45})` // Soft slate fill agar bentuk wilayah terlihat
+  if (count <= 10) return `rgba(234, 179, 8, ${opacity})`        // Kuning tebal (1 - 10)
+  if (count <= 30) return `rgba(249, 115, 22, ${opacity})`       // Oranye (11 - 30)
+  if (count <= 50) return `rgba(239, 68, 68, ${opacity})`        // Coral Red (31 - 50)
+  return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson (> 50)
 }
 
 /** Style choropleth OL */
 const choroplethStyle = (count: number) =>
   new Style({
-    fill: new Fill({ color: choroplethColor(count, 0.6) }),
+    fill: new Fill({ color: choroplethColor(count, 0.75) }),
     stroke: new Stroke({
-      color: count === 0 ? 'rgba(148, 163, 184, 0.4)' : '#ffffff',
-      width: count === 0 ? 0.8 : 1.2,
+      color: count === 0 ? 'rgba(71, 85, 105, 0.85)' : '#ffffff',
+      width: count === 0 ? 1.2 : 1.6,
     }),
   })
 
@@ -175,6 +184,10 @@ const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number)
 
 // Cache GeoJSON agar tidak fetch ulang setiap render
 const geojsonCache: Record<string, any> = {}
+
+// basePath untuk URL fetch API — NEXT_PUBLIC_BASE_PATH diinjeksi saat build time oleh Next.js
+// Fallback ke string kosong jika tidak ada (development tanpa basePath)
+const NEXT_BASE_PATH: string = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 // ─────────────────────────────────────────────
 // Component
@@ -550,13 +563,26 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
     })
     bnpbKarhutlaLayerRef.current = bnpbKarhutlaLayer
 
-    // Province choropleth layer
-    const provinceLayer = new VectorLayer({ source: new VectorSource() })
+    // Province choropleth layer — zIndex 2 agar di atas basemap
+    const provinceLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 2,
+      style: new Style({
+        fill: new Fill({ color: 'rgba(241, 245, 249, 0.6)' }),
+        stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.85)', width: 1.2 }),
+      }),
+    })
     provinceLayerRef.current = provinceLayer
 
-    // Kabupaten choropleth layer
-    const kabupatenLayer = new VectorLayer({ source: new VectorSource() })
-    kabupatenLayerRef.current = kabupatenLayer
+    // Kabupaten choropleth layer — zIndex 3 agar di atas province
+    const kabupatenLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 3,
+      style: new Style({
+        fill: new Fill({ color: 'rgba(241, 245, 249, 0.6)' }),
+        stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.85)', width: 1.2 }),
+      }),
+    })
 
     // Marker pin layer
     const markerLayer = new VectorLayer({ source: new VectorSource(), zIndex: 10 })
@@ -770,8 +796,8 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       kabupatenLayer.setVisible(showGeoJson)
 
       if (showBaseMap && showGeoJson) {
-        provinceLayer.setOpacity(0.55)
-        kabupatenLayer.setOpacity(0.55)
+        provinceLayer.setOpacity(0.85)
+        kabupatenLayer.setOpacity(0.85)
       } else {
         provinceLayer.setOpacity(1.0)
         kabupatenLayer.setOpacity(1.0)
@@ -833,18 +859,21 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         featureProjection: map.getView().getProjection(),
       })
       source.addFeatures(features)
+      provinceLayer.changed()
     }
 
     if (geojsonCache[cacheKey]) {
       load(geojsonCache[cacheKey])
     } else {
       setIsLoading(true)
-      fetch('/api/wilayah-geojson?level=provinsi')
+      fetch(`${NEXT_BASE_PATH}/api/wilayah-geojson?level=provinsi`)
         .then((r) => r.json())
         .then((data) => {
           if (data?.success && data.geojson) {
             geojsonCache[cacheKey] = data.geojson
             load(data.geojson)
+          } else {
+            console.warn('[GeoJSON Provinsi] Respons tidak valid:', data)
           }
         })
         .catch((e) => console.error('GeoJSON provinsi gagal:', e))
@@ -899,7 +928,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
           load(geojsonCache[cacheKey])
         } else {
           setIsLoading(true)
-          fetch(`/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
+          fetch(`${NEXT_BASE_PATH}/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
             .then((r) => r.json())
             .then((data) => {
               if (data?.success && data.geojson) {
@@ -950,10 +979,10 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
             stroke: new Stroke({ color: '#0f766e', width: 2.8 }),
           })
         }
-        // Wilayah non-terpilih: Muted transparent
+        // Wilayah non-terpilih: Muted transparent tapi batas tetap terlihat
         return new Style({
-          fill: new Fill({ color: 'rgba(241, 245, 249, 0.35)' }),
-          stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.5)', width: 0.8 }),
+          fill: new Fill({ color: 'rgba(241, 245, 249, 0.4)' }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.75)', width: 1.0 }),
         })
       }
 
@@ -962,10 +991,10 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         if (provKey === targetProvKey) {
           return new Style({ fill: new Fill({ color: 'rgba(0,0,0,0)' }), stroke: new Stroke({ color: 'rgba(0,0,0,0)', width: 0 }) })
         }
-        // Other provinces → muted gray
+        // Other provinces → muted gray tapi batas tetap terlihat
         return new Style({
           fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
-          stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.4)', width: 1 }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.2 }),
         })
       }
 
@@ -1004,7 +1033,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       if (isKabMode && kabKey !== targetKabKey) {
         return new Style({
           fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
-          stroke: new Stroke({ color: 'rgba(203, 213, 225, 0.4)', width: 0.8 }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.1 }),
         })
       }
       return choroplethStyle(count)
