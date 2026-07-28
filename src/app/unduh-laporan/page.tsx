@@ -506,401 +506,7 @@ const MASTER_REGION_SUGGESTIONS: RegionSuggestion[] = [
   },
 ]
 
-// Initial mock dataset with deep location hierarchy down to Desa/Kelurahan
-const INITIAL_DATA: LaporanItem[] = [
-  {
-    id: 1,
-    kode_laporan: 'LAP-2026-07-001',
-    tgl_kejadian: '2026-07-22 09:13:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '09:13 WIB',
-    tgl_perkembangan: '2026-07-22 09:13:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '09:13 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'KALIMANTAN TENGAH',
-    kabupaten: 'KOTA PALANGKA RAYA',
-    kecamatan: 'Jekan Raya',
-    desa: 'Kelurahan Palangka',
-    jenis_bencana: 'Kebakaran Hutan dan Lahan',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Kebakaran lahan gambut terdeteksi di sekitar Jalan Mahir Mahar. Tim TRC Dinas Kesehatan dan Puskesmas Jekan Raya melakukan pemantauan asap dan pembagian masker.',
-    petugas: 'Siti Rahmawati, S.Kep',
-  },
-  {
-    id: 2,
-    kode_laporan: 'LAP-2026-07-002',
-    tgl_kejadian: '2026-07-22 14:00:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '14:00 WIB',
-    tgl_perkembangan: '2026-07-22 14:00:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '14:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'JAWA TIMUR',
-    kabupaten: 'PROBOLINGGO',
-    kecamatan: 'Tegalwenuan',
-    desa: 'Desa Tegalwenuan Wetan',
-    jenis_bencana: 'Banjir',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 2,
-    korban_hilang: 0,
-    penduduk_terdampak: 4,
-    pengungsi: 12,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Luapan Sungai Welang menggenangi perumahan warga setinggi 40-70 cm. 2 warga luka ringan akibat tergelincir dan telah ditangani Puskesmas Tegalwenuan.',
-    petugas: 'Budi Santoso, SKM',
-  },
-  {
-    id: 3,
-    kode_laporan: 'LAP-2026-07-003',
-    tgl_kejadian: '2026-07-22 11:18:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '11:18 WIB',
-    tgl_perkembangan: '2026-07-22 11:18:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '11:18 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'ACEH',
-    kabupaten: 'GAYO LUES',
-    kecamatan: 'Blangkejeren',
-    desa: 'Gampong Kutelintang',
-    jenis_bencana: 'Gempa Bumi',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Guncangan gempa dangkal M 4.8 dirasakan skala III-IV MMI di Blangkejeren. Tidak ada kerusakan fasilitas kesehatan atau korban jiwa.',
-    petugas: 'Ahmad Fauzi, A.Md',
-  },
-  {
-    id: 4,
-    kode_laporan: 'LAP-2026-07-004',
-    tgl_kejadian: '2026-07-22 10:15:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '10:15 WIB',
-    tgl_perkembangan: '2026-07-22 10:15:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '10:15 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'SUMATERA BARAT',
-    kabupaten: 'PADANG PARIAMAN',
-    kecamatan: '2 x 11 Kayu Tanam',
-    desa: 'Nagari Kayu Tanam',
-    jenis_bencana: 'Kebakaran Hutan dan Lahan',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 26,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Kebakaran lahan perkebunan warga seluas 3 hektar. 26 jiwa terpapar kabut asap tipis. Dinkes mendirikan posko pelayanan kesehatan darurat.',
-    petugas: 'Ns. Dewi Kartika, S.Kep',
-  },
-  {
-    id: 5,
-    kode_laporan: 'LAP-2026-07-005',
-    tgl_kejadian: '2026-07-22 10:29:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '10:29 WIB',
-    tgl_perkembangan: '2026-07-22 10:29:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '10:29 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'NUSA TENGGARA TIMUR',
-    kabupaten: 'FLORES TIMUR',
-    kecamatan: 'Adonara',
-    desa: 'Desa Klatanlo',
-    jenis_bencana: 'Letusan Gunung Api',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 150,
-    faskes_terdampak: 1,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Erupsi Gunung Lewotobi Laki-laki memuntahkan abu vulkanik setinggi 1.500m. Puskesmas Pembantu terpaksa dikosongkan sementara.',
-    petugas: 'Dr. Maria Goretti',
-  },
-  {
-    id: 6,
-    kode_laporan: 'LAP-2026-07-006',
-    tgl_kejadian: '2026-07-22 08:40:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '08:40 WIB',
-    tgl_perkembangan: '2026-07-22 08:40:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '08:40 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'KEPULAUAN BANGKA BELITUNG',
-    kabupaten: 'BELITUNG TIMUR',
-    kecamatan: 'Manggar',
-    desa: 'Desa Lalang',
-    jenis_bencana: 'Kebakaran Hutan dan Lahan',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Kebakaran semak belukar di pinggir jalan utama Manggar. Api berhasil dipadamkan BPBD dan Damkar dalam kurun 2 jam.',
-    petugas: 'Hendra Gunawan',
-  },
-  {
-    id: 7,
-    kode_laporan: 'LAP-2026-07-007',
-    tgl_kejadian: '2026-07-22 15:00:00',
-    tgl_kejadian_formatted: '22 Jul 2026',
-    jam_kejadian: '15:00 WIB',
-    tgl_perkembangan: '2026-07-22 15:00:00',
-    tgl_perkembangan_formatted: '22 Jul 2026',
-    jam_perkembangan: '15:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'JAWA TIMUR',
-    kabupaten: 'PROBOLINGGO',
-    kecamatan: 'Gending',
-    desa: 'Desa Gending',
-    jenis_bencana: 'Kebakaran Hutan dan Lahan',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Menunggu Verifikasi',
-    deskripsi: 'Laporan awal titik panas (hotspot) di kawasan hutan bambu Desa Gending. Petugas kesehatan lapangan sedang meluncur ke lokasi.',
-    petugas: 'Rahmat Hidayat, Amd.Kep',
-  },
-  {
-    id: 8,
-    kode_laporan: 'LAP-2026-07-008',
-    tgl_kejadian: '2026-07-21 14:29:00',
-    tgl_kejadian_formatted: '21 Jul 2026',
-    jam_kejadian: '14:29 WIB',
-    tgl_perkembangan: '2026-07-21 14:29:00',
-    tgl_perkembangan_formatted: '21 Jul 2026',
-    jam_perkembangan: '14:29 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'KALIMANTAN SELATAN',
-    kabupaten: 'KOTA BANJAR BARU',
-    kecamatan: 'Cempaka',
-    desa: 'Kelurahan Cempaka',
-    jenis_bencana: 'Kebakaran Hutan dan Lahan',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 0,
-    korban_hilang: 0,
-    penduduk_terdampak: 0,
-    pengungsi: 0,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Karhutla seluas 1.2 hektar mengancam pemukiman pinggiran Cempaka. Dinkes membagikan 500 masker N95 bagi masyarakat sekitar.',
-    petugas: 'Fitriani, SKM',
-  },
-  {
-    id: 9,
-    kode_laporan: 'LAP-2026-07-009',
-    tgl_kejadian: '2026-07-21 08:51:00',
-    tgl_kejadian_formatted: '21 Jul 2026',
-    jam_kejadian: '08:51 WIB',
-    tgl_perkembangan: '2026-07-21 08:51:00',
-    tgl_perkembangan_formatted: '21 Jul 2026',
-    jam_perkembangan: '08:51 WIB',
-    tingkat_bencana: 'Provinsi',
-    provinsi: 'BANTEN',
-    kabupaten: 'KAB. KOTA TANGERANG',
-    kecamatan: 'Batuceper',
-    desa: 'Kelurahan Batuceper',
-    jenis_bencana: 'Angin Puting Beliung',
-    korban_meninggal: 1,
-    korban_luka_berat: 5,
-    korban_luka_ringan: 195,
-    korban_hilang: 0,
-    penduduk_terdampak: 232,
-    pengungsi: 45,
-    faskes_terdampak: 1,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Hujan deras disertai angin kencang merobohkan 18 atap rumah warga dan merusak pagar Puskesmas Pembantu. 1 korban meninggal tertimpa pohon.',
-    petugas: 'Dr. Erna Wijaya',
-  },
-  {
-    id: 10,
-    kode_laporan: 'LAP-2026-07-010',
-    tgl_kejadian: '2026-07-20 19:30:00',
-    tgl_kejadian_formatted: '20 Jul 2026',
-    jam_kejadian: '19:30 WIB',
-    tgl_perkembangan: '2026-07-21 07:00:00',
-    tgl_perkembangan_formatted: '21 Jul 2026',
-    jam_perkembangan: '07:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'JAWA BARAT',
-    kabupaten: 'CIANJUR',
-    kecamatan: 'Cugenang',
-    desa: 'Desa Gasol',
-    jenis_bencana: 'Tanah Longsor',
-    korban_meninggal: 2,
-    korban_luka_berat: 3,
-    korban_luka_ringan: 12,
-    korban_hilang: 1,
-    penduduk_terdampak: 140,
-    pengungsi: 85,
-    faskes_terdampak: 2,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Tebing setinggi 15 meter longsor usai hujan intensitas tinggi menimbun akses jalan utama dan membentur gedung Poskesdes.',
-    petugas: 'Usep Supriatna',
-  },
-  {
-    id: 11,
-    kode_laporan: 'LAP-2026-07-011',
-    tgl_kejadian: '2026-07-19 06:15:00',
-    tgl_kejadian_formatted: '19 Jul 2026',
-    jam_kejadian: '06:15 WIB',
-    tgl_perkembangan: '2026-07-19 12:00:00',
-    tgl_perkembangan_formatted: '19 Jul 2026',
-    jam_perkembangan: '12:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'SUMATERA BARAT',
-    kabupaten: 'PASAMAN BARAT',
-    kecamatan: 'Talamau',
-    desa: 'Nagari Sinuruik',
-    jenis_bencana: 'Banjir Bandang',
-    korban_meninggal: 0,
-    korban_luka_berat: 1,
-    korban_luka_ringan: 8,
-    korban_hilang: 0,
-    penduduk_terdampak: 310,
-    pengungsi: 120,
-    faskes_terdampak: 1,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Air bah membawa lumpur memutus akses jembatan desa dan merendam Klinik Desa. Tim EMT Dinkes telah mendirikan tenda medis lapangan.',
-    petugas: 'Syamsul Bahri',
-  },
-  {
-    id: 12,
-    kode_laporan: 'LAP-2026-07-012',
-    tgl_kejadian: '2026-07-18 21:00:00',
-    tgl_kejadian_formatted: '18 Jul 2026',
-    jam_kejadian: '21:00 WIB',
-    tgl_perkembangan: '2026-07-19 08:00:00',
-    tgl_perkembangan_formatted: '19 Jul 2026',
-    jam_perkembangan: '08:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'JAWA BARAT',
-    kabupaten: 'SUKABUMI',
-    kecamatan: 'Palabuhanratu',
-    desa: 'Kelurahan Palabuhanratu',
-    jenis_bencana: 'Gelombang Tinggi / Abrasi',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 4,
-    korban_hilang: 0,
-    penduduk_terdampak: 65,
-    pengungsi: 20,
-    faskes_terdampak: 0,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Gelombang laut pasang merusak 12 perahu nelayan dan warung pesisir pantai. Petugas Puskesmas Palabuhanratu melayani rawat jalan luka lecet.',
-    petugas: 'Deri Herdian',
-  },
-  {
-    id: 13,
-    kode_laporan: 'LAP-2026-07-013',
-    tgl_kejadian: '2026-07-17 13:40:00',
-    tgl_kejadian_formatted: '17 Jul 2026',
-    jam_kejadian: '13:40 WIB',
-    tgl_perkembangan: '2026-07-17 18:00:00',
-    tgl_perkembangan_formatted: '17 Jul 2026',
-    jam_perkembangan: '18:00 WIB',
-    tingkat_bencana: 'Provinsi',
-    provinsi: 'PAPUA TENGAH',
-    kabupaten: 'INTAN JAYA',
-    kecamatan: 'Sugapa',
-    desa: 'Kampung Bilogai',
-    jenis_bencana: 'Konflik Sosial atau Kerusuhan Sosial',
-    korban_meninggal: 0,
-    korban_luka_berat: 2,
-    korban_luka_ringan: 5,
-    korban_hilang: 0,
-    penduduk_terdampak: 180,
-    pengungsi: 140,
-    faskes_terdampak: 1,
-    status_verifikasi: 'Menunggu Verifikasi',
-    deskripsi: 'Eskalasi keamanan mengganggu operasional Puskesmas Sugapa. Nakes dievakuasi sementara ke posko gabungan TNI/Polri.',
-    petugas: 'Yance Kogoya',
-  },
-  {
-    id: 14,
-    kode_laporan: 'LAP-2026-07-014',
-    tgl_kejadian: '2026-07-15 16:20:00',
-    tgl_kejadian_formatted: '15 Jul 2026',
-    jam_kejadian: '16:20 WIB',
-    tgl_perkembangan: '2026-07-16 09:00:00',
-    tgl_perkembangan_formatted: '16 Jul 2026',
-    jam_perkembangan: '09:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'JAWA BARAT',
-    kabupaten: 'SUMEDANG',
-    kecamatan: 'Sumedang Utara',
-    desa: 'Desa Rancamulya',
-    jenis_bencana: 'Gempa Bumi',
-    korban_meninggal: 0,
-    korban_luka_berat: 1,
-    korban_luka_ringan: 14,
-    korban_hilang: 0,
-    penduduk_terdampak: 520,
-    pengungsi: 210,
-    faskes_terdampak: 3,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Gempa kerak dangkal M 4.8 meretakkan dinding RSUD Sumedang dan 2 Puskesmas. Pasien rawat inap sempat dievakuasi ke halaman RS.',
-    petugas: 'Hj. Nenden Hernawati',
-  },
-  {
-    id: 15,
-    kode_laporan: 'LAP-2026-07-015',
-    tgl_kejadian: '2026-07-12 04:10:00',
-    tgl_kejadian_formatted: '12 Jul 2026',
-    jam_kejadian: '04:10 WIB',
-    tgl_perkembangan: '2026-07-12 10:00:00',
-    tgl_perkembangan_formatted: '12 Jul 2026',
-    jam_perkembangan: '10:00 WIB',
-    tingkat_bencana: 'Kab/Kota',
-    provinsi: 'SULAWESI SELATAN',
-    kabupaten: 'LUWU UTARA',
-    kecamatan: 'Masamba',
-    desa: 'Kelurahan Bone',
-    jenis_bencana: 'Banjir',
-    korban_meninggal: 0,
-    korban_luka_berat: 0,
-    korban_luka_ringan: 3,
-    korban_hilang: 0,
-    penduduk_terdampak: 410,
-    pengungsi: 95,
-    faskes_terdampak: 1,
-    status_verifikasi: 'Diverifikasi',
-    deskripsi: 'Meluapnya Sungai Masamba merendam 120 rumah dan pelataran Puskesmas Masamba. Pelayanan dishift ke lantai 2.',
-    petugas: 'Nurlaila, SKM',
-  },
-]
-
-const ALL_JENIS_BENCANA = [
+const ALL_JENIS_BENCANA: string[] = [
   'Banjir',
   'Kebakaran Hutan dan Lahan',
   'Gempa Bumi',
@@ -910,6 +516,12 @@ const ALL_JENIS_BENCANA = [
   'Banjir Bandang',
   'Gelombang Tinggi / Abrasi',
   'Konflik Sosial atau Kerusuhan Sosial',
+  'Kebakaran Permukiman',
+  'Kekeringan',
+  'Tsunami',
+  'Wabah / KLB Penyakit',
+  'Keracunan',
+  'Lainnya',
 ]
 
 export default function UnduhLaporanPage() {
@@ -926,7 +538,7 @@ export default function UnduhLaporanPage() {
   }, [setHeader])
 
   // MULTIPLE SELECT FILTER STATES & LIVE API DATA FETCHING
-  const [reports, setReports] = useState<LaporanItem[]>(INITIAL_DATA)
+  const [reports, setReports] = useState<LaporanItem[]>([])
   const [loadingApiReports, setLoadingApiReports] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<string[]>([])
@@ -945,7 +557,7 @@ export default function UnduhLaporanPage() {
         const headers: Record<string, string> = { Accept: 'application/json' }
         if (token) headers['Authorization'] = `Bearer ${token}`
 
-        const res = await fetch('/api/bencana-stats', {
+        const res = await fetch(`${basePath}/api/bencana-stats`, {
           method: 'GET',
           headers,
           cache: 'no-store',
@@ -1483,7 +1095,7 @@ export default function UnduhLaporanPage() {
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #047D78; text-transform: uppercase;">📍 ${g.name}</strong>
+          <strong style="color: #047D78; text-transform: uppercase;">ðŸ“ ${g.name}</strong>
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
           ${g.total_laporan} Kejadian
@@ -1560,12 +1172,12 @@ export default function UnduhLaporanPage() {
               <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View</span>
             </div>
             <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              🖨️ Cetak ke PDF / Print
+              ðŸ–¨ï¸ Cetak ke PDF / Print
             </button>
           </div>
 
           <h2>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h2>
-          <p>PUSAT KRISIS KESEHATAN — REKAPITULASI LAPORAN KEJADIAN BENCANA (BERDASARKAN ${groupByLabel})</p>
+          <p>PUSAT KRISIS KESEHATAN â€” REKAPITULASI LAPORAN KEJADIAN BENCANA (BERDASARKAN ${groupByLabel})</p>
           <div class="meta-box">
             <strong>Total Data Terfilter:</strong> ${filteredReports.length} Laporan (${sortedRegions.length} ${groupByLabel}) | 
             <strong>Total Korban Meninggal:</strong> ${metrics.totalMeninggal} | 
@@ -1726,7 +1338,7 @@ export default function UnduhLaporanPage() {
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #047D78; text-transform: uppercase;">📍 ${g.name}</strong>
+          <strong style="color: #047D78; text-transform: uppercase;">ðŸ“ ${g.name}</strong>
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
           ${g.total_laporan} Kejadian
@@ -1848,7 +1460,7 @@ export default function UnduhLaporanPage() {
           <!-- Grid lines -->
           <line x1="0" y1="45" x2="500" y2="45" stroke="#e6fffa" stroke-width="1" />
           <line x1="0" y1="90" x2="500" y2="90" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
-          <text x="6" y="86" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0°)</text>
+          <text x="6" y="86" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0Â°)</text>
 
           <!-- REALISTIC ISLAND VECTOR PATHS -->
           <!-- SUMATERA -->
@@ -2252,7 +1864,7 @@ export default function UnduhLaporanPage() {
             <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View (Tampilan Siap Cetak)</span>
           </div>
           <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            🖨️ Cetak ke PDF / Print
+            ðŸ–¨ï¸ Cetak ke PDF / Print
           </button>
         </div>
 
@@ -2263,7 +1875,7 @@ export default function UnduhLaporanPage() {
             <img src="${logoUrl}" alt="Logo Kemenkes" class="kop-logo" onerror="this.style.display='none'" />
             <div class="kop-text">
               <h1>Kementerian Kesehatan Republik Indonesia</h1>
-              <h2>Direktorat Jenderal Pelayanan Kesehatan — Pusat Krisis Kesehatan</h2>
+              <h2>Direktorat Jenderal Pelayanan Kesehatan â€” Pusat Krisis Kesehatan</h2>
               <p>Emergency Operations Center (EOC) | Jl. H.R. Rasuna Said Blok X-5 Kav. 4-9 Jakarta | Call Center: 119 / 0812-1212-3119</p>
             </div>
             <div class="kop-badge">
@@ -2441,14 +2053,14 @@ export default function UnduhLaporanPage() {
               <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View</span>
             </div>
             <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              🖨️ Cetak ke PDF / Print
+              ðŸ–¨ï¸ Cetak ke PDF / Print
             </button>
           </div>
 
           <div class="header">
             <h3>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h3>
-            <h4>PUSAT KRISIS KESEHATAN — DOKUMEN LAPORAN BENCANA</h4>
-            <span class="badge">${item.kode_laporan} — ${item.status_verifikasi}</span>
+            <h4>PUSAT KRISIS KESEHATAN â€” DOKUMEN LAPORAN BENCANA</h4>
+            <span class="badge">${item.kode_laporan} â€” ${item.status_verifikasi}</span>
           </div>
 
           <div class="section">
@@ -2797,7 +2409,7 @@ export default function UnduhLaporanPage() {
 
               {expandedSection.jenisBencana && (
                 <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar pt-1">
-                  {ALL_JENIS_BENCANA.map((jenis) => {
+                  {Array.from(new Set([...ALL_JENIS_BENCANA, ...reports.map(r => r.jenis_bencana).filter(Boolean)])).sort().map((jenis) => {
                     const isChecked = selectedTypes.includes(jenis)
                     return (
                       <label
