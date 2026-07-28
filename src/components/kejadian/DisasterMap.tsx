@@ -600,6 +600,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.85)', width: 1.2 }),
       }),
     })
+    kabupatenLayerRef.current = kabupatenLayer  // ← FIX: assign ref yang terlupakan
 
     // Marker pin layer
     const markerLayer = new VectorLayer({ source: new VectorSource(), zIndex: 10 })
@@ -795,6 +796,9 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       bnpbGempaLayerRef.current = null
       bnpbLongsorLayerRef.current = null
       bnpbKarhutlaLayerRef.current = null
+      provinceLayerRef.current = null
+      kabupatenLayerRef.current = null
+      markerLayerRef.current = null
     }
   }, [])
 
