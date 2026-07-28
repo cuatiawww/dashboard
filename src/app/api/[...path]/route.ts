@@ -42,6 +42,14 @@ async function handler(
     }
   })
 
+  const dashboardToken = process.env.SIPKK_DASHBOARD_TTOKEN?.trim()
+  if (dashboardToken && !forwardHeaders.has('ttoken') && !forwardHeaders.has('TTOKEN')) {
+    forwardHeaders.set('TTOKEN', dashboardToken)
+  }
+  if (!forwardHeaders.has('accept')) {
+    forwardHeaders.set('Accept', 'application/json')
+  }
+
   let body: BodyInit | null = null
   if (!['GET', 'HEAD'].includes(req.method)) {
     body = await req.arrayBuffer()

@@ -118,6 +118,36 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
   return ''
 }
 
+/** Canvas pattern generator untuk arsiran (hatching diagonal) pada layer geomap */
+const createHatchPattern = (baseColor: string, strokeColor: string = 'rgba(255, 255, 255, 0.65)') => {
+  if (typeof document === 'undefined') return baseColor
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 12
+    canvas.height = 12
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return baseColor
+
+    ctx.fillStyle = baseColor
+    ctx.fillRect(0, 0, 12, 12)
+
+    ctx.strokeStyle = strokeColor
+    ctx.lineWidth = 1.8
+    ctx.beginPath()
+    ctx.moveTo(0, 12)
+    ctx.lineTo(12, 0)
+    ctx.moveTo(-3, 3)
+    ctx.lineTo(3, -3)
+    ctx.moveTo(9, 15)
+    ctx.lineTo(15, 9)
+    ctx.stroke()
+
+    return ctx.createPattern(canvas, 'repeat') || baseColor
+  } catch {
+    return baseColor
+  }
+}
+
 /** Warna choropleth berdasarkan jumlah kejadian sesuai legenda */
 const choroplethColor = (count: number, opacity: number = 0.75) => {
   if (count === 0) return `rgba(203, 213, 225, ${opacity * 0.45})` // Soft slate fill agar bentuk wilayah terlihat
@@ -127,15 +157,28 @@ const choroplethColor = (count: number, opacity: number = 0.75) => {
   return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson (> 50)
 }
 
-/** Style choropleth OL */
-const choroplethStyle = (count: number) =>
-  new Style({
-    fill: new Fill({ color: choroplethColor(count, 0.75) }),
+/** Style choropleth OL dengan arsiran (hatching pattern) untuk tingkat kejadian tinggi (> 30 atau warning) */
+const choroplethStyle = (count: number, hasWarning: boolean = false) => {
+  const baseColor = choroplethColor(count, 0.75)
+  let fillPattern: any = baseColor
+
+  // Jika jumlah kejadian > 30 atau ada warning EWS, berikan arsiran (hatching pattern)
+  if (count > 30 || hasWarning) {
+    fillPattern = createHatchPattern(
+      baseColor,
+      count > 50 ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.6)'
+    )
+  }
+
+  return new Style({
+    fill: new Fill({ color: fillPattern }),
     stroke: new Stroke({
-      color: count === 0 ? 'rgba(71, 85, 105, 0.85)' : '#ffffff',
-      width: count === 0 ? 1.2 : 1.6,
+      color: hasWarning ? '#dc2626' : count === 0 ? 'rgba(71, 85, 105, 0.85)' : '#ffffff',
+      width: hasWarning ? 2.5 : count === 0 ? 1.2 : 1.8,
+      lineDash: hasWarning ? [5, 5] : count > 50 ? [8, 4] : undefined,
     }),
   })
+}
 
 /** Warna pin marker berdasarkan total korban */
 const pinColor = (totalKorban: number) => {
@@ -999,19 +1042,9 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       }
 
       // National choropleth style
-      const baseStyle = choroplethStyle(provinceCounts.get(provKey) || 0)
       const provWarnings = warningsByProvince.get(provKey)
-      if (provWarnings && provWarnings.length > 0) {
-        baseStyle.setStroke(new Stroke({
-          color: '#dc2626',
-          width: 2,
-          lineDash: [4, 4]
-        }))
-        baseStyle.setFill(new Fill({
-          color: 'rgba(239, 68, 68, 0.15)'
-        }))
-      }
-      return baseStyle
+      const hasWarning = !!(provWarnings && provWarnings.length > 0)
+      return choroplethStyle(count, hasWarning)
     })
 
     kabupatenLayer.setStyle((feature: any) => {

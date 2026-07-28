@@ -378,12 +378,54 @@ export default function DashboardKejadianPage() {
   const [activeDetailCard, setActiveDetailCard] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Record<string | number, boolean>>({})
 
-  // Helper parse tanggal marker
+  // Helper parse tanggal marker dengan dukungan ISO, ID format (DD-MM-YYYY, DD/MM/YYYY), dan nama bulan Indonesia
   const parseMarkerDate = (tgl: string | undefined): Date | null => {
     if (!tgl) return null
     const clean = tgl.replace(/\s*WIB/gi, '').trim()
-    const d = new Date(clean)
-    return isNaN(d.getTime()) ? null : d
+
+    // 1. Coba standar ISO / JS date string
+    let d = new Date(clean)
+    if (!isNaN(d.getTime())) return d
+
+    // 2. Normalisasi spasi ke T (YYYY-MM-DD HH:mm:ss -> YYYY-MM-DDTHH:mm:ss)
+    d = new Date(clean.replace(' ', 'T'))
+    if (!isNaN(d.getTime())) return d
+
+    // 3. Format DD-MM-YYYY atau DD/MM/YYYY
+    const dmyMatch = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/)
+    if (dmyMatch) {
+      const day = parseInt(dmyMatch[1], 10)
+      const month = parseInt(dmyMatch[2], 10) - 1
+      const year = parseInt(dmyMatch[3], 10)
+      const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0
+      const minute = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0
+      const second = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0
+      d = new Date(year, month, day, hour, minute, second)
+      if (!isNaN(d.getTime())) return d
+    }
+
+    // 4. Format nama bulan Indonesia ("25 Juli 2026")
+    const indMonthMap: Record<string, number> = {
+      januari: 0, jan: 0, februari: 1, febuari: 1, feb: 1, maret: 2, mar: 2,
+      april: 3, apr: 3, mei: 4, juni: 5, jun: 5, juli: 6, jul: 6,
+      agustus: 7, ags: 7, agu: 7, september: 8, sep: 8, oktober: 9, okt: 9,
+      november: 10, nov: 10, desember: 11, des: 11
+    }
+    const textMatch = clean.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/)
+    if (textMatch) {
+      const day = parseInt(textMatch[1], 10)
+      const monthStr = textMatch[2].toLowerCase()
+      const year = parseInt(textMatch[3], 10)
+      const month = indMonthMap[monthStr]
+      if (month !== undefined) {
+        const hour = textMatch[4] ? parseInt(textMatch[4], 10) : 0
+        const minute = textMatch[5] ? parseInt(textMatch[5], 10) : 0
+        d = new Date(year, month, day, hour, minute, 0)
+        if (!isNaN(d.getTime())) return d
+      }
+    }
+
+    return null
   }
 
   // Filter markers berdasarkan multi-wilayah terpilih DAN date range (jika ada)
@@ -392,20 +434,20 @@ export default function DashboardKejadianPage() {
 
     let result = data.markers
 
-    // 1. Filter berdasarkan date range (frontend filtering karena backend tidak support)
+    // 1. Filter berdasarkan date range (frontend filtering)
     if (filterStartDate && filterEndDate) {
       const startMs = new Date(filterStartDate).getTime()
       const endMs = new Date(filterEndDate).getTime() + 86399999 // end of day
       result = result.filter((m) => {
         const d = parseMarkerDate(m.tgl_kejadian)
-        if (!d) return false
+        if (!d) return true // Jika tanggal tidak bisa diparse, jangan hapus marker dari statistik
         return d.getTime() >= startMs && d.getTime() <= endMs
       })
     } else if (tahun && /^\d{4}$/.test(tahun)) {
       // Filter berdasarkan tahun saja
       result = result.filter((m) => {
         const d = parseMarkerDate(m.tgl_kejadian)
-        if (!d) return false
+        if (!d) return true // Preservasi marker jika parse gagal
         return String(d.getFullYear()) === tahun
       })
     }
@@ -466,7 +508,8 @@ export default function DashboardKejadianPage() {
   }, [data?.markers, selectedRegions, filterStartDate, filterEndDate, tahun])
 
   const effectiveSummary = useMemo(() => {
-    if (selectedRegions.length === 0) return data?.summary
+    const hasFilter = selectedRegions.length > 0 || !!filterStartDate || !!filterEndDate
+    if (!hasFilter && data?.summary) return data.summary
 
     let total_bencana = effectiveMarkers.length
     let total_krisis = 0
