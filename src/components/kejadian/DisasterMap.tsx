@@ -110,71 +110,32 @@ const getFeatureName = (feature: any, level: 'provinsi' | 'kabupaten') => {
   if (!feature) return ''
   const props = feature.getProperties() || {}
   const keys = level === 'provinsi'
-    ? ['provinsi', 'PROVINSI', 'Propinsi', 'nama_prov', 'nama', 'prov_single', 'prov_multi']
-    : ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'kab_single', 'kab_multi', 'nama']
+    ? ['provinsi', 'PROVINSI', 'Propinsi', 'nama_prov', 'nama', 'prov_single', 'prov_multi', 'WADMPR', 'NAMOBJ', 'NAME_1']
+    : ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'kab_single', 'kab_multi', 'nama', 'WADMMP', 'NAMOBJ', 'NAME_2']
   for (const key of keys) {
-    if (props[key] !== undefined && props[key] !== null) return String(props[key]).trim()
+    if (props[key] !== undefined && props[key] !== null && String(props[key]).trim() !== '') return String(props[key]).trim()
   }
   return ''
 }
 
-/** Canvas pattern generator untuk arsiran (hatching diagonal) pada layer geomap */
-const createHatchPattern = (baseColor: string, strokeColor: string = 'rgba(255, 255, 255, 0.65)') => {
-  if (typeof document === 'undefined') return baseColor
-  try {
-    const canvas = document.createElement('canvas')
-    canvas.width = 12
-    canvas.height = 12
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return baseColor
-
-    ctx.fillStyle = baseColor
-    ctx.fillRect(0, 0, 12, 12)
-
-    ctx.strokeStyle = strokeColor
-    ctx.lineWidth = 1.8
-    ctx.beginPath()
-    ctx.moveTo(0, 12)
-    ctx.lineTo(12, 0)
-    ctx.moveTo(-3, 3)
-    ctx.lineTo(3, -3)
-    ctx.moveTo(9, 15)
-    ctx.lineTo(15, 9)
-    ctx.stroke()
-
-    return ctx.createPattern(canvas, 'repeat') || baseColor
-  } catch {
-    return baseColor
-  }
-}
-
 /** Warna choropleth berdasarkan jumlah kejadian sesuai legenda */
-const choroplethColor = (count: number, opacity: number = 0.75) => {
-  if (count === 0) return `rgba(203, 213, 225, ${opacity * 0.45})` // Soft slate fill agar bentuk wilayah terlihat
+const choroplethColor = (count: number, opacity: number = 0.85) => {
+  if (count === 0) return `rgba(226, 232, 240, ${opacity * 0.4})` // Soft slate fill agar bentuk wilayah terlihat
   if (count <= 10) return `rgba(234, 179, 8, ${opacity})`        // Kuning tebal (1 - 10)
   if (count <= 30) return `rgba(249, 115, 22, ${opacity})`       // Oranye (11 - 30)
   if (count <= 50) return `rgba(239, 68, 68, ${opacity})`        // Coral Red (31 - 50)
   return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson (> 50)
 }
 
-/** Style choropleth OL dengan arsiran (hatching pattern) untuk tingkat kejadian tinggi (> 30 atau warning) */
+/** Style choropleth OL untuk tingkat kejadian */
 const choroplethStyle = (count: number, hasWarning: boolean = false) => {
-  const baseColor = choroplethColor(count, 0.75)
-  let fillPattern: any = baseColor
-
-  // Jika jumlah kejadian > 30 atau ada warning EWS, berikan arsiran (hatching pattern)
-  if (count > 30 || hasWarning) {
-    fillPattern = createHatchPattern(
-      baseColor,
-      count > 50 ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.6)'
-    )
-  }
+  const baseColor = choroplethColor(count, 0.85)
 
   return new Style({
-    fill: new Fill({ color: fillPattern }),
+    fill: new Fill({ color: baseColor }),
     stroke: new Stroke({
-      color: hasWarning ? '#dc2626' : count === 0 ? 'rgba(71, 85, 105, 0.85)' : '#ffffff',
-      width: hasWarning ? 2.5 : count === 0 ? 1.2 : 1.8,
+      color: hasWarning ? '#dc2626' : count === 0 ? 'rgba(71, 85, 105, 0.6)' : '#ffffff',
+      width: hasWarning ? 2.5 : count === 0 ? 1.0 : 1.5,
       lineDash: hasWarning ? [5, 5] : count > 50 ? [8, 4] : undefined,
     }),
   })
@@ -274,8 +235,8 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
   const [showBaseMap, setShowBaseMap] = useState(true)
   const [showGeoJson, setShowGeoJson] = useState(true)
   const [showWindy, setShowWindy] = useState(true)
-  const [showRegionLegend, setShowRegionLegend] = useState(false)
-  const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
+  const [showRegionLegend, setShowRegionLegend] = useState(true)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
 
   // BNPB layer visibilities
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
@@ -883,6 +844,89 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
   }, [showWindy, mapInstance])
 
 
+  // Helper untuk update style choropleth layer secara konsisten
+  const updateChoroplethStyles = useCallback(() => {
+    const provinceLayer = provinceLayerRef.current
+    const kabupatenLayer = kabupatenLayerRef.current
+    if (!provinceLayer || !kabupatenLayer) return
+
+    const isProvMode = userScope?.mode === 'provinsi'
+    const isKabMode = userScope?.mode === 'kabupaten'
+    const targetProvKey = cleanKey(userScope?.provinsi?.label || '')
+    const targetKabKey = cleanKey(userScope?.kabupaten?.label || '')
+
+    provinceLayer.setStyle((feature: any) => {
+      const provKey = cleanKey(getFeatureName(feature, 'provinsi'))
+      const count = provinceCounts.get(provKey) || 0
+
+      // Multi-wilayah terpilih via Smart Search Bar
+      if (selectedRegions && selectedRegions.length > 0) {
+        const isSelectedProv = selectedProvKeys.some(
+          (k) => k && (provKey.includes(k) || k.includes(provKey) || (provKey.includes('jakarta') && k.includes('jakarta')) || (provKey.includes('yogyakarta') && k.includes('yogyakarta')))
+        )
+        if (isSelectedProv) {
+          return new Style({
+            fill: new Fill({ color: choroplethColor(count, 0.75) }),
+            stroke: new Stroke({ color: '#0f766e', width: 2.8 }),
+          })
+        }
+        // Wilayah non-terpilih: Choropleth berskala lebih redup agar persebaran tetap terlihat
+        return new Style({
+          fill: new Fill({ color: choroplethColor(count, 0.25) }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.75)', width: 1.0 }),
+        })
+      }
+
+      if ((isProvMode || isKabMode) && targetProvKey) {
+        // Selected province → transparent jika kabupaten layer tampil
+        if (provKey === targetProvKey) {
+          return new Style({ fill: new Fill({ color: 'rgba(0,0,0,0)' }), stroke: new Stroke({ color: 'rgba(0,0,0,0)', width: 0 }) })
+        }
+        // Provinsi lain tetap tampilkan warna choropleth dengan opacity redup
+        const provWarnings = warningsByProvince.get(provKey)
+        const hasWarning = !!(provWarnings && provWarnings.length > 0)
+        return choroplethStyle(count, hasWarning)
+      }
+
+      // National choropleth style
+      const provWarnings = warningsByProvince.get(provKey)
+      const hasWarning = !!(provWarnings && provWarnings.length > 0)
+      return choroplethStyle(count, hasWarning)
+    })
+
+    kabupatenLayer.setStyle((feature: any) => {
+      const kabKey = cleanKey(getFeatureName(feature, 'kabupaten'))
+
+      if (selectedRegions && selectedRegions.length > 0 && selectedKabKeys.length > 0) {
+        const isSelectedKab = selectedKabKeys.some(
+          (k) => k && (kabKey.includes(k) || k.includes(kabKey))
+        )
+        if (isSelectedKab) {
+          return new Style({
+            fill: new Fill({ color: 'rgba(37, 99, 235, 0.5)' }),
+            stroke: new Stroke({ color: '#1d4ed8', width: 2.5 }),
+          })
+        }
+      }
+
+      const count = kabupatenCounts.get(kabKey) || 0
+      if (isKabMode && targetKabKey && kabKey !== targetKabKey) {
+        return new Style({
+          fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.1 }),
+        })
+      }
+      return choroplethStyle(count)
+    })
+
+    provinceLayer.changed()
+    kabupatenLayer.changed()
+  }, [userScope, provinceCounts, kabupatenCounts, warningsByProvince, selectedRegions, selectedProvKeys, selectedKabKeys])
+
+  useEffect(() => {
+    updateChoroplethStyles()
+  }, [updateChoroplethStyles])
+
   // ─────────────────────────────────────────────
   // Load Province GeoJSON (once)
   // ─────────────────────────────────────────────
@@ -893,7 +937,10 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
     if (!map || !provinceLayer) return
 
     const source = provinceLayer.getSource()!
-    if (source.getFeatures().length > 0) return  // already loaded
+    if (source.getFeatures().length > 0) {
+      updateChoroplethStyles()
+      return  // already loaded
+    }
 
     const cacheKey = 'level_provinsi'
     const load = (geojson: any) => {
@@ -902,7 +949,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         featureProjection: map.getView().getProjection(),
       })
       source.addFeatures(features)
-      provinceLayer.changed()
+      updateChoroplethStyles()
     }
 
     if (geojsonCache[cacheKey]) {
@@ -922,7 +969,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         .catch((e) => console.error('GeoJSON provinsi gagal:', e))
         .finally(() => setIsLoading(false))
     }
-  }, [mapInstance])
+  }, [mapInstance, updateChoroplethStyles])
 
   // ─────────────────────────────────────────────
   // Load/Clear Kabupaten GeoJSON based on scope
@@ -964,6 +1011,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
             featureProjection: map.getView().getProjection(),
           })
           kabSource.addFeatures(features)
+          updateChoroplethStyles()
           focusMap(features)
         }
 
@@ -983,98 +1031,24 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
             .finally(() => setIsLoading(false))
         }
       } else {
+        updateChoroplethStyles()
         focusMap(kabSource.getFeatures())
       }
     } else {
       lastFetchedProvinceRef.current = null
       kabSource.clear()
+      updateChoroplethStyles()
       map.getView().animate({ center: fromLonLat([118, -2.5]), zoom: 4.8, duration: 500 })
     }
-  }, [mapInstance, userScope])
+  }, [mapInstance, userScope, updateChoroplethStyles])
 
   // ─────────────────────────────────────────────
   // Re-style choropleth & multi-region layers when data/selectedRegions changes
   // ─────────────────────────────────────────────
 
   useEffect(() => {
-    const provinceLayer = provinceLayerRef.current
-    const kabupatenLayer = kabupatenLayerRef.current
-    if (!provinceLayer || !kabupatenLayer) return
-
-    const isProvMode = userScope?.mode === 'provinsi'
-    const isKabMode = userScope?.mode === 'kabupaten'
-    const targetProvKey = cleanKey(userScope?.provinsi?.label || '')
-    const targetKabKey = cleanKey(userScope?.kabupaten?.label || '')
-
-    provinceLayer.setStyle((feature: any) => {
-      const provKey = cleanKey(getFeatureName(feature, 'provinsi'))
-      const count = provinceCounts.get(provKey) || 0
-
-      // Multi-wilayah terpilih via Smart Search Bar
-      if (selectedRegions && selectedRegions.length > 0) {
-        const isSelectedProv = selectedProvKeys.some(
-          (k) => k && (provKey.includes(k) || k.includes(provKey) || (provKey.includes('jakarta') && k.includes('jakarta')) || (provKey.includes('yogyakarta') && k.includes('yogyakarta')))
-        )
-        if (isSelectedProv) {
-          // Fill warna persis sesuai range legenda (Kuning 1-10, Oranye 11-30, Red 31-50, Crimson >50) + Stroke outline tebal penanda terpilih
-          return new Style({
-            fill: new Fill({ color: choroplethColor(count, 0.7) }),
-            stroke: new Stroke({ color: '#0f766e', width: 2.8 }),
-          })
-        }
-        // Wilayah non-terpilih: Muted transparent tapi batas tetap terlihat
-        return new Style({
-          fill: new Fill({ color: 'rgba(241, 245, 249, 0.4)' }),
-          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.75)', width: 1.0 }),
-        })
-      }
-
-      if (isProvMode || isKabMode) {
-        // Selected province → transparent (kabupaten layer shows through)
-        if (provKey === targetProvKey) {
-          return new Style({ fill: new Fill({ color: 'rgba(0,0,0,0)' }), stroke: new Stroke({ color: 'rgba(0,0,0,0)', width: 0 }) })
-        }
-        // Other provinces → muted gray tapi batas tetap terlihat
-        return new Style({
-          fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
-          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.2 }),
-        })
-      }
-
-      // National choropleth style
-      const provWarnings = warningsByProvince.get(provKey)
-      const hasWarning = !!(provWarnings && provWarnings.length > 0)
-      return choroplethStyle(count, hasWarning)
-    })
-
-    kabupatenLayer.setStyle((feature: any) => {
-      const kabKey = cleanKey(getFeatureName(feature, 'kabupaten'))
-
-      if (selectedRegions && selectedRegions.length > 0 && selectedKabKeys.length > 0) {
-        const isSelectedKab = selectedKabKeys.some(
-          (k) => k && (kabKey.includes(k) || k.includes(kabKey))
-        )
-        if (isSelectedKab) {
-          return new Style({
-            fill: new Fill({ color: 'rgba(37, 99, 235, 0.5)' }),
-            stroke: new Stroke({ color: '#1d4ed8', width: 2.5 }),
-          })
-        }
-      }
-
-      const count = kabupatenCounts.get(kabKey) || 0
-      if (isKabMode && kabKey !== targetKabKey) {
-        return new Style({
-          fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
-          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.1 }),
-        })
-      }
-      return choroplethStyle(count)
-    })
-
-    provinceLayer.changed()
-    kabupatenLayer.changed()
-  }, [userScope, provinceCounts, kabupatenCounts, warningsByProvince, selectedRegions, selectedProvKeys, selectedKabKeys])
+    updateChoroplethStyles()
+  }, [updateChoroplethStyles])
 
   // Auto-fit map extent saat wilayah terpilih berubah
   useEffect(() => {

@@ -343,7 +343,7 @@ export default function DashboardKejadianPage() {
   }
 
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
-  const [markerMonths, setMarkerMonths] = useState(1)
+  const [markerMonths, setMarkerMonths] = useState(0)
 
   // State untuk pencarian & filter multi-wilayah gabungan
   const [selectedRegions, setSelectedRegions] = useState<SelectedRegionItem[]>([])
@@ -654,18 +654,19 @@ export default function DashboardKejadianPage() {
 
   const mapMarkers = useMemo(() => {
     if (!effectiveMarkers) return []
-    if (markerMonths === 0) return effectiveMarkers
+    if (markerMonths === 0 || (!!filterStartDate && !!filterEndDate)) return effectiveMarkers
 
-    const cutoff = new Date()
+    const now = new Date()
+    const cutoff = new Date(now)
     cutoff.setMonth(cutoff.getMonth() - markerMonths)
 
     return effectiveMarkers.filter((m) => {
       if (!m.tgl_kejadian) return false
-      const cleanDateStr = m.tgl_kejadian.replace(/\s*WIB/gi, '').trim()
-      const eventDate = new Date(cleanDateStr)
+      const eventDate = parseMarkerDate(m.tgl_kejadian)
+      if (!eventDate) return true
       return eventDate >= cutoff
     })
-  }, [effectiveMarkers, markerMonths])
+  }, [effectiveMarkers, markerMonths, filterStartDate, filterEndDate])
 
   const dateRangeText = useMemo(() => {
     const formatIndonesianDate = (date: Date) => {
@@ -1277,8 +1278,11 @@ export default function DashboardKejadianPage() {
   }
 
   const activeUserScope = useMemo(() => {
-    if (province || kabupaten) {
-      if (kabupaten) {
+    const isRealProv = province && !province.toLowerCase().includes('semua')
+    const isRealKab = kabupaten && !kabupaten.toLowerCase().includes('semua')
+
+    if (isRealProv || isRealKab) {
+      if (isRealKab) {
         return {
           mode: 'kabupaten',
           provinsi: { label: province },
@@ -1290,8 +1294,8 @@ export default function DashboardKejadianPage() {
         provinsi: { label: province },
       }
     }
-    return user?.wilayah_scope
-  }, [province, kabupaten, user])
+    return undefined // Default ke mode Nasional
+  }, [province, kabupaten])
 
   const getRegionLabel = useCallback(() => {
     return activeRegionConcatenatedLabel
@@ -1459,15 +1463,19 @@ export default function DashboardKejadianPage() {
       let url = buildBencanaStatsUrl()
       const queryParams: string[] = []
 
-      if (province) {
+      const isSemuaProv = !province || province.toLowerCase().includes('semua')
+      const isSemuaKab = !kabupaten || kabupaten.toLowerCase().includes('semua')
+
+      if (province && !isSemuaProv) {
         queryParams.push(`province=${encodeURIComponent(province)}`)
       }
-      if (kabupaten) {
+      if (kabupaten && !isSemuaKab) {
         queryParams.push(`kabupaten=${encodeURIComponent(kabupaten)}`)
       }
-      // Selalu kirim year yang valid ke backend (backend hanya support year param)
-      // Filter date range dilakukan di frontend setelah data diterima
-      if (tahun && /^\d{4}$/.test(tahun)) {
+      if (filterStartDate && filterEndDate) {
+        queryParams.push(`start_date=${encodeURIComponent(filterStartDate)}`)
+        queryParams.push(`end_date=${encodeURIComponent(filterEndDate)}`)
+      } else if (tahun && /^\d{4}$/.test(tahun)) {
         queryParams.push(`year=${encodeURIComponent(tahun)}`)
       }
 

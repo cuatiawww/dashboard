@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_BASE_URL = (
-  process.env.SIPKK_BACKEND_BASE_URL ||
-  'https://sipkk-new.mediaciptainformasi.co.id'
-).replace(/\/+$/, '')
+const getBackendUrl = () => {
+  let url = process.env.SIPKK_BACKEND_BASE_URL || 'http://localhost/sipkk-baru'
+  if (url.includes('localhost') && !url.includes('/sipkk-baru')) {
+    url = `${url.replace(/\/+$/, '')}/sipkk-baru`
+  }
+  return url.replace(/\/+$/, '')
+}
 
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams.toString()
-  const targetUrl = `${BACKEND_BASE_URL}/api/wilayah-geojson${search ? `?${search}` : ''}`
+  const backendBase = getBackendUrl()
+  const targetUrl = `${backendBase}/api/wilayah-geojson${search ? `?${search}` : ''}`
 
   try {
     const backendRes = await fetch(targetUrl, {
