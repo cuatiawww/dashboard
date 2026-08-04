@@ -27,7 +27,6 @@ import {
   RotateCcw,
   Info,
   Check,
-  FileDown,
   Globe,
   Loader2,
   Home,
@@ -1509,7 +1508,7 @@ export default function UnduhLaporanPage() {
     // RENDER PURE VECTOR SVG DONUT CHART (EXECUTIVE ENHANCED)
     const renderSvgDonutChart = (items: [string, number][], total: number) => {
       if (total === 0 || items.length === 0) {
-        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 40px 0;">Tidak Ada Data Kejadian</div>`
+        return `<div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 40px 0;">Tidak Ada Data Kejadian</div>`
       }
 
       const colors = ['#047D78', '#0d9488', '#d97706', '#dc2626', '#4f46e5', '#2563eb', '#059669', '#9333ea']
@@ -1553,12 +1552,12 @@ export default function UnduhLaporanPage() {
 
         const pctText = Math.round(pct * 100)
         legends.push(`
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 8px; padding: 2px 0; border-bottom: 1px dashed #f1f5f9;">
-            <span style="display: flex; align-items: center; gap: 4px; overflow: hidden;">
-              <span style="display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: ${color}; flex-shrink: 0;"></span>
-              <span style="color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 105px;" title="${label}">${label}</span>
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed #f1f5f9;">
+            <span style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: ${color}; flex-shrink: 0;"></span>
+              <span style="color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;" title="${label}">${label}</span>
             </span>
-            <span style="font-weight: 900; color: #047D78; margin-left: 4px; flex-shrink: 0; font-size: 8px;">
+            <span style="font-weight: 900; color: #047D78; margin-left: 8px; flex-shrink: 0; font-size: 13px;">
               ${val} <small style="color: #64748b; font-weight: bold;">(${pctText}%)</small>
             </span>
           </div>
@@ -1566,8 +1565,8 @@ export default function UnduhLaporanPage() {
       })
 
       return `
-        <div style="display: flex; align-items: center; gap: 6px; padding: 2px 0;">
-          <svg width="130" height="130" viewBox="0 0 130 130" style="flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 24px; padding: 10px 0;">
+          <svg width="220" height="220" viewBox="0 0 130 130" style="flex-shrink: 0;">
             ${paths.join('')}
             <circle cx="${cx}" cy="${cy}" r="${rIn - 2}" fill="#ffffff" />
             <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="14" font-weight="900" fill="#047D78">${total}</text>
@@ -1583,7 +1582,7 @@ export default function UnduhLaporanPage() {
     // RENDER PURE VECTOR SVG HORIZONTAL BAR CHART FOR TOP AFFECTED REGIONS
     const renderSvgTopRegionsChart = (regions: RegionGroup[], total: number) => {
       if (total === 0 || regions.length === 0) {
-        return `<div style="text-align: center; color: #94a3b8; font-size: 10px; padding: 40px 0;">Tidak Ada Data Wilayah</div>`
+        return `<div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 40px 0;">Tidak Ada Data Wilayah</div>`
       }
 
       const top5 = regions.slice(0, 5)
@@ -1591,8 +1590,8 @@ export default function UnduhLaporanPage() {
 
       const bars = top5.map((g, idx) => {
         const pct = Math.round((g.total_laporan / total) * 100)
-        const barWidth = Math.max(8, Math.round((g.total_laporan / maxCount) * 135))
-        const y = 4 + idx * 25
+        const barWidth = Math.max(12, Math.round((g.total_laporan / maxCount) * 340))
+        const y = 10 + idx * 36
 
         const colors = ['#047D78', '#0d9488', '#0284c7', '#d97706', '#dc2626']
         const color = colors[idx % colors.length]
@@ -1600,16 +1599,16 @@ export default function UnduhLaporanPage() {
 
         return `
           <g transform="translate(0, ${y})">
-            <text x="85" y="11" font-size="7.5" font-weight="800" fill="#1e293b" text-anchor="end">${cleanName.substring(0, 15)}</text>
-            <rect x="92" y="2" width="140" height="11" rx="3" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5" />
-            <rect x="92" y="2" width="${barWidth}" height="11" rx="3" fill="${color}" />
-            <text x="${97 + barWidth}" y="11" font-size="7.5" font-weight="900" fill="#047D78">${g.total_laporan} <tspan font-size="6.5" font-weight="bold" fill="#64748b">(${pct}%)</tspan></text>
+            <text x="150" y="16" font-size="13px" font-weight="800" fill="#1e293b" text-anchor="end">${cleanName.substring(0, 24)}</text>
+            <rect x="165" y="2" width="340" height="18" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5" />
+            <rect x="165" y="2" width="${barWidth}" height="18" rx="4" fill="${color}" />
+            <text x="${175 + barWidth}" y="16" font-size="13px" font-weight="900" fill="#047D78">${g.total_laporan} <tspan font-size="11px" font-weight="bold" fill="#64748b">(${pct}%)</tspan></text>
           </g>
         `
       })
 
       return `
-        <svg viewBox="0 0 290 130" width="100%" height="130" style="font-family: sans-serif;">
+        <svg viewBox="0 0 600 200" width="100%" height="200" style="font-family: sans-serif;">
           ${bars.join('')}
         </svg>
       `
@@ -1628,7 +1627,7 @@ export default function UnduhLaporanPage() {
     const topDisasterPct = totalReports > 0 ? Math.round((topDisasterCount / totalReports) * 100) : 0
 
     const secondDisasterName = sortedJenis.length > 1 ? sortedJenis[1][0] : ''
-    const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
+const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
     const secondDisasterPct = totalReports > 0 && sortedJenis.length > 1 ? Math.round((secondDisasterCount / totalReports) * 100) : 0
 
     const printWindow = window.open('', '_blank')
@@ -1646,29 +1645,190 @@ export default function UnduhLaporanPage() {
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm 10mm 10mm 10mm;
+            margin: 15mm 15mm 15mm 15mm;
           }
           * { box-sizing: border-box; }
+          
+          /* Common/Screen Styles */
           body {
             font-family: 'Segoe UI', Arial, sans-serif;
             color: #1e293b;
-            background: #fff;
+            background: #fbffff;
             margin: 0;
             padding: 0;
-            font-size: 10px;
-            line-height: 1.35;
+            font-size: 13px;
+            line-height: 1.45;
           }
           
-          .kop-surat {
+          /* Header bar styling */
+          .top-bar {
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            background: #047D78;
+            color: white;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
+          .top-bar-title-group {
             display: flex;
             align-items: center;
             gap: 12px;
+          }
+          .top-bar-title {
+            font-weight: 800;
+            font-size: 15px;
+          }
+          .top-bar-badge {
+            background: rgba(255,255,255,0.2);
+            font-size: 10px;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-weight: 600;
+          }
+          .print-action-btn {
+            background: #ffffff;
+            color: #047D78;
+            font-weight: bold;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+          }
+          .print-action-btn:hover {
+            background: #e6f6f5;
+            transform: translateY(-1px);
+          }
+          
+          /* Side-by-side main container */
+          .main-layout {
+            display: flex;
+            max-width: 1440px;
+            margin: 0 auto;
+            min-height: calc(100vh - 50px);
+          }
+          
+          /* Left Sidebar Navigation */
+          .sidebar-nav {
+            width: 280px;
+            background: #ffffff;
+            border-right: 1px solid #d5eceb;
+            padding: 24px 16px;
+            position: sticky;
+            top: 50px;
+            height: calc(100vh - 50px);
+            overflow-y: auto;
+            flex-shrink: 0;
+          }
+          .sidebar-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: #4a7a7a;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0;
+            margin-bottom: 12px;
+            padding-left: 8px;
+          }
+          .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .nav-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            display: flex;
+            align-items: start;
+            gap: 8px;
+            padding: 8px 12px;
+            font-size: 13.5px;
+            color: #2563a4;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-family: inherit;
+          }
+          .nav-btn:hover {
+            background: #f5faf9;
+            color: #0f8f96;
+          }
+          .nav-btn.active {
+            background: #e8faf8;
+            color: #0f8f96;
+            font-weight: 700;
+            border-left: 3px solid #0f8f96;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding-left: 9px;
+          }
+          .nav-idx {
+            font-weight: 800;
+            color: #0f8f96;
+            flex-shrink: 0;
+          }
+          .nav-txt {
+            line-height: 1.3;
+          }
+          .print-sidebar-btn {
+            width: 100%;
+            background: #0f8f96;
+            color: white;
+            font-weight: 700;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(15, 143, 150, 0.15);
+          }
+          .print-sidebar-btn:hover {
+            background: #0d7a81;
+            box-shadow: 0 6px 14px rgba(15, 143, 150, 0.25);
+          }
+          
+          /* Right Content area */
+          .content-area {
+            flex: 1;
+            padding: 40px 50px;
+            background: #ffffff;
+            overflow-y: auto;
+          }
+          
+          .report-section {
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px dashed #e2e8f0;
+          }
+          .report-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+          }
+          
+          /* Kop surat */
+          .kop-surat {
+            display: flex;
+            align-items: center;
+            gap: 16px;
             border-bottom: 3px double #047D78;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
           }
           .kop-logo {
-            height: 48px;
+            height: 60px;
             width: auto;
             flex-shrink: 0;
           }
@@ -1676,7 +1836,7 @@ export default function UnduhLaporanPage() {
             flex: 1;
           }
           .kop-text h1 {
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 900;
             color: #047D78;
             margin: 0;
@@ -1684,20 +1844,20 @@ export default function UnduhLaporanPage() {
             letter-spacing: 0.5px;
           }
           .kop-text h2 {
-            font-size: 9.5px;
+            font-size: 12px;
             font-weight: 800;
             color: #1e293b;
-            margin: 2px 0 0 0;
+            margin: 3px 0 0 0;
             text-transform: uppercase;
           }
           .kop-text p {
-            font-size: 8px;
+            font-size: 10px;
             color: #64748b;
-            margin: 1px 0 0 0;
+            margin: 2px 0 0 0;
           }
           .kop-badge {
             text-align: right;
-            font-size: 8px;
+            font-size: 10px;
             color: #64748b;
           }
           .kop-badge .status-tag {
@@ -1705,303 +1865,439 @@ export default function UnduhLaporanPage() {
             background: #047D78;
             color: white;
             font-weight: 800;
-            padding: 2px 7px;
+            padding: 3px 9px;
             border-radius: 4px;
-            font-size: 7.5px;
-            margin-top: 3px;
+            font-size: 9px;
+            margin-top: 4px;
             text-transform: uppercase;
           }
-
-          .summary-box {
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-bottom: 10px;
+          
+          /* Clean Official Header block */
+          .document-title-block {
+            margin-bottom: 25px;
+            padding: 5px 0;
           }
-          .summary-title {
-            font-size: 11px;
+          .doc-title {
+            font-size: 16px;
             font-weight: 900;
             color: #047D78;
             text-transform: uppercase;
-            margin: 0 0 6px 0;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 3px;
+            margin: 0 0 8px 0;
+            letter-spacing: 0.3px;
           }
-          .filter-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-            font-size: 9px;
+          .doc-meta {
+            font-size: 11.5px;
+            color: #334155;
+            margin: 0;
+            line-height: 1.5;
           }
-          .filter-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 4px 6px;
-            border-radius: 4px;
-          }
-          .filter-card .lbl { font-size: 8px; color: #64748b; font-weight: bold; text-transform: uppercase; }
-          .filter-card .val { font-size: 9.5px; color: #0f172a; font-weight: 800; margin-top: 1px; }
-
+          
+          /* KPI dashboard cards */
           .kpi-row {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            margin-bottom: 10px;
+            gap: 12px;
+            margin-bottom: 25px;
           }
           .kpi-card {
-            padding: 6px 4px;
-            border-radius: 6px;
+            padding: 12px 8px;
+            border-radius: 8px;
             text-align: center;
             border: 1px solid #cbd5e1;
           }
-          .kpi-card .kpi-lbl { font-size: 7.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2px; }
-          .kpi-card .kpi-val { font-size: 14px; font-weight: 900; margin-top: 1px; }
-
+          .kpi-card .kpi-lbl {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+          }
+          .kpi-card .kpi-val {
+            font-size: 18px;
+            font-weight: 900;
+            margin-top: 3px;
+          }
+          
+          /* Visual charts */
           .charts-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 25px;
           }
           .chart-card {
             border: 1px solid #cbd5e1;
             border-radius: 8px;
-            padding: 8px 10px;
+            padding: 12px 16px;
             background: #ffffff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.03);
           }
           .chart-card h3 {
-            font-size: 9.5px;
+            font-size: 12px;
             font-weight: 900;
             color: #047D78;
-            margin: 0 0 6px 0;
+            margin: 0 0 12px 0;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 3px;
+            padding-bottom: 6px;
           }
-
-          /* MATRIKS SECTION DENGAN PAGE BREAK KE HALAMAN 2 */
-          .matrix-section {
-            page-break-before: always;
-            break-before: page;
-            margin-top: 12px;
-          }
-          .matrix-section h3 {
-            font-size: 11px;
-            font-weight: 800;
-            color: #0f172a;
-            text-transform: uppercase;
-            margin: 0 0 8px 0;
-            padding-bottom: 4px;
-            border-bottom: 2px solid #047D78;
-          }
+          
+          /* Tables */
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9px;
+            font-size: 11.5px;
             border: 1px solid #94a3b8;
           }
           th {
             background: #047D78;
             color: white;
-            padding: 6px 7px;
+            padding: 8px 10px;
             text-align: left;
-            font-size: 8.5px;
+            font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
             border: 1px solid #036662;
           }
           td {
             border: 1px solid #cbd5e1;
-            padding: 6px 7px;
-            font-size: 9px;
+            padding: 8px 10px;
             vertical-align: middle;
           }
           tbody tr:nth-child(even) {
             background-color: #f8fafc;
           }
-
+          
+          /* Signatures */
           .footer-sig {
-            margin-top: 14px;
+            margin-top: 30px;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
             border-top: 1px solid #cbd5e1;
-            padding-top: 8px;
-            page-break-inside: avoid;
+            padding-top: 15px;
           }
           .sig-box {
             text-align: center;
-            width: 170px;
+            width: 220px;
           }
           .sig-space {
-            height: 35px;
+            height: 55px;
           }
           .sig-name {
             font-weight: 800;
             border-top: 1px solid #1e293b;
-            padding-top: 2px;
-            font-size: 9px;
+            padding-top: 4px;
+            font-size: 12px;
+            color: #0f172a;
           }
-
+          
+          /* Printing media styles (strict document pt design) */
           @media print {
-            body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .no-print { display: none !important; }
-            .matrix-section { page-break-before: always !important; break-before: page !important; }
-            tr { page-break-inside: avoid; break-inside: avoid; }
-            thead { display: table-header-group; }
-            tbody { display: table-row-group; }
+            body {
+              background: #ffffff;
+              color: #000000;
+              font-family: Arial, sans-serif;
+              font-size: 11.5pt;
+              line-height: 1.5;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .main-layout {
+              display: block;
+              min-height: auto;
+            }
+            .content-area {
+              padding: 0;
+              background: none;
+              overflow: visible;
+              width: 100% !important;
+              margin: 0 !important;
+            }
+            .report-section {
+              border-bottom: none;
+              margin-bottom: 0;
+              padding-bottom: 0;
+            }
+            
+            /* PT Scale for standard document look */
+            .kop-text h1 { font-size: 14pt !important; }
+            .kop-text h2 { font-size: 11pt !important; }
+            .kop-text p { font-size: 9.5pt !important; }
+            .kop-logo { height: 65px !important; }
+            .kop-badge { font-size: 9.5pt !important; }
+            
+            .doc-title { font-size: 15pt !important; }
+            .doc-meta { font-size: 11pt !important; }
+            
+            .kpi-card { padding: 8pt 6pt !important; border: 1px solid #94a3b8 !important; }
+            .kpi-card .kpi-lbl { font-size: 8.5pt !important; }
+            .kpi-card .kpi-val { font-size: 16pt !important; }
+            
+            .chart-card { border: 1px solid #94a3b8 !important; padding: 10pt !important; }
+            .chart-card h3 { font-size: 11pt !important; }
+            
+            table { font-size: 10pt !important; border: 1px solid #475569 !important; }
+            th { font-size: 9.5pt !important; padding: 6pt 7pt !important; border: 1px solid #475569 !important; }
+            td { font-size: 9.5pt !important; padding: 6pt 7pt !important; border: 1px solid #cbd5e1 !important; }
+            
+            .sig-name { font-size: 11pt !important; }
+            .sig-box { width: 180pt !important; }
+            .sig-space { height: 50pt !important; }
+            
+            /* Page breaking and layout flow */
+            .page-break {
+              page-break-before: always !important;
+              break-before: page !important;
+              margin-top: 15mm !important;
+            }
+            .no-page-break-inside, tr, .kpi-row, .chart-card, .kop-surat, .footer-sig {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            thead {
+              display: table-header-group !important;
+            }
+            tbody {
+              display: table-row-group !important;
+            }
+            
+            /* Clean black & white and colored adjustments */
+            tbody tr:nth-child(even) {
+              background-color: #f8fafc !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
           }
         </style>
+        <script>
+          function scrollToSection(id) {
+            const target = document.getElementById(id);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            // Update active state in sidebar buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+              btn.classList.remove('active');
+            });
+            const clickedBtn = document.getElementById('btn-' + id);
+            if (clickedBtn) {
+              clickedBtn.classList.add('active');
+            }
+          }
+
+          // Scrollspy to highlight active sections as user scrolls
+          window.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('.report-section');
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const contentArea = document.querySelector('.content-area') || window;
+            
+            function handleSpy() {
+              let currentActive = '';
+              const scrollPos = (contentArea === window) ? window.scrollY : contentArea.scrollTop;
+              
+              sections.forEach(sec => {
+                const secTop = sec.offsetTop - 120;
+                if (scrollPos >= secTop) {
+                  currentActive = sec.id;
+                }
+              });
+              
+              if (currentActive) {
+                navButtons.forEach(btn => {
+                  btn.classList.remove('active');
+                  if (btn.id === 'btn-' + currentActive) {
+                    btn.classList.add('active');
+                  }
+                });
+              }
+            }
+            
+            if (contentArea !== window) {
+              contentArea.addEventListener('scroll', handleSpy);
+            } else {
+              window.addEventListener('scroll', handleSpy);
+            }
+          });
+        </script>
       </head>
       <body>
-        <div class="no-print" style="position: sticky; top: 0; z-index: 9999; background: #047D78; color: white; padding: 10px 16px; margin: 0 0 12px 0; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-weight: 800; font-size: 13px;">Preview Laporan Eksekutif EOC Kemenkes RI</span>
-            <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View (Tampilan Siap Cetak)</span>
+        <!-- Top bar (no-print) -->
+        <div class="no-print top-bar">
+          <div class="top-bar-title-group">
+            <span class="top-bar-title">Preview Laporan Eksekutif EOC Kemenkes RI</span>
+            <span class="top-bar-badge">HTML View & Navigation</span>
           </div>
-          <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            ðŸ–¨ï¸ Cetak ke PDF / Print
+          <button onclick="window.print()" class="print-action-btn">
+            🖨️ Cetak Laporan / Simpan PDF
           </button>
         </div>
 
-        <!-- HALAMAN 1: KOP SURAT, RINGKASAN FILTER, METRIKS, 2-COLUMN SPATIAL CHARTS, & EOC HOTSPOT INSIGHT BANNER -->
-        <div class="page-1-content">
-          <!-- KOP SURAT KEMENKES -->
-          <div class="kop-surat">
-            <img src="${logoUrl}" alt="Logo Kemenkes" class="kop-logo" onerror="this.style.display='none'" />
-            <div class="kop-text">
-              <h1>Kementerian Kesehatan Republik Indonesia</h1>
-              <h2>Direktorat Jenderal Pelayanan Kesehatan â€” Pusat Krisis Kesehatan</h2>
-              <p>Emergency Operations Center (EOC) | Jl. H.R. Rasuna Said Blok X-5 Kav. 4-9 Jakarta | Call Center: 119 / 0812-1212-3119</p>
+        <div class="main-layout">
+          <!-- Left Sidebar Navigation (no-print) -->
+          <aside class="no-print sidebar-nav">
+            <p class="sidebar-title">Contents</p>
+            <nav class="sidebar-menu">
+              <button onclick="scrollToSection('sec-cover')" class="nav-btn active" id="btn-sec-cover">
+                <span class="nav-idx">1.</span> <span class="nav-txt">Kop Surat & Identitas</span>
+              </button>
+              <button onclick="scrollToSection('sec-summary')" class="nav-btn" id="btn-sec-summary">
+                <span class="nav-idx">2.</span> <span class="nav-txt">Ringkasan & KPI</span>
+              </button>
+              <button onclick="scrollToSection('sec-charts')" class="nav-btn" id="btn-sec-charts">
+                <span class="nav-idx">3.</span> <span class="nav-txt">Grafik Visualisasi</span>
+              </button>
+              <button onclick="scrollToSection('sec-narrative')" class="nav-btn" id="btn-sec-narrative">
+                <span class="nav-idx">4.</span> <span class="nav-txt">Ringkasan Eksekutif</span>
+              </button>
+              <button onclick="scrollToSection('sec-matrix')" class="nav-btn" id="btn-sec-matrix">
+                <span class="nav-idx">5.</span> <span class="nav-txt">Matriks Rekapitulasi</span>
+              </button>
+              <button onclick="scrollToSection('sec-signature')" class="nav-btn" id="btn-sec-signature">
+                <span class="nav-idx">6.</span> <span class="nav-txt">Lembar Pengesahan</span>
+              </button>
+            </nav>
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #d5eceb; text-align: center;">
+              <button onclick="window.print()" class="print-sidebar-btn">
+                🖨️ Cetak Dokumen (A4)
+              </button>
             </div>
-            <div class="kop-badge">
-              <b>NO DOK: EOC/LAP-DASH/${new Date().getFullYear()}</b><br/>
-              <span>TGL CETAK: ${new Date().toLocaleDateString('id-ID')}</span><br/>
-              <span class="status-tag">Laporan Terfilter</span>
-            </div>
-          </div>
+          </aside>
 
-          <!-- DETAILED EXECUTIVE METADATA BANNER -->
-          <div class="summary-box">
-            <h2 class="summary-title">LAPORAN EKSEKUTIF PEMANTAUAN KEJADIAN BENCANA & KRISIS KESEHATAN</h2>
-            <div class="filter-grid">
-              <div class="filter-card">
-                <div class="lbl">Cakupan Wilayah:</div>
-                <div class="val">${filterWilayahText}</div>
-              </div>
-              <div class="filter-card">
-                <div class="lbl">Jenis Bencana:</div>
-                <div class="val">${filterBencanaText}</div>
-              </div>
-              <div class="filter-card">
-                <div class="lbl">Periode Waktu Filter:</div>
-                <div class="val">${timePresetText}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- KPI SUMMARY CARDS (5 COLUMNS GRID) -->
-          <div class="kpi-row">
-            <div class="kpi-card" style="background: #f0fdf4; border-color: #bbf7d0;">
-              <div class="kpi-lbl" style="color: #166534;">Total Laporan</div>
-              <div class="kpi-val" style="color: #047D78;">${totalReports}</div>
-            </div>
-            <div class="kpi-card" style="background: #fef2f2; border-color: #fecaca;">
-              <div class="kpi-lbl" style="color: #991b1b;">Korban Meninggal</div>
-              <div class="kpi-val" style="color: #dc2626;">${totalMeninggal} <span style="font-size: 8px;">Jiwa</span></div>
-            </div>
-            <div class="kpi-card" style="background: #fffbeb; border-color: #fef3c7;">
-              <div class="kpi-lbl" style="color: #92400e;">Luka & Hilang</div>
-              <div class="kpi-val" style="color: #d97706;">${totalLuka + totalHilang} <span style="font-size: 8px;">Jiwa</span></div>
-            </div>
-            <div class="kpi-card" style="background: #f0f9ff; border-color: #bae6fd;">
-              <div class="kpi-lbl" style="color: #075985;">Terdampak/Pengungsi</div>
-              <div class="kpi-val" style="color: #0284c7;">${totalTerdampak + totalPengungsi} <span style="font-size: 8px;">Jiwa</span></div>
-            </div>
-            <div class="kpi-card" style="background: #fdf4ff; border-color: #f5d0fe;">
-              <div class="kpi-lbl" style="color: #86198f;">Faskes Terdampak</div>
-              <div class="kpi-val" style="color: #a21caf;">${totalFaskes} <span style="font-size: 8px;">Unit</span></div>
-            </div>
-          </div>
-
-          <!-- 2-COLUMN DASHBOARD VISUAL CHARTS SECTION (DONUT CHART + TOP REGIONS BAR CHART) -->
-          <div class="charts-grid">
-            <div class="chart-card">
-              <h3>1. PROP. BENCANA TERBANYAK (TOP 5)</h3>
-              ${chart1Html}
-            </div>
-            <div class="chart-card">
-              <h3>2. TOP 5 WILAYAH KEJADIAN TERBANYAK</h3>
-              ${bar1Html}
-            </div>
-          </div>
-
-          <!-- NARRATIVE EXECUTIVE REPORT PARAGRAPHS (FORMAL DOCUMENT TEXT - 100% DYNAMIC) -->
-          <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; background: #ffffff; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <h3 style="font-size: 10px; font-weight: 900; color: #047D78; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #047D78; padding-bottom: 3px;">
-              RINGKASAN EKSEKUTIF & REKOMENDASI TANGGAP KRISIS KESEHATAN
-            </h3>
+          <!-- Right Content Area -->
+          <main class="content-area">
             
-            <div style="font-size: 8.5px; line-height: 1.5; color: #1e293b; text-align: justify;">
-              <p style="margin: 0 0 5px 0;">
-                <b>1. Gambaran Umum & Dispersi Kejadian:</b> Berdasarkan hasil pemantauan terpadu Emergency Operations Center (EOC) Pusat Krisis Kesehatan Kementerian Kesehatan RI di cakupan wilayah <b>${filterWilayahText}</b> untuk periode pemantauan <b>${timePresetText}</b>, tercatat akumulasi sebanyak <b>${totalReports} total laporan</b> kejadian bencana. Jenis bencana yang paling dominan di daerah pemantauan adalah <b style="color: #047D78;">${topDisasterName}</b> dengan total <b>${topDisasterCount} kejadian (${topDisasterPct}%)</b> dari keseluruhan laporan yang terverifikasi di sistem EOC${secondDisasterName ? `, diikuti oleh <b>${secondDisasterName}</b> sebanyak <b>${secondDisasterCount} kejadian (${secondDisasterPct}%)` : ''}. Wilayah dengan frekuensi laporan tertinggi adalah <b style="color: #dc2626;">${topRegionName}</b> dengan <b>${topRegionCount} kejadian (${topRegionPct}%)</b>.
-              </p>
-              
-              <p style="margin: 0 0 5px 0;">
-                <b>2. Penilaian Dampak Kesehatan Populasi & Fasilitas:</b> Akumulasi dampak krisis kesehatan mencakup <b>${totalMeninggal} jiwa meninggal dunia</b>, <b>${totalLuka} jiwa korban luka-luka</b>, <b>${totalHilang} jiwa hilang</b>, serta <b>${(totalPengungsi + totalTerdampak).toLocaleString('id-ID')} jiwa warga terpaksa mengungsi / terdampak krisis</b>. Terdata pula sebanyak <b>${totalFaskes} unit fasilitas pelayanan kesehatan</b> (Puskesmas, Poskesdes, dan Rumah Sakit) yang mengalami keretakan fisik, terendam air, atau mengalami penurunan kapasitas operasional pelayanan kesehatan darurat.
-              </p>
-              
-              <p style="margin: 0;">
-                <b>3. Rekomendasi Operasional Tanggap Darurat EOC:</b>
-                <span style="display: block; margin-top: 2px; padding-left: 8px;">
-                  a. <b>Penetapan Status & Posko:</b> Memperkuat siaga operasional Posko EOC Klaster Kesehatan Dinas Kesehatan Kab/Kota dan Tim Regional Pusat Krisis Kesehatan.<br/>
-                  b. <b>Mobilisasi Tim Kesehatan:</b> Meniagakan Tim Rapid Health Assessment (RHA) dan Emergency Medical Team (EMT) untuk penanganan medis di lokasi terdampak utama.<br/>
-                  c. <b>Dukungan Logistik & Obat-obatan:</b> Mengirimkan buffer stock logistik kesehatan (paket obat darurat, MP-ASI, Hygiene Kits, dan kaporit) sesuai estimasi kebutuhan riil.
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
+            <!-- SECTION 1: COVER & KOP -->
+            <section id="sec-cover" class="report-section">
+              <!-- KOP SURAT KEMENKES -->
+              <div class="kop-surat">
+                <img src="${logoUrl}" alt="Logo Kemenkes" class="kop-logo" onerror="this.style.display='none'" />
+                <div class="kop-text">
+                  <h1>Kementerian Kesehatan Republik Indonesia</h1>
+                  <p>Emergency Operations Center (EOC) | Jl. H.R. Rasuna Said Blok X-5 Kav. 4-9 Jakarta | Call Center: 119 / 0812-1212-3119</p>
+                </div>
+                <div class="kop-badge">
+                  <span>TGL CETAK: ${new Date().toLocaleDateString('id-ID')}</span>
+                </div>
+              </div>
+            </section>
 
-        <!-- HALAMAN 2 DST: MATRIKS REKAPITULASI DENGAN PAGE-BREAK-BEFORE & FULL GRID BORDERS -->
-        <div class="matrix-section">
-          <h3>Matriks Rekapitulasi Pemantauan Bencana Berdasarkan ${groupByLabel} (${totalReports} Total Laporan)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 32px; text-align: center;">NO</th>
-                <th>WILAYAH (${groupByLabel})</th>
-                <th style="text-align: center;">TOTAL KEJADIAN</th>
-                <th>BENCANA DOMINAN</th>
-                <th style="text-align: center;">MENINGGAL (MD)</th>
-                <th style="text-align: center;">LUKA & HILANG</th>
-                <th style="text-align: center;">TERDAMPAK / PENGUNGSI</th>
-                <th style="text-align: center;">FASKES TERDAMPAK</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${matrixRowsHtml}
-              ${summaryRowHtml}
-            </tbody>
-          </table>
+            <!-- SECTION 2: SUMMARY & KPI -->
+            <section id="sec-summary" class="report-section">
+              <!-- KPI SUMMARY CARDS (5 COLUMNS GRID) -->
+              <div class="kpi-row">
+                <div class="kpi-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+                  <div class="kpi-lbl" style="color: #166534;">Total Laporan</div>
+                  <div class="kpi-val" style="color: #047D78;">${totalReports}</div>
+                </div>
+                <div class="kpi-card" style="background: #fef2f2; border-color: #fecaca;">
+                  <div class="kpi-lbl" style="color: #991b1b;">Korban Meninggal</div>
+                  <div class="kpi-val" style="color: #dc2626;">${totalMeninggal} <span style="font-size: 8px;">Jiwa</span></div>
+                </div>
+                <div class="kpi-card" style="background: #fffbeb; border-color: #fef3c7;">
+                  <div class="kpi-lbl" style="color: #92400e;">Luka & Hilang</div>
+                  <div class="kpi-val" style="color: #d97706;">${totalLuka + totalHilang} <span style="font-size: 8px;">Jiwa</span></div>
+                </div>
+                <div class="kpi-card" style="background: #f0f9ff; border-color: #bae6fd;">
+                  <div class="kpi-lbl" style="color: #075985;">Terdampak/Pengungsi</div>
+                  <div class="kpi-val" style="color: #0284c7;">${totalTerdampak + totalPengungsi} <span style="font-size: 8px;">Jiwa</span></div>
+                </div>
+                <div class="kpi-card" style="background: #fdf4ff; border-color: #f5d0fe;">
+                  <div class="kpi-lbl" style="color: #86198f;">Faskes Terdampak</div>
+                  <div class="kpi-val" style="color: #a21caf;">${totalFaskes} <span style="font-size: 8px;">Unit</span></div>
+                </div>
+              </div>
+            </section>
 
-          <!-- SIGNATURE & STAMP FOOTER -->
-          <div class="footer-sig">
-            <div style="font-size: 8.5px; color: #64748b;">
-              <b>EOC Krisis Kesehatan Kemenkes RI</b><br/>
-              Dokumen ini dihasilkan otomatis berdasarkan hasil filter sistem EOC Kemenkes RI.<br/>
-              Waktu Generasi: ${new Date().toLocaleString('id-ID')} WIB
-            </div>
-            <div class="sig-box">
-              <div style="font-size: 9px; color: #475569; margin-bottom: 4px;">Penanggung Jawab EOC,</div>
-              <div class="sig-space"></div>
-              <div class="sig-name">Tim Komando EOC Kemenkes</div>
-            </div>
-          </div>
+            <!-- SECTION 3: CHARTS -->
+            <section id="sec-charts" class="report-section">
+              <!-- 2-COLUMN DASHBOARD VISUAL CHARTS SECTION (DONUT CHART + TOP REGIONS BAR CHART) -->
+              <div class="charts-grid">
+                <div class="chart-card">
+                  <h3>1. PROP. BENCANA TERBANYAK (TOP 5)</h3>
+                  ${chart1Html}
+                </div>
+                <div class="chart-card">
+                  <h3>2. TOP 5 WILAYAH KEJADIAN TERBANYAK</h3>
+                  ${bar1Html}
+                </div>
+              </div>
+            </section>
+
+            <!-- SECTION 4: NARRATIVE INSIGHTS -->
+            <section id="sec-narrative" class="report-section">
+              <!-- NARRATIVE EXECUTIVE REPORT PARAGRAPHS (FORMAL DOCUMENT TEXT - 100% DYNAMIC) -->
+              <div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <h3 style="font-size: 13px; font-weight: 900; color: #047D78; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #047D78; padding-bottom: 5px;">
+                  RINGKASAN EKSEKUTIF & REKOMENDASI TANGGAP KRISIS KESEHATAN
+                </h3>
+                
+                <div style="font-size: 12px; line-height: 1.6; color: #1e293b; text-align: justify;">
+                  <p style="margin: 0 0 8px 0;">
+                    <b>1. Gambaran Umum & Dispersi Kejadian:</b> Berdasarkan hasil pemantauan terpadu Emergency Operations Center (EOC) Pusat Krisis Kesehatan Kementerian Kesehatan RI di cakupan wilayah <b>${filterWilayahText}</b> untuk periode pemantauan <b>${timePresetText}</b>, tercatat akumulasi sebanyak <b>${totalReports} total laporan</b> kejadian bencana. Jenis bencana yang paling dominan di daerah pemantauan adalah <b style="color: #047D78;">${topDisasterName}</b> dengan total <b>${topDisasterCount} kejadian (${topDisasterPct}%)</b> dari keseluruhan laporan yang terverifikasi di sistem EOC${secondDisasterName ? `, diikuti oleh <b>${secondDisasterName}</b> sebanyak <b>${secondDisasterCount} kejadian (${secondDisasterPct}%)` : ''}. Wilayah dengan frekuensi laporan tertinggi adalah <b style="color: #dc2626;">${topRegionName}</b> dengan <b>${topRegionCount} kejadian (${topRegionPct}%)</b>.
+                  </p>
+                  
+                  <p style="margin: 0 0 8px 0;">
+                    <b>2. Penilaian Dampak Kesehatan Populasi & Fasilitas:</b> Akumulasi dampak krisis kesehatan mencakup <b>${totalMeninggal} jiwa meninggal dunia</b>, <b>${totalLuka} jiwa korban luka-luka</b>, <b>${totalHilang} jiwa hilang</b>, serta <b>${(totalPengungsi + totalTerdampak).toLocaleString('id-ID')} jiwa warga terpaksa mengungsi / terdampak krisis</b>. Terdata pula sebanyak <b>${totalFaskes} unit fasilitas pelayanan kesehatan</b> (Puskesmas, Poskesdes, dan Rumah Sakit) yang mengalami keretakan fisik, terendam air, atau mengalami penurunan kapasitas operasional pelayanan kesehatan darurat.
+                  </p>
+                  
+                  <p style="margin: 0;">
+                    <b>3. Rekomendasi Operasional Tanggap Darurat EOC:</b>
+                    <span style="display: block; margin-top: 4px; padding-left: 12px;">
+                      a. <b>Penetapan Status & Posko:</b> Memperkuat siaga operasional Posko EOC Klaster Kesehatan Dinas Kesehatan Kab/Kota dan Tim Regional Pusat Krisis Kesehatan.<br/>
+                      b. <b>Mobilisasi Tim Kesehatan:</b> Meniagakan Tim Rapid Health Assessment (RHA) dan Emergency Medical Team (EMT) untuk penanganan medis di lokasi terdampak utama.<br/>
+                      c. <b>Dukungan Logistik & Obat-obatan:</b> Mengirimkan buffer stock logistik kesehatan (paket obat darurat, MP-ASI, Hygiene Kits, dan kaporit) sesuai estimasi kebutuhan riil.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <!-- SECTION 5: MATRIX TABLE -->
+            <section id="sec-matrix" class="report-section page-break">
+              <div class="matrix-section" style="page-break-before: avoid; break-before: auto; margin-top: 0;">
+                <h3 style="margin-top: 0; font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; padding-bottom: 5px; border-bottom: 2px solid #047D78;">
+                  Matriks Rekapitulasi Pemantauan Bencana Berdasarkan ${groupByLabel} (${totalReports} Total Laporan)
+                </h3>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width: 35px; text-align: center;">NO</th>
+                      <th>WILAYAH (${groupByLabel})</th>
+                      <th style="text-align: center;">TOTAL KEJADIAN</th>
+                      <th>BENCANA DOMINAN</th>
+                      <th style="text-align: center;">MENINGGAL (MD)</th>
+                      <th style="text-align: center;">LUKA & HILANG</th>
+                      <th style="text-align: center;">TERDAMPAK / PENGUNGSI</th>
+                      <th style="text-align: center;">FASKES TERDAMPAK</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${matrixRowsHtml}
+                    ${summaryRowHtml}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- SECTION 6: SIGNATURES -->
+            <section id="sec-signature" class="report-section no-page-break-inside">
+              <!-- SIGNATURE & STAMP FOOTER -->
+              <div class="footer-sig">
+                <div style="font-size: 11px; color: #64748b; line-height: 1.4;">
+                  <b>EOC Krisis Kesehatan Kemenkes RI</b><br/>
+                  Dokumen ini dihasilkan otomatis berdasarkan hasil filter sistem EOC Kemenkes RI.<br/>
+                  Waktu Generasi: ${new Date().toLocaleString('id-ID')} WIB
+                </div>
+                <div class="sig-box">
+                  <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">Penanggung Jawab EOC,</div>
+                  <div class="sig-space"></div>
+                  <div class="sig-name">Tim Komando EOC Kemenkes</div>
+                </div>
+              </div>
+            </section>
+          </main>
         </div>
       </body>
       </html>
@@ -2739,13 +3035,12 @@ export default function UnduhLaporanPage() {
                       <th className="py-3 px-3 border-b border-[#036662] text-center">PENDUDUK TERDAMPAK</th>
                       <th className="py-3 px-3 border-b border-[#036662] text-center">FASKES TERDAMPAK</th>
                       <th className="py-3 px-3 border-b border-[#036662] text-center">DETAIL</th>
-                      <th className="py-3 px-3 border-b border-[#036662] text-center">UNDUH DOKUMEN</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
                     {paginatedReports.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-12 text-center text-slate-400">
+                        <td colSpan={9} className="py-12 text-center text-slate-400">
                           <Info className="mx-auto h-8 w-8 opacity-40 mb-2" />
                           <p className="text-sm font-semibold">Tidak ada laporan kejadian yang sesuai dengan kriteria filter lokasi/bencana.</p>
                           <button
@@ -2836,19 +3131,6 @@ export default function UnduhLaporanPage() {
                               >
                                 <Eye className="h-3 w-3" />
                                 <span>Pratinjau</span>
-                              </button>
-                            </td>
-
-                            {/* UNDUH DOKUMEN PER ITEM */}
-                            <td className="py-3 px-3 text-center whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadSinglePDF(item)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-[#047D78] hover:bg-[#036662] px-2.5 py-1 text-[11px] font-bold text-white transition uppercase tracking-wider"
-                                title="Unduh Dokumen Laporan PDF"
-                              >
-                                <FileDown className="h-3.5 w-3.5" />
-                                <span>Unduh PDF</span>
                               </button>
                             </td>
                           </tr>
