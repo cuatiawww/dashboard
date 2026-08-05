@@ -329,6 +329,7 @@ export default function DashboardKejadianPage() {
   const [showVideoInput, setShowVideoInput] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [activeFullscreenVideo, setActiveFullscreenVideo] = useState<string | null>(null)
+  const [isSyncingMv, setIsSyncingMv] = useState(false)
 
   const handleShareWa = (title: string, url: string) => {
     const text = `Halo! Tonton Laporan ${title} dari EOC Krisis Kesehatan Kemenkes RI: ${url}`;
@@ -1509,6 +1510,31 @@ export default function DashboardKejadianPage() {
     }
   }, [token, province, kabupaten, tahun])
 
+  const handleSyncMv = async () => {
+    if (isSyncingMv) return
+    try {
+      setIsSyncingMv(true)
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+      const response = await fetch(`${basePath}/api/refresh-mv`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      const json = await response.json().catch(() => null)
+      if (json?.success) {
+        alert('Data Materialized View berhasil disinkronkan!')
+        fetchData()
+      } else {
+        alert('Gagal menyinkronkan data: ' + (json?.message || 'Unknown error'))
+      }
+    } catch (err: any) {
+      alert('Gagal menyinkronkan data: ' + err.message)
+    } finally {
+      setIsSyncingMv(false)
+    }
+  }
+
   useEffect(() => {
     fetchData()
   }, [fetchData])
@@ -1861,7 +1887,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
       {/* Smart Search, Info Filter & Reset Button Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-[10fr_8fr_2fr] gap-4 w-full items-start z-20 relative">
+      <section className="grid grid-cols-1 md:grid-cols-[8fr_6fr_3fr_3fr] gap-4 w-full items-start z-20 relative">
 
         {/* Column 1: Smart Search Bar */}
         <div className="relative w-full z-20">
@@ -2012,8 +2038,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
         {/* Column 3: Reset Filter Button */}
         <div className="w-full">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280] md:invisible">
-            Aksi
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
+            Reset Filter
           </p>
           <button
             onClick={handleResetFilter}
@@ -2026,6 +2052,30 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           >
             <RefreshCw className="h-4 w-4 shrink-0" />
             <span>RESET FILTER</span>
+          </button>
+        </div>
+
+        {/* Column 4: Sync Data Button */}
+        <div className="w-full">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-[#6b7280]">
+            Sync Data
+          </p>
+          <button
+            onClick={handleSyncMv}
+            disabled={isSyncingMv}
+            title="Refresh Materialized View"
+            className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 text-xs font-extrabold shadow-sm transition-all outline-none h-12 uppercase tracking-wider ${
+              isSyncingMv
+                ? 'border-slate-200 bg-slate-50/50 text-slate-400 cursor-not-allowed'
+                : 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 hover:-translate-y-0.5 active:scale-95'
+            }`}
+          >
+            {isSyncingMv ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400" />
+            ) : (
+              <RefreshCw className="h-4 w-4 shrink-0" />
+            )}
+            <span>{isSyncingMv ? 'Syncing...' : 'Sync Data'}</span>
           </button>
         </div>
       </section>
