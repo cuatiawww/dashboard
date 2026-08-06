@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/lib/authStore'
 import DashboardHeader, { DashboardSidebar } from './DashboardHeader'
 import Footer from './Footer'
@@ -18,7 +18,6 @@ export default function AppShell({ children }: AppShellProps) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
 
   const pathname = usePathname()
-  const router = useRouter()
   const { isAuthenticated, isGuest, isInitialized, initialize } = useAuthStore()
 
   const publicRoutes = ['/login', '/register', '/forgot-password', '/sso']
@@ -51,12 +50,6 @@ export default function AppShell({ children }: AppShellProps) {
       }
     }
   }, [])
-
-  useEffect(() => {
-    if (isInitialized && !isAuthenticated && !isGuest && !isPublicRoute) {
-      router.push('/login')
-    }
-  }, [isInitialized, isAuthenticated, isGuest, isPublicRoute, router])
 
   if (!isInitialized) {
     return (

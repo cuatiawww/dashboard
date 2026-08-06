@@ -100,12 +100,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       } catch (e) {
         localStorage.removeItem('auth_token')
         localStorage.removeItem('auth_user')
-        set({ token: null, user: null, isAuthenticated: false, isGuest: false, isInitialized: true })
+        set({ token: null, user: null, isAuthenticated: false, isGuest: true, isInitialized: true })
       }
     } else if (isGuestStr === 'true') {
       set({ token: null, user: null, isAuthenticated: false, isGuest: true, isInitialized: true })
     } else {
-      set({ isInitialized: true, isGuest: false })
+      localStorage.setItem('auth_guest', 'true')
+      set({ token: null, user: null, isAuthenticated: false, isGuest: true, isInitialized: true })
     }
   }
 }))
