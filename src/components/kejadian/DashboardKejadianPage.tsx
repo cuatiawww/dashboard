@@ -767,6 +767,7 @@ export default function DashboardKejadianPage() {
 
   // Handle initial deep-linking from query parameter ?id=...
   const initialChecked = useRef(false);
+  const hadSelectedEventRef = useRef(false);
   useEffect(() => {
     if (data?.markers && data.markers.length > 0 && !initialChecked.current) {
       initialChecked.current = true;
@@ -776,6 +777,7 @@ export default function DashboardKejadianPage() {
         const matchingEvent = data.markers.find((m: any) => m.kode_trans === initialId);
         if (matchingEvent) {
           setSelectedEvent(matchingEvent);
+          hadSelectedEventRef.current = true;
         }
       }
     }
@@ -787,16 +789,15 @@ export default function DashboardKejadianPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const currentId = urlParams.get('id');
       if (selectedEvent) {
+        hadSelectedEventRef.current = true;
         if (currentId !== selectedEvent.kode_trans) {
           urlParams.set('id', selectedEvent.kode_trans);
-          window.history.pushState(null, '', `?${urlParams.toString()}`);
+          window.history.replaceState(null, '', `${window.location.pathname}?${urlParams.toString()}`);
         }
-      } else {
-        if (currentId) {
-          urlParams.delete('id');
-          const newSearch = urlParams.toString();
-          window.history.replaceState(null, '', newSearch ? `?${newSearch}` : window.location.pathname);
-        }
+      } else if (hadSelectedEventRef.current && currentId) {
+        urlParams.delete('id');
+        const newSearch = urlParams.toString();
+        window.history.replaceState(null, '', newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname);
       }
     }
   }, [selectedEvent]);

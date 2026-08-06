@@ -23,7 +23,9 @@ import {
   CloudRain,
   Map,
   Navigation,
-  Warehouse
+  Warehouse,
+  Share2,
+  Download
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import { useAuthStore } from '@/lib/authStore'
@@ -127,6 +129,42 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
   const [showHealthInfo, setShowHealthInfo] = useState(false)
   const [kapasitasNakes, setKapasitasNakes] = useState<any[]>([])
   const [loadingKapasitas, setLoadingKapasitas] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+    if (!shareUrl) return
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Detail Kejadian Krisis Kesehatan',
+          text: 'Lihat detail kejadian krisis kesehatan ini',
+          url: shareUrl,
+        })
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+        setShareCopied(true)
+        window.setTimeout(() => setShareCopied(false), 2000)
+      }
+    } catch (error) {
+      console.error('Share failed', error)
+    }
+  }
+
+  const handleDownload = () => {
+    if (typeof window === 'undefined') return
+    const text = `Ringkasan Kejadian\nNama: ${selectedEvent?.nama || selectedEvent?.jenis_bencana || 'Kejadian'}\nLokasi: ${selectedEvent?.kabupaten || selectedEvent?.provinsi || '-'}\nTanggal: ${formattedDate || '-'}`
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ringkasan-kejadian-${selectedEvent?.kode_trans || 'detail'}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  }
 
   // EOC Routing & Points States for Flood
   const [selectedRouteTarget, setSelectedRouteTarget] = useState<{
@@ -798,12 +836,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-xs text-slate-500 md:self-end">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
             <span>Terakhir Diperbarui: {formattedDate}</span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              title="Bagikan tautan"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              {shareCopied ? 'Tersalin' : 'Share'}
+            </button>
+            <button
+              onClick={handleDownload}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              title="Unduh ringkasan"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Unduh
+            </button>
           </div>
         </div>
       ) : (
