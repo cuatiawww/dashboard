@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 
 
@@ -21,6 +21,7 @@ import { fromLonLat } from 'ol/proj'
 import { defaults as defaultControls } from 'ol/control'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
+import LineString from 'ol/geom/LineString'
 import Overlay from 'ol/Overlay'
 import CircleGeom from 'ol/geom/Circle'
 import 'ol/ol.css'
@@ -74,6 +75,20 @@ interface DisasterMapProps {
   markerMonths?: number
   setMarkerMonths?: (val: number) => void
   onSelectEvent?: (event: MarkerData) => void
+  // Flood EOC Routing Props
+  isFloodEocMode?: boolean
+  selectedRouteTarget?: {
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    type: 'hospital' | 'clinic' | 'shelter'
+  } | null
+  routeCoords?: number[][]
+  routeInfo?: { distance: number; duration: number } | null
+  faskesList?: any[]
+  poskoList?: any[]
+  onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter') => void
 }
 
 interface MarkerPopupState {
@@ -205,7 +220,23 @@ const NEXT_BASE_PATH: string = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 // Component
 // ─────────────────────────────────────────────
 
-export default function DisasterMap({ markers, selectedRegions = [], userScope, onSelectProvince, isGuest: propIsGuest, markerMonths, setMarkerMonths, onSelectEvent }: DisasterMapProps) {
+export default function DisasterMap({
+  markers,
+  selectedRegions = [],
+  userScope,
+  onSelectProvince,
+  isGuest: propIsGuest,
+  markerMonths,
+  setMarkerMonths,
+  onSelectEvent,
+  isFloodEocMode = false,
+  selectedRouteTarget = null,
+  routeCoords = [],
+  routeInfo = null,
+  faskesList = [],
+  poskoList = [],
+  onSelectRouteTarget
+}: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
@@ -229,22 +260,34 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
   const bnpbLongsorLayerRef = useRef<any>(null)
   const bnpbKarhutlaLayerRef = useRef<any>(null)
   const windLayerRef = useRef<any>(null)
+  
+  // EOC Routing Refs
+  const eocLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
 
   // Stable callback refs (avoid stale closures inside OL event handlers)
   const onSelectProvinceRef = useRef(onSelectProvince)
   const userScopeRef = useRef(userScope)
   const markersRef = useRef(markers)
+  const onSelectRouteTargetRef = useRef(onSelectRouteTarget)
 
   // ── UI state ──
   const [isLoading, setIsLoading] = useState(false)
   const [mapInstance, setMapInstance] = useState<OlMap | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
+  const [showEocRoute, setShowEocRoute] = useState(true)
+
+  // Auto-enable EOC Routing layer when a route target is selected
+  useEffect(() => {
+    if (selectedRouteTarget) {
+      setShowEocRoute(true)
+    }
+  }, [selectedRouteTarget])
   const [showBaseMap, setShowBaseMap] = useState(true)
   const [showGeoJson, setShowGeoJson] = useState(true)
   const [showWindy, setShowWindy] = useState(true)
-  const [showRegionLegend, setShowRegionLegend] = useState(true)
-  const [showCasualtyLegend, setShowCasualtyLegend] = useState(true)
+  const [showRegionLegend, setShowRegionLegend] = useState(false)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
   // BNPB layer visibilities
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
@@ -391,7 +434,8 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
     onSelectProvinceRef.current = onSelectProvince
     userScopeRef.current = userScope
     markersRef.current = markers
-  }, [onSelectProvince, userScope, markers])
+    onSelectRouteTargetRef.current = onSelectRouteTarget
+  }, [onSelectProvince, userScope, markers, onSelectRouteTarget])
 
   // Dismiss popup on scope changes
   useEffect(() => {
@@ -606,6 +650,10 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
     const markerLayer = new VectorLayer({ source: new VectorSource(), zIndex: 10 })
     markerLayerRef.current = markerLayer
 
+    // EOC routing & faskes layer
+    const eocLayer = new VectorLayer({ source: new VectorSource(), zIndex: 12 })
+    eocLayerRef.current = eocLayer
+
     const map = new OlMap({
       target: mapRef.current,
       layers: [
@@ -619,7 +667,8 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         bnpbKarhutlaLayer,
         provinceLayer,
         kabupatenLayer,
-        markerLayer
+        markerLayer,
+        eocLayer
       ],
       controls: defaultControls({ attribution: false }),
       view: new View({
@@ -654,6 +703,25 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
         }
 
         setActivePopup(null)
+        return
+      }
+
+      // Check EOC Layer feature
+      const eocFeature = map.forEachFeatureAtPixel(
+        evt.pixel,
+        (f) => f,
+        { layerFilter: (l) => l === eocLayerRef.current }
+      )
+      if (eocFeature) {
+        const id = eocFeature.get('id')
+        const name = eocFeature.get('name')
+        const rawItem = eocFeature.get('rawItem')
+        const itemType = eocFeature.get('itemType')
+        if (id && id !== 'flood' && rawItem && onSelectRouteTargetRef.current) {
+          onSelectRouteTargetRef.current(rawItem, itemType)
+        }
+        setActivePopup(null)
+        setMarkerPopup(null)
         return
       }
 
@@ -799,6 +867,7 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       provinceLayerRef.current = null
       kabupatenLayerRef.current = null
       markerLayerRef.current = null
+      eocLayerRef.current = null
     }
   }, [])
 
@@ -1387,6 +1456,134 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
 
   }, [filteredMarkers, showMarkers, showBmkg, bmkgGempas, showEwsPulse, createPulseOverlay])
 
+  // ── Sync EOC Routing & Faskes Layer ──
+  useEffect(() => {
+    const eocLayer = eocLayerRef.current
+    if (!eocLayer) return
+
+    const source = eocLayer.getSource()!
+    source.clear()
+
+    if (!isFloodEocMode || !showEocRoute) {
+      eocLayer.setVisible(false)
+      return
+    }
+
+    eocLayer.setVisible(true)
+
+    // Start coordinates (center of disaster or kabupaten)
+    const firstMarker = markers && markers[0]
+    const startLat = firstMarker ? firstMarker.lat : 1.6833
+    const startLng = firstMarker ? firstMarker.lng : 98.8472
+
+    const getSvgPin = (color: string, iconType: 'flood' | 'hospital' | 'clinic' | 'shelter') => {
+      let inner = '<circle cx="12" cy="10" r="3" fill="' + color + '"/>'
+      if (iconType === 'hospital') {
+        inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.5"/>'
+      } else if (iconType === 'clinic') {
+        inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.5"/>'
+      } else if (iconType === 'shelter') {
+        inner = '<path d="M12 6l5 4v6H7v-6l5-4z" stroke="#ffffff" stroke-width="2"/>'
+      } else if (iconType === 'flood') {
+        inner = '<path d="M12 7v5M12 16h.01" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>'
+      }
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="34" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" fill="${color}" opacity="0.95"/>${inner}</svg>`
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+    }
+
+    // 1. Add Flood Center pin if there's firstMarker
+    if (firstMarker) {
+      const floodFeat = new Feature({
+        geometry: new Point(fromLonLat([startLng, startLat])),
+        id: 'flood',
+        name: 'Pusat Kejadian Banjir'
+      })
+      floodFeat.setStyle(new Style({
+        image: new Icon({
+          src: getSvgPin('#ef4444', 'flood'),
+          scale: 0.9,
+          anchor: [0.5, 1]
+        })
+      }))
+      source.addFeature(floodFeat)
+    }
+
+    // 2. Add Faskes List
+    const fList = Array.isArray(faskesList) ? faskesList : []
+    fList.forEach((f: any, idx: number) => {
+      if (f.latitude && f.longitude && Number(f.latitude) !== 0 && Number(f.longitude) !== 0) {
+        const lat = Number(f.latitude)
+        const lng = Number(f.longitude)
+        const isRS = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('rs') || String(f.nama || '').toLowerCase().includes('rs')
+        const fFeat = new Feature({
+          geometry: new Point(fromLonLat([lng, lat])),
+          id: f.nama || `faskes-${idx}`,
+          name: f.nama,
+          rawItem: f,
+          itemType: isRS ? 'hospital' : 'clinic'
+        })
+        fFeat.setStyle(new Style({
+          image: new Icon({
+            src: getSvgPin(isRS ? '#3b82f6' : '#10b981', isRS ? 'hospital' : 'clinic'),
+            scale: 0.85,
+            anchor: [0.5, 1]
+          })
+        }))
+        source.addFeature(fFeat)
+      }
+    })
+
+    // 3. Add Posko List
+    const pList = Array.isArray(poskoList) ? poskoList : []
+    pList.forEach((pos: any, idx: number) => {
+      if (pos.latitude && pos.longitude && Number(pos.latitude) !== 0 && Number(pos.longitude) !== 0) {
+        const lat = Number(pos.latitude)
+        const lng = Number(pos.longitude)
+        const pFeat = new Feature({
+          geometry: new Point(fromLonLat([lng, lat])),
+          id: pos.nama || `posko-${idx}`,
+          name: pos.nama || `Posko ${pos.kecamatan || ''}`,
+          rawItem: pos,
+          itemType: 'shelter'
+        })
+        pFeat.setStyle(new Style({
+          image: new Icon({
+            src: getSvgPin('#14b8a6', 'shelter'),
+            scale: 0.85,
+            anchor: [0.5, 1]
+          })
+        }))
+        source.addFeature(pFeat)
+      }
+    })
+
+    // 4. Draw route if active
+    if (routeCoords && routeCoords.length > 0) {
+      const lineCoords = routeCoords.map((c) => fromLonLat(c))
+      const routeFeat = new Feature({
+        geometry: new LineString(lineCoords)
+      })
+      routeFeat.setStyle(new Style({
+        stroke: new Stroke({
+          color: '#0284c7', // sky-600
+          width: 4.5,
+          lineDash: [4, 6]
+        })
+      }))
+      source.addFeature(routeFeat)
+    }
+
+    // Zoom view to encompass route or center
+    const map = mapInstanceRef.current || mapInstance
+    if (map && selectedRouteTarget) {
+      map.getView().animate({
+        center: fromLonLat([startLng, startLat]),
+        zoom: 12,
+        duration: 800
+      })
+    }
+  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance])
+
   // ─────────────────────────────────────────────
   // Legend / UI data
   // ─────────────────────────────────────────────
@@ -1413,6 +1610,69 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
       ref={mapContainerRef}
       className="relative h-full w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f1fcfc]"
     >
+      {/* Floating EOC Route details card on the left side of the map */}
+      {isFloodEocMode && showEocRoute && (
+        <div className="absolute top-4 left-4 z-20 w-80 max-h-[85%] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md transition-all duration-300">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                <Compass className="h-3.5 w-3.5 text-teal-700" />
+                Info Jalur Evakuasi
+              </span>
+              {selectedRouteTarget && (
+                <button 
+                  onClick={() => onSelectRouteTarget && onSelectRouteTarget(null, 'clinic')}
+                  className="text-slate-400 hover:text-slate-650 p-0.5 rounded transition"
+                  title="Bersihkan Rute"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            
+            {selectedRouteTarget ? (
+              <div className="space-y-2.5 text-xs text-slate-750">
+                <div>
+                  <h5 className="font-extrabold text-slate-900 text-sm leading-tight">{selectedRouteTarget.name}</h5>
+                  <span className="text-[9px] uppercase font-bold text-slate-450">{selectedRouteTarget.type}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-200 bg-slate-50 px-2 rounded-lg">
+                  <div>
+                    <span className="text-[9px] text-slate-400 block uppercase">Jarak Tempuh</span>
+                    <span className="font-extrabold text-slate-800 text-sm">
+                      {routeInfo ? `${routeInfo.distance.toFixed(1)} km` : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-400 block uppercase">Durasi Respon</span>
+                    <span className="font-extrabold text-slate-800 text-sm">
+                      {routeInfo ? `${Math.round(routeInfo.duration)} mnt` : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-455 uppercase block">Rute Taktis Darurat</span>
+                  <p className="text-[11px] text-slate-650 leading-relaxed font-semibold">
+                    {selectedRouteTarget.type === 'hospital' 
+                      ? 'Rute evakuasi gawat darurat ambulans menuju rumah sakit rujukan utama.'
+                      : selectedRouteTarget.type === 'shelter'
+                      ? 'Jalur penyelamatan warga terdampak genangan menuju posko pengungsian terdekat.'
+                      : 'Akses medis menuju Puskesmas pembantu setempat. Awasi titik genangan air.'
+                    }
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-slate-400">
+                <Compass className="h-7 w-7 mx-auto text-slate-300 mb-1.5 stroke-[1.5]" />
+                <p className="text-[11px] leading-relaxed">Pilih salah satu faskes terdekat atau posko di tabel bawah untuk menggambar rute jalan real-time.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {/* BMKG Proximity Warning Modal */}
       {activeBmkgAlert && (
         <div className="absolute inset-x-4 top-4 z-[30] animate-in slide-in-from-top-4 duration-500 max-w-md mx-auto">
@@ -1613,6 +1873,29 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
                     />
                   </div>
                 </div>
+
+                {/* Toggle EOC Route (only when isFloodEocMode is active) */}
+                {isFloodEocMode && (
+                  <div
+                    onClick={() => setShowEocRoute((v) => !v)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Layers className="h-4 w-4 text-teal-600" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Rute Evakuasi &amp; Faskes</p>
+                        <p className="text-[10px] text-slate-400">Tampilkan jalur rute jalan raya dan pin faskes</p>
+                      </div>
+                    </div>
+                    <div
+                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showEocRoute ? 'bg-teal-600' : 'bg-slate-300'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showEocRoute ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Toggle region legend visibility */}
                 <div
@@ -2038,23 +2321,21 @@ export default function DisasterMap({ markers, selectedRegions = [], userScope, 
           </div>
 
           {/* Footer — Detail button */}
-          {!isGuest && (
-            <div className="border-t border-slate-100 p-2.5">
-              <button
-                onClick={() => {
-                  if (onSelectEvent) {
-                    onSelectEvent(markerPopup.data)
-                  }
-                }}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-teal-800"
-              >
-                LIHAT DETAIL
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-          )}
+          <div className="border-t border-slate-100 p-2.5">
+            <button
+              onClick={() => {
+                if (onSelectEvent) {
+                  onSelectEvent(markerPopup.data)
+                }
+              }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-teal-800"
+            >
+              LIHAT DETAIL
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 

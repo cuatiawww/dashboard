@@ -72,6 +72,18 @@ const DisasterMap = dynamic(() => import('./DisasterMap'), {
   ),
 })
 
+const DashboardBanjirEoc = dynamic(() => import('./DashboardBanjirEoc'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex min-h-[500px] w-full items-center justify-center rounded-2xl bg-slate-900 border border-slate-800">
+      <div className="text-center space-y-3">
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-teal-400" />
+        <p className="text-sm text-slate-400 font-semibold">Memuat peta & modul EOC Banjir...</p>
+      </div>
+    </div>
+  ),
+})
+
 type SummaryData = {
   total_bencana: number
   total_krisis: number
@@ -330,6 +342,7 @@ export default function DashboardKejadianPage() {
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [activeFullscreenVideo, setActiveFullscreenVideo] = useState<string | null>(null)
   const [isSyncingMv, setIsSyncingMv] = useState(false)
+  const [dashboardMode, setDashboardMode] = useState<'multibencana' | 'banjir'>('multibencana')
 
   const handleShareWa = (title: string, url: string) => {
     const text = `Halo! Tonton Laporan ${title} dari EOC Krisis Kesehatan Kemenkes RI: ${url}`;
@@ -751,6 +764,65 @@ export default function DashboardKejadianPage() {
       }
     }
   }, [alertIntervalId])
+
+  // Handle initial deep-linking from query parameter ?id=...
+  const initialChecked = useRef(false);
+  useEffect(() => {
+    if (data?.markers && data.markers.length > 0 && !initialChecked.current) {
+      initialChecked.current = true;
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialId = urlParams.get('id') || urlParams.get('detail');
+      if (initialId) {
+        const matchingEvent = data.markers.find((m: any) => m.kode_trans === initialId);
+        if (matchingEvent) {
+          setSelectedEvent(matchingEvent);
+        }
+      }
+    }
+  }, [data?.markers]);
+
+  // Update URL search parameters when selectedEvent changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentId = urlParams.get('id');
+      if (selectedEvent) {
+        if (currentId !== selectedEvent.kode_trans) {
+          urlParams.set('id', selectedEvent.kode_trans);
+          window.history.pushState(null, '', `?${urlParams.toString()}`);
+        }
+      } else {
+        if (currentId) {
+          urlParams.delete('id');
+          const newSearch = urlParams.toString();
+          window.history.replaceState(null, '', newSearch ? `?${newSearch}` : window.location.pathname);
+        }
+      }
+    }
+  }, [selectedEvent]);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const currentId = urlParams.get('id');
+      if (currentId) {
+        if (data?.markers) {
+          const matchingEvent = data.markers.find((m: any) => m.kode_trans === currentId);
+          if (matchingEvent) {
+            setSelectedEvent(matchingEvent);
+            return;
+          }
+        }
+      }
+      setSelectedEvent(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [data?.markers]);
 
   useNewEventDetection(
     data?.markers || [],
@@ -1886,8 +1958,46 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
 
   return (
     <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff]">
-      {/* Smart Search, Info Filter & Reset Button Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-[8fr_6fr_3fr_3fr] gap-4 w-full items-start z-20 relative">
+      {/* Tab Selector Mode (Commented out as requested)
+      <div className="flex border-b border-slate-200 pb-2.5 items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+          <button
+            onClick={() => setDashboardMode('multibencana')}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition ${
+              dashboardMode === 'multibencana'
+                ? 'bg-teal-700 text-white shadow-sm'
+                : 'text-slate-650 hover:text-teal-700'
+            }`}
+          >
+            Dashboard Utama (Multi-Bencana)
+          </button>
+          <button
+            onClick={() => setDashboardMode('banjir')}
+            className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition flex items-center gap-1.5 ${
+              dashboardMode === 'banjir'
+                ? 'bg-slate-900 text-teal-400 shadow-sm border border-slate-800'
+                : 'text-slate-650 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <CloudRain className="h-3.5 w-3.5 text-teal-600 animate-pulse" />
+            EOC Kesehatan: Bencana Banjir
+          </button>
+        </div>
+        <div className="hidden md:flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            Sistem Pemantauan Terpadu EOC
+          </span>
+        </div>
+      </div>
+      */}
+
+      {dashboardMode === 'banjir' ? (
+        <DashboardBanjirEoc />
+      ) : (
+        <>
+          {/* Smart Search, Info Filter & Reset Button Grid */}
+          <section className="grid grid-cols-1 md:grid-cols-[8fr_6fr_3fr_3fr] gap-4 w-full items-start z-20 relative">
 
         {/* Column 1: Smart Search Bar */}
         <div className="relative w-full z-20">
@@ -3156,6 +3266,8 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
       {/* ── AI Analysis Modal ── */}
       {isAiModalOpen && (
