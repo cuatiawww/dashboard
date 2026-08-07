@@ -17,7 +17,7 @@ const BACKEND_BASE_URL = (
  * yang sudah dikonfigurasi CORS di backend).
  */
 export function getApiBaseUrl(): string {
-  return `${BACKEND_BASE_URL}/api`
+  return `/api`
 }
 
 /**
@@ -31,13 +31,13 @@ export function buildApiUrl(path: string): string {
     return getApiBaseUrl()
   }
 
-  // Semua /api/... → langsung ke backend utama (web.php / ApiController)
+  // Semua /api/... → lewat API proxy Next.js
   if (normalizedPath.startsWith('/api/')) {
-    return `${BACKEND_BASE_URL}${normalizedPath}`
+    return normalizedPath
   }
 
   // Fallback
-  return `${getApiBaseUrl()}${normalizedPath}`
+  return `/api${normalizedPath}`
 }
 
 /**
@@ -50,10 +50,10 @@ export function buildBencanaStatsUrl(): string {
 }
 
 /**
- * URL regions — langsung ke backend (public endpoint, CORS sudah dikonfigurasi).
+ * URL regions — lewat API proxy Next.js
  */
 export function buildRegionsUrl(query?: Record<string, string>): string {
   const params = query ? new URLSearchParams(query).toString() : ''
   const queryString = params ? `?${params}` : ''
-  return `${BACKEND_BASE_URL}/api/regions${queryString}`
+  return `/api/regions${queryString}`
 }

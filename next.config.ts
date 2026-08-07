@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['svg-captcha'],
   async rewrites() {
     return {
+      beforeFiles: [
+        {
+          source: '/detail-kejadian/:jenis/:id',
+          destination: '/',
+        },
+      ],
       fallback: [
         // Semua /api/* yang tidak ada dedicated route.ts → proxy ke backend utama (web.php)
         {

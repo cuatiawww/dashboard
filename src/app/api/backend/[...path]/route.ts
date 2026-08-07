@@ -65,32 +65,26 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
   // Bangun URL tujuan ke backend
   const targetUrl = `${BACKEND_BASE_URL}/${targetPath}${queryString}`
 
-  // Salin headers dari request asli (hapus host agar tidak konflik)
+  // Extract token from incoming Authorization header
+  let clientToken = ''
+  const authHeader = req.headers.get('authorization') || ''
+  if (authHeader.startsWith('Bearer ')) {
+    clientToken = authHeader.substring(7).trim()
+  }
+
+  // Salin headers dari request asli (hapus host, connection, dan authorization agar tidak memicu 400 Bad Request di Apache)
   const forwardHeaders = new Headers()
   req.headers.forEach((value, key) => {
-    if (!['host', 'connection'].includes(key.toLowerCase())) {
+    if (!['host', 'connection', 'authorization'].includes(key.toLowerCase())) {
       forwardHeaders.set(key, value)
     }
   })
 
-  // Append system TTOKEN and Authorization headers if defined in .env
+  // Append system TTOKEN or client token as TTOKEN for backend
   const systemToken = process.env.SIPKK_DASHBOARD_TTOKEN || ''
-  if (systemToken) {
-    const clientAuth = forwardHeaders.get('authorization') || ''
-    const isInvalidAuth = !clientAuth || 
-                          clientAuth.trim() === 'Bearer' || 
-                          clientAuth.toLowerCase().includes('null') || 
-                          clientAuth.toLowerCase().includes('undefined')
-
-    if (isInvalidAuth) {
-      forwardHeaders.set('Authorization', `Bearer ${systemToken}`)
-      forwardHeaders.set('TTOKEN', systemToken)
-    } else {
-      // If client auth is valid but TTOKEN is missing, still append TTOKEN for the backend
-      if (!forwardHeaders.has('ttoken')) {
-        forwardHeaders.set('TTOKEN', systemToken)
-      }
-    }
+  const tokenToSend = clientToken || systemToken
+  if (tokenToSend) {
+    forwardHeaders.set('TTOKEN', tokenToSend)
   }
 
   let body: BodyInit | null = null
@@ -124,10 +118,10 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
       return NextResponse.redirect(location, { status: backendRes.status, headers: corsHeaders })
     }
 
-    // Salin semua header dari response backend
+    // Salin semua header dari response backend (hapus www-authenticate agar tidak memicu Basic Auth popup di browser)
     const responseHeaders = new Headers(corsHeaders)
     backendRes.headers.forEach((value, key) => {
-      if (!['transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+      if (!['transfer-encoding', 'connection', 'www-authenticate'].includes(key.toLowerCase())) {
         responseHeaders.set(key, value)
       }
     })

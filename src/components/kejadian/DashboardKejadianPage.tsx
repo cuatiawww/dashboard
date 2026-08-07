@@ -59,6 +59,34 @@ import FilterDropdownBar, { type FilterSummary } from '@/components/landing/Filt
 import DetailKejadianPage from './DetailKejadianPage'
 import { useNewEventDetection, useNotificationSound, useNotificationItems } from '@/hooks/useNotification'
 
+// Client-side obfuscation of query IDs to prevent exposure of raw keys
+function encryptId(id: string): string {
+  if (!id) return '';
+  try {
+    const chars = id.split('').map(c => {
+      const code = c.charCodeAt(0);
+      return String.fromCharCode(code + 3);
+    }).join('');
+    return typeof window !== 'undefined' ? window.btoa(chars).replace(/=/g, '') : chars;
+  } catch (e) {
+    return id;
+  }
+}
+
+function decryptId(encryptedId: string): string {
+  if (!encryptedId) return '';
+  try {
+    const padded = encryptedId.padEnd(encryptedId.length + (4 - encryptedId.length % 4) % 4, '=');
+    const chars = typeof window !== 'undefined' ? window.atob(padded) : padded;
+    return chars.split('').map(c => {
+      const code = c.charCodeAt(0);
+      return String.fromCharCode(code - 3);
+    }).join('');
+  } catch (e) {
+    return encryptedId;
+  }
+}
+
 // Dynamically import map component to completely bypass SSR/window issues in Next.js
 const DisasterMap = dynamic(() => import('./DisasterMap'), {
   ssr: false,
@@ -765,12 +793,28 @@ export default function DashboardKejadianPage() {
     }
   }, [alertIntervalId])
 
-  // Handle initial deep-linking from query parameter ?id=...
+  // Handle initial deep-linking from query parameter ?id=... or pathname /detail-kejadian/...
   const initialChecked = useRef(false);
   const hadSelectedEventRef = useRef(false);
   useEffect(() => {
     if (data?.markers && data.markers.length > 0 && !initialChecked.current) {
       initialChecked.current = true;
+      
+      // 1. Try to check clean pathname first
+      const path = window.location.pathname;
+      const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
+      if (pathMatch) {
+        const encryptedId = pathMatch[2];
+        const decryptedId = decryptId(encryptedId);
+        const matchingEvent = data.markers.find((m: any) => m.kode_trans === decryptedId);
+        if (matchingEvent) {
+          setSelectedEvent(matchingEvent);
+          hadSelectedEventRef.current = true;
+          return;
+        }
+      }
+
+      // 2. Fallback to old query parameters ?id=...
       const urlParams = new URLSearchParams(window.location.search);
       const initialId = urlParams.get('id') || urlParams.get('detail');
       if (initialId) {
@@ -786,18 +830,31 @@ export default function DashboardKejadianPage() {
   // Update URL search parameters when selectedEvent changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentId = urlParams.get('id');
+      const path = window.location.pathname;
+      const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
+      const currentEncryptedId = pathMatch ? pathMatch[2] : null;
+      
+      const getBasePath = () => {
+        const idx = path.indexOf('/detail-kejadian');
+        if (idx !== -1) {
+          return path.substring(0, idx).replace(/\/$/, '');
+        }
+        return path.replace(/\/$/, '');
+      };
+      
+      const basePath = getBasePath();
+
       if (selectedEvent) {
         hadSelectedEventRef.current = true;
-        if (currentId !== selectedEvent.kode_trans) {
-          urlParams.set('id', selectedEvent.kode_trans);
-          window.history.replaceState(null, '', `${window.location.pathname}?${urlParams.toString()}`);
+        const encryptedId = encryptId(selectedEvent.kode_trans);
+        if (currentEncryptedId !== encryptedId) {
+          const rawType = String(selectedEvent.jenis_bencana || 'kejadian').toLowerCase();
+          const slug = rawType.replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
+          const newPath = `${basePath}/detail-kejadian/${slug}/${encryptedId}`;
+          window.history.replaceState(null, '', newPath);
         }
-      } else if (hadSelectedEventRef.current && currentId) {
-        urlParams.delete('id');
-        const newSearch = urlParams.toString();
-        window.history.replaceState(null, '', newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname);
+      } else if (hadSelectedEventRef.current && path.includes('/detail-kejadian')) {
+        window.history.replaceState(null, '', basePath || '/');
       }
     }
   }, [selectedEvent]);
@@ -805,11 +862,13 @@ export default function DashboardKejadianPage() {
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentId = urlParams.get('id');
-      if (currentId) {
+      const path = window.location.pathname;
+      const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
+      if (pathMatch) {
+        const encryptedId = pathMatch[2];
+        const decryptedId = decryptId(encryptedId);
         if (data?.markers) {
-          const matchingEvent = data.markers.find((m: any) => m.kode_trans === currentId);
+          const matchingEvent = data.markers.find((m: any) => m.kode_trans === decryptedId);
           if (matchingEvent) {
             setSelectedEvent(matchingEvent);
             return;

@@ -35,19 +35,20 @@ export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams.toString()
   const targetUrl = `${BACKEND_BASE_URL}/api/bencana-stats${search ? `?${search}` : ''}`
 
-  // Teruskan Authorization header dari client ke backend
-  // agar getRequestWilayahScope() bisa apply filter berdasarkan wilayah_scope user
+  // Teruskan token dari Authorization header via TTOKEN (hindari Apache 400 dari backslash)
   const authHeader = request.headers.get('authorization') || ''
+  let clientToken = ''
+  if (authHeader.startsWith('Bearer ')) {
+    clientToken = authHeader.substring(7).trim()
+  }
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'User-Agent': 'SIPKK-Dashboard-Proxy/1.0',
   }
   const dashboardToken = process.env.SIPKK_DASHBOARD_TTOKEN?.trim()
-  if (dashboardToken) headers.TTOKEN = dashboardToken
-  if (authHeader) {
-    headers['Authorization'] = authHeader
-  }
+  const tokenToSend = clientToken || dashboardToken
+  if (tokenToSend) headers.TTOKEN = tokenToSend
 
   try {
     const backendRes = await fetch(targetUrl, {

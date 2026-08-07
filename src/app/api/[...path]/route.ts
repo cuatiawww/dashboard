@@ -35,16 +35,25 @@ async function handler(
     : `api/${pathStr}`
   const targetUrl = `${BACKEND_BASE_URL}/${targetPath}${queryString}`
 
+  // Extract token from incoming Authorization header
+  let clientToken = ''
+  const authHeader = req.headers.get('authorization') || ''
+  if (authHeader.startsWith('Bearer ')) {
+    clientToken = authHeader.substring(7).trim()
+  }
+
   const forwardHeaders = new Headers()
   req.headers.forEach((value, key) => {
-    if (!['host', 'connection'].includes(key.toLowerCase())) {
+    // Exclude authorization header to prevent raw backslashes triggering Apache 400 Bad Request
+    if (!['host', 'connection', 'authorization'].includes(key.toLowerCase())) {
       forwardHeaders.set(key, value)
     }
   })
 
   const dashboardToken = process.env.SIPKK_DASHBOARD_TTOKEN?.trim()
-  if (dashboardToken && !forwardHeaders.has('ttoken') && !forwardHeaders.has('TTOKEN')) {
-    forwardHeaders.set('TTOKEN', dashboardToken)
+  const tokenToSend = clientToken || dashboardToken
+  if (tokenToSend) {
+    forwardHeaders.set('TTOKEN', tokenToSend)
   }
   if (!forwardHeaders.has('accept')) {
     forwardHeaders.set('Accept', 'application/json')
@@ -85,9 +94,10 @@ async function handler(
       })
     }
 
+    // Salin semua header dari response backend (hapus www-authenticate agar tidak memicu Basic Auth popup di browser)
     const responseHeaders = new Headers(corsHeaders)
     backendRes.headers.forEach((value, key) => {
-      if (!['transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+      if (!['transfer-encoding', 'connection', 'www-authenticate'].includes(key.toLowerCase())) {
         responseHeaders.set(key, value)
       }
     })

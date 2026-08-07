@@ -114,7 +114,6 @@ export async function POST(req: Request) {
       const systemToken = process.env.SIPKK_DASHBOARD_TTOKEN || ''
       if (systemToken) {
         headers['TTOKEN'] = systemToken
-        headers['Authorization'] = `Bearer ${systemToken}`
       }
 
       const res = await fetch(`${backendBaseUrl}/api/ai-insight?${params.toString()}`, {
