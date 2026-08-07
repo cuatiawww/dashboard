@@ -22,6 +22,8 @@ export default function SsoPage() {
     const token     = params.get('token')
     const userB64   = params.get('user')   // URLSearchParams.get() sudah URL-decode otomatis
 
+    const eventId   = params.get('id') || params.get('event') || params.get('kode_trans')
+
     // Validasi params wajib ada
     if (!token || !userB64) {
       setError('Parameter SSO tidak lengkap. Silakan kembali dan coba lagi.')
@@ -38,8 +40,9 @@ export default function SsoPage() {
       // Simpan ke store (localStorage + Zustand)
       login(token, user)
 
-      // Redirect ke dashboard setelah localStorage committed
-      router.replace('/')
+      // Redirect ke dashboard setelah localStorage committed (bawa id jika ada)
+      const targetPath = eventId ? `/?id=${encodeURIComponent(eventId)}` : '/'
+      router.replace(targetPath)
     } catch (err) {
       console.error('[SSO] Gagal memproses token:', err)
       setError('Gagal memproses sesi SSO. Silakan login manual.')

@@ -884,6 +884,24 @@ export default function DashboardKejadianPage() {
     };
   }, [data?.markers]);
 
+  // Handle direct SSO or URL query parameter targeting specific incident (e.g. ?id=fohpb)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const qId = searchParams.get('id') || searchParams.get('event') || searchParams.get('kode_trans');
+      if (qId) {
+        if (data?.markers) {
+          const matchingEvent = data.markers.find((m: any) => m.kode_trans === qId);
+          if (matchingEvent) {
+            setSelectedEvent(matchingEvent);
+            return;
+          }
+        }
+        setSelectedEvent({ kode_trans: qId, id: qId });
+      }
+    }
+  }, [data?.markers]);
+
   useNewEventDetection(
     data?.markers || [],
     (items) => {
