@@ -868,21 +868,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     return (eventSeed % 12) + 8;
   }, [eventData.pos_pengungsi, eventSeed]);
 
-  // Vulnerable group counts (using backend real values or smart fallbacks if 0)
-  const balitaVal = useMemo(() => {
-    if (eventData.balita) return safeParseInt(eventData.balita);
-    return Math.max(10, Math.floor((breakdown.pengungsi || totalKorbanReal) * 0.12)) || (eventSeed % 300) + 150;
-  }, [eventData.balita, breakdown.pengungsi, totalKorbanReal, eventSeed]);
+  // Vulnerable group counts (using backend real values or NA if 0/null/undefined)
+  const balitaDisplay = useMemo(() => {
+    const val = eventData.balita;
+    if (val === undefined || val === null || val === 0 || val === '0') {
+      return 'NA';
+    }
+    return safeParseInt(val).toLocaleString('id-ID');
+  }, [eventData.balita]);
 
-  const lansiaVal = useMemo(() => {
-    if (eventData.lansia) return safeParseInt(eventData.lansia);
-    return Math.max(5, Math.floor((breakdown.pengungsi || totalKorbanReal) * 0.08)) || (eventSeed % 200) + 100;
-  }, [eventData.lansia, breakdown.pengungsi, totalKorbanReal, eventSeed]);
+  const lansiaDisplay = useMemo(() => {
+    const val = eventData.lansia;
+    if (val === undefined || val === null || val === 0 || val === '0') {
+      return 'NA';
+    }
+    return safeParseInt(val).toLocaleString('id-ID');
+  }, [eventData.lansia]);
 
-  const bumilVal = useMemo(() => {
-    if (eventData.ibu_hamil) return safeParseInt(eventData.ibu_hamil);
-    return Math.max(2, Math.floor((breakdown.pengungsi || totalKorbanReal) * 0.02)) || (eventSeed % 50) + 20;
-  }, [eventData.ibu_hamil, breakdown.pengungsi, totalKorbanReal, eventSeed]);
+  const bumilDisplay = useMemo(() => {
+    const val = eventData.ibu_hamil;
+    if (val === undefined || val === null || val === 0 || val === '0') {
+      return 'NA';
+    }
+    return safeParseInt(val).toLocaleString('id-ID');
+  }, [eventData.ibu_hamil]);
+
+  const pendudukTerdampakDisplay = useMemo(() => {
+    const val = eventData.penduduk_terdampak;
+    if (val === undefined || val === null || val === 0 || val === '0') {
+      return 'NA';
+    }
+    return safeParseInt(val).toLocaleString('id-ID');
+  }, [eventData.penduduk_terdampak]);
 
   const totalFaskes = useMemo(() => {
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
@@ -1558,22 +1575,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
               <div className="flex items-baseline justify-center gap-0.5 mt-2">
                 <span className="text-4xl font-black text-slate-900 leading-none">
-                  {(eventData.penduduk_terdampak || (totalKorbanReal * 2.5) || 12000).toLocaleString('id-ID')}
+                  {pendudukTerdampakDisplay}
                 </span>
-                <span className="text-xs font-bold text-slate-400">Jiwa</span>
+                {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-400">Jiwa</span>}
               </div>
             </div>
             <div className="border-t border-slate-100 pt-3 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
               <div>
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{balitaVal.toLocaleString('id-ID')}</span>
+                <span className="text-[16px] font-black text-slate-900 block leading-none">{balitaDisplay}</span>
                 <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Balita</span>
               </div>
               <div className="border-x border-slate-100 px-1">
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{lansiaVal.toLocaleString('id-ID')}</span>
+                <span className="text-[16px] font-black text-slate-900 block leading-none">{lansiaDisplay}</span>
                 <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Lansia</span>
               </div>
               <div>
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{bumilVal.toLocaleString('id-ID')}</span>
+                <span className="text-[16px] font-black text-slate-900 block leading-none">{bumilDisplay}</span>
                 <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Bumil</span>
               </div>
             </div>
@@ -1921,6 +1938,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                           <th className="py-3 px-3">Wilayah</th>
                           <th className="py-3 px-3">Faskes Terdekat</th>
                           <th className="py-3 px-3">Jenis</th>
+                          <th className="py-3 px-3">Petugas / Dokter PJ</th>
                           {!isGuest && <th className="py-3 px-3">No. Telepon</th>}
                           <th className="py-3 px-3 text-center">Jarak</th>
                           <th className="py-3 px-3 text-center">Waktu Tempuh</th>
@@ -1947,6 +1965,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                               </td>
                               <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama}</td>
                               <td className="py-2.5 px-3 text-slate-600">{f.jenis || '-'}</td>
+                              <td className="py-2.5 px-3 text-slate-700 font-semibold">{f.petugas || '-'}</td>
                               {!isGuest && <td className="py-2.5 px-3 font-bold text-teal-800 whitespace-nowrap">{f.telp || '-'}</td>}
                               <td className="py-2.5 px-3 text-center font-bold text-slate-700">
                                 {f.jarak !== null && f.jarak !== undefined ? `${f.jarak.toFixed(1)} km` : '-'}

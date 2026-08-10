@@ -897,7 +897,7 @@ export default function DashboardKejadianPage() {
             return;
           }
         }
-        setSelectedEvent({ kode_trans: qId, id: qId });
+        setSelectedEvent({ kode_trans: qId, id: qId } as any);
       }
     }
   }, [data?.markers]);

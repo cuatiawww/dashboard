@@ -101,6 +101,8 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
   const [customStartDate, setCustomStartDate] = useState('2026-01-01')
   const [customEndDate, setCustomEndDate] = useState(new Date().toISOString().split('T')[0])
 
+  const [availableYears, setAvailableYears] = useState<string[]>(['2026', '2025', '2024', '2023', '2022', '2021', '2020'])
+
   const activeFilterData = useMemo<FilterItem[]>(() => {
     let result: FilterItem[] = []
     if (!isScoped) {
@@ -399,6 +401,36 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
     fetchKabkota()
   }, [selectedProvince, isScoped])
 
+  // Fetch available years from backend API
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const res = await fetch('/api/bencana-years')
+        const data = await res.json()
+        if (data && data.success && Array.isArray(data.data)) {
+          const list = data.data.map((y: any) => String(y))
+          if (list.length > 0) {
+            setAvailableYears(list)
+            
+            // Set dynamic defaults based on the loaded years
+            const latestYear = list[0]
+            if (latestYear) {
+              setSelectedYear(latestYear)
+              setSelectedMonthYear(latestYear)
+              setSelected((prev) => ({
+                ...prev,
+                tahun: latestYear
+              }))
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Gagal mengambil data tahun bencana:', err)
+      }
+    }
+    fetchYears()
+  }, [])
+
   // Formatted Label for the Time Button
   const timeButtonDisplayLabel = useMemo(() => {
     if (timeCategoryTab === 'tahun') {
@@ -646,7 +678,7 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                       {timeCategoryTab === 'tahun' && (
                         <div className="space-y-1.5">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Pilih Tahun Kejadian:</p>
-                          {['2026', '2025', '2024', '2023'].map((yr) => {
+                          {availableYears.map((yr) => {
                             const isSelected = selectedYear === yr
                             return (
                               <button
@@ -679,8 +711,9 @@ export default function FilterDropdownBar({ onSummaryChange, selectedProvinceNam
                               onChange={(e) => setSelectedMonthYear(e.target.value)}
                               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-800"
                             >
-                              <option value="2026">2026</option>
-                              <option value="2025">2025</option>
+                              {availableYears.map((yr) => (
+                                <option key={yr} value={yr}>{yr}</option>
+                              ))}
                             </select>
                           </div>
                           <div className="grid grid-cols-2 gap-1 max-h-[180px] overflow-y-auto pr-1">
