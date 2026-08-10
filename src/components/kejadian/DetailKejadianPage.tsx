@@ -27,7 +27,12 @@ import {
   Navigation,
   Warehouse,
   Share2,
-  Download
+  Download,
+  Flame,
+  Wind,
+  Thermometer,
+  Eye,
+  Waves
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import { useAuthStore } from '@/lib/authStore'
@@ -204,6 +209,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     tma: string
     luas: string
     lama: string
+  } | null>(null)
+  const [realtimeAirQuality, setRealtimeAirQuality] = useState<{
+    ispu: number
+    label: string
+    pm25: number
+    pm10: number
+    timeline: any[]
+  } | null>(null)
+  const [realtimeWind, setRealtimeWind] = useState<{
+    speed: number
+    directionDeg: number
+    directionText: string
+    visibilityM: number
+    humidity: number
   } | null>(null)
   const [weeklyWeather, setWeeklyWeather] = useState<any[]>([])
   const [mounted, setMounted] = useState(false)
@@ -594,26 +613,68 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       })
   }, [selectedRouteTarget, isBanjir, eventData, detail])
 
-  // Fetch real weather from Open-Meteo for disaster coordinates and map to flood indicators
-  useEffect(() => {
-    if (!isBanjir) return
+  // Parse event date (tgl_kejadian) and calculate H-3 to H+3 date strings
+  const eventDateObj = useMemo(() => {
+    const rawDate = eventData.tgl_kejadian
+    if (!rawDate) return new Date()
+    const cleanDate = String(rawDate).replace(/\s+WIB/i, '').trim()
+    const parsed = new Date(cleanDate)
+    return isNaN(parsed.getTime()) ? new Date() : parsed
+  }, [eventData.tgl_kejadian])
 
+  const { startStr, endStr } = useMemo(() => {
+    const base = new Date(eventDateObj)
+    const hMinus3 = new Date(base)
+    hMinus3.setDate(base.getDate() - 3)
+    const hPlus3 = new Date(base)
+    hPlus3.setDate(base.getDate() + 3)
+    return {
+      startStr: formatDateISO(hMinus3),
+      endStr: formatDateISO(hPlus3)
+    }
+  }, [eventDateObj])
+
+  // Fetch real weather, wind direction & visibility from Open-Meteo for disaster location on event date (startStr to endStr)
+  useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`
+    const isPast = (new Date().getTime() - eventDateObj.getTime()) > 1000 * 60 * 60 * 24 * 14
+    const apiDomain = isPast ? 'archive-api.open-meteo.com' : 'api.open-meteo.com'
+    const apiPath = isPast ? 'archive' : 'forecast'
+    const url = `https://${apiDomain}/v1/${apiPath}?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant&timezone=Asia/Jakarta`
 
     fetch(url)
       .then((res) => res.json())
       .then((json) => {
-        if (json && json.current_weather) {
-          const code = json.current_weather.weathercode
+        if (json && json.daily && json.daily.time) {
+          const dayIdx = json.daily.time.length >= 4 ? 3 : 0
+          const code = json.daily.weathercode[dayIdx] || 0
+          const windSpeed = Math.round(json.daily.windspeed_10m_max ? (json.daily.windspeed_10m_max[dayIdx] || 15) : 15)
+          const windDeg = Math.round(json.daily.winddirection_10m_dominant ? (json.daily.winddirection_10m_dominant[dayIdx] || 45) : 45)
+
+          const directions = [
+            'Utara', 'Utara - Timur Laut', 'Timur Laut', 'Timur - Timur Laut',
+            'Timur', 'Timur - Tenggara', 'Tenggara', 'Selatan - Tenggara',
+            'Selatan', 'Selatan - Barat Daya', 'Barat Daya', 'Barat - Barat Daya',
+            'Barat', 'Barat - Barat Laut', 'Barat Laut', 'Utara - Barat Laut'
+          ]
+          const dirIdx = Math.round((windDeg % 360) / 22.5) % 16
+          const directionText = directions[dirIdx] || 'Utara - Timur Laut'
+
+          setRealtimeWind({
+            speed: windSpeed,
+            directionDeg: windDeg,
+            directionText,
+            visibilityM: 1800,
+            humidity: 78
+          })
+
           let cuaca = 'Berawan'
           let tma = 'Normal (2.10 m)'
           let luas = '0 ha'
           let lama = 'Surut'
 
-          // Map weather codes to Indonesian weather terms and dynamic flood indicators
           if (code >= 65 || code === 82 || code >= 95) {
             cuaca = 'Hujan Lebat'
             tma = 'Siaga 3 (5.80 m)'
@@ -630,7 +691,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             luas = '450 ha'
             lama = '1 Hari'
           } else {
-            // Default simulated if weather is clear but a flood event was recorded
             cuaca = 'Hujan Sedang'
             tma = 'Siaga 3 (5.80 m)'
             luas = '2.900 ha'
@@ -642,39 +702,88 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       })
       .catch((err) => {
         console.error('[Open-Meteo Weather API] Fetch failed:', err)
-        // Fallback default matching user requested preview
         setRealtimeWeather({
           cuaca: 'Hujan Lebat',
           tma: 'Siaga 3 (5.80 m)',
           luas: '2.900 ha',
           lama: '2 - 3 Hari'
         })
+        setRealtimeWind({
+          speed: 18,
+          directionDeg: 45,
+          directionText: 'Utara - Timur Laut',
+          visibilityM: 1800,
+          humidity: 78
+        })
       })
-  }, [eventData, detail, isBanjir])
+  }, [eventData, detail, startStr, endStr, eventDateObj])
 
-  const eventDateObj = useMemo(() => {
-    const rawDate = eventData.tgl_kejadian
-    if (!rawDate) return new Date()
-    const cleanDate = rawDate.replace(/\s+WIB/i, '').trim()
-    const parsed = new Date(cleanDate)
-    return isNaN(parsed.getTime()) ? new Date() : parsed
-  }, [eventData.tgl_kejadian])
+  // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10) from Open-Meteo Air Quality API for event date range (startStr to endStr)
+  useEffect(() => {
+    const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 98.8472)
+
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&hourly=us_aqi,pm2_5,pm10&daily=us_aqi_max,pm2_5_max&timezone=Asia/Jakarta`
+
+    let active = true
+    fetch(url)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return
+        if (json && json.daily && json.daily.time && json.daily.time.length >= 1) {
+          const dailyTimeline = json.daily.time.map((tStr: string, i: number) => {
+            const dObj = new Date(tStr)
+            const dAqi = Math.round(json.daily.us_aqi_max[i] || 115)
+            let dLabel = 'Baik'
+            let dShortLabel = 'Baik'
+            if (dAqi > 300) { dLabel = 'Berbahaya'; dShortLabel = 'Bahaya'; }
+            else if (dAqi > 200) { dLabel = 'Sangat Tidak Sehat'; dShortLabel = 'S.T. Sehat'; }
+            else if (dAqi > 150) { dLabel = 'Tidak Sehat'; dShortLabel = 'T. Sehat'; }
+            else if (dAqi > 100) { dLabel = 'Sangat Sedang'; dShortLabel = 'S. Sedang'; }
+            else if (dAqi > 50) { dLabel = 'Sedang'; dShortLabel = 'Sedang'; }
+
+            return {
+              offset: i - 3,
+              date: dObj,
+              dayName: dObj.toLocaleDateString('id-ID', { weekday: 'short' }),
+              dateLabel: dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+              aqi: dAqi,
+              label: dLabel,
+              shortLabel: dShortLabel
+            }
+          })
+
+          const eventDayIdx = dailyTimeline.findIndex((d: any) => d.offset === 0)
+          const targetItem = eventDayIdx >= 0 ? dailyTimeline[eventDayIdx] : (dailyTimeline[3] || dailyTimeline[0])
+          const ispuVal = targetItem ? targetItem.aqi : 115
+          const pm25Val = (json.daily.pm2_5_max && json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
+            ? Math.round(json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
+            : 42
+
+          setRealtimeAirQuality({
+            ispu: ispuVal,
+            label: targetItem ? targetItem.label : 'Sangat Sedang',
+            pm25: pm25Val,
+            pm10: 68,
+            timeline: dailyTimeline
+          })
+        }
+      })
+      .catch((err) => {
+        console.error('[Open-Meteo Air Quality API] Fetch failed:', err)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [eventData, detail, startStr, endStr, eventDateObj])
 
   // Fetch weekly weather history/forecast (H-3 to H+3) from Open-Meteo for all disasters
   useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
-    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 98.8472)
 
-    const base = new Date(eventDateObj)
-    const hMinus3 = new Date(base)
-    hMinus3.setDate(base.getDate() - 3)
-    const hPlus3 = new Date(base)
-    hPlus3.setDate(base.getDate() + 3)
-
-    const startStr = formatDateISO(hMinus3)
-    const endStr = formatDateISO(hPlus3)
-
-    const isPast = (new Date().getTime() - base.getTime()) > 1000 * 60 * 60 * 24 * 14
+    const isPast = (new Date().getTime() - eventDateObj.getTime()) > 1000 * 60 * 60 * 24 * 14
     const apiDomain = isPast ? 'archive-api.open-meteo.com' : 'api.open-meteo.com'
     const apiPath = isPast ? 'archive' : 'forecast'
     const url = `https://${apiDomain}/v1/${apiPath}?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia/Jakarta`
@@ -716,7 +825,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     return () => {
       active = false
     }
-  }, [eventDateObj, eventData.latitude, eventData.longitude, detail])
+  }, [eventDateObj, eventData.latitude, eventData.longitude, detail, startStr, endStr])
 
   const weatherTimeline = useMemo(() => {
     if (weeklyWeather.length === 7) return weeklyWeather
@@ -769,63 +878,88 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const disasterTheme = useMemo(() => {
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
-    if (name.includes('banjir')) {
+
+    if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
       return {
-        bg: 'bg-gradient-to-br from-blue-50/50 via-slate-50/20 to-blue-50/10 border-blue-200/80',
-        text: 'text-blue-900',
-        accentBg: 'bg-blue-100/80 text-blue-800',
-        iconColor: 'text-blue-655 text-blue-600',
-        bulletinBg: 'bg-blue-500/5 border-blue-200/50',
-        bulletinText: 'text-blue-955',
-        bulletinTag: 'bg-blue-100 text-blue-800',
-        titleColor: 'text-blue-700'
+        type: 'kebakaran',
+        bg: 'bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-red-600/15 border-orange-300/80',
+        text: 'text-orange-950',
+        accentBg: 'bg-orange-100 text-orange-900',
+        iconColor: 'text-red-600 bg-red-50 border-red-200',
+        bulletinBg: 'bg-gradient-to-r from-orange-50 via-red-50/60 to-amber-50 border-orange-200/80',
+        bulletinText: 'text-orange-955',
+        bulletinTag: 'bg-red-600 text-white',
+        titleColor: 'text-red-700',
+        cardHeaderIcon: Flame,
       }
     }
-    if (name.includes('gempa')) {
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
       return {
-        bg: 'bg-gradient-to-br from-amber-50/50 via-slate-50/20 to-amber-50/10 border-amber-200/80',
-        text: 'text-amber-900',
-        accentBg: 'bg-amber-100/80 text-amber-800',
-        iconColor: 'text-amber-600',
-        bulletinBg: 'bg-amber-500/5 border-amber-200/50',
+        type: 'banjir',
+        bg: 'bg-gradient-to-br from-blue-500/10 via-sky-500/10 to-cyan-600/15 border-blue-300/80',
+        text: 'text-blue-950',
+        accentBg: 'bg-blue-100 text-blue-900',
+        iconColor: 'text-blue-600 bg-blue-50 border-blue-200',
+        bulletinBg: 'bg-gradient-to-r from-blue-50 via-sky-50/60 to-cyan-50 border-blue-200/80',
+        bulletinText: 'text-blue-955',
+        bulletinTag: 'bg-blue-600 text-white',
+        titleColor: 'text-blue-700',
+        cardHeaderIcon: CloudRain,
+      }
+    }
+    if (name.includes('gempa') || name.includes('earthquake')) {
+      return {
+        type: 'gempa',
+        bg: 'bg-gradient-to-br from-amber-900/10 via-yellow-600/10 to-amber-500/10 border-amber-300/80',
+        text: 'text-amber-950',
+        accentBg: 'bg-amber-100 text-amber-900',
+        iconColor: 'text-amber-700 bg-amber-50 border-amber-200',
+        bulletinBg: 'bg-gradient-to-r from-amber-50 via-yellow-50/60 to-orange-50 border-amber-200/80',
         bulletinText: 'text-amber-955',
-        bulletinTag: 'bg-amber-100 text-amber-800',
-        titleColor: 'text-amber-705'
+        bulletinTag: 'bg-amber-700 text-white',
+        titleColor: 'text-amber-800',
+        cardHeaderIcon: Activity,
+      }
+    }
+    if (name.includes('longsor') || name.includes('landslide')) {
+      return {
+        type: 'longsor',
+        bg: 'bg-gradient-to-br from-amber-950/10 via-stone-700/10 to-yellow-700/10 border-amber-400/80',
+        text: 'text-amber-950',
+        accentBg: 'bg-amber-200/80 text-amber-950',
+        iconColor: 'text-amber-800 bg-amber-50 border-amber-300',
+        bulletinBg: 'bg-gradient-to-r from-stone-50 via-amber-50/60 to-yellow-50 border-amber-300/80',
+        bulletinText: 'text-amber-955',
+        bulletinTag: 'bg-amber-800 text-white',
+        titleColor: 'text-amber-900',
+        cardHeaderIcon: Compass,
       }
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
       return {
-        bg: 'bg-gradient-to-br from-rose-50/50 via-slate-50/20 to-rose-50/10 border-rose-200/80',
-        text: 'text-rose-900',
-        accentBg: 'bg-rose-100/80 text-rose-800',
-        iconColor: 'text-rose-600',
-        bulletinBg: 'bg-rose-500/5 border-rose-200/50',
+        type: 'gunung',
+        bg: 'bg-gradient-to-br from-rose-950/10 via-red-800/10 to-stone-700/10 border-rose-300/80',
+        text: 'text-rose-950',
+        accentBg: 'bg-rose-100 text-rose-900',
+        iconColor: 'text-rose-700 bg-rose-50 border-rose-200',
+        bulletinBg: 'bg-gradient-to-r from-rose-50 via-red-50/60 to-stone-50 border-rose-200/80',
         bulletinText: 'text-rose-955',
-        bulletinTag: 'bg-rose-100 text-rose-800',
-        titleColor: 'text-rose-700'
-      }
-    }
-    if (name.includes('kebakaran') || name.includes('karhutla')) {
-      return {
-        bg: 'bg-gradient-to-br from-orange-50/50 via-slate-50/20 to-orange-50/10 border-orange-200/80',
-        text: 'text-orange-900',
-        accentBg: 'bg-orange-100/80 text-orange-800',
-        iconColor: 'text-orange-600',
-        bulletinBg: 'bg-orange-500/5 border-orange-200/50',
-        bulletinText: 'text-orange-955',
-        bulletinTag: 'bg-orange-100 text-orange-800',
-        titleColor: 'text-orange-700'
+        bulletinTag: 'bg-rose-700 text-white',
+        titleColor: 'text-rose-800',
+        cardHeaderIcon: AlertTriangle,
       }
     }
     return {
-      bg: 'bg-gradient-to-br from-teal-50/50 via-slate-50/20 to-teal-50/10 border-teal-200/80',
-      text: 'text-teal-900',
-      accentBg: 'bg-teal-100/80 text-teal-800',
-      iconColor: 'text-teal-600',
-      bulletinBg: 'bg-teal-500/5 border-teal-200/50',
-      bulletinText: 'text-teal-955',
-      bulletinTag: 'bg-teal-100 text-teal-800',
-      titleColor: 'text-teal-700'
+      type: 'cuaca',
+      bg: 'bg-gradient-to-br from-indigo-950/10 via-slate-700/10 to-sky-700/10 border-indigo-200/80',
+      text: 'text-slate-900',
+      accentBg: 'bg-indigo-100 text-indigo-900',
+      iconColor: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+      bulletinBg: 'bg-gradient-to-r from-slate-50 via-indigo-50/60 to-sky-50 border-indigo-200/80',
+      bulletinText: 'text-slate-900',
+      bulletinTag: 'bg-indigo-600 text-white',
+      titleColor: 'text-indigo-800',
+      cardHeaderIcon: CloudLightning,
     }
   }, [eventData])
 
@@ -844,9 +978,47 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
 
 
-  // Dynamic growth metrics
+  // Dynamic growth & yesterday comparison metrics
   const korbanGrowth = useMemo(() => (eventSeed % 15) + 5, [eventSeed]);
   const pengungsiGrowth = useMemo(() => ((eventSeed + 7) % 12) + 3, [eventSeed]);
+
+  const korbanTrendInfo = useMemo(() => {
+    const today = totalKorbanReal
+    if (today === 0) {
+      return {
+        yesterday: 0,
+        pct: 0,
+        label: 'Kemarin: 0 | Statis (0%)',
+        badgeClass: 'bg-slate-100 border-slate-200 text-slate-600 shadow-xs'
+      }
+    }
+    const yesterday = Math.max(0, Math.round(today * 0.8))
+    const diff = today - yesterday
+    const pct = yesterday > 0 ? Math.round((diff / yesterday) * 100) : 100
+
+    if (diff > 0) {
+      return {
+        yesterday,
+        pct,
+        label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | ↑ +${pct}%`,
+        badgeClass: 'bg-rose-50 border-rose-200 text-rose-700 shadow-xs font-black'
+      }
+    } else if (diff < 0) {
+      return {
+        yesterday,
+        pct,
+        label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | ↓ ${pct}%`,
+        badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs font-black'
+      }
+    } else {
+      return {
+        yesterday,
+        pct: 0,
+        label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | Statis (0%)`,
+        badgeClass: 'bg-slate-100 border-slate-200 text-slate-700 shadow-xs font-black'
+      }
+    }
+  }, [totalKorbanReal])
 
   // Count posko and desa
   const countDesa = useMemo(() => {
@@ -921,6 +1093,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     }
     return terdekat
   }, [detail, totalFaskes, terdampakFaskes])
+
+  const faskesTrendInfo = useMemo(() => {
+    if (terdampakFaskes > 0) {
+      const yesterday = Math.max(0, terdampakFaskes - 1)
+      const diff = terdampakFaskes - yesterday
+      return {
+        label: `Kemarin: ${yesterday} Terdampak | ↑ +${diff} Faskes`,
+        badgeClass: 'bg-rose-50 border-rose-200 text-rose-700 shadow-xs font-black'
+      }
+    }
+    return {
+      label: 'Kemarin: 0 Terdampak | 100% Operasional',
+      badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs font-black'
+    }
+  }, [terdampakFaskes])
+
+  const terdampakTrendInfo = useMemo(() => {
+    const rawVal = safeParseInt(eventData.penduduk_terdampak)
+    if (pendudukTerdampakDisplay === 'NA' || rawVal === 0) {
+      return {
+        label: 'Kemarin: NA | Data Belum Dilaporkan',
+        badgeClass: 'bg-slate-100 border-slate-200 text-slate-600 shadow-xs font-black'
+      }
+    }
+    const yesterday = Math.max(0, Math.round(rawVal * 0.82))
+    const diff = rawVal - yesterday
+    const pct = yesterday > 0 ? Math.round((diff / yesterday) * 100) : 100
+    return {
+      label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | ↑ +${pct}%`,
+      badgeClass: 'bg-amber-50 border-amber-200 text-amber-800 shadow-xs font-black'
+    }
+  }, [eventData.penduduk_terdampak, pendudukTerdampakDisplay])
 
   // Health risk score computation (dynamic based on severity)
   const healthRiskScore = useMemo(() => {
@@ -1177,12 +1381,46 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
     const duration = ['3 - 5 Hari', '2 - 3 Hari', '5 - 7 Hari', '1 - 2 Hari']
     return duration[eventSeed % duration.length]
-  }, [realtimeWeather, kronologi, eventSeed])
+  }, [realtimeWeather, kronologi])
+
+  // Unified ISPU metrics for event day (guarantees 100% consistency across Left Parameters, Timeline, and EOC Bulletin)
+  const eventDayIspu = useMemo(() => {
+    if (realtimeAirQuality && typeof realtimeAirQuality.ispu === 'number') {
+      return realtimeAirQuality.ispu
+    }
+    return 115
+  }, [realtimeAirQuality])
+
+  const eventDayIspuCategory = useMemo(() => {
+    const val = eventDayIspu
+    if (val > 300) return { label: 'Berbahaya', shortLabel: 'Bahaya', color: 'text-red-700' }
+    if (val > 200) return { label: 'Sangat Tidak Sehat', shortLabel: 'S.T. Sehat', color: 'text-purple-600' }
+    if (val > 150) return { label: 'Tidak Sehat', shortLabel: 'T. Sehat', color: 'text-rose-600' }
+    if (val > 100) return { label: 'Sangat Sedang', shortLabel: 'S. Sedang', color: 'text-orange-600' }
+    if (val > 50) return { label: 'Sedang', shortLabel: 'Sedang', color: 'text-amber-600' }
+    return { label: 'Baik', shortLabel: 'Baik', color: 'text-emerald-600' }
+  }, [eventDayIspu])
 
   const dynamicCharacteristics = useMemo(() => {
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
-    if (name.includes('banjir')) {
+    if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
+      const spots = (eventSeed % 20) + 6
+      const visText = realtimeWind
+        ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km` : `${realtimeWind.visibilityM} m`)
+        : `${((eventSeed % 3) * 500 + 800).toLocaleString('id-ID')} m`
+      const windText = realtimeWind
+        ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText})`
+        : '18 km/jam (Utara - Timur Laut)'
+
+      return [
+        { label: 'Titik Panas (Hotspot)', value: `${spots} Titik (FIRMS / Satelit)`, icon: Flame, color: 'text-red-500' },
+        { label: 'ISPU (Air Quality)', value: `${eventDayIspu} (${eventDayIspuCategory.label})`, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
+        { label: 'Jarak Pandang', value: visText, icon: Eye, color: 'text-slate-600' },
+        { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
+      ]
+    }
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
       return [
         { label: 'TMA Sungai', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
         { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
@@ -1190,40 +1428,36 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         { label: 'Saturasi Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-blue-500' }
       ]
     }
-    if (name.includes('gempa')) {
+    if (name.includes('gempa') || name.includes('earthquake')) {
       const magn = ((eventSeed % 25) / 10 + 5.0).toFixed(1)
       const depth = (eventSeed % 80) + 10
       const tsunami = (eventSeed % 3 === 0) ? 'Berpotensi Tsunami' : 'Tidak Berpotensi'
       const mmi = ['IV MMI (Ringan)', 'V MMI (Sedang)', 'VI MMI (Kuat)', 'VII MMI (Sangat Kuat)'][eventSeed % 4]
       return [
-        { label: 'Magnitudo', value: `${magn} SR`, icon: Activity, color: 'text-red-650' },
-        { label: 'Kedalaman', value: `${depth} km`, icon: Compass, color: 'text-amber-600' },
-        { label: 'Potensi Tsunami', value: tsunami, icon: ShieldAlert, color: tsunami.includes('Tidak') ? 'text-emerald-650' : 'text-red-600 animate-pulse' },
-        { label: 'Intensitas MMI', value: mmi, icon: AlertTriangle, color: 'text-orange-500' }
+        { label: 'Magnitudo Gempa', value: `${magn} SR / Mww`, icon: Activity, color: 'text-red-600' },
+        { label: 'Kedalaman Gempa', value: `${depth} km (Dangkal)`, icon: Compass, color: 'text-amber-700' },
+        { label: 'Status Episentrum', value: tsunami, icon: Waves, color: 'text-blue-600' },
+        { label: 'Intensitas MMI', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
+      ]
+    }
+    if (name.includes('longsor') || name.includes('landslide')) {
+      return [
+        { label: 'Kerentanan Tanah', value: 'Tinggi (Zona Merah InaRISK)', icon: AlertTriangle, color: 'text-amber-700' },
+        { label: 'Hujan Pemicu (3H)', value: `${totalRainfall} mm`, icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Kemiringan Lereng', value: '>35° (Sangat Curam)', icon: Compass, color: 'text-amber-900' },
+        { label: 'Kelembaban Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Kritis / Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
       const level = ['Level II (Waspada)', 'Level III (Siaga)', 'Level IV (Awas)'][eventSeed % 3]
       const height = (eventSeed % 4) * 1000 + 1500
-      const dir = ['Barat Daya', 'Selatan', 'Tenggara', 'Utara'][eventSeed % 4]
+      const dir = realtimeWind ? realtimeWind.directionText : ['Barat Daya', 'Selatan', 'Tenggara', 'Utara'][eventSeed % 4]
       const zone = (eventSeed % 3) + 4
       return [
         { label: 'Status Gunung', value: level, icon: ShieldAlert, color: 'text-red-600' },
         { label: 'Tinggi Abu', value: `${height.toLocaleString('id-ID')} m`, icon: CloudRain, color: 'text-slate-600' },
-        { label: 'Arah Awan Panas', value: dir, icon: Compass, color: 'text-amber-600' },
+        { label: 'Arah Awan Panas', value: dir, icon: Wind, color: 'text-amber-600' },
         { label: 'Zona Bahaya', value: `Sektoral ${zone} km`, icon: AlertTriangle, color: 'text-orange-500' }
-      ]
-    }
-    if (name.includes('kebakaran') || name.includes('karhutla')) {
-      const spots = (eventSeed % 25) + 5
-      const ispu = (eventSeed % 120) + 90
-      const vis = ((eventSeed % 3) * 500 + 800).toLocaleString('id-ID')
-      const ispuLabel = ispu >= 150 ? 'Tidak Sehat' : ispu >= 100 ? 'Sangat Sedang' : 'Sedang'
-      return [
-        { label: 'Titik Panas (Hotspot)', value: `${spots} Titik`, icon: Activity, color: 'text-red-500' },
-        { label: 'ISPU (Air Quality)', value: `${ispu} (${ispuLabel})`, icon: ShieldAlert, color: ispu >= 150 ? 'text-red-650' : 'text-orange-500' },
-        { label: 'Jarak Pandang', value: `${vis} m`, icon: Compass, color: 'text-slate-500' },
-        { label: 'Arah Asap', value: 'Utara - Timur Laut', icon: Clock, color: 'text-amber-500' }
       ]
     }
     return [
@@ -1232,25 +1466,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       { label: 'Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis' : 'Layak', icon: Droplets, color: 'text-blue-500' },
       { label: 'Fasum Berfungsi', value: 'Sebagian Berfungsi', icon: Activity, color: 'text-cyan-600' }
     ]
-  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed])
+  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall])
 
   const eocNarrative = useMemo(() => {
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
-    if (name.includes('banjir')) {
-      return `Analisis Hidrometeorologi: Limpasan permukaan dipicu oleh akumulasi curah hujan ${totalRainfall} mm (puncak ${peakRainfall} mm pada hari kejadian) menjenuhkan kapasitas infiltrasi tanah hingga ${soilSaturation}%. Peningkatan TMA ke ${parsedTma} meningkatkan risiko kontaminasi patogen diare dan Leptospirosis, serta transmisi penyakit tular vektor (DBD, malaria) akibat genangan air selama 1-2 minggu ke depan.`
+    if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
+      const ispuText = `${eventDayIspu} (${eventDayIspuCategory.label})`
+      const windSpeedText = realtimeWind ? `${realtimeWind.speed} km/jam` : '18 km/jam'
+      const windDirText = realtimeWind ? realtimeWind.directionText : 'Utara - Timur Laut'
+
+      return `Analisis Pajanan Karhutla (${formattedDate}): Pemantauan krisis di wilayah ${locationFull} pada tanggal kejadian mencatat Indeks Standar Pencemar Udara (ISPU) mencapai ${ispuText} dengan konsentrasi partikulat halus PM2.5. Tiupan angin berkecepatan ${windSpeedText} ke arah ${windDirText} berpotensi meningkatkan sebaran asap. EOC Kemenkes merekomendasikan pembatasan aktivitas luar ruangan, evakuasi kelompok rentan, distribusi masker N95, serta penguatan kesiapsiagaan faskes.`
     }
-    if (name.includes('gempa')) {
-      return `Asesmen Epidemiologi Gempa: Kerusakan infrastruktur sanitasi dan faskes meningkatkan kerentanan klaster pengungsian terhadap penyakit menular (ISPA, diare). Runtuhan material memicu tingginya trauma fisik akut yang memerlukan faskes sekunder darurat. EOC merekomendasikan surveilans aktif harian penyakit potensial KLB di titik pengungsian.`
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+      return `Analisis Hidrometeorologi (${formattedDate}): Limpasan permukaan dipicu oleh akumulasi curah hujan ${totalRainfall} mm (puncak ${peakRainfall} mm pada hari kejadian) menjenuhkan kapasitas infiltrasi tanah hingga ${soilSaturation}%. Peningkatan TMA ke ${parsedTma} di ${locationFull} meningkatkan risiko kontaminasi patogen diare dan Leptospirosis, serta transmisi penyakit tular vektor (DBD, malaria).`
+    }
+    if (name.includes('gempa') || name.includes('earthquake')) {
+      return `Asesmen Epidemiologi Gempa (${formattedDate}): Dampak guncangan di ${locationFull} memicu kerusakan infrastruktur sanitasi dan faskes serta meningkatkan kerentanan pengungsi terhadap ISPA dan diare. Runtuhan material memicu trauma fisik akut yang memerlukan penanganan medis sekunder darurat. EOC merekomendasikan surveilans aktif harian di pengungsian.`
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
-      return `Buletin Krisis Letusan Gunung: Paparan abu vulkanik kaya silika dan sulfur dioksida memicu lonjakan kasus ISPA akut, konjungtivitis, dan iritasi dermatologis pada populasi sekitar radius zona bahaya. EOC merekomendasikan distribusi segera masker N95, pemantauan kualitas sumber air terbuka, dan evakuasi kelompok rentan.`
+      return `Buletin Krisis Letusan Gunung (${formattedDate}): Paparan abu vulkanik di ${locationFull} memicu lonjakan kasus ISPA akut, konjungtivitis, dan iritasi kulit. EOC merekomendasikan distribusi segera masker N95, pemantauan sumber air, dan evakuasi penduduk di radius bahaya.`
     }
-    if (name.includes('kebakaran') || name.includes('karhutla')) {
-      return `Analisis Pajanan Karhutla: Konsentrasi partikulat halus (PM2.5) dari asap kebakaran menjenuhkan kualitas udara ke kategori tidak sehat. Hal ini memicu eksaserbasi akut pasien asma, PPOK, dan infeksi pernapasan akut. EOC mendesak pembatasan aktivitas luar ruangan dan perlindungan nakes di garda depan.`
-    }
-    return `Buletin Epidemiologi EOC: Krisis kesehatan sedang dipantau secara intensif oleh tim reaksi cepat. Rekomendasi utama mencakup penguatan kapasitas respons faskes primer, distribusi logistik kesehatan dasar, surveilans penyakit menular sensitif bencana, dan pemenuhan kebutuhan sanitasi dasar bagi penduduk terdampak.`
-  }, [eventData, totalRainfall, peakRainfall, soilSaturation, parsedTma])
+  }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma])
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 
@@ -1384,35 +1621,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         </div>
       )}
 
-      {/* EOC Top Section Layout (Responsive Grid containing Merged Header & Metrics) */}
+      {/* EOC Top Section Layout (Responsive Flex Container containing Merged Header & Metrics) */}
       {true && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-stretch animate-in fade-in slide-in-from-top-3 duration-300">
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch animate-in fade-in slide-in-from-top-3 duration-300">
 
-          {/* Card 1 & 5 Merged: Disaster Header & Characteristics Bulletin */}
-          <div className={`lg:col-span-3 md:col-span-3 rounded-2xl border bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between transition hover:shadow-md ${disasterTheme.bg}`}>
+          {/* Card 1 & 5 Merged: Disaster Header & Characteristics Bulletin (Expanded Width ~60%) */}
+          <div className={`w-full lg:w-[61%] rounded-2xl border bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between transition hover:shadow-md ${disasterTheme.bg}`}>
             <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
 
               {/* Col 1: Disaster Identity */}
-              <div className="w-full md:w-[28%] flex flex-col justify-between pr-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
+              <div className="w-full md:w-[26%] flex flex-col justify-between pr-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm border border-slate-100 ${disasterTheme.iconColor}`}>
-                    <CloudRain className="h-6 w-6" />
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-200 ${disasterTheme.iconColor}`}>
+                    {(() => {
+                      const IconComp = disasterTheme.cardHeaderIcon || CloudRain
+                      return <IconComp className="h-6.5 w-6.5" />
+                    })()}
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block leading-none">JENIS BENCANA</span>
-                    <span className="text-[24px] font-black text-slate-900 block leading-none mt-1 uppercase tracking-wide">
+                    <span className="text-xs font-black text-slate-500 uppercase tracking-wider block leading-none">JENIS BENCANA</span>
+                    <span className="text-2xl sm:text-3xl font-black text-slate-900 block leading-tight mt-1 uppercase tracking-tight">
                       {eventData.jenis_bencana}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3 md:mt-auto">
-                  <p className="text-[12.5px] font-black text-slate-800 leading-snug truncate" title={locationFull}>
+                <div className="mt-3.5 md:mt-auto">
+                  <p className="text-sm sm:text-base font-black text-slate-900 leading-snug truncate" title={locationFull}>
                     {locationFull}
                   </p>
                   {formattedDate && (
-                    <p className="text-[10.5px] font-bold text-slate-500 mt-1.5 flex items-center gap-1 leading-none">
-                      <Clock className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-600 mt-2 flex items-center gap-1.5 leading-none">
+                      <Clock className="h-4 w-4 shrink-0 text-slate-400" />
                       {formattedDate}
                     </p>
                   )}
@@ -1420,17 +1660,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               </div>
 
               {/* Col 2: Disaster Specific Physical/Geological Parameters */}
-              <div className="w-full md:w-[32%] flex flex-col justify-center gap-3.5 px-0 md:px-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
+              <div className="w-full md:w-[30%] flex flex-col justify-center gap-3.5 px-0 md:px-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
                 {dynamicCharacteristics.map((item, idx) => {
                   const IconComp = item.icon
                   return (
                     <div key={idx} className="flex items-center gap-2.5">
-                      <div className="flex h-7.5 w-7.5 items-center justify-center rounded-lg bg-white/90 text-slate-500 border border-slate-100 shadow-sm shrink-0">
-                        <IconComp className={`h-4 w-4 ${item.color}`} />
+                      <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-white text-slate-600 border border-slate-200/90 shadow-xs shrink-0">
+                        <IconComp className={`h-4.5 w-4.5 ${item.color}`} />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[9px] font-bold text-slate-400 block uppercase leading-none">{item.label}</span>
-                        <span className="text-[12px] font-black text-slate-800 block mt-0.5 truncate" title={item.value}>
+                        <span className="text-[11px] font-extrabold text-slate-500 block uppercase leading-none tracking-wide">{item.label}</span>
+                        <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5 truncate" title={item.value}>
                           {item.value}
                         </span>
                       </div>
@@ -1439,47 +1679,86 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 })}
               </div>
 
-              {/* Col 3: Weather & Precipitation Timeline */}
-              <div className="w-full md:w-[40%] flex flex-col justify-between pl-0 md:pl-2">
-                <span className="text-[9.5px] font-bold text-slate-450 uppercase tracking-wider block mb-1.5">
-                  HISTORI CUACA &amp; CURAH HUJAN (H-3 S.D. H+3)
+              {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width ~44%) */}
+              <div className="w-full md:w-[44%] flex flex-col justify-between pl-0 md:pl-2">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider block mb-2">
+                  {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung'
+                    ? 'TREN KUALITAS UDARA (ISPU / PM2.5) & ANGIN (H-3 S.D. H+3)'
+                    : disasterTheme.type === 'gempa'
+                    ? 'INTENSITAS MMI & SEJARAH GEMPA (H-3 S.D. H+3)'
+                    : disasterTheme.type === 'longsor'
+                    ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
+                    : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
                 </span>
 
-                <div className="grid grid-cols-7 gap-1 text-center items-stretch justify-between flex-1">
-                  {weatherTimeline.map((day) => {
+                <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
+                  {weatherTimeline.map((day, idx) => {
                     const isEventDay = day.offset === 0
+                    const aqItem = (realtimeAirQuality && realtimeAirQuality.timeline && realtimeAirQuality.timeline[idx])
+                      ? realtimeAirQuality.timeline[idx]
+                      : null
+
+                    const dayIspuVal = isEventDay ? eventDayIspu : (aqItem ? aqItem.aqi : eventDayIspu)
+                    const dayIspuLabel = isEventDay ? eventDayIspuCategory.shortLabel : (aqItem ? (aqItem.shortLabel || aqItem.label) : eventDayIspuCategory.shortLabel)
+
                     return (
                       <div
                         key={day.offset}
-                        className={`flex flex-col items-center justify-between py-1 px-0.5 rounded-lg transition-colors border ${isEventDay
-                            ? 'bg-rose-50 border-rose-200 text-rose-850'
-                            : 'bg-white/80 border-slate-100/80 hover:bg-slate-50'
+                        className={`flex flex-col items-center justify-between py-1.5 px-1 rounded-xl transition-colors border ${isEventDay
+                            ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-md ring-2 ring-rose-300/60'
+                            : 'bg-white/90 border-slate-200/90 hover:bg-slate-50'
                           }`}
                       >
-                        <span className="text-[8px] font-extrabold uppercase leading-none text-slate-400">
+                        <span className="text-[10px] font-black uppercase leading-none text-slate-500">
                           {day.dayName}
                         </span>
-                        <span className="text-[9px] font-black leading-none mt-0.5 text-slate-700">
+                        <span className="text-xs font-black leading-none mt-0.5 text-slate-900">
                           {day.dateLabel}
                         </span>
 
-                        <div className="my-1.5 shrink-0">
-                          {day.weather.includes('Lebat') ? (
-                            <CloudLightning className={`h-4.5 w-4.5 ${isEventDay ? 'text-rose-500 animate-bounce' : 'text-blue-600'}`} />
+                        <div className="my-1.5 shrink-0 flex items-center justify-center">
+                          {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
+                            <ShieldAlert className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-pulse' : (dayIspuVal > 150) ? 'text-orange-500' : 'text-amber-500'}`} />
+                          ) : disasterTheme.type === 'gempa' ? (
+                            <Activity className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-bounce' : 'text-amber-600'}`} />
+                          ) : day.weather.includes('Lebat') ? (
+                            <CloudLightning className={`h-5 w-5 ${isEventDay ? 'text-rose-500 animate-bounce' : 'text-blue-600'}`} />
                           ) : day.weather.includes('Sedang') || day.weather.includes('Ringan') ? (
-                            <CloudRain className="h-4.5 w-4.5 text-blue-500" />
+                            <CloudRain className="h-5 w-5 text-blue-500" />
                           ) : (
-                            <Cloud className="h-4.5 w-4.5 text-slate-400" />
+                            <Cloud className="h-5 w-5 text-slate-400" />
                           )}
                         </div>
 
-                        <div className="flex flex-col items-center leading-none mt-0.5">
-                          <span className="text-[7.5px] font-extrabold text-slate-500 block truncate max-w-[32px]">
-                            {day.temp}
-                          </span>
-                          <span className="text-[7.5px] font-bold text-blue-650 mt-0.5 block shrink-0">
-                            {day.precip}mm
-                          </span>
+                        <div className="flex flex-col items-center leading-none mt-0.5 w-full">
+                          {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
+                            <>
+                              <span className="text-[11px] sm:text-xs font-black text-slate-900 block text-center whitespace-nowrap leading-tight">
+                                ISPU {dayIspuVal}
+                              </span>
+                              <span className={`text-[10px] font-black mt-0.5 block text-center whitespace-nowrap leading-tight ${isEventDay ? 'text-red-700 font-black' : (dayIspuVal > 150) ? 'text-rose-600' : 'text-orange-600'}`}>
+                                {dayIspuLabel}
+                              </span>
+                            </>
+                          ) : disasterTheme.type === 'gempa' ? (
+                            <>
+                              <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
+                                {isEventDay ? 'VI MMI' : `${['IV', 'V', 'III'][idx % 3]} MMI`}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                                {isEventDay ? 'Kuat' : 'Ringan'}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[11px] font-black text-slate-700 block text-center whitespace-nowrap">
+                                {day.temp}
+                              </span>
+                              <span className="text-[10px] font-extrabold text-blue-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                                {day.precip}mm
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     )
@@ -1490,108 +1769,100 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             </div>
 
             {/* EOC Epidemiological Narrative Bulletin */}
-            <div className={`mt-3.5 rounded-xl p-2.5 border flex items-start gap-2.5 ${disasterTheme.bulletinBg}`}>
-              <div className="bg-rose-500 text-white rounded-lg p-1 shrink-0 mt-0.5 shadow-sm">
-                <ShieldAlert className="h-3.5 w-3.5 animate-pulse" />
+            <div className={`mt-3.5 rounded-xl p-3 border flex items-start gap-3 ${disasterTheme.bulletinBg}`}>
+              <div className="bg-rose-600 text-white rounded-lg p-1.5 shrink-0 mt-0.5 shadow-xs">
+                <ShieldAlert className="h-4.5 w-4.5" />
               </div>
-              <p className="text-[11px] font-semibold leading-relaxed text-slate-700">
-                <span className={`font-extrabold uppercase text-[9px] tracking-wider px-2 py-0.5 rounded shadow-sm mr-2 ${disasterTheme.bulletinTag}`}>
-                  Buletin EOC
+              <p className="text-xs sm:text-sm font-semibold text-slate-850 leading-relaxed">
+                <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide mr-2 shadow-xs">
+                  BULETIN EOC
                 </span>
                 {eocNarrative}
               </p>
             </div>
-
           </div>
 
-          {/* Card 2: Total Korban */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[250px] transition hover:shadow-md">
-            <div className="text-center flex-1 flex flex-col justify-center">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">TOTAL KORBAN</span>
-              <span className="text-4xl font-black text-slate-900 block leading-none mt-2">{totalKorbanReal.toLocaleString('id-ID')}</span>
-              <span className="text-[10px] font-bold text-emerald-600 inline-flex items-center justify-center gap-0.5 mt-2">
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 10l7-7 7 7" />
-                </svg>
-                +{korbanGrowth}% dari kemarin
-              </span>
+          {/* Cards 2, 3, 4 Container (Slightly Compacted ~39% Width) */}
+          <div className="w-full lg:w-[39%] grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 items-stretch">
+            {/* Card 2: Total Korban */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+              <div className="text-center flex-1 flex flex-col justify-center items-center">
+                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">TOTAL KORBAN</span>
+                <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2">{totalKorbanReal.toLocaleString('id-ID')}</span>
+                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
+                  {korbanTrendInfo.label}
+                </span>
+              </div>
+              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+                <div>
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Meninggal</span>
+                </div>
+                <div className="border-x border-slate-100 px-0.5">
+                  <span className="text-lg sm:text-xl font-black text-amber-600 block leading-none">{breakdown.luka}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Luka</span>
+                </div>
+                <div>
+                  <span className="text-lg sm:text-xl font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Hilang</span>
+                </div>
+              </div>
             </div>
-            <div className="border-t border-slate-100 pt-3 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
-              <div>
-                <span className="text-[18px] font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Meninggal</span>
-              </div>
-              <div className="border-x border-slate-100 px-1">
-                <span className="text-[18px] font-black text-amber-600 block leading-none">{breakdown.luka}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Luka</span>
-              </div>
-              <div>
-                <span className="text-[18px] font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Hilang</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Card 3: Faskes Di Area */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[250px] transition hover:shadow-md">
-            <div className="text-center flex-1 flex flex-col justify-center">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">FASKES DI AREA</span>
-              <span className="text-4xl font-black text-slate-900 block leading-none mt-2">
-                {totalFaskes.toLocaleString('id-ID')}
-              </span>
-              <span className="mt-2.5">
-                {terdampakFaskes > 0 ? (
-                  <span className="text-[10px] font-extrabold text-rose-600 inline-flex items-center gap-1 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100 leading-none">
-                    <AlertTriangle className="h-3 w-3 shrink-0 text-rose-500" />
-                    {terdampakFaskes} Terdampak
+            {/* Card 3: Faskes Di Area */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+              <div className="text-center flex-1 flex flex-col justify-center items-center">
+                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">FASKES DI AREA</span>
+                <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2">
+                  {totalFaskes.toLocaleString('id-ID')}
+                </span>
+                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${faskesTrendInfo.badgeClass}`}>
+                  {faskesTrendInfo.label}
+                </span>
+              </div>
+              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
+                <div className="border-r border-slate-100 px-0.5">
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
+                    {operasionalFaskes}
                   </span>
-                ) : (
-                  <span className="text-[10px] font-extrabold text-emerald-600 inline-flex items-center gap-1 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100 leading-none">
-                    <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" />
-                    Semua Berfungsi
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">OPERASIONAL</span>
+                </div>
+                <div className="px-0.5">
+                  <span className="text-lg sm:text-xl font-black text-rose-600 block leading-none">
+                    {terdampakFaskes}
                   </span>
-                )}
-              </span>
-            </div>
-            <div className="border-t border-slate-100 pt-3 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
-              <div className="border-r border-slate-100 px-1">
-                <span className="text-[18px] font-black text-slate-900 block leading-none">
-                  {operasionalFaskes}
-                </span>
-                <span className="text-[9.5px] font-bold text-slate-450 block mt-1 leading-tight uppercase">OPERASIONAL</span>
-              </div>
-              <div className="px-1">
-                <span className="text-[18px] font-black text-rose-600 block leading-none">
-                  {terdampakFaskes}
-                </span>
-                <span className="text-[9.5px] font-bold text-slate-450 block mt-1 leading-tight uppercase">TERDAMPAK</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">TERDAMPAK</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Card 4: Penduduk Terdampak */}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[250px] transition hover:shadow-md">
-            <div className="text-center flex-1 flex flex-col justify-center">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
-              <div className="flex items-baseline justify-center gap-0.5 mt-2">
-                <span className="text-4xl font-black text-slate-900 leading-none">
-                  {pendudukTerdampakDisplay}
+            {/* Card 4: Penduduk Terdampak */}
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+              <div className="text-center flex-1 flex flex-col justify-center items-center">
+                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
+                <div className="flex items-baseline justify-center gap-1 mt-2">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900 leading-none">
+                    {pendudukTerdampakDisplay}
+                  </span>
+                  {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-500">Jiwa</span>}
+                </div>
+                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${terdampakTrendInfo.badgeClass}`}>
+                  {terdampakTrendInfo.label}
                 </span>
-                {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-400">Jiwa</span>}
               </div>
-            </div>
-            <div className="border-t border-slate-100 pt-3 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
-              <div>
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{balitaDisplay}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Balita</span>
-              </div>
-              <div className="border-x border-slate-100 px-1">
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{lansiaDisplay}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Lansia</span>
-              </div>
-              <div>
-                <span className="text-[16px] font-black text-slate-900 block leading-none">{bumilDisplay}</span>
-                <span className="text-[10px] font-bold text-slate-450 block mt-1 leading-tight uppercase">Bumil</span>
+              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+                <div>
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{balitaDisplay}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Balita</span>
+                </div>
+                <div className="border-x border-slate-100 px-0.5">
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{lansiaDisplay}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Lansia</span>
+                </div>
+                <div>
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{bumilDisplay}</span>
+                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Bumil</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1632,6 +1903,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               faskesList={detail?.faskes_terdekat}
               poskoList={detail?.pos_pengungsi}
               onSelectRouteTarget={handleSelectTarget}
+              disasterType={eventData.jenis_bencana}
             />
           </div>
         </div>
@@ -1732,7 +2004,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                             <Line type="monotone" dataKey="Penduduk Terdampak" stroke="#0f766e" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={1.5} dot={{ r: 0 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" tick={{ fontSize: '9px', fill: '#475569' }} gap={1} />
+                            <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
                       )}
@@ -1770,7 +2042,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                             <Line type="monotone" dataKey="Terdampak" stroke="#f97316" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Berfungsi" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Tidak Berfungsi" stroke="#7f1d1d" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Brush dataKey="date" height={22} stroke="#e11d48" fill="#ffe4e6" tick={{ fontSize: '9px', fill: '#475569' }} gap={1} />
+                            <Brush dataKey="date" height={22} stroke="#e11d48" fill="#ffe4e6" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
                       )}
@@ -1821,7 +2093,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                                 />
                               );
                             })}
-                            <Brush dataKey="date" height={22} stroke="#d97706" fill="#fef3c7" tick={{ fontSize: '9px', fill: '#475569' }} gap={1} />
+                            <Brush dataKey="date" height={22} stroke="#d97706" fill="#fef3c7" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
                       )}

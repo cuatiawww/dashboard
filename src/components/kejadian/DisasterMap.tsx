@@ -89,6 +89,7 @@ interface DisasterMapProps {
   faskesList?: any[]
   poskoList?: any[]
   onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter') => void
+  disasterType?: string
 }
 
 interface MarkerPopupState {
@@ -235,10 +236,22 @@ export default function DisasterMap({
   routeInfo = null,
   faskesList = [],
   poskoList = [],
-  onSelectRouteTarget
+  onSelectRouteTarget,
+  disasterType
 }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
+
+  // Infer normalized disaster category for detail/map scoping
+  const disasterCategory = useMemo(() => {
+    const name = String(disasterType || (markers && markers[0]?.jenis_bencana) || '').toLowerCase()
+    if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) return 'kebakaran'
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) return 'banjir'
+    if (name.includes('gempa') || name.includes('earthquake')) return 'gempa'
+    if (name.includes('longsor') || name.includes('landslide')) return 'longsor'
+    if (name.includes('gunung') || name.includes('erupsi')) return 'gunung'
+    return 'general'
+  }, [disasterType, markers])
 
   // ── Map refs ──
   const mapRef = useRef<HTMLDivElement | null>(null)
@@ -289,14 +302,41 @@ export default function DisasterMap({
   const [showRegionLegend, setShowRegionLegend] = useState(false)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
-  // BNPB layer visibilities
+  // BNPB layer visibilities - initial state dynamically tuned per disaster
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
   const [showBnpbHillshade, setShowBnpbHillshade] = useState(false)
   const [showBnpbKepadatan, setShowBnpbKepadatan] = useState(false)
-  const [showBnpbBanjir, setShowBnpbBanjir] = useState(false)
-  const [showBnpbGempa, setShowBnpbGempa] = useState(false)
-  const [showBnpbLongsor, setShowBnpbLongsor] = useState(false)
-  const [showBnpbKarhutla, setShowBnpbKarhutla] = useState(false)
+  const [showBnpbBanjir, setShowBnpbBanjir] = useState(disasterCategory === 'banjir')
+  const [showBnpbGempa, setShowBnpbGempa] = useState(disasterCategory === 'gempa')
+  const [showBnpbLongsor, setShowBnpbLongsor] = useState(disasterCategory === 'longsor')
+  const [showBnpbKarhutla, setShowBnpbKarhutla] = useState(disasterCategory === 'kebakaran')
+
+  // Auto activate matching spatial layer whenever disasterCategory changes
+  useEffect(() => {
+    if (disasterCategory === 'kebakaran') {
+      setShowBnpbKarhutla(true)
+      setShowBnpbBanjir(false)
+      setShowBnpbGempa(false)
+      setShowBnpbLongsor(false)
+      setShowWindy(true)
+    } else if (disasterCategory === 'banjir') {
+      setShowBnpbBanjir(true)
+      setShowBnpbKarhutla(false)
+      setShowBnpbGempa(false)
+      setShowBnpbLongsor(false)
+    } else if (disasterCategory === 'gempa') {
+      setShowBnpbGempa(true)
+      setShowBmkg(true)
+      setShowBnpbBanjir(false)
+      setShowBnpbKarhutla(false)
+      setShowBnpbLongsor(false)
+    } else if (disasterCategory === 'longsor') {
+      setShowBnpbLongsor(true)
+      setShowBnpbBanjir(false)
+      setShowBnpbKarhutla(false)
+      setShowBnpbGempa(false)
+    }
+  }, [disasterCategory])
 
 
 
@@ -2045,77 +2085,171 @@ export default function DisasterMap({
                     </div>
                   </div>
 
-                  {/* Toggle BNPB Bahaya Banjir */}
-                  <div
-                    onClick={() => setShowBnpbBanjir((v) => !v)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">Bahaya Banjir</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan bencana banjir</p>
-                    </div>
+                  {/* Dynamic Hazard Layers Scoped to Disaster Category */}
+                  {disasterCategory === 'kebakaran' && (
                     <div
-                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbBanjir ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      onClick={() => setShowBnpbKarhutla((v) => !v)}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-red-200 bg-red-50/60 px-3 py-2 hover:bg-red-100/60 transition-all shadow-sm"
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbBanjir ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
+                      <div>
+                        <p className="text-xs font-black text-red-900 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                          Bahaya Karhutla (InaRISK)
+                        </p>
+                        <p className="text-[10px] text-red-700 font-medium">Peta kerawanan kebakaran hutan & lahan</p>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbKarhutla ? 'bg-red-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbKarhutla ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Toggle BNPB Bahaya Gempa */}
-                  <div
-                    onClick={() => setShowBnpbGempa((v) => !v)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">Bahaya Gempa Bumi</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan gempa bumi</p>
-                    </div>
+                  {disasterCategory === 'banjir' && (
                     <div
-                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbGempa ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      onClick={() => setShowBnpbBanjir((v) => !v)}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2 hover:bg-blue-100/60 transition-all shadow-sm"
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbGempa ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
+                      <div>
+                        <p className="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+                          Bahaya Banjir (InaRISK)
+                        </p>
+                        <p className="text-[10px] text-blue-700 font-medium">Peta zona rawan genangan & banjir</p>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbBanjir ? 'bg-blue-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbBanjir ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Toggle BNPB Bahaya Longsor */}
-                  <div
-                    onClick={() => setShowBnpbLongsor((v) => !v)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">Bahaya Tanah Longsor</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Daerah rawan tanah longsor</p>
-                    </div>
+                  {disasterCategory === 'gempa' && (
                     <div
-                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbLongsor ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      onClick={() => setShowBnpbGempa((v) => !v)}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 hover:bg-amber-100/60 transition-all shadow-sm"
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbLongsor ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
+                      <div>
+                        <p className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-600 animate-pulse" />
+                          Bahaya Gempa Bumi (InaRISK)
+                        </p>
+                        <p className="text-[10px] text-amber-700 font-medium">Peta kerawanan guncangan & sesar gempa</p>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbGempa ? 'bg-amber-600' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbGempa ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Toggle BNPB Bahaya Karhutla */}
-                  <div
-                    onClick={() => setShowBnpbKarhutla((v) => !v)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
-                  >
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800">Bahaya Karhutla</p>
-                      <p className="text-[10px] text-slate-400 font-medium">Rawan kebakaran hutan & lahan</p>
-                    </div>
+                  {disasterCategory === 'longsor' && (
                     <div
-                      className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbKarhutla ? 'bg-teal-600' : 'bg-slate-300'}`}
+                      onClick={() => setShowBnpbLongsor((v) => !v)}
+                      className="flex cursor-pointer items-center justify-between rounded-xl border border-stone-300 bg-amber-900/10 px-3 py-2 hover:bg-amber-900/20 transition-all shadow-sm"
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbKarhutla ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
+                      <div>
+                        <p className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-amber-800 animate-pulse" />
+                          Bahaya Tanah Longsor (InaRISK)
+                        </p>
+                        <p className="text-[10px] text-amber-800 font-medium">Peta kerentanan gerakan tanah lereng</p>
+                      </div>
+                      <div
+                        className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbLongsor ? 'bg-amber-800' : 'bg-slate-300'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbLongsor ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* General / Other Cross-Hazard Layers Accordion */}
+                  {disasterCategory === 'general' ? (
+                    <>
+                      {/* Toggle BNPB Bahaya Banjir */}
+                      <div
+                        onClick={() => setShowBnpbBanjir((v) => !v)}
+                        className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">Bahaya Banjir</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Daerah rawan bencana banjir</p>
+                        </div>
+                        <div
+                          className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbBanjir ? 'bg-teal-600' : 'bg-slate-300'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbBanjir ? 'translate-x-4' : 'translate-x-0'}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Toggle BNPB Bahaya Gempa */}
+                      <div
+                        onClick={() => setShowBnpbGempa((v) => !v)}
+                        className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">Bahaya Gempa Bumi</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Daerah rawan gempa bumi</p>
+                        </div>
+                        <div
+                          className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbGempa ? 'bg-teal-600' : 'bg-slate-300'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbGempa ? 'translate-x-4' : 'translate-x-0'}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Toggle BNPB Bahaya Longsor */}
+                      <div
+                        onClick={() => setShowBnpbLongsor((v) => !v)}
+                        className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">Bahaya Tanah Longsor</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Daerah rawan tanah longsor</p>
+                        </div>
+                        <div
+                          className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbLongsor ? 'bg-teal-600' : 'bg-slate-300'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbLongsor ? 'translate-x-4' : 'translate-x-0'}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Toggle BNPB Bahaya Karhutla */}
+                      <div
+                        onClick={() => setShowBnpbKarhutla((v) => !v)}
+                        className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 hover:bg-teal-50/50 hover:border-teal-100 transition-all"
+                      >
+                        <div>
+                          <p className="text-xs font-semibold text-slate-800">Bahaya Karhutla</p>
+                          <p className="text-[10px] text-slate-400 font-medium">Rawan kebakaran hutan & lahan</p>
+                        </div>
+                        <div
+                          className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showBnpbKarhutla ? 'bg-teal-600' : 'bg-slate-300'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showBnpbKarhutla ? 'translate-x-4' : 'translate-x-0'}`}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
