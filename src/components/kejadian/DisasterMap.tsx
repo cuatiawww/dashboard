@@ -1753,6 +1753,83 @@ export default function DisasterMap({
         </div>
       )}
 
+      {/* ── EOC Navigation / Directions Card Overlay ── */}
+      {selectedRouteTarget && (
+        <div className="absolute left-4 top-4 z-20 max-w-sm sm:max-w-md w-[90%] sm:w-auto rounded-2xl border border-teal-200/90 bg-white/95 backdrop-blur-md p-3.5 shadow-[0_12px_40px_rgba(15,118,110,0.18)] animate-in fade-in slide-in-from-left duration-200">
+          <div className="flex items-start justify-between border-b border-slate-100 pb-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-600 text-white shadow-xs shrink-0">
+                <Compass className="h-4 w-4" />
+              </span>
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-wider text-teal-700 block leading-none">RUTE NAVIGASI DARAT EOC</span>
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight mt-0.5 truncate max-w-[230px]">
+                  DARI BENCANA ➔ {selectedRouteTarget.name}
+                </h4>
+              </div>
+            </div>
+            <button
+              onClick={() => onSelectRouteTarget?.(null, 'hospital')}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition shrink-0"
+              title="Tutup Rute"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* From & To Detail Rows */}
+          <div className="space-y-1.5 text-xs text-slate-700">
+            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-150">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-600 shrink-0 animate-ping" />
+              <span className="text-[10px] font-black text-slate-500 uppercase shrink-0 w-10">DARI:</span>
+              <span className="font-extrabold text-slate-900 truncate">
+                📍 Titik Kejadian Bencana ({disasterType || 'Bencana'})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 bg-teal-50/70 p-2 rounded-xl border border-teal-150">
+              <span className="h-2.5 w-2.5 rounded-full bg-teal-600 shrink-0" />
+              <span className="text-[10px] font-black text-teal-800 uppercase shrink-0 w-10">KE:</span>
+              <span className="font-extrabold text-slate-900 truncate">
+                🏥 {selectedRouteTarget.name}
+              </span>
+            </div>
+
+            {routeInfo && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="bg-slate-100/70 px-2.5 py-1.5 rounded-lg border border-slate-200/70 text-center">
+                  <span className="text-[9px] font-black text-slate-500 uppercase block">Jarak Tempuh</span>
+                  <span className="text-xs sm:text-sm font-black text-teal-800 block mt-0.5">{routeInfo.distance.toFixed(1)} km</span>
+                </div>
+                <div className="bg-slate-100/70 px-2.5 py-1.5 rounded-lg border border-slate-200/70 text-center">
+                  <span className="text-[9px] font-black text-slate-500 uppercase block">Est. Waktu Tempuh</span>
+                  <span className="text-xs sm:text-sm font-black text-teal-800 block mt-0.5">{routeInfo.duration} menit</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Direct Google Maps Navigation Button (From ➔ To) */}
+          {(() => {
+            const origLat = markers && markers[0] ? markers[0].lat : selectedRouteTarget.latitude - 0.05
+            const origLng = markers && markers[0] ? markers[0].lng : selectedRouteTarget.longitude - 0.05
+            const gmapsDirUrl = `https://www.google.com/maps/dir/?api=1&origin=${origLat},${origLng}&destination=${selectedRouteTarget.latitude},${selectedRouteTarget.longitude}&travelmode=driving`
+
+            return (
+              <a
+                href={gmapsDirUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2.5 flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-sm transition-all active:scale-[0.98]"
+              >
+                <Compass className="h-3.5 w-3.5" />
+                Buka Maps
+              </a>
+            )
+          })()}
+        </div>
+      )}
+
       {/* ── Settings button ── */}
       <button
         onClick={() => { setShowSettings(true); setMarkerPopup(null) }}

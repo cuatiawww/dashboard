@@ -974,6 +974,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       longitude: Number(item.longitude),
       type
     })
+    // Auto scroll smoothly to map
+    setTimeout(() => {
+      document.getElementById('peta-detail')?.scrollIntoView({ behavior: 'smooth' })
+    }, 50)
+  }
+
+  // Google Maps Directions (From Origin Bencana ➔ To Target Faskes/Posko)
+  const getGmapsDirUrl = (destLat: any, destLng: any, name: string, alamat?: string) => {
+    const origLat = eventData?.latitude
+    const origLng = eventData?.longitude
+    const hasOrig = origLat && origLng && Number(origLat) !== 0 && Number(origLng) !== 0
+    const hasDest = destLat && destLng && Number(destLat) !== 0 && Number(destLng) !== 0
+
+    if (hasOrig && hasDest) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${origLat},${origLng}&destination=${destLat},${destLng}&travelmode=driving`
+    }
+    if (hasDest) {
+      return `https://www.google.com/maps/search/?api=1&query=${destLat},${destLng}`
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + (alamat || ''))}`
   }
 
 
@@ -2252,11 +2272,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                               </td>
                               <td className="py-2.5 px-3 text-center">
                                 <a
-                                  href={
-                                    f.latitude && f.longitude && f.latitude !== 0 && f.longitude !== 0
-                                      ? `https://www.google.com/maps/search/?api=1&query=${f.latitude},${f.longitude}`
-                                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.nama + ' ' + (f.alamat || ''))}`
-                                  }
+                                  href={getGmapsDirUrl(f.latitude, f.longitude, f.nama, f.alamat)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
@@ -2336,11 +2352,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                               </td>
                               <td className="py-3 px-3 text-center">
                                 <a
-                                  href={
-                                    pos.latitude && pos.longitude && pos.latitude !== 0 && pos.longitude !== 0
-                                      ? `https://www.google.com/maps/search/?api=1&query=${pos.latitude},${pos.longitude}`
-                                      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Posko Pengungsi Kecamatan ' + (pos.kecamatan || ''))}`
-                                  }
+                                  href={getGmapsDirUrl(pos.latitude, pos.longitude, pos.nama || `Posko ${pos.kecamatan || ''}`)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
