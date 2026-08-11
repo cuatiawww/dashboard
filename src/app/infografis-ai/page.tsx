@@ -189,7 +189,7 @@ const fallbackInfographics: InfographicItem[] = [
 ]
 
 export default function InfografisPage() {
-  const [infographics, setInfographics] = useState<InfographicItem[]>(fallbackInfographics)
+  const [infographics, setInfographics] = useState<InfographicItem[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Semua')
@@ -204,16 +204,43 @@ export default function InfografisPage() {
   const [genSuccess, setGenSuccess] = useState(false)
   const [genError, setGenError] = useState<string | null>(null)
 
-  // Static mode: Disable API loading and use pure static data
-  const handleDownloadPdf = (e: React.MouseEvent, title?: string) => {
+  // Download PDF handler
+  const handleDownloadPdf = async (e: React.MouseEvent, item?: InfographicItem | string) => {
     e.preventDefault()
     e.stopPropagation()
-    const fileName = title
-      ? `${title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`
+    if (!item) return
+
+    const targetItem: Partial<InfographicItem> = typeof item === 'string'
+      ? { title: item, pdfUrl: '/laporan_eoc_kemenkes.pdf' }
+      : item
+
+    const url = targetItem.pdfUrl || '/laporan_eoc_kemenkes.pdf'
+    const fileName = targetItem.title
+      ? `${targetItem.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.pdf`
       : 'Laporan_Infografis_EOC_Kemenkes.pdf'
 
+    try {
+      // Try fetch blob to trigger immediate file download
+      const res = await fetch(url)
+      if (res.ok) {
+        const blob = await res.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(blobUrl)
+        return
+      }
+    } catch {
+      // fallback window.open
+    }
+
     const a = document.createElement('a')
-    a.href = '/laporan_eoc_kemenkes.pdf'
+    a.href = url
+    a.target = '_blank'
     a.download = fileName
     document.body.appendChild(a)
     a.click()
@@ -221,7 +248,23 @@ export default function InfografisPage() {
   }
 
   useEffect(() => {
-    setIsLoadingData(false)
+    async function loadInfographics() {
+      try {
+        const res = await fetch('/api/infografis-list', { cache: 'no-store' })
+        const json = await res.json()
+        if (json?.success && Array.isArray(json.data)) {
+          setInfographics(json.data)
+        } else {
+          setInfographics(fallbackInfographics)
+        }
+      } catch (error) {
+        setInfographics(fallbackInfographics)
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    loadInfographics()
   }, [])
 
   // Categories list
@@ -264,9 +307,9 @@ export default function InfografisPage() {
 
       const json = await res.json()
       if (json?.success && json?.data) {
-        const newItem = {
+        const newItem: InfographicItem = {
           ...json.data,
-          pdfUrl: '/laporan_eoc_kemenkes.pdf',
+          pdfUrl: json.data.pdfUrl || '/laporan_eoc_kemenkes.pdf',
         }
         setInfographics((prev) => [newItem, ...prev])
         setGenSuccess(true)
@@ -402,7 +445,7 @@ export default function InfografisPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={(e) => handleDownloadPdf(e, item.title)}
+                    onClick={(e) => handleDownloadPdf(e, item)}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-md hover:scale-105 transition"
                     title="Unduh PDF"
                   >
@@ -442,7 +485,7 @@ export default function InfografisPage() {
 
                   <button
                     type="button"
-                    onClick={(e) => handleDownloadPdf(e, item.title)}
+                    onClick={(e) => handleDownloadPdf(e, item)}
                     className="flex-1 flex items-center justify-center gap-1 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-semibold rounded-md transition shadow-2xs"
                   >
                     <FileDown className="h-3 w-3" />
@@ -587,7 +630,7 @@ export default function InfografisPage() {
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href="/laporan_eoc_kemenkes.pdf"
+                  href={activePreview.pdfUrl || '/laporan_eoc_kemenkes.pdf'}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl transition shadow-2xs"
@@ -609,7 +652,7 @@ export default function InfografisPage() {
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col space-y-4">
               <div className="w-full flex-1 min-h-[480px] bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative flex items-center justify-center shadow-inner">
                 <iframe
-                  src="/laporan_eoc_kemenkes.pdf"
+                  src={activePreview.pdfUrl || '/laporan_eoc_kemenkes.pdf'}
                   className="w-full h-full border-0 rounded-xl"
                   title="Pratinjau Dokumen PDF Infografis EOC"
                 />
@@ -637,7 +680,7 @@ export default function InfografisPage() {
 
                   <button
                     type="button"
-                    onClick={(e) => handleDownloadPdf(e, activePreview?.title)}
+                    onClick={(e) => handleDownloadPdf(e, activePreview ?? undefined)}
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl transition shadow-md"
                   >
                     <FileDown className="h-4 w-4" />
