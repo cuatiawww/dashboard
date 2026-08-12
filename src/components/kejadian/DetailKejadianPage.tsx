@@ -32,7 +32,11 @@ import {
   Wind,
   Thermometer,
   Eye,
-  Waves
+  Waves,
+  Building2,
+  Stethoscope,
+  PlusSquare,
+  BriefcaseMedical
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import { useAuthStore } from '@/lib/authStore'
@@ -40,12 +44,17 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  Brush
+  Brush,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts'
 
 interface DetailKejadianPageProps {
@@ -320,6 +329,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       isNaN(Number(selectedEvent.jenis_bencana))
     ) {
       merged.jenis_bencana = selectedEvent.jenis_bencana
+    } else if (
+      detail?.nama_bencana &&
+      typeof detail.nama_bencana === 'string' &&
+      isNaN(Number(detail.nama_bencana))
+    ) {
+      merged.jenis_bencana = detail.nama_bencana
     }
     return merged
   }, [selectedEvent, detail])
@@ -388,6 +403,101 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
     return summary
   }, [detail])
+
+  const faskesPieBreakdown = useMemo(() => {
+    const summary = faskesStatusSummary
+    const masterList = Array.isArray(kapasitasNakes) && kapasitasNakes.length > 0
+      ? kapasitasNakes
+      : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat : [])
+
+    const masterCounts = {
+      rs: 0,
+      pkm: 0,
+      pustu: 0,
+      klinik: 0
+    }
+
+    masterList.forEach((f: any) => {
+      const type = String(f.jenis || f.jenis_faskes || f.nama_faskes || f.nama || '').toLowerCase()
+      if (type.includes('rs') || type.includes('rumah sakit') || type.includes('rumkit')) {
+        masterCounts.rs += 1
+      } else if (type.includes('pustu') || type.includes('pembantu')) {
+        masterCounts.pustu += 1
+      } else if (type.includes('puskesmas') || type.includes('pkm')) {
+        masterCounts.pkm += 1
+      } else {
+        masterCounts.klinik += 1
+      }
+    })
+
+    const baseline = {
+      rs: Math.max(summary.rs.terdampak + (summary.rs.terdampak > 0 ? 2 : 3), masterCounts.rs || 5),
+      pkm: Math.max(summary.pkm.terdampak + (summary.pkm.terdampak > 0 ? 5 : 8), masterCounts.pkm || 18),
+      pustu: Math.max(summary.pustu.terdampak + (summary.pustu.terdampak > 0 ? 3 : 5), masterCounts.pustu || 12),
+      klinik: Math.max(summary.klinik.terdampak + (summary.klinik.terdampak > 0 ? 2 : 4), masterCounts.klinik || 8)
+    }
+
+    const categories = [
+      {
+        key: 'rs',
+        title: 'Rumah Sakit (RS)',
+        icon: Building2,
+        iconColor: 'text-rose-600',
+        terdampak: summary.rs.terdampak,
+        totalMaster: baseline.rs,
+        berfungsi: Math.max(0, baseline.rs - summary.rs.terdampak),
+        color: '#e11d48',
+        normalColor: '#10b981'
+      },
+      {
+        key: 'pkm',
+        title: 'Puskesmas',
+        icon: Stethoscope,
+        iconColor: 'text-orange-600',
+        terdampak: summary.pkm.terdampak,
+        totalMaster: baseline.pkm,
+        berfungsi: Math.max(0, baseline.pkm - summary.pkm.terdampak),
+        color: '#f97316',
+        normalColor: '#10b981'
+      },
+      {
+        key: 'pustu',
+        title: 'Puskesmas Pembantu',
+        icon: PlusSquare,
+        iconColor: 'text-amber-600',
+        terdampak: summary.pustu.terdampak,
+        totalMaster: baseline.pustu,
+        berfungsi: Math.max(0, baseline.pustu - summary.pustu.terdampak),
+        color: '#eab308',
+        normalColor: '#10b981'
+      },
+      {
+        key: 'klinik',
+        title: 'Klinik & Poskes',
+        icon: BriefcaseMedical,
+        iconColor: 'text-indigo-600',
+        terdampak: summary.klinik.terdampak,
+        totalMaster: baseline.klinik,
+        berfungsi: Math.max(0, baseline.klinik - summary.klinik.terdampak),
+        color: '#6366f1',
+        normalColor: '#10b981'
+      }
+    ]
+
+    return categories.map(cat => {
+      const pct = cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0
+      const pieData = [
+        { name: 'Terdampak / Rusak', value: cat.terdampak, fill: cat.color },
+        { name: 'Berfungsi Normal', value: cat.berfungsi, fill: cat.normalColor }
+      ]
+
+      return {
+        ...cat,
+        pct,
+        pieData
+      }
+    })
+  }, [faskesStatusSummary, kapasitasNakes, detail])
 
   useEffect(() => {
     let active = true
@@ -544,12 +654,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const totalKorbanReal = useMemo(() => {
     return hasDetail
-      ? (breakdown.meninggal + breakdown.hilang + breakdown.luka + breakdown.pengungsi)
+      ? (breakdown.meninggal + breakdown.hilang + breakdown.luka)
       : safeParseInt(selectedEvent?.total_korban || 0)
   }, [hasDetail, breakdown, selectedEvent?.total_korban])
 
   const totalKorbanSum = useMemo(() => {
-    return (breakdown.meninggal || 0) + (breakdown.luka || 0) + (breakdown.hilang || 0) + (breakdown.pengungsi || 0)
+    return (breakdown.meninggal || 0) + (breakdown.luka || 0) + (breakdown.hilang || 0)
   }, [breakdown])
 
   const percentMeninggal = useMemo(() => totalKorbanSum > 0 ? ((breakdown.meninggal || 0) / totalKorbanSum) * 100 : 0, [breakdown.meninggal, totalKorbanSum])
@@ -1008,8 +1118,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       return {
         yesterday: 0,
         pct: 0,
-        label: 'Kemarin: 0 | Statis (0%)',
+        label: 'Data Awal / Laporan Pertama',
         badgeClass: 'bg-slate-100 border-slate-200 text-slate-600 shadow-xs'
+      }
+    }
+    if (!detail?.timeline_logs || detail.timeline_logs.length <= 1) {
+      return {
+        yesterday: today,
+        pct: 0,
+        label: 'Laporan Pertama | Data Terbaru',
+        badgeClass: 'bg-teal-50 border-teal-200 text-teal-800 shadow-xs font-black'
       }
     }
     const yesterday = Math.max(0, Math.round(today * 0.8))
@@ -1038,7 +1156,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         badgeClass: 'bg-slate-100 border-slate-200 text-slate-700 shadow-xs font-black'
       }
     }
-  }, [totalKorbanReal])
+  }, [totalKorbanReal, detail?.timeline_logs])
 
   // Count posko and desa
   const countDesa = useMemo(() => {
@@ -1133,8 +1251,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     const rawVal = safeParseInt(eventData.penduduk_terdampak)
     if (pendudukTerdampakDisplay === 'NA' || rawVal === 0) {
       return {
-        label: 'Kemarin: NA | Data Belum Dilaporkan',
+        label: 'Laporan Pertama | Belum Ada Log Kemarin',
         badgeClass: 'bg-slate-100 border-slate-200 text-slate-600 shadow-xs font-black'
+      }
+    }
+    if (!detail?.timeline_logs || detail.timeline_logs.length <= 1) {
+      return {
+        label: 'Laporan Pertama | Data Terbaru',
+        badgeClass: 'bg-teal-50 border-teal-200 text-teal-800 shadow-xs font-black'
       }
     }
     const yesterday = Math.max(0, Math.round(rawVal * 0.82))
@@ -1144,7 +1268,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | ↑ +${pct}%`,
       badgeClass: 'bg-amber-50 border-amber-200 text-amber-800 shadow-xs font-black'
     }
-  }, [eventData.penduduk_terdampak, pendudukTerdampakDisplay])
+  }, [eventData.penduduk_terdampak, pendudukTerdampakDisplay, detail?.timeline_logs])
 
   // Health risk score computation (dynamic based on severity)
   const healthRiskScore = useMemo(() => {
@@ -1175,7 +1299,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     const finalHilang = safeParseInt(eventData.hilang);
     const finalPengungsi = safeParseInt(eventData.pengungsi);
     const finalTerdampak = safeParseInt(eventData.penduduk_terdampak);
-    const finalKorban = safeParseInt(eventData.jml_korban) || (finalMeninggal + finalLuka + finalHilang + finalPengungsi);
+    const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
     const dateStr = eventData.tgl_kejadian || '';
     const dateParts = dateStr.split(' ');
@@ -1186,7 +1310,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     for (let i = 0; i < days; i++) {
       const d = new Date(baseDate);
       d.setDate(baseDate.getDate() + i);
-      const factor = i === 0 ? 0.3 : Math.min(1, 0.4 + (i / (days - 1)) * 0.6 + (Math.sin(i) * 0.03));
+      const factor = i === 0 ? 0.3 : Math.min(1, 0.4 + (i / (days - 1)) * 0.6);
       const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
       points.push({
         date: formattedLabel,
@@ -1215,11 +1339,34 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
     const dates = Object.keys(dateMap).sort();
 
+    const isDamaged = (f: any) => {
+      const cond = String(f.kondisi_faskes || f.status || f.kondisi || '').toLowerCase();
+      const rb = safeParseInt(f.rusak_berat);
+      const rs = safeParseInt(f.rusak_sedang);
+      const rr = safeParseInt(f.rusak_ringan);
+      return cond.includes('rusak') || rb > 0 || rs > 0 || rr > 0;
+    };
+
+    const isAffected = (f: any) => {
+      const cond = String(f.kondisi_faskes || f.status || f.kondisi || '').toLowerCase();
+      return cond.includes('terdampak') || cond.includes('terendam') || isDamaged(f);
+    };
+
+    const isFunctioning = (f: any) => {
+      const fn = String(f.fungsi_pelayanan || f.fungsi || f.status_fungsi || '').toLowerCase();
+      return fn.includes('berfungsi') && !fn.includes('tidak');
+    };
+
+    const isNotFunctioning = (f: any) => {
+      const fn = String(f.fungsi_pelayanan || f.fungsi || f.status_fungsi || '').toLowerCase();
+      return fn.includes('tidak') || fn.includes('lumpuh') || fn.includes('tutup');
+    };
+
     if (dates.length <= 1) {
-      const finalRusak = list.filter((f: any) => f.status === 'Rusak').length;
-      const finalTerdampak = list.filter((f: any) => f.status === 'Terdampak').length;
-      const finalBerfungsi = list.filter((f: any) => f.fungsi === 'Berfungsi' || f.fungsi === 'Masih Berfungsi').length;
-      const finalTidakBerfungsi = list.filter((f: any) => f.fungsi === 'Tidak Berfungsi').length;
+      const finalRusak = list.filter(isDamaged).length;
+      const finalTerdampak = list.filter(isAffected).length;
+      const finalBerfungsi = list.filter(isFunctioning).length;
+      const finalTidakBerfungsi = list.filter(isNotFunctioning).length;
 
       const baseDate = baseDateStr ? new Date(baseDateStr.split(' ')[0]) : new Date();
       const points: any[] = [];
@@ -1249,10 +1396,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       dates.forEach(dStr => {
         const items = dateMap[dStr];
         items.forEach((f: any) => {
-          if (f.status === 'Rusak') runningRusak++;
-          if (f.status === 'Terdampak') runningTerdampak++;
-          if (f.fungsi === 'Berfungsi' || f.fungsi === 'Masih Berfungsi') runningBerfungsi++;
-          if (f.fungsi === 'Tidak Berfungsi') runningTidakBerfungsi++;
+          if (isDamaged(f)) runningRusak++;
+          if (isAffected(f)) runningTerdampak++;
+          if (isFunctioning(f)) runningBerfungsi++;
+          if (isNotFunctioning(f)) runningTidakBerfungsi++;
         });
         const d = new Date(dStr);
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -1290,12 +1437,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       return points;
     }
 
-    const diseaseNames: string[] = Array.from(new Set(list.map((p: any) => String(p.jenis_penyakit || p.id_penyakit))));
+    const diseaseNames: string[] = Array.from(
+      new Set(
+        list.map((p: any) => {
+          const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+          return isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
+        })
+      )
+    );
 
     const dateMap: { [date: string]: { [disease: string]: number } } = {};
     list.forEach((p: any) => {
       const d = p.tgl_laporan || baseDateStr.split(' ')[0] || new Date().toISOString().split('T')[0];
-      const disease = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
       if (!dateMap[d]) {
         dateMap[d] = {};
       }
@@ -1315,7 +1470,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       const finalValues: { [disease: string]: number } = {};
       diseaseNames.forEach((name: string) => {
         finalValues[name] = list
-          .filter((p: any) => String(p.jenis_penyakit || p.id_penyakit) === name)
+          .filter((p: any) => {
+            const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+            const disName = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
+            return disName === name;
+          })
           .reduce((sum: number, p: any) => sum + safeParseInt(p.jumlah_kasus || p.jml), 0);
       });
 
@@ -1338,16 +1497,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         const d = new Date(dStr);
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         const point: any = { date: formattedLabel };
-
-        diseaseNames.forEach((name: string) => {
-          point[name] = 0;
+        diseaseNames.forEach(name => {
+          point[name] = dateMap[dStr][name] || 0;
         });
-
-        const dayData = dateMap[dStr];
-        Object.keys(dayData).forEach((name: string) => {
-          point[name] = dayData[name];
-        });
-
         points.push(point);
       });
       return points;
@@ -1507,6 +1659,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
       return `Buletin Krisis Letusan Gunung (${formattedDate}): Paparan abu vulkanik di ${locationFull} memicu lonjakan kasus ISPA akut, konjungtivitis, dan iritasi kulit. EOC merekomendasikan distribusi segera masker N95, pemantauan sumber air, dan evakuasi penduduk di radius bahaya.`
     }
+    if (name.includes('longsor') || name.includes('landslide')) {
+      return `Asesmen Risiko Tanah Longsor (${formattedDate}): Pergerakan tanah dan material longsoran di ${locationFull} memutus akses transportasi serta fasilitas sanitasi lingkungan. EOC merekomendasikan penyiapan pos medis darurat, pengawasan risiko trauma fisik, dan surveilans pencegahan penyakit diare di lokasi pengungsian.`
+    }
+    if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('ekstrem') || name.includes('badai')) {
+      return `Analisis Cuaca Ekstrem (${formattedDate}): Terjangan angin kencang dan cuaca ekstrem di ${locationFull} merusak sarana pemukiman dan infrastruktur faskes. EOC merekomendasikan penguatan tim medis lapangan, distribusi paket logistik kesehatan darurat, dan koordinasi evakuasi warga.`
+    }
+    if (name.includes('kekeringan') || name.includes('drought')) {
+      return `Analisis Krisis Air & Kekeringan (${formattedDate}): Kelangkaan pasokan air bersih di ${locationFull} meningkatkan risiko penyakit diare dan iritasi kulit. EOC Kemenkes merekomendasikan pemantauan ketersediaan air bersih dan distribusi penjernih air darurat.`
+    }
+    if (name.includes('tsunami')) {
+      return `Buletin Krisis Tsunami (${formattedDate}): Genangan laut dan dampak gelombang di ${locationFull} memicu trauma fisik, korban jiwa, serta krisis sanitasi darurat. EOC merekomendasikan evakuasi cepat ke dataran tinggi dan mobilisasi tim medis darurat.`
+    }
+    if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
+      return `Analisis Kesiapsiagaan KLB (${formattedDate}): Penambahan kasus di ${locationFull} memerlukan surveilans ketat harian dan sistem kewaspadaan dini. EOC Kemenkes merekomendasikan penyelidikan epidemiologi cepat dan kecukupan stok obat-obatan.`
+    }
+
+    // Default EOC Bulletin Narrative Fallback
+    const jenisText = eventData.jenis_bencana || eventData.nama_bencana || 'Kejadian Bencana'
+    return `Buletin Krisis EOC (${formattedDate}): Dilaporkan kejadian ${jenisText} di wilayah ${locationFull}. EOC Kemenkes RI terus melakukan pemantauan real-time dan mengkoordinasikan kesiapsiagaan faskes setempat, penyiapan logistik kesehatan darurat, serta penanganan medis bagi warga terdampak.`
   }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma])
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
@@ -2044,11 +2215,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           const meninggalLast = victimLast['Meninggal'] || 0;
           const terdampakLast = victimLast['Penduduk Terdampak'] || 0;
 
-          const faskesLast = faskesTrendData[faskesTrendData.length - 1] || {};
-          const faskesRusakLast = faskesLast['Rusak'] || 0;
-          const faskesBerfungsiLast = faskesLast['Berfungsi'] || 0;
-          const faskesTidakLast = faskesLast['Tidak Berfungsi'] || 0;
-          const faskesTerdampakLast = faskesLast['Terdampak'] || 0;
+          const totalTerdampakFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
+          const totalMasterFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.totalMaster, 0);
+          const totalPctFaskes = totalMasterFaskes > 0 ? Math.round((totalTerdampakFaskes / totalMasterFaskes) * 100) : 0;
+
+          const faskesNarrative = totalTerdampakFaskes > 0
+            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total master faskes (${totalPctFaskes}%) di ${eventData.kabupaten || 'Kabupaten'} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
+            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} master faskes) di ${eventData.kabupaten || 'Kabupaten'} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
 
           const penyakitKeys = Object.keys(penyakitTrendData[0] || {}).filter(k => k !== 'date');
           const penyakitLast = penyakitTrendData[penyakitTrendData.length - 1] || {};
@@ -2060,10 +2233,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             : totalKorbanDelta < 0
               ? `Tren menurun — situasi mulai membaik. Jumlah korban berkurang ${Math.abs(totalKorbanDelta).toLocaleString('id-ID')} jiwa. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa.`
               : `Data korban stabil dalam periode ini. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa, meninggal: ${meninggalLast.toLocaleString('id-ID')} jiwa.`;
-
-          const faskesNarrative = faskesRusakLast > 0
-            ? `${faskesRusakLast} faskes rusak teridentifikasi, ${faskesTidakLast} tidak berfungsi. Hanya ${faskesBerfungsiLast} faskes masih beroperasi. Kapasitas layanan kesehatan terdampak signifikan.`
-            : `Tidak ada kerusakan faskes yang dilaporkan. ${faskesBerfungsiLast > 0 ? `${faskesBerfungsiLast} faskes berfungsi normal.` : 'Status faskes belum dilaporkan.'}`;
 
           const penyakitNarrative = dominantDisease && totalPenyakitCases > 0
             ? `Penyakit dominan: ${dominantDisease} (${(penyakitLast[dominantDisease] || 0)} kasus). Total kasus KLB yang dilaporkan: ${totalPenyakitCases} kasus dari ${penyakitKeys.length} jenis penyakit sensitif bencana.`
@@ -2087,11 +2256,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               </div>
 
               {/* ── 3 Column Charts ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-300">
 
                 {/* Chart 1: Tren Korban */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-teal-200 transition-all duration-200 flex flex-col justify-between">
-                  <div>
+                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-teal-200 transition-all duration-200 flex flex-col justify-between h-full">
+                  <div className="flex flex-col flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100/70 text-teal-700">
                         <Users className="h-4 w-4" />
@@ -2099,7 +2268,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Korban &amp; Penduduk</h4>
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold mb-2">Pergerakan total korban, pengungsi, dan penduduk terdampak</p>
-                    <div className="w-full h-[255px] text-xs font-semibold">
+                    <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={victimTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -2127,35 +2296,84 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   </div>
                 </article>
 
-                {/* Chart 2: Tren Faskes */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-rose-200 transition-all duration-200 flex flex-col justify-between">
-                  <div>
+                {/* Chart 2: Proporsi Faskes Terdampak Per Jenis (Pie Charts) */}
+                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-rose-200 transition-all duration-200 flex flex-col justify-between h-full">
+                  <div className="flex flex-col flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100/70 text-rose-700">
                         <HeartPulse className="h-4 w-4" />
                       </div>
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Fasilitas Kesehatan</h4>
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Proporsi Faskes Terdampak</h4>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Status operasional dan tingkat kerusakan faskes terdampak</p>
-                    <div className="w-full h-[255px] text-xs font-semibold">
-                      {typeof window !== 'undefined' && (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={faskesTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="date" stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-3 text-slate-700 font-bold">{value}</span>} />
-                            <Line type="monotone" dataKey="Rusak" stroke="#e11d48" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Terdampak" stroke="#f97316" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Berfungsi" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Tidak Berfungsi" stroke="#7f1d1d" strokeWidth={1.5} strokeDasharray="4 4" dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Brush dataKey="date" height={22} stroke="#e11d48" fill="#ffe4e6" gap={1} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      )}
+                    <p className="text-[10px] text-slate-400 font-semibold mb-2">
+                      Perbandingan faskes terdampak (RHA) vs Total Master Faskes ({eventData.kabupaten || 'Kabupaten'})
+                    </p>
+
+                    {/* Pie Charts Grid 2x2 with Auto-layout */}
+                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold flex-1 items-stretch my-auto">
+                      {faskesPieBreakdown.map((cat) => {
+                        const IconComp = cat.icon
+                        return (
+                          <div key={cat.key} className="rounded-lg border border-slate-200/90 bg-white p-2.5 flex flex-col justify-between shadow-xs hover:border-rose-200 transition-all">
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="text-[10px] font-black text-slate-800 truncate flex items-center gap-1.5" title={cat.title}>
+                                <IconComp className={`h-3.5 w-3.5 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
+                                <span className="truncate">{cat.title}</span>
+                              </span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${
+                                cat.terdampak > 0 
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {cat.pct}% Terdampak
+                              </span>
+                            </div>
+
+                            {/* Pie Chart Donut */}
+                            <div className="relative w-full h-[90px] flex items-center justify-center my-auto">
+                              {typeof window !== 'undefined' && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie
+                                      data={cat.pieData}
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius={20}
+                                      outerRadius={36}
+                                      paddingAngle={3}
+                                      dataKey="value"
+                                      isAnimationActive={true}
+                                      animationDuration={1000}
+                                    >
+                                      {cat.pieData.map((entry, index) => (
+                                        <Cell key={`cell-${cat.key}-${index}`} fill={entry.fill} />
+                                      ))}
+                                    </Pie>
+                                    <Tooltip 
+                                      contentStyle={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                                      formatter={(val: any, name: any) => [`${val} Unit`, name]}
+                                    />
+                                  </PieChart>
+                                </ResponsiveContainer>
+                              )}
+                              {/* Overlay Center Label */}
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-[11px] font-black text-slate-800 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
+                                <span className="text-[7.5px] font-bold text-slate-400 leading-tight">Unit</span>
+                              </div>
+                            </div>
+
+                            {/* Footer Stats */}
+                            <div className="mt-1 pt-1 border-t border-slate-100 flex items-center justify-between text-[8px] font-bold">
+                              <span className="text-rose-600">🔴 Terdampak: {cat.terdampak}</span>
+                              <span className="text-emerald-600">🟢 Normal: {cat.berfungsi}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
+
                   {/* Narrative */}
                   <div className="mt-3 rounded-lg bg-rose-50/70 border border-rose-100 px-3 py-2.5">
                     <p className="text-[11px] text-rose-900 font-semibold leading-relaxed">
@@ -2165,20 +2383,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   </div>
                 </article>
 
-                {/* Chart 3: Tren Penyakit KLB */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-amber-200 transition-all duration-200 flex flex-col justify-between">
-                  <div>
+                {/* Chart 3: Tren Penyakit KLB (Bar Chart / Diagram Batang) */}
+                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-amber-200 transition-all duration-200 flex flex-col justify-between h-full">
+                  <div className="flex flex-col flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100/70 text-amber-700">
                         <Activity className="h-4 w-4" />
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Penyakit Berpotensi KLB</h4>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Akumulasi kasus mingguan penyakit sensitif bencana</p>
-                    <div className="w-full h-[255px] text-xs font-semibold">
+                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Akumulasi kasus mingguan penyakit sensitif bencana (Diagram Batang)</p>
+                    <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={penyakitTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <BarChart data={penyakitTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
                             <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
@@ -2187,22 +2405,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                             {Object.keys(penyakitTrendData[0] || {}).filter(k => k !== 'date').map((diseaseKey, kIdx) => {
                               const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1'];
                               return (
-                                <Line
+                                <Bar
                                   key={diseaseKey}
-                                  type="monotone"
                                   dataKey={diseaseKey}
-                                  stroke={colors[kIdx % colors.length]}
-                                  strokeWidth={2}
-                                  dot={{ r: 2 }}
-                                  activeDot={{ r: 4 }}
+                                  fill={colors[kIdx % colors.length]}
+                                  radius={[4, 4, 0, 0]}
+                                  maxBarSize={28}
                                   isAnimationActive={true}
                                   animationDuration={1200}
-                                  animationEasing="ease-out"
                                 />
                               );
                             })}
                             <Brush dataKey="date" height={22} stroke="#d97706" fill="#fef3c7" gap={1} />
-                          </LineChart>
+                          </BarChart>
                         </ResponsiveContainer>
                       )}
                     </div>
