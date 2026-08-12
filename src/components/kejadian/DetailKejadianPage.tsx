@@ -1805,34 +1805,34 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           {/* Cards 2, 3, 4 Container (Slightly Compacted ~39% Width) */}
           <div className="w-full lg:w-[39%] grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 items-stretch">
             {/* Card 2: Total Korban */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+            <div className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md ${disasterTheme.bg}`}>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">TOTAL KORBAN</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">TOTAL KORBAN</span>
                 <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2">{totalKorbanReal.toLocaleString('id-ID')}</span>
                 <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
                   {korbanTrendInfo.label}
                 </span>
               </div>
-              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
                 <div>
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Meninggal</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Meninggal</span>
                 </div>
-                <div className="border-x border-slate-100 px-0.5">
+                <div className="border-x border-slate-300/40 px-0.5">
                   <span className="text-lg sm:text-xl font-black text-amber-600 block leading-none">{breakdown.luka}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Luka</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Luka</span>
                 </div>
                 <div>
                   <span className="text-lg sm:text-xl font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Hilang</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Hilang</span>
                 </div>
               </div>
             </div>
 
             {/* Card 3: Faskes Di Area */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+            <div className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md ${disasterTheme.bg}`}>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">FASKES DI AREA</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">FASKES DI AREA</span>
                 <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2">
                   {totalFaskes.toLocaleString('id-ID')}
                 </span>
@@ -1840,26 +1840,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   {faskesTrendInfo.label}
                 </span>
               </div>
-              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
-                <div className="border-r border-slate-100 px-0.5">
+              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
+                <div className="border-r border-slate-300/40 px-0.5">
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
                     {operasionalFaskes}
                   </span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">OPERASIONAL</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">OPERASIONAL</span>
                 </div>
                 <div className="px-0.5">
                   <span className="text-lg sm:text-xl font-black text-rose-600 block leading-none">
                     {terdampakFaskes}
                   </span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">TERDAMPAK</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">TERDAMPAK</span>
                 </div>
               </div>
             </div>
 
             {/* Card 4: Penduduk Terdampak */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md">
+            <div className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md ${disasterTheme.bg}`}>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-500 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
                 <div className="flex items-baseline justify-center gap-1 mt-2">
                   <span className="text-3xl sm:text-4xl font-black text-slate-900 leading-none">
                     {pendudukTerdampakDisplay}
@@ -1870,18 +1870,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   {terdampakTrendInfo.label}
                 </span>
               </div>
-              <div className="border-t border-slate-100 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
                 <div>
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{balitaDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Balita</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Balita</span>
                 </div>
-                <div className="border-x border-slate-100 px-0.5">
+                <div className="border-x border-slate-300/40 px-0.5">
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{lansiaDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Lansia</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Lansia</span>
                 </div>
                 <div>
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{bumilDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-500 block mt-1 leading-tight uppercase">Bumil</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Bumil</span>
                 </div>
               </div>
             </div>
@@ -2143,7 +2143,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               </div>
 
               {/* ── BENCHMARKING & VALIDASI DATA AI VS SYSTEM ── */}
-              <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 p-4 text-xs space-y-3 shadow-2xs">
+              <div className="hidden rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 p-4 text-xs space-y-3 shadow-2xs">
                 <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
