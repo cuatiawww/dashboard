@@ -1793,10 +1793,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung'
                     ? 'TREN KUALITAS UDARA (ISPU / PM2.5) & ANGIN (H-3 S.D. H+3)'
                     : disasterTheme.type === 'gempa'
-                    ? 'INTENSITAS MMI & SEJARAH GEMPA (H-3 S.D. H+3)'
-                    : disasterTheme.type === 'longsor'
-                    ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
-                    : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
+                      ? 'INTENSITAS MMI & SEJARAH GEMPA (H-3 S.D. H+3)'
+                      : disasterTheme.type === 'longsor'
+                        ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
+                        : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
                 </span>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
@@ -1813,8 +1813,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                       <div
                         key={day.offset}
                         className={`flex flex-col items-center justify-between py-1.5 px-1 rounded-xl transition-colors border ${isEventDay
-                            ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-md ring-2 ring-rose-300/60'
-                            : 'bg-white/90 border-slate-200/90 hover:bg-slate-50'
+                          ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-md ring-2 ring-rose-300/60'
+                          : 'bg-white/90 border-slate-200/90 hover:bg-slate-50'
                           }`}
                       >
                         <span className="text-[10px] font-black uppercase leading-none text-slate-500">
@@ -2301,8 +2301,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('faskes')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'faskes'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Faskes Terdekat
@@ -2311,8 +2311,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('pengungsian')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'pengungsian'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Pos Pengungsian
@@ -2321,8 +2321,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('kesehatan')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'kesehatan'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Pos Kesehatan
@@ -2331,8 +2331,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('logistik')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'logistik'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Gudang Logistik
@@ -2341,8 +2341,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('status_faskes')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'status_faskes'
-                  ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Status Fasilitas Kesehatan
@@ -2351,8 +2351,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               type="button"
               onClick={() => setMatrixTab('sumber_daya')}
               className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'sumber_daya'
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-sm'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Sumber Daya Kesehatan
@@ -2409,79 +2409,79 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 )}
 
                 <div className="overflow-x-auto">
-                {Array.isArray(detail?.faskes_terdekat) && detail.faskes_terdekat.length > 0 ? (
-                  <div className={detail.faskes_terdekat.length > 10 ? 'max-h-[380px] overflow-y-auto' : ''}>
-                    <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold">
-                          <th className="py-3 px-3">Wilayah</th>
-                          <th className="py-3 px-3">Faskes Terdekat</th>
-                          <th className="py-3 px-3">Jenis</th>
-                          <th className="py-3 px-3">Petugas / Dokter PJ</th>
-                          {!isGuest && <th className="py-3 px-3">No. Telepon</th>}
-                          <th className="py-3 px-3 text-center">Jarak</th>
-                          <th className="py-3 px-3 text-center">Waktu Tempuh</th>
-                          <th className="py-3 px-3 text-center">Kondisi</th>
-                          <th className="py-3 px-3 text-center">Google Maps</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detail.faskes_terdekat.map((f: any, fidx: number) => {
-                          const cond = getFaskesCondition(f.nama);
-                          const isSelected = selectedRouteTarget?.name === f.nama;
-                          return (
-                            <tr
-                              key={fidx}
-                              onClick={() => handleSelectTarget(f, String(f.jenis || '').toLowerCase().includes('rs') ? 'hospital' : 'clinic')}
-                              className={`border-b border-slate-100 hover:bg-teal-50/60 transition-all cursor-pointer ${isSelected
+                  {Array.isArray(detail?.faskes_terdekat) && detail.faskes_terdekat.length > 0 ? (
+                    <div className={detail.faskes_terdekat.length > 10 ? 'max-h-[380px] overflow-y-auto' : ''}>
+                      <table className="w-full text-left border-collapse text-[13px]">
+                        <thead className="sticky top-0 z-10">
+                          <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold">
+                            <th className="py-3 px-3">Wilayah</th>
+                            <th className="py-3 px-3">Faskes Terdekat</th>
+                            <th className="py-3 px-3">Jenis</th>
+                            <th className="py-3 px-3">Petugas / Dokter PJ</th>
+                            {!isGuest && <th className="py-3 px-3">No. Telepon</th>}
+                            <th className="py-3 px-3 text-center">Jarak</th>
+                            <th className="py-3 px-3 text-center">Waktu Tempuh</th>
+                            <th className="py-3 px-3 text-center">Kondisi</th>
+                            <th className="py-3 px-3 text-center">Google Maps</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detail.faskes_terdekat.map((f: any, fidx: number) => {
+                            const cond = getFaskesCondition(f.nama);
+                            const isSelected = selectedRouteTarget?.name === f.nama;
+                            return (
+                              <tr
+                                key={fidx}
+                                onClick={() => handleSelectTarget(f, String(f.jenis || '').toLowerCase().includes('rs') ? 'hospital' : 'clinic')}
+                                className={`border-b border-slate-100 hover:bg-teal-50/60 transition-all cursor-pointer ${isSelected
                                   ? 'bg-teal-50/80 border-l-4 border-teal-600'
                                   : fidx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
-                                }`}
-                            >
-                              <td className="py-2.5 px-3 font-semibold text-slate-800">
-                                {f.kecamatan ? `Kec. ${f.kecamatan}` : 'Kec. -'}
-                                {f.desa ? `, Desa ${f.desa}` : ''}
-                              </td>
-                              <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama}</td>
-                              <td className="py-2.5 px-3 text-slate-600">{f.jenis || '-'}</td>
-                              <td className="py-2.5 px-3 text-slate-700 font-semibold">{f.petugas || '-'}</td>
-                              {!isGuest && <td className="py-2.5 px-3 font-bold text-teal-800 whitespace-nowrap">{f.telp || '-'}</td>}
-                              <td className="py-2.5 px-3 text-center font-bold text-slate-700">
-                                {f.jarak !== null && f.jarak !== undefined ? `${f.jarak.toFixed(1)} km` : '-'}
-                              </td>
-                              <td className="py-2.5 px-3 text-center font-bold text-slate-700">
-                                {f.waktu_tempuh !== null && f.waktu_tempuh !== undefined ? `${f.waktu_tempuh} menit` : '-'}
-                              </td>
-                              <td className="py-2.5 px-3 text-center">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cond.color}`}>
-                                  {cond.label}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-3 text-center">
-                                <a
-                                  href={getGmapsDirUrl(f.latitude, f.longitude, f.nama, f.alamat)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
-                                >
-                                  Buka Maps
-                                </a>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                    <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                    <p className="text-[11px] font-semibold">Mencari faskes terdekat...</p>
-                  </div>
-                )}
+                                  }`}
+                              >
+                                <td className="py-2.5 px-3 font-semibold text-slate-800">
+                                  {f.kecamatan ? `Kec. ${f.kecamatan}` : 'Kec. -'}
+                                  {f.desa ? `, Desa ${f.desa}` : ''}
+                                </td>
+                                <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama}</td>
+                                <td className="py-2.5 px-3 text-slate-600">{f.jenis || '-'}</td>
+                                <td className="py-2.5 px-3 text-slate-700 font-semibold">{f.petugas || '-'}</td>
+                                {!isGuest && <td className="py-2.5 px-3 font-bold text-teal-800 whitespace-nowrap">{f.telp || '-'}</td>}
+                                <td className="py-2.5 px-3 text-center font-bold text-slate-700">
+                                  {f.jarak !== null && f.jarak !== undefined ? `${f.jarak.toFixed(1)} km` : '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center font-bold text-slate-700">
+                                  {f.waktu_tempuh !== null && f.waktu_tempuh !== undefined ? `${f.waktu_tempuh} menit` : '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cond.color}`}>
+                                    {cond.label}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <a
+                                    href={getGmapsDirUrl(f.latitude, f.longitude, f.nama, f.alamat)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
+                                  >
+                                    Buka Maps
+                                  </a>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                      <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                      <p className="text-[11px] font-semibold">Mencari faskes terdekat...</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
             {matrixTab === 'pengungsian' && (
               <div className="overflow-x-auto">
@@ -2510,8 +2510,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                                 nama: pos.nama || `Posko ${pos.kecamatan || ''}`
                               }, 'shelter')}
                               className={`border-b border-slate-100 hover:bg-teal-50/60 transition-all cursor-pointer ${isSelected
-                                  ? 'bg-teal-50/80 border-l-4 border-teal-600'
-                                  : pidx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
+                                ? 'bg-teal-50/80 border-l-4 border-teal-600'
+                                : pidx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                                 }`}
                             >
                               <td className="py-3 px-3 font-semibold text-slate-800">
@@ -2793,7 +2793,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                     <Loader2 className="h-7 w-7 animate-spin mb-2 text-teal-700" />
                     <p className="text-[12px] font-semibold">Memuat data kapasitas tenaga kesehatan kabupaten...</p>
-                                  <table className="w-full text-left border-collapse text-[13px]">
+                    <table className="w-full text-left border-collapse text-[13px]">
                       <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                         <tr className="text-slate-500 font-bold">
                           <th className="py-2.5 px-3 text-center">No</th>
@@ -2884,7 +2884,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   </div>
                   <div>
                     <h4 className="text-[15px] font-black uppercase tracking-wider text-slate-850 flex items-center gap-2">
-                      RESPON DINKES &amp; EOC KEMENKES (HASIL INPUT FORMULIR LENGKAP)
+                      RESPON DINKES &amp; EOC KEMENKES
                     </h4>
                     <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                       Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
