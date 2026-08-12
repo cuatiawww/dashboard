@@ -1511,6 +1511,94 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 
+  const stripHtmlText = (htmlStr: any): string => {
+    if (!htmlStr) return ''
+    const str = String(htmlStr)
+    return str
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\n\s*\n/g, '\n')
+      .trim()
+  }
+
+  const compiledUpaya = useMemo(() => {
+    const items: { label: string; text: string; category?: string }[] = []
+
+    if (eventData.upaya_sub_klaster_pelayanan_kesehatan) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_pelayanan_kesehatan)
+      if (txt) items.push({ label: 'Pelayanan Kesehatan', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_sub_klaster_pp_pl_air_bersih) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_pp_pl_air_bersih)
+      if (txt) items.push({ label: 'Pencegahan Penyakit & Sanitasi Air', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_sub_klaster_gizi) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_gizi)
+      if (txt) items.push({ label: 'Pelayanan Gizi Darurat', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_sub_klaster_jiwa) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_jiwa)
+      if (txt) items.push({ label: 'Kesehatan Jiwa (Dukungan Psikososial)', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_sub_klaster_kia) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_kia)
+      if (txt) items.push({ label: 'Kesehatan Reproduksi & KIA', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_tim_logistik_kesehatan) {
+      const txt = stripHtmlText(eventData.upaya_tim_logistik_kesehatan)
+      if (txt) items.push({ label: 'Tim Logistik Kesehatan', text: txt, category: 'Sub Klaster' })
+    }
+    if (eventData.upaya_sub_klaster_dvi) {
+      const txt = stripHtmlText(eventData.upaya_sub_klaster_dvi)
+      if (txt) items.push({ label: 'Identifikasi Korban (DVI)', text: txt, category: 'Sub Klaster' })
+    }
+
+    if (eventData.upaya_kabupaten) {
+      const txt = stripHtmlText(eventData.upaya_kabupaten)
+      if (txt) items.push({ label: 'Upaya Dinkes Kabupaten/Kota', text: txt, category: 'Dinkes Kab' })
+    }
+    if (eventData.upaya_provinsi) {
+      const txt = stripHtmlText(eventData.upaya_provinsi)
+      if (txt) items.push({ label: 'Upaya Dinkes Provinsi', text: txt, category: 'Dinkes Prov' })
+    }
+    if (eventData.upaya_kemenkes || eventData.upaya) {
+      const txt = stripHtmlText(eventData.upaya_kemenkes || eventData.upaya)
+      if (txt && !items.some(it => it.text === txt)) items.push({ label: 'Upaya Pusat (Kemenkes/EOC)', text: txt, category: 'EOC Pusat' })
+    }
+
+    if (eventData.id_pertanyaan_layanan_gizi) {
+      try {
+        const parsedGizi = typeof eventData.id_pertanyaan_layanan_gizi === 'string' ? JSON.parse(eventData.id_pertanyaan_layanan_gizi) : eventData.id_pertanyaan_layanan_gizi
+        if (parsedGizi && typeof parsedGizi === 'object') {
+          const statusList = Object.entries(parsedGizi)
+            .map(([k, v]) => `${k.replace(/^layanan_/, 'Layanan Gizi #')}: ${v}`)
+            .join(' | ')
+          if (statusList) items.push({ label: 'Skrining & Layanan Gizi', text: statusList, category: 'Layanan Gizi' })
+        }
+      } catch (e) {
+        const txt = stripHtmlText(eventData.id_pertanyaan_layanan_gizi)
+        if (txt) items.push({ label: 'Skrining & Layanan Gizi', text: txt, category: 'Layanan Gizi' })
+      }
+    }
+
+    if (Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0) {
+      detail.perkembangan.forEach((p: any) => {
+        const formatted = formatPerkembangan(p)
+        if (formatted && !items.some(it => it.text === formatted)) {
+          items.push({ label: 'Update Lapangan', text: formatted, category: 'Laporan Berkala' })
+        }
+      })
+    }
+
+    return items
+  }, [eventData, detail])
+
   const aggregatedTenaga = useMemo(() => {
     const list = Array.isArray(eventData.tenaga_kesehatan) ? eventData.tenaga_kesehatan : []
     if (list.length === 0) return null
@@ -2277,7 +2365,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               <div className="space-y-4">
                 {/* Total Counter / Summary Widget Bar */}
                 {Array.isArray(detail?.faskes_terdekat) && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-slate-900/5 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs">
+                  <div className="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-slate-900/5 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs">
                     <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-black text-base shadow-2xs">
                         {detail.faskes_terdekat.length}
@@ -2777,57 +2865,196 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           </div>
         </article>
 
-        {/* 3. Unified EOC Actions Card (Placed after Tabel Akses) */}
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 divide-y md:divide-y-0 md:divide-x divide-slate-150">
+        {/* 3. Dynamic EOC Actions & Response Card (Inputted from Laporan Kejadian Formulir Lengkap) */}
+        {(() => {
+          const bantuanText = stripHtmlText(eventData.bantuan || eventData.bantuan_diterima)
+          const bantuanDiperlukanText = stripHtmlText(eventData.bantuan_diperlukan)
+          const emtText = eventData.mobilisasi_emt
+          const pscText = eventData.mobilisasi_psc
+          const rekomendasiText = stripHtmlText(eventData.rekomendasi)
+          const tindakLanjutText = stripHtmlText(eventData.tindak_lanjut)
+          const hambatanText = stripHtmlText(eventData.hambatan)
 
-            {/* Col 1: Upaya Penanganan */}
-            <div className="space-y-2 pb-3 md:pb-0">
-              <h5 className="text-base font-black uppercase tracking-wider text-slate-850 flex items-center gap-2 pb-1 border-b border-slate-50">
-                <CheckCircle2 className="h-4 w-4 text-amber-600" />
-                UPAYA EOC KEMENKES
-              </h5>
-              {hasDetail && Array.isArray(detail.perkembangan) && detail.perkembangan.length > 0 ? (
-                <ul className="list-disc pl-4 space-y-1 text-[13px] font-normal text-slate-700 leading-relaxed">
-                  {detail.perkembangan.slice(0, 4).map((p: any, idx: number) => (
-                    <li key={idx}>{formatPerkembangan(p)}</li>
-                  ))}
-                </ul>
-              ) : (
-                <ul className="list-disc pl-4 space-y-1 text-[13px] font-normal text-slate-650 leading-relaxed">
-                  <li>Mobilisasi TRC &amp; Tim Cadangan Kesehatan.</li>
-                  <li>Penyaluran logistik obat-obatan darurat.</li>
-                  <li>Surveillance penyakit potensi KLB di posko.</li>
-                  <li>Koordinasi aktif klaster kesehatan &amp; BPBD.</li>
-                </ul>
+          return (
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3.5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-[15px] font-black uppercase tracking-wider text-slate-850 flex items-center gap-2">
+                      RESPON DINKES &amp; EOC KEMENKES (HASIL INPUT FORMULIR LENGKAP)
+                    </h4>
+                    <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                      Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Col 1: Upaya Penanggulangan */}
+                <div className="rounded-xl border border-amber-200/70 bg-gradient-to-b from-amber-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-amber-200/50">
+                      <h5 className="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                        UPAYA PENANGGULANGAN KRISIS
+                      </h5>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-900 font-extrabold text-[10px]">
+                        {compiledUpaya.length > 0 ? `${compiledUpaya.length} Upaya Terinput` : 'Prosedur EOC'}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                      {compiledUpaya.length > 0 ? (
+                        compiledUpaya.map((item, idx) => (
+                          <div key={idx} className="bg-white p-2.5 rounded-lg border border-amber-100/90 shadow-2xs space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-black uppercase tracking-wide text-amber-800">{item.label}</span>
+                              {item.category && (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/60">{item.category}</span>
+                              )}
+                            </div>
+                            <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                              {item.text}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <ul className="space-y-2 text-[12px] font-normal text-slate-700 leading-relaxed">
+                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <span>Mobilisasi TRC &amp; Tim Cadangan Kesehatan ke lokasi kejadian.</span>
+                          </li>
+                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <span>Penyaluran dan distribusi logistik obat-obatan darurat.</span>
+                          </li>
+                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <span>Surveilans aktif penyakit berpotensi KLB di lokasi pengungsian.</span>
+                          </li>
+                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                            <span>Koordinasi 24 jam dengan klaster kesehatan, BPBD, dan TNI/POLRI.</span>
+                          </li>
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Col 2: Mobilisasi & Distribusi Logistik Bantuan */}
+                <div className="rounded-xl border border-cyan-200/70 bg-gradient-to-b from-cyan-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-cyan-200/50">
+                      <h5 className="text-xs font-black uppercase tracking-wider text-cyan-950 flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-cyan-600 shrink-0" />
+                        DISTRIBUSI LOGISTIK &amp; BANTUAN
+                      </h5>
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-100/80 text-cyan-900 font-extrabold text-[10px]">
+                        Klaster Logistik
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                      {(emtText || pscText) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {emtText && (
+                            <div className="bg-white p-2 rounded-lg border border-cyan-100 shadow-2xs">
+                              <span className="text-[9px] font-black uppercase text-slate-400 block">Tim EMT</span>
+                              <span className="text-[11px] font-bold text-cyan-900 block truncate" title={emtText}>{emtText}</span>
+                            </div>
+                          )}
+                          {pscText && (
+                            <div className="bg-white p-2 rounded-lg border border-cyan-100 shadow-2xs">
+                              <span className="text-[9px] font-black uppercase text-slate-400 block">PSC 119</span>
+                              <span className="text-[11px] font-bold text-cyan-900 block truncate" title={pscText}>{pscText}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="bg-white p-3 rounded-lg border border-cyan-100/90 shadow-2xs space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-wide text-cyan-800 block">Logistik Tersalurkan / Diterima</span>
+                        <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                          {bantuanText || "Penyaluran logistik dasar (obat-obatan esensial, masker, hygiene kit) disalurkan langsung oleh dinkes kabupaten/kota setempat."}
+                        </p>
+                      </div>
+
+                      {bantuanDiperlukanText && (
+                        <div className="bg-white p-3 rounded-lg border border-teal-200/80 shadow-2xs space-y-1">
+                          <span className="text-[10px] font-black uppercase tracking-wide text-teal-800 block">Bantuan Yang Diperlukan Segera</span>
+                          <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                            {bantuanDiperlukanText}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Col 3: Rekomendasi, Tindak Lanjut & Hambatan */}
+                <div className="rounded-xl border border-teal-200/70 bg-gradient-to-b from-teal-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between pb-2 border-b border-teal-200/50">
+                      <h5 className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4 text-teal-650 shrink-0" />
+                        REKOMENDASI &amp; TINDAK LANJUT
+                      </h5>
+                      <span className="px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-900 font-extrabold text-[10px]">
+                        Rencana Aksi
+                      </span>
+                    </div>
+
+                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                      <div className="bg-white p-3 rounded-lg border border-teal-100/90 shadow-2xs space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-wide text-teal-800 block">Rekomendasi EOC</span>
+                        <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                          {rekomendasiText || "Tingkatkan surveilans penyakit pasca bencana di pos pengungsian, pantau kecukupan logistik, serta koordinasi aktif 24 jam dengan EOC Kemenkes."}
+                        </p>
+                      </div>
+
+                      {tindakLanjutText && (
+                        <div className="bg-white p-3 rounded-lg border border-indigo-100/90 shadow-2xs space-y-1">
+                          <span className="text-[10px] font-black uppercase tracking-wide text-indigo-800 block">Rencana Tindak Lanjut (RTL)</span>
+                          <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                            {tindakLanjutText}
+                          </p>
+                        </div>
+                      )}
+
+                      {hambatanText && (
+                        <div className="bg-rose-50/80 p-3 rounded-lg border border-rose-200/80 shadow-2xs space-y-1">
+                          <span className="text-[10px] font-black uppercase tracking-wide text-rose-800 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3 text-rose-600" />
+                            Hambatan Pelayanan Lapangan
+                          </span>
+                          <p className="text-[12px] text-rose-950 leading-relaxed font-semibold whitespace-pre-line">
+                            {hambatanText}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {eventData.pelapor_nama && (
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-semibold gap-2">
+                  <span className="flex items-center gap-1.5 text-slate-700">
+                    <span className="font-bold text-slate-900">Penanggung Jawab / Pelapor:</span> {eventData.pelapor_nama} {eventData.pelapor_jabatan ? `(${eventData.pelapor_jabatan})` : ''} {eventData.pelapor_instansi ? `- ${eventData.pelapor_instansi}` : ''} {eventData.pelapor_nip ? `[NIP: ${eventData.pelapor_nip}]` : ''}
+                  </span>
+                  {eventData.pelapor_no_telp && (
+                    <span className="text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Kontak: {eventData.pelapor_no_telp}</span>
+                  )}
+                </div>
               )}
-            </div>
-
-            {/* Col 2: Logistik Bantuan */}
-            <div className="space-y-2 pt-3 md:pt-0 md:pl-5">
-              <h5 className="text-base font-black uppercase tracking-wider text-slate-850 flex items-center gap-2 pb-1 border-b border-slate-50">
-                <FileText className="h-4 w-4 text-cyan-600" />
-                DISTRIBUSI LOGISTIK BANTUAN
-              </h5>
-              <p className="text-[13px] text-slate-650 leading-relaxed font-normal whitespace-pre-line">
-                {eventData.bantuan ||
-                  "Penyaluran logistik dasar (obat-obatan esensial, masker, hygiene kit) disalurkan langsung oleh dinkes kabupaten/kota setempat."}
-              </p>
-            </div>
-
-            {/* Col 3: Rekomendasi RTL */}
-            <div className="space-y-2 pt-3 md:pt-0 md:pl-5">
-              <h5 className="text-base font-black uppercase tracking-wider text-slate-850 flex items-center gap-2 pb-1 border-b border-slate-50">
-                <HelpCircle className="h-4 w-4 text-teal-650" />
-                REKOMENDASI &amp; TINDAK LANJUT
-              </h5>
-              <p className="text-[13px] text-slate-650 leading-relaxed font-normal whitespace-pre-line">
-                {eventData.rekomendasi ||
-                  "Tingkatkan surveilans penyakit pasca bencana di pos pengungsian, pantau kecukupan logistik, serta koordinasi aktif 24 jam dengan EOC Kemenkes."}
-              </p>
-            </div>
-          </div>
-        </article>
+            </article>
+          );
+        })()}
 
       </div>
       {/* ==================== HEALTH RISK SCORE POPUP MODAL ==================== */}
