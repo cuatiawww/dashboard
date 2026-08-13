@@ -623,12 +623,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const breakdown = useMemo(() => {
     if (hasDetail) {
-      const db_meninggal = safeParseInt(detail?.meninggal)
-      const db_luka_berat = safeParseInt(detail?.luka_berat)
-      const db_luka_ringan = safeParseInt(detail?.luka_ringan)
+      const lastPerkembangan = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
+        ? detail.perkembangan[detail.perkembangan.length - 1]
+        : null
+
+      const db_meninggal = safeParseInt(detail?.meninggal) || (lastPerkembangan ? safeParseInt(lastPerkembangan.meninggal || lastPerkembangan.md_total) : 0)
+      const db_luka_berat = safeParseInt(detail?.luka_berat) || (lastPerkembangan ? safeParseInt(lastPerkembangan.luka_berat || lastPerkembangan.lb_total) : 0)
+      const db_luka_ringan = safeParseInt(detail?.luka_ringan) || (lastPerkembangan ? safeParseInt(lastPerkembangan.luka_ringan || lastPerkembangan.lr_total) : 0)
       const db_luka = db_luka_berat + db_luka_ringan
-      const db_hilang = safeParseInt(detail?.hilang)
-      const db_pengungsi = safeParseInt(detail?.pengungsi)
+      const db_hilang = safeParseInt(detail?.hilang) || (lastPerkembangan ? safeParseInt(lastPerkembangan.hilang || lastPerkembangan.hilang_total) : 0)
+      const db_pengungsi = safeParseInt(detail?.pengungsi) || (lastPerkembangan ? safeParseInt(lastPerkembangan.pengungsi || lastPerkembangan.pengungsi_total) : 0)
 
       return {
         meninggal: db_meninggal,
