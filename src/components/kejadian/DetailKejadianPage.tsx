@@ -160,7 +160,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan'>('faskes')
   const [showHealthInfo, setShowHealthInfo] = useState(false)
   const [kapasitasNakes, setKapasitasNakes] = useState<any[]>([])
   const [loadingKapasitas, setLoadingKapasitas] = useState(false)
@@ -1862,6 +1862,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         kode_trans: `${selectedEvent?.kode_trans}-loc-${idx}`,
         lat: Number(loc.latitude),
         lng: Number(loc.longitude),
+        nama_desa: loc.nama_desa || selectedEvent?.nama_desa,
+        kecamatan: loc.kecamatan || selectedEvent?.kecamatan,
+        topografi: loc.topografi || selectedEvent?.topografi,
+        jml_terancam: loc.jml_terancam || selectedEvent?.jml_terancam,
       }))
     }
     return selectedEvent ? [selectedEvent] : []
@@ -2287,16 +2291,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
             <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm flex flex-col gap-5 mt-5">
               {/* ── Section Header ── */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-100">
-                    <Activity className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-[15px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                      ANALISIS TREN DAMPAK KEJADIAN
-                    </h3>
-                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Pergerakan data berdasarkan tanggal laporan dari SIPKK</p>
-                  </div>
+                <div>
+                  <h3 className="text-[15px] font-black uppercase tracking-wider text-slate-800">
+                    ANALISIS TREN DAMPAK KEJADIAN
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Pergerakan data berdasarkan tanggal laporan dari SIPKK</p>
                 </div>
               </div>
 
@@ -2615,6 +2614,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 }`}
             >
               Sumber Daya Kesehatan
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatrixTab('sanitasi_kesling')}
+              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'sanitasi_kesling'
+                ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+            >
+              Sanitasi &amp; Kesling
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatrixTab('logistik_kesehatan')}
+              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'logistik_kesehatan'
+                ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+            >
+              Logistik Kesehatan
             </button>
           </div>
 
@@ -3048,10 +3067,63 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                   </span>
                 </div>
 
+                {/* Summary Capacity Section Chart */}
+                {kapasitasNakes.length > 0 && (
+                  <div className="mb-4 bg-gradient-to-r from-indigo-900/5 via-blue-900/5 to-slate-900/5 p-3.5 rounded-xl border border-indigo-150 shadow-2xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Users className="h-4 w-4 text-indigo-600" />
+                        Ringkasan Akumulasi Kapasitas Tenaga Kesehatan ({eventData.kabupaten || 'Kabupaten'})
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Dokter Umum</span>
+                        <span className="text-lg font-black text-blue-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.dokter_umum || f.jml_dokter || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Dokter Spesialis</span>
+                        <span className="text-lg font-black text-indigo-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.dokter_spesialis || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Perawat</span>
+                        <span className="text-lg font-black text-teal-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.perawat || f.jml_perawat || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Bidan</span>
+                        <span className="text-lg font-black text-rose-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.bidan || f.jml_bidan || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Farmasi</span>
+                        <span className="text-lg font-black text-emerald-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.farmasi || f.jml_farmasi || 0), 0)}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-center shadow-2xs">
+                        <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Kesling &amp; Gizi</span>
+                        <span className="text-lg font-black text-amber-700 block mt-0.5">
+                          {kapasitasNakes.reduce((sum: number, f: any) => sum + (f.jml_kesling || 0) + (f.jml_gizi || 0), 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {loadingKapasitas ? (
                   <div className="flex flex-col items-center justify-center py-10 text-slate-400">
                     <Loader2 className="h-7 w-7 animate-spin mb-2 text-teal-700" />
                     <p className="text-[12px] font-semibold">Memuat data kapasitas tenaga kesehatan kabupaten...</p>
+                  </div>
+                ) : kapasitasNakes.length > 0 ? (
+                  <div className="max-h-[380px] overflow-y-auto overflow-x-auto">
                     <table className="w-full text-left border-collapse text-[13px]">
                       <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
                         <tr className="text-slate-500 font-bold">
@@ -3073,19 +3145,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                         {kapasitasNakes.map((f: any, fidx: number) => (
                           <tr key={fidx} className={`border-b border-slate-100 hover:bg-teal-50/30 transition-colors ${fidx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}>
                             <td className="py-2.5 px-3 text-center font-bold text-slate-500">{fidx + 1}</td>
-                            <td className="py-2.5 px-3 font-bold text-slate-700">{f.jenis_faskes}</td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-800">{f.kode_faskes}</td>
-                            <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama_faskes}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.dokter_umum || 0}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-700">{f.jenis_faskes || f.jenis || 'Faskes'}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-800">{f.kode_faskes || '-'}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama_faskes || f.nama}</td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.dokter_umum || f.jml_dokter || 0}</td>
                             <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.dokter_spesialis || 0}</td>
                             <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.dokter_gigi || 0}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.perawat || 0}</td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.perawat || f.jml_perawat || 0}</td>
                             <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.perawat_gigi || 0}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.bidan || 0}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.farmasi || 0}</td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.bidan || f.jml_bidan || 0}</td>
+                            <td className="py-2.5 px-3 text-center font-bold text-slate-700">{f.farmasi || f.jml_farmasi || 0}</td>
                             <td className="py-2.5 px-3 text-center">
                               <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.nama_faskes + ' ' + (f.kabupaten || ''))}`}
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((f.nama_faskes || f.nama) + ' ' + (f.kabupaten || eventData.kabupaten || ''))}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
@@ -3104,6 +3176,344 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                     <p className="text-[12px] font-semibold">Tidak ada data kapasitas tenaga kesehatan untuk kabupaten ini.</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {matrixTab === 'sanitasi_kesling' && (
+              <div className="space-y-3.5">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
+                    Kondisi Sanitasi &amp; Kesehatan Lingkungan di Lokasi Penampungan Pengungsi
+                  </span>
+                  <span className="text-[11px] font-black text-teal-800 bg-teal-50 border border-teal-200 px-3 py-1 rounded-lg uppercase tracking-wider">
+                    Standar WHO &amp; Kemenkes RI
+                  </span>
+                </div>
+
+                {/* 7 Indikator Sanitasi Real dari Form Tab 5 */}
+                {(() => {
+                  const h = detail?.header || {}
+                  const indikator = [
+                    {
+                      no: 1, label: 'Jenis Tempat Penampungan',
+                      field: 'rs_jenis_tempat_penampungan',
+                      options: { '1': 'Bangunan Permanen', '2': 'Bangunan Darurat' },
+                      std: 'Permanen lebih aman'
+                    },
+                    {
+                      no: 2, label: 'Kapasitas Penampungan Pengungsi',
+                      field: 'rs_kapasitas_penampungan',
+                      options: { '1': 'Memadai (min. 3m²/org)', '2': 'Tidak Memadai' },
+                      std: 'Min. 3m² per orang'
+                    },
+                    {
+                      no: 3, label: 'Kapasitas Penyediaan Air Bersih',
+                      field: 'rs_penyediaan_air_bersih',
+                      options: { '1': 'Memadai (min. 5–15L/org/hari)', '2': 'Tidak Memadai' },
+                      std: 'Min. 15L/org/hari'
+                    },
+                    {
+                      no: 4, label: 'Sarana Jamban Darurat',
+                      field: 'rs_jamban_darurat',
+                      options: { '1': 'Memadai (min. 1 jamban/40 org)', '2': 'Tidak Memadai' },
+                      std: 'Rasio 1:40'
+                    },
+                    {
+                      no: 5, label: 'Tempat Pembuangan Sampah',
+                      field: 'rs_tempat_sampah',
+                      options: { '1': 'Memadai (min. 3m²/60 org)', '2': 'Tidak Memadai' },
+                      std: 'Min. 3m²/60 org'
+                    },
+                    {
+                      no: 6, label: 'Sarana SPAL (Drainase)',
+                      field: 'rs_sarana_spal',
+                      options: { '1': 'Memadai (min. 4m dr penampungan)', '2': 'Tidak Memadai' },
+                      std: 'Min. 4m dari penampungan'
+                    },
+                    {
+                      no: 7, label: 'Penerangan',
+                      field: 'rs_penerangan',
+                      options: { '1': 'Memadai (min. 60 lux)', '2': 'Tidak Memadai' },
+                      std: 'Min. 60 lux'
+                    },
+                  ]
+                  const hasAnyData = indikator.some(i => h[i.field])
+                  if (!hasAnyData) {
+                    return (
+                      <div className="bg-slate-50/80 rounded-xl border border-slate-200 p-5 text-center">
+                        <p className="text-[12px] font-semibold text-slate-400">Belum ada data sanitasi dari Formulir Lengkap (Tab 5).</p>
+                        <p className="text-[11px] text-slate-300 mt-1">Data akan muncul setelah petugas mengisi Tab Sanitasi & Kesling.</p>
+                      </div>
+                    )
+                  }
+                  const allMemadai = indikator.every(i => !h[i.field] || h[i.field] === '1')
+                  const countMemadai = indikator.filter(i => h[i.field] === '1').length
+                  const countTidak = indikator.filter(i => h[i.field] === '2').length
+                  const countBelum = indikator.filter(i => !h[i.field]).length
+                  return (
+                    <div className="space-y-3">
+                      {/* Summary bar */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+                          <span className="text-lg font-black text-emerald-700">{countMemadai}</span>
+                          <span className="text-[10px] font-extrabold text-emerald-600 block uppercase">Memadai</span>
+                        </div>
+                        <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-center">
+                          <span className="text-lg font-black text-rose-700">{countTidak}</span>
+                          <span className="text-[10px] font-extrabold text-rose-600 block uppercase">Tidak Memadai</span>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-center">
+                          <span className="text-lg font-black text-slate-500">{countBelum}</span>
+                          <span className="text-[10px] font-extrabold text-slate-400 block uppercase">Belum Diisi</span>
+                        </div>
+                      </div>
+                      {/* Tabel indikator */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px] border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                              <th className="py-2 px-3 text-left font-extrabold text-slate-500 text-[10px] uppercase w-8">No</th>
+                              <th className="py-2 px-3 text-left font-extrabold text-slate-500 text-[10px] uppercase">Jenis Fasilitas</th>
+                              <th className="py-2 px-3 text-center font-extrabold text-slate-500 text-[10px] uppercase w-32">Kondisi</th>
+                              <th className="py-2 px-3 text-center font-extrabold text-slate-500 text-[10px] uppercase w-40">Standar</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {indikator.map((row, idx) => {
+                              const val = h[row.field]
+                              const label = val ? (row.options[val as keyof typeof row.options] || val) : null
+                              const isMemadai = val === '1'
+                              const isTidak = val === '2'
+                              return (
+                                <tr key={idx} className={`border-b border-slate-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                  <td className="py-2.5 px-3 font-bold text-slate-400 text-center">{row.no}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-slate-800">{row.label}</td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    {label ? (
+                                      <span className={`px-2 py-1 rounded-full text-[10px] font-extrabold border ${
+                                        isMemadai
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                          : isTidak
+                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                          : 'bg-slate-50 text-slate-500 border-slate-200'
+                                      }`}>
+                                        {label}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-300 text-[10px] font-bold">Belum diisi</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center text-[10px] font-bold text-slate-400">{row.std}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* Estimasi WHO tetap di bawah sebagai referensi */}
+                      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-800">
+                        <span className="font-black uppercase block mb-1">Estimasi Kebutuhan Berdasarkan Jumlah Pengungsi ({(breakdown.pengungsi || 0).toLocaleString('id-ID')} jiwa):</span>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1.5">
+                          <div><span className="font-bold block">Air Bersih</span><span className="font-extrabold text-blue-900">{((breakdown.pengungsi || 0) * 15).toLocaleString('id-ID')} L/hari</span></div>
+                          <div><span className="font-bold block">Jamban Darurat</span><span className="font-extrabold text-blue-900">{Math.ceil((breakdown.pengungsi || 0) / 40)} unit min.</span></div>
+                          <div><span className="font-bold block">TPS (Sampah)</span><span className="font-extrabold text-blue-900">{Math.ceil((breakdown.pengungsi || 0) / 60)} unit min.</span></div>
+                          <div><span className="font-bold block">Luas Penampungan</span><span className="font-extrabold text-blue-900">{((breakdown.pengungsi || 0) * 3).toLocaleString('id-ID')} m² min.</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {(detail?.header?.akses_lokasi_keterangan || eventData.jalur_komunikasi) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {detail?.header?.akses_lokasi_keterangan && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase block mb-1">Akses ke Lokasi</span>
+                        <p className="text-[12px] font-semibold text-slate-800">
+                          {detail.header.akses_lokasi === '1' ? 'Mudah dijangkau' : 'Sukar dijangkau'}{detail.header.akses_lokasi_keterangan ? ` — ${detail.header.akses_lokasi_keterangan}` : ''}
+                        </p>
+                      </div>
+                    )}
+                    {eventData.jalur_komunikasi && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-3">
+                        <span className="text-[10px] font-black text-slate-400 uppercase block mb-1">Jalur Komunikasi</span>
+                        <p className="text-[12px] font-semibold text-slate-800">{eventData.jalur_komunikasi}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {eventData.upaya_sub_klaster_pp_pl_air_bersih && (
+                  <div className="bg-teal-50/60 p-3 rounded-xl border border-teal-150">
+                    <span className="text-[11px] font-black text-teal-900 uppercase tracking-wider block mb-1">
+                      Upaya Sub-Klaster Penyehatan Lingkungan &amp; Air Bersih:
+                    </span>
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed">
+                      {stripHtmlText(eventData.upaya_sub_klaster_pp_pl_air_bersih)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+            {matrixTab === 'logistik_kesehatan' && (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
+                    Sumber Daya &amp; Kesiapan Logistik Kesehatan
+                  </span>
+                  <span className="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg uppercase tracking-wider">
+                    Formulir Lengkap Tab 6
+                  </span>
+                </div>
+
+                {/* Section A: Tenaga Kesehatan Tersedia vs Dibutuhkan */}
+                {(() => {
+                  const rows: any[] = Array.isArray(detail?.tenaga_input) ? detail.tenaga_input : []
+                  if (rows.length === 0) return (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center">
+                      <p className="text-[12px] font-semibold text-slate-400">Belum ada data kebutuhan tenaga kesehatan.</p>
+                    </div>
+                  )
+                  return (
+                    <div>
+                      <div className="text-[11px] font-black text-slate-700 uppercase tracking-wider mb-2">A. Kebutuhan Tenaga Kesehatan per Faskes</div>
+                      <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+                        <table className="w-full text-[12px] border-collapse">
+                          <thead className="sticky top-0 z-10">
+                            <tr className="bg-slate-50 border-b border-slate-200">
+                              <th className="py-2 px-3 text-left font-extrabold text-slate-500 text-[10px] uppercase">Nama Faskes</th>
+                              {['Dokter', 'Perawat', 'Bidan', 'Farmasi', 'Gizi', 'Kesling', 'Lainnya'].map(h => (
+                                <th key={h} className="py-2 px-2 text-center font-extrabold text-slate-500 text-[10px] uppercase" colSpan={2}>{h}</th>
+                              ))}
+                            </tr>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                              <th className="py-1.5 px-3"></th>
+                              {['Dokter', 'Perawat', 'Bidan', 'Farmasi', 'Gizi', 'Kesling', 'Lainnya'].map(h => (
+                                <>
+                                  <th key={h+'_ada'} className="py-1.5 px-2 text-center text-[9px] font-extrabold text-emerald-600 uppercase">Ada</th>
+                                  <th key={h+'_bth'} className="py-1.5 px-2 text-center text-[9px] font-extrabold text-rose-600 uppercase">Butuh</th>
+                                </>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((row: any, idx: number) => {
+                              const pairs: [number, number, string][] = [
+                                [row.jml_dokter || 0, row.kebutuhan_dokter || 0, 'dokter'],
+                                [row.jml_perawat || 0, row.kebutuhan_perawat || 0, 'perawat'],
+                                [row.jml_bidan || 0, row.kebutuhan_bidan || 0, 'bidan'],
+                                [row.jml_farmasi || 0, row.kebutuhan_farmasi || 0, 'farmasi'],
+                                [row.jml_gizi || 0, row.kebutuhan_gizi || 0, 'gizi'],
+                                [row.jml_kesling || 0, row.kebutuhan_kesling || 0, 'kesling'],
+                                [row.jml_tenaga_lainnya || 0, row.kebutuhan_tenaga_lainnya || 0, 'lainnya'],
+                              ]
+                              return (
+                                <tr key={idx} className={`border-b border-slate-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                  <td className="py-2.5 px-3 font-bold text-slate-800">{row.nama_faskes || '-'}</td>
+                                  {pairs.map(([ada, butuh, key]) => {
+                                    const gap = butuh - ada
+                                    return (
+                                      <>
+                                        <td key={key+'_a'} className="py-2.5 px-2 text-center font-bold text-emerald-700">{ada}</td>
+                                        <td key={key+'_b'} className="py-2.5 px-2 text-center">
+                                          <span className={`font-bold ${gap > 0 ? 'text-rose-600' : 'text-slate-500'}`}>{butuh}</span>
+                                          {gap > 0 && <span className="ml-1 text-[9px] font-extrabold text-rose-500 bg-rose-50 border border-rose-200 px-1 rounded">-{gap}</span>}
+                                        </td>
+                                      </>
+                                    )
+                                  })}
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Section B: Kesiapan Logistik Dinkes vs RS/PKM */}
+                {(() => {
+                  const h = detail?.header || {}
+                  const labels: Record<string, string> = {
+                    obat_habis_pakai: 'Obat & Bahan Habis Pakai',
+                    alat_kesehatan: 'Alat Kesehatan',
+                    kaporit: 'Kaporit',
+                    pac: 'PAC',
+                    aquatab: 'Aquatab',
+                    kantong_sampah: 'Kantong Sampah',
+                    repellent_lalat: 'Repellent Lalat',
+                    hygiene_kit: 'Hygiene Kit',
+                    persalinan_kit: 'Persalinan Kit',
+                    jml_sdm: 'Jumlah SDM',
+                    kompetensi_sdm: 'Kompetensi SDM',
+                    transportasi: 'Transportasi Operasional',
+                    alat_komunikasi: 'Alat Komunikasi',
+                    sarana_listrik: 'Sarana Listrik',
+                    air: 'Ketersediaan Air',
+                    tempat_tidur: 'Tempat Tidur',
+                  }
+                  const optMap: Record<string, string> = { '1': 'Cukup', '2': 'Tidak Cukup' }
+                  const optMap2: Record<string, string> = { '1': 'Memenuhi', '2': 'Tidak Memenuhi' }
+                  const optMap3: Record<string, string> = { '1': 'Berfungsi', '2': 'Tidak Berfungsi' }
+
+                  const getStatusBadge = (val: string, key: string) => {
+                    const map = key === 'kompetensi_sdm' ? optMap2 : key === 'sarana_listrik' ? optMap3 : optMap
+                    const label = map[val] || val
+                    const ok = val === '1'
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                        ok ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}>{label}</span>
+                    )
+                  }
+
+                  const fieldGroups = ['obat_habis_pakai', 'alat_kesehatan', 'kaporit', 'pac', 'aquatab', 'kantong_sampah', 'repellent_lalat', 'hygiene_kit', 'persalinan_kit', 'jml_sdm', 'kompetensi_sdm', 'transportasi', 'alat_komunikasi', 'sarana_listrik']
+                  const rsExtra = ['air', 'tempat_tidur']
+
+                  const dinkesKeys = fieldGroups.filter(k => h[`dinkes_${k}`])
+                  const rsKeys = [...fieldGroups, ...rsExtra].filter(k => h[`rs_${k}`])
+
+                  if (dinkesKeys.length === 0 && rsKeys.length === 0) return (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center">
+                      <p className="text-[12px] font-semibold text-slate-400">Belum ada data kesiapan logistik dari Formulir Lengkap (Tab 6).</p>
+                    </div>
+                  )
+
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {dinkesKeys.length > 0 && (
+                        <div className="bg-white border border-blue-100 rounded-xl p-3.5">
+                          <div className="text-[11px] font-black text-blue-900 uppercase tracking-wider mb-3 pb-2 border-b border-blue-100">B. Kesiapan Logistik — Dinas Kesehatan</div>
+                          <div className="space-y-2">
+                            {dinkesKeys.map(k => (
+                              <div key={k} className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold text-slate-700">{labels[k] || k}</span>
+                                {getStatusBadge(h[`dinkes_${k}`], k)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {rsKeys.length > 0 && (
+                        <div className="bg-white border border-amber-100 rounded-xl p-3.5">
+                          <div className="text-[11px] font-black text-amber-900 uppercase tracking-wider mb-3 pb-2 border-b border-amber-100">B. Kesiapan Logistik — RS / Puskesmas</div>
+                          <div className="space-y-2">
+                            {rsKeys.map(k => (
+                              <div key={k} className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold text-slate-700">{labels[k] || k}</span>
+                                {getStatusBadge(h[`rs_${k}`], k)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             )}
           </div>
@@ -3137,18 +3547,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           return (
             <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3.5 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-700 border border-amber-200/80 shadow-2xs">
-                    <CheckCircle2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-[15px] font-black uppercase tracking-wider text-slate-850 flex items-center gap-2">
-                      RESPON DINKES &amp; EOC KEMENKES
-                    </h4>
-                    <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                      Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
-                    </p>
-                  </div>
+                <div>
+                  <h4 className="text-[15px] font-black uppercase tracking-wider text-slate-850">
+                    RESPON DINKES &amp; EOC KEMENKES
+                  </h4>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                    Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
+                  </p>
                 </div>
               </div>
 
@@ -3157,8 +3562,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 <div className="rounded-xl border border-amber-200/70 bg-gradient-to-b from-amber-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between pb-2 border-b border-amber-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-amber-600 shrink-0" />
+                      <h5 className="text-xs font-black uppercase tracking-wider text-amber-950">
                         UPAYA PENANGGULANGAN KRISIS
                       </h5>
                       <span className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-900 font-extrabold text-[10px]">
@@ -3209,8 +3613,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 <div className="rounded-xl border border-cyan-200/70 bg-gradient-to-b from-cyan-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between pb-2 border-b border-cyan-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-cyan-950 flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-cyan-600 shrink-0" />
+                      <h5 className="text-xs font-black uppercase tracking-wider text-cyan-950">
                         DISTRIBUSI LOGISTIK &amp; BANTUAN
                       </h5>
                       <span className="px-2 py-0.5 rounded-full bg-cyan-100/80 text-cyan-900 font-extrabold text-[10px]">
@@ -3259,8 +3662,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                 <div className="rounded-xl border border-teal-200/70 bg-gradient-to-b from-teal-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between pb-2 border-b border-teal-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-2">
-                        <HelpCircle className="h-4 w-4 text-teal-650 shrink-0" />
+                      <h5 className="text-xs font-black uppercase tracking-wider text-teal-950">
                         REKOMENDASI &amp; TINDAK LANJUT
                       </h5>
                       <span className="px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-900 font-extrabold text-[10px]">
