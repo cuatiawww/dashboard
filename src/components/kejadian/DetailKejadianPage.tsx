@@ -130,10 +130,21 @@ const formatDateISO = (d: Date): string => {
 const maskName = (name: string): string => {
   if (!name || name === '-') return '-'
   const clean = name.trim()
-  if (clean.length <= 4) {
-    return clean.charAt(0) + '***' + clean.charAt(clean.length - 1)
-  }
-  return clean.substring(0, 2) + '***' + clean.substring(clean.length - 2)
+  const words = clean.split(/\s+/)
+  return words.map((word, idx) => {
+    const lower = word.toLowerCase()
+    // Abaikan gelar medis/umum di awal agar tidak tersensor
+    if (idx === 0 && (lower === 'dr.' || lower === 'dr' || lower === 'drs' || lower === 'drs.' || lower === 'hj' || lower === 'hj.' || lower === 'drg' || lower === 'drg.')) {
+      return word;
+    }
+    if (word.length <= 2) {
+      return word;
+    }
+    if (word.length <= 4) {
+      return word.charAt(0) + '***';
+    }
+    return word.substring(0, 2) + '***' + word.substring(word.length - 1);
+  }).join(' ');
 }
 
 const formatPerkembangan = (p: any): string => {
@@ -1642,6 +1653,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [eventData.penyakit_input, eventData.tgl_kejadian]);
 
+  const penyakitTotalData = useMemo(() => {
+    const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : [];
+    if (list.length === 0) {
+      return [
+        { name: 'Belum Ada Kasus', total: 0 }
+      ];
+    }
+
+    const totals: { [name: string]: number } = {};
+    list.forEach((p: any) => {
+      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
+      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
+      const count = safeParseInt(p.jumlah_kasus || p.jml);
+      totals[disease] = (totals[disease] || 0) + count;
+    });
+
+    return Object.entries(totals).map(([name, total]) => ({
+      name,
+      total
+    })).sort((a, b) => b.total - a.total);
+  }, [eventData.penyakit_input]);
+
   // Flood conditions (Weather, TMA, Luas, Lama) parsed or fallbacks
   const parsedCuaca = useMemo(() => {
     if (realtimeWeather) return realtimeWeather.cuaca
@@ -2612,33 +2645,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-amber-200 transition-all duration-200 flex flex-col justify-between h-full">
                   <div className="flex flex-col flex-1">
                     <div className="mb-1">
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Penyakit Berpotensi KLB</h4>
+                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Distribusi Total Kasus Penyakit</h4>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Akumulasi kasus mingguan penyakit sensitif bencana (Diagram Batang)</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Total kasus kumulatif penyakit berpotensi KLB (Diagram Batang)</p>
                     <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={penyakitTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <BarChart data={penyakitTotalData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="date" stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
+                            <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} style={{ fontSize: '9px' }} />
                             <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-3 text-slate-700 font-bold">{value}</span>} />
-                            {Object.keys(penyakitTrendData[0] || {}).filter(k => k !== 'date').map((diseaseKey, kIdx) => {
-                              const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1'];
-                              return (
-                                <Bar
-                                  key={diseaseKey}
-                                  dataKey={diseaseKey}
-                                  fill={colors[kIdx % colors.length]}
-                                  radius={[4, 4, 0, 0]}
-                                  maxBarSize={28}
-                                  isAnimationActive={true}
-                                  animationDuration={1200}
-                                />
-                              );
-                            })}
-                            <Brush dataKey="date" height={22} stroke="#d97706" fill="#fef3c7" gap={1} />
+                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} formatter={(value) => [`${value} kasus`, 'Total']} />
+                            <Bar
+                              dataKey="total"
+                              radius={[4, 4, 0, 0]}
+                              maxBarSize={32}
+                              isAnimationActive={true}
+                              animationDuration={1200}
+                            >
+                              {penyakitTotalData.map((entry, idx) => {
+                                const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1'];
+                                return <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />;
+                              })}
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
                       )}

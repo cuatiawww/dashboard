@@ -292,6 +292,7 @@ export default function DisasterMap({
   const [showSettings, setShowSettings] = useState(false)
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
   const [showEocRoute, setShowEocRoute] = useState(true)
+  const [pulseRadius, setPulseRadius] = useState<number>(1) // Default 1 km
 
   // Auto-enable EOC Routing layer when a route target is selected
   useEffect(() => {
@@ -1512,6 +1513,9 @@ export default function DisasterMap({
     const eocLayer = eocLayerRef.current
     if (!eocLayer) return
 
+    const map = mapInstanceRef.current || mapInstance
+    if (!map) return
+
     const source = eocLayer.getSource()!
     source.clear()
 
@@ -1542,22 +1546,53 @@ export default function DisasterMap({
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
     }
 
-    // 1. Add Flood Center pin if there's firstMarker
-    if (firstMarker) {
-      const floodFeat = new Feature({
-        geometry: new Point(fromLonLat([startLng, startLat])),
-        id: 'flood',
-        name: 'Pusat Kejadian Banjir'
-      })
-      floodFeat.setStyle(new Style({
-        image: new Icon({
-          src: getSvgPin('#ef4444', 'flood'),
-          scale: 0.9,
-          anchor: [0.5, 1]
-        })
-      }))
-      source.addFeature(floodFeat)
+    // 1. Add disaster location pins and pulsing radius circles for all markers
+    const validDisasterMarkers = Array.isArray(markers) ? markers : []
+    
+    // Clear old overlays if any
+    if (map) {
+      pulseOverlaysRef.current.forEach(ov => map.removeOverlay(ov))
+      pulseOverlaysRef.current = []
     }
+
+    validDisasterMarkers.forEach((m: any, idx: number) => {
+      if (m.lat && m.lng && Number(m.lat) !== 0 && Number(m.lng) !== 0) {
+        const lat = Number(m.lat)
+        const lng = Number(m.lng)
+
+        // Draw pin marker
+        const floodFeat = new Feature({
+          geometry: new Point(fromLonLat([lng, lat])),
+          id: `flood-${idx}`,
+          name: m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : 'Titik Kejadian Bencana',
+          rawItem: m,
+          itemType: 'disaster'
+        })
+        floodFeat.setStyle(new Style({
+          image: new Icon({
+            src: getSvgPin('#ef4444', 'flood'),
+            scale: 0.9,
+            anchor: [0.5, 1]
+          })
+        }))
+        source.addFeature(floodFeat)
+
+        // Draw pulsing radius circle
+        const radiusInMeters = pulseRadius * 1000
+        const circleFeat = new Feature({
+          geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
+          id: `pulse-circle-${idx}`
+        })
+        circleFeat.setStyle(new Style({
+          fill: new Fill({ color: 'rgba(239, 68, 68, 0.08)' }),
+          stroke: new Stroke({ color: 'rgba(239, 68, 68, 0.5)', width: 1.5, lineDash: [4, 6] })
+        }))
+        source.addFeature(circleFeat)
+
+        // Create dynamic pulse overlay
+        createPulseOverlay(lng, lat, 'danger')
+      }
+    })
 
     // 2. Add Faskes List
     const fList = Array.isArray(faskesList) ? faskesList : []
@@ -1639,7 +1674,6 @@ export default function DisasterMap({
     }
 
     // Zoom view to encompass route or center
-    const map = mapInstanceRef.current || mapInstance
     if (map && selectedRouteTarget) {
       map.getView().animate({
         center: fromLonLat([startLng, startLat]),
@@ -1647,7 +1681,7 @@ export default function DisasterMap({
         duration: 800
       })
     }
-  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance])
+  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -2035,6 +2069,41 @@ export default function DisasterMap({
                       <span
                         className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showEocRoute ? 'translate-x-4' : 'translate-x-0'}`}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Radius Denyutan Bencana (only when isFloodEocMode is active) */}
+                {isFloodEocMode && (
+                  <div className="mt-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <Compass className="h-4 w-4 text-rose-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Radius Denyutan Bencana</p>
+                        <p className="text-[10px] text-slate-400">Jangkauan area dampak (Angka Ganjil)</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { label: '1 km', value: 1 },
+                        { label: '3 km', value: 3 },
+                        { label: '5 km', value: 5 },
+                        { label: '7 km', value: 7 },
+                        { label: '10 km', value: 10 },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setPulseRadius(opt.value)}
+                          className={`rounded-lg py-1 text-[10px] font-black transition-all ${
+                            pulseRadius === opt.value
+                              ? 'bg-rose-500 text-white shadow-xs'
+                              : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-100'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
