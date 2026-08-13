@@ -1590,6 +1590,20 @@ export default function DisasterMap({
       if (pos.latitude && pos.longitude && Number(pos.latitude) !== 0 && Number(pos.longitude) !== 0) {
         const lat = Number(pos.latitude)
         const lng = Number(pos.longitude)
+        
+        // Customize color & icon based on jenis_pos
+        const jenisPos = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase()
+        let pinColor = '#2563eb' // default blue for Pos Pengungsian
+        let iconType: 'flood' | 'hospital' | 'clinic' | 'shelter' = 'shelter'
+
+        if (jenisPos.includes('kesehatan & pengungsian') || jenisPos.includes('kesehatan dan pengungsian')) {
+          pinColor = '#f59e0b' // orange for health & shelter combined
+          iconType = 'shelter'
+        } else if (jenisPos.includes('kesehatan')) {
+          pinColor = '#10b981' // green/emerald for Pos Kesehatan
+          iconType = 'clinic'
+        }
+
         const pFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
           id: pos.nama || `posko-${idx}`,
@@ -1599,7 +1613,7 @@ export default function DisasterMap({
         })
         pFeat.setStyle(new Style({
           image: new Icon({
-            src: getSvgPin('#14b8a6', 'shelter'),
+            src: getSvgPin(pinColor, iconType),
             scale: 0.85,
             anchor: [0.5, 1]
           })

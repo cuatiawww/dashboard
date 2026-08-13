@@ -1301,6 +1301,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return { label: 'RENDAH', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
   }, [healthRiskScore]);
 
+  // Filter posko secara dinamis untuk tab pengungsian dan kesehatan
+  const filteredPengungsian = useMemo(() => {
+    return (detail?.pos_pengungsi || []).filter((pos: any) => {
+      const type = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase();
+      return type.includes('pengungsian');
+    });
+  }, [detail?.pos_pengungsi]);
+
+  const filteredKesehatan = useMemo(() => {
+    return (detail?.pos_pengungsi || []).filter((pos: any) => {
+      const type = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase();
+      return type.includes('kesehatan');
+    });
+  }, [detail?.pos_pengungsi]);
+
   // ── TREND GRAPH GENERATORS ──
   const victimTrendData = useMemo(() => {
     const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
@@ -2643,28 +2658,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
             >
-              Pos Pengungsian
+              Pos Pengungsian &amp; Kesehatan
             </button>
-            <button
-              type="button"
-              onClick={() => setMatrixTab('kesehatan')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'kesehatan'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-            >
-              Pos Kesehatan
-            </button>
-            <button
-              type="button"
-              onClick={() => setMatrixTab('logistik')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'logistik'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-            >
-              Gudang Logistik
-            </button>
+
             <button
               type="button"
               onClick={() => setMatrixTab('status_faskes')}
@@ -2851,6 +2847,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <tbody>
                         {detail.pos_pengungsi.map((pos: any, pidx: number) => {
                           const isSelected = selectedRouteTarget?.name === (pos.nama || `Posko ${pos.kecamatan || ''}`);
+                          const jenisPosVal = pos.jenis_pos || 'Pos Pengungsian';
+                          const isKesehatan = String(jenisPosVal).toLowerCase().includes('kesehatan') && !String(jenisPosVal).toLowerCase().includes('pengungsian');
+                          const isCombined = String(jenisPosVal).toLowerCase().includes('kesehatan') && String(jenisPosVal).toLowerCase().includes('pengungsian');
+                          
+                          let badgeClass = "bg-blue-50 text-blue-700 border-blue-200"; // Pos Pengungsian
+                          if (isCombined) {
+                            badgeClass = "bg-amber-50 text-amber-700 border-amber-200"; // Pos Kesehatan & Pengungsian
+                          } else if (isKesehatan) {
+                            badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200"; // Pos Kesehatan
+                          }
+
                           return (
                             <tr
                               key={pidx}
@@ -2867,8 +2874,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {pos.kecamatan ? `Kec. ${pos.kecamatan}` : '-'}
                               </td>
                               <td className="py-3 px-3 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
-                                  {pos.jenis_pos || 'Pos Pengungsian'}
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-black border uppercase tracking-wide ${badgeClass}`}>
+                                  {jenisPosVal}
                                 </span>
                               </td>
                               <td className="py-3 px-3 text-center font-bold text-slate-700">
@@ -2911,25 +2918,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-slate-400">
                     <AlertTriangle className="h-6 w-6 mb-2 text-slate-300" />
-                    <p className="text-[11px] font-semibold">Tidak ada pos pengungsian yang diinput untuk kejadian ini.</p>
+                    <p className="text-[11px] font-semibold">Tidak ada pos pengungsian & kesehatan yang diinput untuk kejadian ini.</p>
                   </div>
                 )}
-              </div>
-            )}
-
-            {matrixTab === 'kesehatan' && (
-              <div className="flex flex-col items-center justify-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-xl my-2 w-full">
-                <HeartPulse className="h-8 w-8 text-emerald-500/60 animate-pulse mb-2" />
-                <p className="text-xs font-bold text-slate-600">Pos Kesehatan</p>
-                <p className="text-[10px] text-slate-400 font-semibold mt-1">Sedang dalam perkembangan...</p>
-              </div>
-            )}
-
-            {matrixTab === 'logistik' && (
-              <div className="flex flex-col items-center justify-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-xl my-2 w-full">
-                <Warehouse className="h-8 w-8 text-amber-500/60 animate-pulse mb-2" />
-                <p className="text-xs font-bold text-slate-600">Gudang Logistik</p>
-                <p className="text-[10px] text-slate-400 font-semibold mt-1">Sedang dalam perkembangan...</p>
               </div>
             )}
 
