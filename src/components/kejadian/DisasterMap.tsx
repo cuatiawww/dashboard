@@ -299,6 +299,16 @@ export default function DisasterMap({
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
   const [showEocRoute, setShowEocRoute] = useState(true)
   const [pulseRadius, setPulseRadius] = useState<number>(1) // Default 1 km
+  const [pulsePhase, setPulsePhase] = useState<number>(0)
+
+  // Blinking timer for EOC radius danger pulsing
+  useEffect(() => {
+    if (!isFloodEocMode) return
+    const timer = setInterval(() => {
+      setPulsePhase((p) => (p === 0 ? 1 : 0))
+    }, 900)
+    return () => clearInterval(timer)
+  }, [isFloodEocMode])
 
   // Auto-enable EOC Routing layer when a route target is selected
   useEffect(() => {
@@ -1589,9 +1599,13 @@ export default function DisasterMap({
           geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
           id: `pulse-circle-${idx}`
         })
+        const fillColor = pulsePhase === 0 ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.15)'
+        const strokeColor = pulsePhase === 0 ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.65)'
+        const strokeWidth = pulsePhase === 0 ? 1.2 : 2.0
+        
         circleFeat.setStyle(new Style({
-          fill: new Fill({ color: 'rgba(239, 68, 68, 0.08)' }),
-          stroke: new Stroke({ color: 'rgba(239, 68, 68, 0.5)', width: 1.5, lineDash: [4, 6] })
+          fill: new Fill({ color: fillColor }),
+          stroke: new Stroke({ color: strokeColor, width: strokeWidth, lineDash: [4, 6] })
         }))
         source.addFeature(circleFeat)
 
@@ -1687,7 +1701,7 @@ export default function DisasterMap({
         duration: 800
       })
     }
-  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius, pulsePhase])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
