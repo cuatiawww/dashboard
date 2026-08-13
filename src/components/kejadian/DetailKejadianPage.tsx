@@ -61,6 +61,7 @@ import {
 interface DetailKejadianPageProps {
   selectedEvent: any
   onBack: () => void
+  onDetailLoaded?: (detailData: any) => void
 }
 
 const safeParseInt = (val: any): number => {
@@ -152,7 +153,7 @@ const formatPerkembangan = (p: any): string => {
 }
 
 
-export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKejadianPageProps) {
+export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoaded }: DetailKejadianPageProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = storeIsGuest || !token || !user
 
@@ -271,6 +272,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         if (json.success && json.data) {
           if (active) {
             setDetail(json.data)
+            if (onDetailLoaded) {
+              onDetailLoaded(json.data)
+            }
           }
         } else {
           throw new Error(json.message || 'Gagal memuat rincian data bencana.')
@@ -1198,13 +1202,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     return safeParseInt(val).toLocaleString('id-ID');
   }, [eventData.ibu_hamil]);
 
+  const totalPendudukTerancam = useMemo(() => {
+    const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : [];
+    const sum = lokasiList.reduce((acc: number, loc: any) => acc + safeParseInt(loc.jml_terancam), 0);
+    return sum;
+  }, [detail?.lokasi]);
+
   const pendudukTerdampakDisplay = useMemo(() => {
+    const sumTerancam = totalPendudukTerancam;
+    if (sumTerancam > 0) {
+      return sumTerancam.toLocaleString('id-ID');
+    }
     const val = eventData.penduduk_terdampak;
     if (val === undefined || val === null || val === 0 || val === '0') {
       return 'NA';
     }
     return safeParseInt(val).toLocaleString('id-ID');
-  }, [eventData.penduduk_terdampak]);
+  }, [eventData.penduduk_terdampak, totalPendudukTerancam]);
 
   const totalFaskes = useMemo(() => {
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
@@ -1243,7 +1257,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
   }, [terdampakFaskes])
 
   const terdampakTrendInfo = useMemo(() => {
-    const rawVal = safeParseInt(eventData.penduduk_terdampak)
+    const rawVal = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak)
     if (pendudukTerdampakDisplay === 'NA' || rawVal === 0) {
       return {
         label: 'Laporan Pertama | Belum Ada Log Kemarin',
@@ -1263,7 +1277,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       label: `Kemarin: ${yesterday.toLocaleString('id-ID')} | ↑ +${pct}%`,
       badgeClass: 'bg-amber-50 border-amber-200 text-amber-800 shadow-xs font-black'
     }
-  }, [eventData.penduduk_terdampak, pendudukTerdampakDisplay, detail?.timeline_logs])
+  }, [eventData.penduduk_terdampak, pendudukTerdampakDisplay, detail?.timeline_logs, totalPendudukTerancam])
 
   // Health risk score computation (dynamic based on severity)
   const healthRiskScore = useMemo(() => {
@@ -1293,68 +1307,90 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       ? detail.perkembangan
       : (Array.isArray(eventData.perkembangan) ? eventData.perkembangan : []);
 
+    const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : [];
+
     const finalMeninggal = safeParseInt(eventData.meninggal);
     const finalLuka = safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan);
     const finalHilang = safeParseInt(eventData.hilang);
     const finalPengungsi = safeParseInt(eventData.pengungsi);
-    const finalTerdampak = safeParseInt(eventData.penduduk_terdampak);
+    const finalTerdampak = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak);
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
-    if (list.length > 0) {
-      const dateMap: { [date: string]: any } = {};
-      list.forEach((item: any) => {
-        const rawDate = item.tgl_laporan || (item.created_date ? item.created_date.split(' ')[0] : null);
-        if (!rawDate) return;
-        dateMap[rawDate] = item;
-      });
+    // Kumpulkan semua tanggal dari perkembangan dan lokasi
+    const dateMap: { [date: string]: any } = {};
+    list.forEach((item: any) => {
+      const rawDate = item.tgl_laporan || (item.created_date ? item.created_date.split(' ')[0] : null);
+      if (!rawDate) return;
+      dateMap[rawDate] = { ...item, type: 'perkembangan' };
+    });
 
-      const dates = Object.keys(dateMap).sort();
-      if (dates.length > 0) {
-        const minDate = new Date(dates[0]);
-        const maxDate = new Date(dates[dates.length - 1]);
+    const terancamPerTanggal: { [date: string]: number } = {};
+    lokasiList.forEach((loc: any) => {
+      if (loc.tgl_laporan) {
+        const dateStr = loc.tgl_laporan.split(' ')[0];
+        terancamPerTanggal[dateStr] = (terancamPerTanggal[dateStr] || 0) + safeParseInt(loc.jml_terancam);
+        if (!dateMap[dateStr]) {
+          dateMap[dateStr] = { type: 'lokasi' };
+        }
+      }
+    });
 
-        const points = [];
-        let curr = new Date(minDate);
-        let lastKnown = {
-          meninggal: 0,
-          luka: 0,
-          hilang: 0,
-          pengungsi: 0,
-          terdampak: 0
-        };
+    const dates = Object.keys(dateMap).sort();
+    if (dates.length > 0) {
+      const minDate = new Date(dates[0]);
+      const maxDate = new Date(dates[dates.length - 1]);
 
-        while (curr <= maxDate) {
-          const dateStr = curr.toISOString().split('T')[0];
-          if (dateMap[dateStr]) {
-            const item = dateMap[dateStr];
+      const points = [];
+      let curr = new Date(minDate);
+      let lastKnown = {
+        meninggal: 0,
+        luka: 0,
+        hilang: 0,
+        pengungsi: 0,
+      };
+
+      let runningTerancam = 0;
+      const processedTerancamDates: { [date: string]: boolean } = {};
+
+      while (curr <= maxDate) {
+        const dateStr = curr.toISOString().split('T')[0];
+        
+        if (dateMap[dateStr]) {
+          const item = dateMap[dateStr];
+          if (item.type === 'perkembangan') {
             lastKnown = {
               meninggal: safeParseInt(item.meninggal || item.md_total),
               luka: safeParseInt(item.luka_berat || item.lb_total) + safeParseInt(item.luka_ringan || item.lr_total),
               hilang: safeParseInt(item.hilang || item.hilang_total),
               pengungsi: safeParseInt(item.pengungsi || item.pengungsi_total),
-              terdampak: safeParseInt(item.penduduk_terdampak)
             };
           }
-
-          const formattedLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-          const totalK = lastKnown.meninggal + lastKnown.luka + lastKnown.hilang;
-
-          points.push({
-            date: formattedLabel,
-            'Total Korban': totalK,
-            'Penduduk Terdampak': lastKnown.terdampak,
-            'Total Pengungsi': lastKnown.pengungsi,
-            'Meninggal': lastKnown.meninggal,
-            'Luka-luka': lastKnown.luka,
-            'Hilang': lastKnown.hilang,
-          });
-
-          curr.setDate(curr.getDate() + 1);
         }
-        return points;
+
+        if (terancamPerTanggal[dateStr] !== undefined && !processedTerancamDates[dateStr]) {
+          runningTerancam += terancamPerTanggal[dateStr];
+          processedTerancamDates[dateStr] = true;
+        }
+
+        const formattedLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        const totalK = lastKnown.meninggal + lastKnown.luka + lastKnown.hilang;
+
+        points.push({
+          date: formattedLabel,
+          'Total Korban': totalK,
+          'Penduduk Terancam/Terdampak': runningTerancam > 0 ? runningTerancam : finalTerdampak,
+          'Total Pengungsi': lastKnown.pengungsi,
+          'Meninggal': lastKnown.meninggal,
+          'Luka-luka': lastKnown.luka,
+          'Hilang': lastKnown.hilang,
+        });
+
+        curr.setDate(curr.getDate() + 1);
       }
+      return points;
     }
 
+    // Fallback jika tidak ada data perkembangan maupun lokasi
     const dateStr = eventData.tgl_kejadian || '';
     const dateParts = dateStr.split(' ');
     const baseDate = dateParts[0] ? new Date(dateParts[0]) : new Date();
@@ -1369,7 +1405,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       points.push({
         date: formattedLabel,
         'Total Korban': Math.round(finalKorban * factor),
-        'Penduduk Terdampak': Math.round(finalTerdampak * factor),
+        'Penduduk Terancam/Terdampak': Math.round(finalTerdampak * factor),
         'Total Pengungsi': Math.round(finalPengungsi * factor),
         'Meninggal': Math.round(finalMeninggal * factor),
         'Luka-luka': Math.round(finalLuka * factor),
@@ -1377,7 +1413,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       });
     }
     return points;
-  }, [eventData, detail?.perkembangan]);
+  }, [eventData, detail?.perkembangan, detail?.lokasi, totalPendudukTerancam]);
 
   const faskesTrendData = useMemo(() => {
     const list = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : [];
@@ -2164,10 +2200,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
               </div>
             </div>
 
-            {/* Card 4: Penduduk Terdampak */}
+            {/* Card 4: Penduduk Terancam/Terdampak */}
             <div className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition hover:shadow-md ${disasterTheme.bg}`}>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERANCAM (TERDAMPAK)</span>
                 <div className="flex items-baseline justify-center gap-1 mt-2">
                   <span className="text-3xl sm:text-4xl font-black text-slate-900 leading-none">
                     {pendudukTerdampakDisplay}
@@ -2262,7 +2298,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           const totalKorbanDelta = (victimLast['Total Korban'] || 0) - (victimFirst['Total Korban'] || 0);
           const pengungsiLast = victimLast['Total Pengungsi'] || 0;
           const meninggalLast = victimLast['Meninggal'] || 0;
-          const terdampakLast = victimLast['Penduduk Terdampak'] || 0;
+          const terdampakLast = victimLast['Penduduk Terancam/Terdampak'] || 0;
 
           const totalTerdampakFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
           const totalMasterFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.totalMaster, 0);
@@ -2278,7 +2314,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
           const totalPenyakitCases = penyakitKeys.reduce((s, k) => s + (penyakitLast[k] || 0), 0);
 
           const korbanNarrative = totalKorbanDelta > 0
-            ? `Tren naik — korban bertambah ${totalKorbanDelta.toLocaleString('id-ID')} jiwa dalam periode ini. Saat ini ${meninggalLast.toLocaleString('id-ID')} meninggal, ${pengungsiLast.toLocaleString('id-ID')} pengungsi, dan ${terdampakLast.toLocaleString('id-ID')} jiwa terdampak.`
+            ? `Tren naik — korban bertambah ${totalKorbanDelta.toLocaleString('id-ID')} jiwa dalam periode ini. Saat ini ${meninggalLast.toLocaleString('id-ID')} meninggal, ${pengungsiLast.toLocaleString('id-ID')} pengungsi, dan ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak.`
             : totalKorbanDelta < 0
               ? `Tren menurun — situasi mulai membaik. Jumlah korban berkurang ${Math.abs(totalKorbanDelta).toLocaleString('id-ID')} jiwa. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa.`
               : `Data korban stabil dalam periode ini. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa, meninggal: ${meninggalLast.toLocaleString('id-ID')} jiwa.`;
@@ -2311,7 +2347,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                       </div>
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Korban &amp; Penduduk</h4>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Pergerakan total korban, pengungsi, dan penduduk terdampak</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Pergerakan total korban, pengungsi, dan penduduk terancam/terdampak</p>
                     <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
@@ -2322,7 +2358,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                             <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
                             <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-3 text-slate-700 font-bold">{value}</span>} />
                             <Line type="monotone" dataKey="Total Korban" stroke="#475569" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Penduduk Terdampak" stroke="#0f766e" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
+                            <Line type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={1.5} dot={{ r: 0 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" gap={1} />

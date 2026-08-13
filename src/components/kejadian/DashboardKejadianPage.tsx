@@ -797,32 +797,58 @@ export default function DashboardKejadianPage() {
   const initialChecked = useRef(false);
   const hadSelectedEventRef = useRef(false);
   useEffect(() => {
-    if (data?.markers && data.markers.length > 0 && !initialChecked.current) {
+    if (!initialChecked.current) {
       initialChecked.current = true;
       
-      // 1. Try to check clean pathname first
       const path = window.location.pathname;
       const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
       if (pathMatch) {
+        const slugBencana = pathMatch[1];
         const encryptedId = pathMatch[2];
         const decryptedId = decryptId(encryptedId);
-        const matchingEvent = data.markers.find((m: any) => m.kode_trans === decryptedId);
+        
+        // Find matching marker if data already loaded, or use placeholder to query API detail
+        const markersList = data?.markers || [];
+        const matchingEvent = markersList.find((m: any) => m.kode_trans === decryptedId);
         if (matchingEvent) {
           setSelectedEvent(matchingEvent);
-          hadSelectedEventRef.current = true;
-          return;
+        } else {
+          setSelectedEvent({
+            kode_trans: decryptedId,
+            jenis_bencana: slugBencana === 'kejadian' ? '' : slugBencana.replace(/-/g, ' '),
+            provinsi: '',
+            kabupaten: '',
+            tgl_kejadian: '',
+            lat: 0,
+            lng: 0,
+            total_korban: 0,
+          });
         }
+        hadSelectedEventRef.current = true;
+        return;
       }
 
       // 2. Fallback to old query parameters ?id=...
       const urlParams = new URLSearchParams(window.location.search);
       const initialId = urlParams.get('id') || urlParams.get('detail');
       if (initialId) {
-        const matchingEvent = data.markers.find((m: any) => m.kode_trans === initialId);
+        const markersList = data?.markers || [];
+        const matchingEvent = markersList.find((m: any) => m.kode_trans === initialId);
         if (matchingEvent) {
           setSelectedEvent(matchingEvent);
-          hadSelectedEventRef.current = true;
+        } else {
+          setSelectedEvent({
+            kode_trans: initialId,
+            jenis_bencana: '',
+            provinsi: '',
+            kabupaten: '',
+            tgl_kejadian: '',
+            lat: 0,
+            lng: 0,
+            total_korban: 0,
+          });
         }
+        hadSelectedEventRef.current = true;
       }
     }
   }, [data?.markers]);
@@ -833,6 +859,7 @@ export default function DashboardKejadianPage() {
       const path = window.location.pathname;
       const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
       const currentEncryptedId = pathMatch ? pathMatch[2] : null;
+      const currentSlug = pathMatch ? pathMatch[1] : null;
       
       const getBasePath = () => {
         const idx = path.indexOf('/detail-kejadian');
@@ -847,10 +874,11 @@ export default function DashboardKejadianPage() {
       if (selectedEvent) {
         hadSelectedEventRef.current = true;
         const encryptedId = encryptId(selectedEvent.kode_trans);
-        if (currentEncryptedId !== encryptedId) {
-          const rawType = String(selectedEvent.jenis_bencana || 'kejadian').toLowerCase();
-          const slug = rawType.replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
-          const newPath = `${basePath}/detail-kejadian/${slug}/${encryptedId}`;
+        const rawType = String(selectedEvent.jenis_bencana || 'kejadian').toLowerCase();
+        const slug = rawType.replace(/\s+/g, '-').replace(/[^\w\-]+/g, '');
+        const newPath = `${basePath}/detail-kejadian/${slug}/${encryptedId}`;
+        
+        if (currentEncryptedId !== encryptedId || currentSlug !== slug) {
           window.history.replaceState(null, '', newPath);
         }
       } else if (hadSelectedEventRef.current && path.includes('/detail-kejadian')) {
@@ -2030,6 +2058,19 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
       <DetailKejadianPage
         selectedEvent={selectedEvent}
         onBack={() => setSelectedEvent(null)}
+        onDetailLoaded={(detailData) => {
+          if (detailData && detailData.jenis_bencana) {
+            setSelectedEvent(prev => {
+              if (prev && prev.kode_trans === detailData.uid) {
+                return {
+                  ...prev,
+                  jenis_bencana: detailData.jenis_bencana
+                }
+              }
+              return prev;
+            });
+          }
+        }}
       />
     )
   }
