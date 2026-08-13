@@ -3045,9 +3045,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <th className="py-3 px-3 text-center">Status</th>
                             <th className="py-3 px-3 text-center">Kondisi Kerusakan</th>
                             <th className="py-3 px-3 text-center">Fungsi Pelayanan</th>
-                            <th className="py-3 px-3 text-center">R. Berat</th>
-                            <th className="py-3 px-3 text-center">R. Sedang</th>
-                            <th className="py-3 px-3 text-center">R. Ringan</th>
                             <th className="py-3 px-3 text-center">Google Maps</th>
                           </tr>
                         </thead>
@@ -3063,11 +3060,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     {f.status || cond.label}
                                   </span>
                                 </td>
-                                <td className="py-3 px-3 text-center font-bold text-amber-800">{f.kondisi || '-'}</td>
+                                <td className="py-3 px-3 text-center">
+                                  {safeParseInt(f.rusak_berat) > 0 ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-rose-50 text-rose-700 border-rose-250 uppercase">
+                                      R. Berat
+                                    </span>
+                                  ) : safeParseInt(f.rusak_sedang) > 0 ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 text-amber-700 border-amber-250 uppercase">
+                                      R. Sedang
+                                    </span>
+                                  ) : safeParseInt(f.rusak_ringan) > 0 ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-250 uppercase">
+                                      R. Ringan
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-500 font-semibold text-xs">-</span>
+                                  )}
+                                </td>
                                 <td className="py-3 px-3 text-center font-bold text-slate-700">{f.fungsi || '-'}</td>
-                                <td className="py-3 px-3 text-center font-bold text-rose-700">{f.rusak_berat || 0}</td>
-                                <td className="py-3 px-3 text-center font-bold text-orange-700">{f.rusak_sedang || 0}</td>
-                                <td className="py-3 px-3 text-center font-bold text-yellow-700">{f.rusak_ringan || 0}</td>
                                 <td className="py-3 px-3 text-center">
                                   <a
                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((f.nama_faskes || f.nama || '') + ' ' + (eventData.kabupaten || ''))}`}
@@ -3401,9 +3411,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                   <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
                     Sumber Daya &amp; Kesiapan Logistik Kesehatan
-                  </span>
-                  <span className="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg uppercase tracking-wider">
-                    Formulir Lengkap Tab 6
                   </span>
                 </div>
 
