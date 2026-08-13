@@ -1722,6 +1722,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall])
 
   const eocNarrative = useMemo(() => {
+    if (detail?.buletin_eoc) return detail.buletin_eoc;
+    if (eventData.buletin_eoc) return eventData.buletin_eoc;
+
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
@@ -1759,7 +1762,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     // Default EOC Bulletin Narrative Fallback
     const jenisText = eventData.jenis_bencana || eventData.nama_bencana || 'Kejadian Bencana'
     return `Buletin Krisis EOC (${formattedDate}): Dilaporkan kejadian ${jenisText} di wilayah ${locationFull}. EOC Kemenkes RI terus melakukan pemantauan real-time dan mengkoordinasikan kesiapsiagaan faskes setempat, penyiapan logistik kesehatan darurat, serta penanganan medis bagi warga terdampak.`
-  }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma])
+  }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma, detail?.buletin_eoc, eventData.buletin_eoc])
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 
@@ -2836,6 +2839,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <thead className="sticky top-0 z-10">
                         <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold">
                           <th className="py-3 px-3">Wilayah / Kecamatan</th>
+                          <th className="py-3 px-3 text-center">Jenis Pos</th>
                           <th className="py-3 px-3 text-center">Titik Pengungsian</th>
                           <th className="py-3 px-3 text-center">Jumlah KK</th>
                           <th className="py-3 px-3 text-center">Total Jiwa</th>
@@ -2861,6 +2865,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             >
                               <td className="py-3 px-3 font-semibold text-slate-800">
                                 {pos.kecamatan ? `Kec. ${pos.kecamatan}` : '-'}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-black bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wide">
+                                  {pos.jenis_pos || 'Pos Pengungsian'}
+                                </span>
                               </td>
                               <td className="py-3 px-3 text-center font-bold text-slate-700">
                                 {pos.jml_titik_pengungsian || 1} titik
