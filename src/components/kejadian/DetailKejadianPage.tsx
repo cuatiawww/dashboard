@@ -2381,10 +2381,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 {/* Chart 1: Tren Korban */}
                 <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-teal-200 transition-all duration-200 flex flex-col justify-between h-full">
                   <div className="flex flex-col flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100/70 text-teal-700">
-                        <Users className="h-4 w-4" />
-                      </div>
+                    <div className="mb-1">
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Korban &amp; Penduduk</h4>
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold mb-2">Pergerakan total korban, pengungsi, dan penduduk terancam/terdampak</p>
@@ -2419,10 +2416,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 {/* Chart 2: Proporsi Faskes Terdampak Per Jenis (Pie Charts) */}
                 <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-rose-200 transition-all duration-200 flex flex-col justify-between h-full">
                   <div className="flex flex-col flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100/70 text-rose-700">
-                        <HeartPulse className="h-4 w-4" />
-                      </div>
+                    <div className="mb-1">
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Proporsi Faskes Terdampak</h4>
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold mb-2">
@@ -2505,10 +2499,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 {/* Chart 3: Tren Penyakit KLB (Bar Chart / Diagram Batang) */}
                 <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-amber-200 transition-all duration-200 flex flex-col justify-between h-full">
                   <div className="flex flex-col flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100/70 text-amber-700">
-                        <Activity className="h-4 w-4" />
-                      </div>
+                    <div className="mb-1">
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Penyakit Berpotensi KLB</h4>
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold mb-2">Akumulasi kasus mingguan penyakit sensitif bencana (Diagram Batang)</p>
