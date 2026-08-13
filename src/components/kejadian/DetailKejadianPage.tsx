@@ -350,21 +350,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return merged
   }, [selectedEvent, detail])
 
-  // Set default source route (titik asal) secara dinamis
+  // Set default source route (titik asal) secara dinamis dari sebaran titik lokasi bencana
   useEffect(() => {
     if (detail) {
-      if (Array.isArray(detail.pos_pengungsi) && detail.pos_pengungsi.length > 0) {
-        // Prioritas 1: Pos Pengungsian pertama
-        const firstPos = detail.pos_pengungsi[0];
-        setSelectedRouteSource({
-          id: firstPos.id || `pos-0`,
-          name: firstPos.nama || `Posko ${firstPos.kecamatan || ''}`,
-          latitude: Number(firstPos.latitude),
-          longitude: Number(firstPos.longitude),
-          type: 'posko'
-        });
-      } else if (Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
-        // Prioritas 2: Titik Kejadian Bencana pertama
+      if (Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
         const firstLoc = detail.lokasi[0];
         setSelectedRouteSource({
           id: firstLoc.id || `loc-0`,
@@ -374,7 +363,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           type: 'kejadian'
         });
       } else {
-        // Fallback: Koordinat utama bencana
         setSelectedRouteSource({
           id: 'main-loc',
           name: 'Pusat Kejadian Bencana',
@@ -2364,30 +2352,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           {isBanjir && (
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-xs">
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-extrabold text-slate-700 uppercase tracking-wide">Titik Asal Rute (FROM):</span>
+                <span className="font-extrabold text-slate-700 uppercase tracking-wide">Titik Lokasi Bencana (FROM):</span>
               </div>
               <select
                 value={selectedRouteSource?.id || ''}
                 onChange={(e) => {
                   const targetId = e.target.value;
-                  // Cari di posko terlebih dahulu
-                  const foundPos = detail?.pos_pengungsi?.find((p: any) => (p.id || `pos-${detail?.pos_pengungsi.indexOf(p)}`) === targetId);
-                  if (foundPos) {
-                    setSelectedRouteSource({
-                      id: targetId,
-                      name: foundPos.nama || `Posko ${foundPos.kecamatan || ''}`,
-                      latitude: Number(foundPos.latitude),
-                      longitude: Number(foundPos.longitude),
-                      type: 'posko'
-                    });
-                    return;
-                  }
-                  // Cari di lokasi kejadian
                   const foundLoc = detail?.lokasi?.find((l: any) => (l.id || `loc-${detail?.lokasi.indexOf(l)}`) === targetId);
                   if (foundLoc) {
                     setSelectedRouteSource({
                       id: targetId,
-                      name: `Lokasi Kejadian - Kec. ${foundLoc.kecamatan || ''}`,
+                      name: `Lokasi Bencana - Kec. ${foundLoc.kecamatan || ''}`,
                       latitude: Number(foundLoc.latitude),
                       longitude: Number(foundLoc.longitude),
                       type: 'kejadian'
@@ -2396,31 +2371,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 }}
                 className="form-select bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-full sm:max-w-xs cursor-pointer shadow-2xs"
               >
-                {/* Opsi Pos Pengungsian & Kesehatan */}
-                {Array.isArray(detail?.pos_pengungsi) && detail.pos_pengungsi.length > 0 && (
-                  <optgroup label="Pos Pengungsian & Kesehatan">
-                    {detail.pos_pengungsi.map((pos: any, idx: number) => {
-                      const optId = pos.id || `pos-${idx}`;
-                      return (
-                        <option key={optId} value={optId}>
-                          📌 {pos.nama || `Posko ${pos.kecamatan || ''}`} ({pos.jenis_pos || 'Pos Pengungsian'})
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                )}
                 {/* Opsi Titik Lokasi Kejadian Bencana */}
-                {Array.isArray(detail?.lokasi) && detail.lokasi.length > 0 && (
-                  <optgroup label="Titik Kejadian Bencana (Banyak Titik)">
-                    {detail.lokasi.map((loc: any, idx: number) => {
-                      const optId = loc.id || `loc-${idx}`;
-                      return (
-                        <option key={optId} value={optId}>
-                          ⚠️ Kec. {loc.kecamatan || ''} {loc.desa ? `, Desa ${loc.desa}` : ''}
-                        </option>
-                      );
-                    })}
-                  </optgroup>
+                {Array.isArray(detail?.lokasi) && detail.lokasi.length > 0 ? (
+                  detail.lokasi.map((loc: any, idx: number) => {
+                    const optId = loc.id || `loc-${idx}`;
+                    return (
+                      <option key={optId} value={optId}>
+                        ⚠️ Kec. {loc.kecamatan || ''} {loc.desa ? `, Desa ${loc.desa}` : ''}
+                      </option>
+                    );
+                  })
+                ) : (
+                  <option value="main-loc">⚠️ Pusat Kejadian Bencana</option>
                 )}
               </select>
 
