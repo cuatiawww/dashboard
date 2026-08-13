@@ -221,6 +221,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     type: 'hospital' | 'clinic' | 'shelter'
   } | null>(null)
 
+  const [selectedRouteSource, setSelectedRouteSource] = useState<{
+    id: string
+    name: string
+    latitude: number
+    longitude: number
+    type: 'posko' | 'kejadian'
+  } | null>(null)
+
   const [routeCoords, setRouteCoords] = useState<number[][]>([])
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null)
   const [isLoadingRoute, setIsLoadingRoute] = useState(false)
@@ -309,7 +317,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [selectedEvent?.kode_trans])
 
 
-
   const getStatusLabel = (val: number | null | undefined, type: 'akses' | 'listrik' | 'air') => {
     if (val === null || val === undefined) return { label: 'Tidak Dilaporkan', color: 'bg-slate-100 text-slate-500 border border-slate-200' }
     if (type === 'akses') {
@@ -342,6 +349,42 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
     return merged
   }, [selectedEvent, detail])
+
+  // Set default source route (titik asal) secara dinamis
+  useEffect(() => {
+    if (detail) {
+      if (Array.isArray(detail.pos_pengungsi) && detail.pos_pengungsi.length > 0) {
+        // Prioritas 1: Pos Pengungsian pertama
+        const firstPos = detail.pos_pengungsi[0];
+        setSelectedRouteSource({
+          id: firstPos.id || `pos-0`,
+          name: firstPos.nama || `Posko ${firstPos.kecamatan || ''}`,
+          latitude: Number(firstPos.latitude),
+          longitude: Number(firstPos.longitude),
+          type: 'posko'
+        });
+      } else if (Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
+        // Prioritas 2: Titik Kejadian Bencana pertama
+        const firstLoc = detail.lokasi[0];
+        setSelectedRouteSource({
+          id: firstLoc.id || `loc-0`,
+          name: `Lokasi Kejadian - Kec. ${firstLoc.kecamatan || ''}`,
+          latitude: Number(firstLoc.latitude),
+          longitude: Number(firstLoc.longitude),
+          type: 'kejadian'
+        });
+      } else {
+        // Fallback: Koordinat utama bencana
+        setSelectedRouteSource({
+          id: 'main-loc',
+          name: 'Pusat Kejadian Bencana',
+          latitude: Number(eventData.latitude || 1.6833),
+          longitude: Number(eventData.longitude || 98.8472),
+          type: 'kejadian'
+        });
+      }
+    }
+  }, [detail, eventData]);
 
   // Deterministic seed based on event ID for stable mock values when real values aren't in DB
   const eventSeed = useMemo(() => {
@@ -694,8 +737,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       return
     }
 
-    const startLat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
-    const startLng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
+    const startLat = selectedRouteSource ? Number(selectedRouteSource.latitude) : Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
+    const startLng = selectedRouteSource ? Number(selectedRouteSource.longitude) : Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
     const endLat = selectedRouteTarget.latitude
     const endLng = selectedRouteTarget.longitude
@@ -729,7 +772,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .finally(() => {
         setIsLoadingRoute(false)
       })
-  }, [selectedRouteTarget, isBanjir, eventData, detail])
+  }, [selectedRouteTarget, selectedRouteSource, isBanjir, eventData, detail])
 
   // Parse event date (tgl_kejadian) and calculate H-3 to H+3 date strings
   const eventDateObj = useMemo(() => {
@@ -2317,6 +2360,86 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           <h4 className="text-base font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3">
             PEMETAAN SPASIAL KEJADIAN BENCANA {isBanjir && '(EOC ROUTING & FASKES)'}
           </h4>
+
+          {isBanjir && (
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-xs">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-extrabold text-slate-700 uppercase tracking-wide">Titik Asal Rute (FROM):</span>
+              </div>
+              <select
+                value={selectedRouteSource?.id || ''}
+                onChange={(e) => {
+                  const targetId = e.target.value;
+                  // Cari di posko terlebih dahulu
+                  const foundPos = detail?.pos_pengungsi?.find((p: any) => (p.id || `pos-${detail?.pos_pengungsi.indexOf(p)}`) === targetId);
+                  if (foundPos) {
+                    setSelectedRouteSource({
+                      id: targetId,
+                      name: foundPos.nama || `Posko ${foundPos.kecamatan || ''}`,
+                      latitude: Number(foundPos.latitude),
+                      longitude: Number(foundPos.longitude),
+                      type: 'posko'
+                    });
+                    return;
+                  }
+                  // Cari di lokasi kejadian
+                  const foundLoc = detail?.lokasi?.find((l: any) => (l.id || `loc-${detail?.lokasi.indexOf(l)}`) === targetId);
+                  if (foundLoc) {
+                    setSelectedRouteSource({
+                      id: targetId,
+                      name: `Lokasi Kejadian - Kec. ${foundLoc.kecamatan || ''}`,
+                      latitude: Number(foundLoc.latitude),
+                      longitude: Number(foundLoc.longitude),
+                      type: 'kejadian'
+                    });
+                  }
+                }}
+                className="form-select bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-full sm:max-w-xs cursor-pointer shadow-2xs"
+              >
+                {/* Opsi Pos Pengungsian & Kesehatan */}
+                {Array.isArray(detail?.pos_pengungsi) && detail.pos_pengungsi.length > 0 && (
+                  <optgroup label="Pos Pengungsian & Kesehatan">
+                    {detail.pos_pengungsi.map((pos: any, idx: number) => {
+                      const optId = pos.id || `pos-${idx}`;
+                      return (
+                        <option key={optId} value={optId}>
+                          📌 {pos.nama || `Posko ${pos.kecamatan || ''}`} ({pos.jenis_pos || 'Pos Pengungsian'})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                )}
+                {/* Opsi Titik Lokasi Kejadian Bencana */}
+                {Array.isArray(detail?.lokasi) && detail.lokasi.length > 0 && (
+                  <optgroup label="Titik Kejadian Bencana (Banyak Titik)">
+                    {detail.lokasi.map((loc: any, idx: number) => {
+                      const optId = loc.id || `loc-${idx}`;
+                      return (
+                        <option key={optId} value={optId}>
+                          ⚠️ Kec. {loc.kecamatan || ''} {loc.desa ? `, Desa ${loc.desa}` : ''}
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                )}
+              </select>
+
+              {routeInfo && selectedRouteTarget && (
+                <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                  <span className="font-semibold text-slate-400">Rute ke:</span>
+                  <span className="font-bold text-teal-800 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md uppercase text-[11px]">
+                    {selectedRouteTarget.name}
+                  </span>
+                  <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                    🚗 {routeInfo.distance.toFixed(1)} km
+                  </span>
+                  <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                    ⏱️ {Math.ceil(routeInfo.duration)} mnt
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
             <DisasterMap
