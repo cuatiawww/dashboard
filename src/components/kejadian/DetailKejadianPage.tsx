@@ -127,6 +127,15 @@ const formatDateISO = (d: Date): string => {
   return `${year}-${month}-${day}`
 }
 
+const maskName = (name: string): string => {
+  if (!name || name === '-') return '-'
+  const clean = name.trim()
+  if (clean.length <= 4) {
+    return clean.charAt(0) + '***' + clean.charAt(clean.length - 1)
+  }
+  return clean.substring(0, 2) + '***' + clean.substring(clean.length - 2)
+}
+
 const formatPerkembangan = (p: any): string => {
   if (!p) return ''
   if (typeof p === 'object') {
@@ -2762,16 +2771,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <th className="py-3 px-3">Faskes Terdekat</th>
                             <th className="py-3 px-3">Jenis</th>
                             <th className="py-3 px-3">Petugas / Dokter PJ</th>
-                            {!isGuest && <th className="py-3 px-3">No. Telepon</th>}
                             <th className="py-3 px-3 text-center">Jarak</th>
                             <th className="py-3 px-3 text-center">Waktu Tempuh</th>
-                            <th className="py-3 px-3 text-center">Kondisi</th>
                             <th className="py-3 px-3 text-center">Google Maps</th>
                           </tr>
                         </thead>
                         <tbody>
                           {detail.faskes_terdekat.map((f: any, fidx: number) => {
-                            const cond = getFaskesCondition(f.nama);
                             const isSelected = selectedRouteTarget?.name === f.nama;
                             return (
                               <tr
@@ -2786,20 +2792,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   {f.kecamatan ? `Kec. ${f.kecamatan}` : 'Kec. -'}
                                   {f.desa ? `, Desa ${f.desa}` : ''}
                                 </td>
-                                <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama}</td>
+                                <td className="py-2.5 px-3 font-bold text-slate-900">{f.nama || '-'}</td>
                                 <td className="py-2.5 px-3 text-slate-600">{f.jenis || '-'}</td>
-                                <td className="py-2.5 px-3 text-slate-700 font-semibold">{f.petugas || '-'}</td>
-                                {!isGuest && <td className="py-2.5 px-3 font-bold text-teal-800 whitespace-nowrap">{f.telp || '-'}</td>}
+                                <td className="py-2.5 px-3 text-slate-700 font-semibold">{maskName(f.petugas || '')}</td>
                                 <td className="py-2.5 px-3 text-center font-bold text-slate-700">
                                   {f.jarak !== null && f.jarak !== undefined ? `${f.jarak.toFixed(1)} km` : '-'}
                                 </td>
                                 <td className="py-2.5 px-3 text-center font-bold text-slate-700">
                                   {f.waktu_tempuh !== null && f.waktu_tempuh !== undefined ? `${f.waktu_tempuh} menit` : '-'}
-                                </td>
-                                <td className="py-2.5 px-3 text-center">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cond.color}`}>
-                                    {cond.label}
-                                  </span>
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
                                   <a
