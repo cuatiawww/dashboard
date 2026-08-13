@@ -2398,6 +2398,33 @@ const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
     printWindow.document.close()
   }
 
+  const getPaginationRange = () => {
+    const delta = 1;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    for (let i of range) {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l > 2) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+
+    return rangeWithDots;
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 pb-16">
       {/* Toast Alert Notification */}
@@ -3038,7 +3065,21 @@ const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-                    {paginatedReports.length === 0 ? (
+                    {loadingApiReports ? (
+                      Array.from({ length: 5 }).map((_, idx) => (
+                        <tr key={idx} className="animate-pulse bg-white">
+                          <td className="py-4 px-3 text-center"><div className="h-4 w-4 bg-slate-200 rounded mx-auto"></div></td>
+                          <td className="py-4 px-3"><div className="h-4 w-24 bg-slate-200 rounded mb-1"></div><div className="h-3 w-16 bg-slate-200 rounded"></div></td>
+                          <td className="py-4 px-3"><div className="h-4 w-24 bg-slate-200 rounded mb-1"></div><div className="h-3 w-16 bg-slate-200 rounded"></div></td>
+                          <td className="py-4 px-3"><div className="h-3 w-12 bg-slate-200 rounded mb-1"></div><div className="h-4 w-32 bg-slate-200 rounded mb-1"></div><div className="h-3 w-28 bg-slate-200 rounded"></div></td>
+                          <td className="py-4 px-3"><div className="h-4 w-20 bg-slate-200 rounded"></div></td>
+                          <td className="py-4 px-3 text-center"><div className="h-4 w-8 bg-slate-200 rounded mx-auto"></div></td>
+                          <td className="py-4 px-3 text-center"><div className="h-4 w-8 bg-slate-200 rounded mx-auto"></div></td>
+                          <td className="py-4 px-3 text-center"><div className="h-4 w-8 bg-slate-200 rounded mx-auto"></div></td>
+                          <td className="py-4 px-3 text-center"><div className="h-6 w-16 bg-slate-200 rounded mx-auto"></div></td>
+                        </tr>
+                      ))
+                    ) : paginatedReports.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-12 text-center text-slate-400">
                           <Info className="mx-auto h-8 w-8 opacity-40 mb-2" />
@@ -3160,17 +3201,23 @@ const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
                     Sebelumnya
                   </button>
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`h-7 w-7 rounded-lg text-xs font-bold transition ${currentPage === page
-                        ? 'bg-[#047D78] text-white shadow-sm'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
-                        }`}
-                    >
-                      {page}
-                    </button>
+                  {getPaginationRange().map((page, idx) => (
+                    typeof page === 'number' ? (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-7 w-7 rounded-lg text-xs font-bold transition ${currentPage === page
+                          ? 'bg-[#047D78] text-white shadow-sm'
+                          : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ) : (
+                      <span key={idx} className="px-1.5 text-xs font-bold text-slate-400">
+                        {page}
+                      </span>
+                    )
                   ))}
 
                   <button
