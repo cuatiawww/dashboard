@@ -1913,9 +1913,47 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   if (loading) {
     return (
-      <div className="w-full min-h-[450px] flex flex-col items-center justify-center space-y-4 py-16 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-in fade-in duration-200">
-        <Loader2 className="h-10 w-10 animate-spin text-teal-700" />
-        <p className="text-sm font-semibold text-slate-500">Menghubungkan & memuat data krisis secara realtime...</p>
+      <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-slate-200 rounded-xl"></div>
+            <div className="space-y-1.5">
+              <div className="h-6 w-56 bg-slate-200 rounded-md"></div>
+              <div className="h-3.5 w-32 bg-slate-100 rounded-md"></div>
+            </div>
+          </div>
+          <div className="h-7 w-40 bg-slate-150 rounded-full"></div>
+        </div>
+
+        {/* Map & Summary Row Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-[350px] bg-slate-200 rounded-3xl"></div>
+          <div className="space-y-4">
+            <div className="h-8 w-44 bg-slate-200 rounded-md"></div>
+            <div className="h-[280px] bg-slate-100 rounded-2xl p-4 space-y-3.5">
+              <div className="h-10 w-full bg-slate-200 rounded-xl"></div>
+              <div className="h-5 w-3/4 bg-slate-200 rounded-md"></div>
+              <div className="h-5 w-1/2 bg-slate-200 rounded-md"></div>
+              <div className="h-5 w-2/3 bg-slate-200 rounded-md"></div>
+              <div className="h-5 w-5/6 bg-slate-200 rounded-md"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* 6 Grid Cards Skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-28 bg-slate-150 rounded-2xl"></div>
+          ))}
+        </div>
+
+        {/* Trend Chart Area Skeleton */}
+        <div className="h-[250px] bg-slate-100 rounded-3xl p-4 flex flex-col justify-between">
+          <div className="h-5 w-48 bg-slate-200 rounded-md"></div>
+          <div className="h-32 w-full bg-slate-200 rounded-2xl"></div>
+          <div className="h-8 w-full bg-slate-150 rounded-xl"></div>
+        </div>
       </div>
     )
   }
