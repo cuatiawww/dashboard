@@ -1902,6 +1902,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         kecamatan: loc.kecamatan || selectedEvent?.kecamatan,
         topografi: loc.topografi || selectedEvent?.topografi,
         jml_terancam: loc.jml_terancam || selectedEvent?.jml_terancam,
+        tgl_kejadian: loc.tgl_laporan || selectedEvent?.tgl_kejadian,
+        jml_titik_lokasi: 0, // sub-points do not show sub-location count
       }))
     }
     return selectedEvent ? [selectedEvent] : []

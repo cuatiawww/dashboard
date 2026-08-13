@@ -64,6 +64,7 @@ interface MarkerData {
   topografi?: string
   total_korban: number
   icon_file?: string
+  jml_titik_lokasi?: number
 }
 
 interface DisasterMapProps {
@@ -2470,24 +2471,35 @@ export default function DisasterMap({
                 {markerPopup.data.total_korban > 0 ? `${markerPopup.data.total_korban.toLocaleString('id-ID')} orang` : 'Tidak ada korban'}
               </span>
             </div>
+
+            {markerPopup.data.jml_titik_lokasi !== undefined && markerPopup.data.jml_titik_lokasi > 0 && !String(markerPopup.data.kode_trans || '').includes('-loc-') && (
+              <div className="flex items-start gap-2">
+                <span className="w-16 flex-shrink-0 text-[10px] font-bold text-black uppercase">Sebaran</span>
+                <span className="font-extrabold text-teal-800">
+                  {markerPopup.data.jml_titik_lokasi} titik lokasi kejadian
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Footer — Detail button */}
-          <div className="border-t border-slate-100 p-2.5">
-            <button
-              onClick={() => {
-                if (onSelectEvent) {
-                  onSelectEvent(markerPopup.data)
-                }
-              }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-teal-800"
-            >
-              LIHAT DETAIL
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+          {!String(markerPopup.data.kode_trans || '').includes('-loc-') && (
+            <div className="border-t border-slate-100 p-2.5">
+              <button
+                onClick={() => {
+                  if (onSelectEvent) {
+                    onSelectEvent(markerPopup.data)
+                  }
+                }}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-teal-800"
+              >
+                LIHAT DETAIL
+                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
