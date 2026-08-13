@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { formatDisasterName } from '@/lib/utils/disasterUtils'
 import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 
@@ -2421,7 +2422,7 @@ export default function DisasterMap({
                 Lokasi Kejadian
               </span>
               <h4 className="mt-1 text-[13px] font-extrabold uppercase text-[#1a3535] leading-tight">
-                {markerPopup.data.jenis_bencana || 'Kejadian Bencana'}
+                {formatDisasterName(markerPopup.data.jenis_bencana)}
               </h4>
             </div>
             <button
@@ -2576,7 +2577,7 @@ export default function DisasterMap({
                         {activePopup.stats.eventsList.map((item, idx) => (
                           <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/30 p-2.5 text-xs">
                             <div className="flex justify-between items-start">
-                              <span className="font-bold text-teal-800">{item.jenis_bencana}</span>
+                              <span className="font-bold text-teal-800">{formatDisasterName(item.jenis_bencana)}</span>
                               <span className="text-[10px] text-slate-400">{item.tgl_kejadian}</span>
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500">

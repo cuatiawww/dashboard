@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { AlertTriangle, Bell, X } from 'lucide-react'
 import { useNotificationSound, useNewEventDetection } from '@/hooks/useNotification'
+import { formatDisasterName } from '@/lib/utils/disasterUtils'
 
 type NewEventAlertProps = {
   events: any[]
@@ -52,7 +53,7 @@ export default function NewEventAlert({ events, onDismiss }: NewEventAlertProps)
                     {displayEvents.map((event, idx) => (
                       <div key={`${event.kode_trans}-${idx}`} className="text-sm text-red-50">
                         <p className="font-semibold">
-                          {idx + 1}. {event.jenis_bencana}
+                          {idx + 1}. {formatDisasterName(event.jenis_bencana)}
                         </p>
                         <p className="text-xs opacity-90">
                           📍 {event.kabupaten || event.provinsi || 'Lokasi tidak diketahui'} • 

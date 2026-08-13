@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { formatDisasterName } from '@/lib/utils/disasterUtils'
 import {
   MapPin,
   Users,
@@ -318,23 +319,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   const hasDetail = !!detail
   const eventData = useMemo(() => {
+    const rawName = detail?.nama_bencana || detail?.jenis_bencana || selectedEvent?.jenis_bencana || selectedEvent?.nama
+    const formattedName = formatDisasterName(rawName)
     const merged = {
       ...(selectedEvent || {}),
-      ...(detail || {})
-    }
-    // Jika selectedEvent memiliki nama jenis_bencana berupa teks (bukan ID angka), pertahankan nama tersebut agar tidak tertimpa ID numerik dari detail
-    if (
-      selectedEvent?.jenis_bencana &&
-      typeof selectedEvent.jenis_bencana === 'string' &&
-      isNaN(Number(selectedEvent.jenis_bencana))
-    ) {
-      merged.jenis_bencana = selectedEvent.jenis_bencana
-    } else if (
-      detail?.nama_bencana &&
-      typeof detail.nama_bencana === 'string' &&
-      isNaN(Number(detail.nama_bencana))
-    ) {
-      merged.jenis_bencana = detail.nama_bencana
+      ...(detail || {}),
+      jenis_bencana: formattedName,
+      nama_bencana: formattedName,
     }
     return merged
   }, [selectedEvent, detail])
@@ -1294,6 +1285,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
   // ── TREND GRAPH GENERATORS ──
   const victimTrendData = useMemo(() => {
+    const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
+      ? detail.perkembangan
+      : (Array.isArray(eventData.perkembangan) ? eventData.perkembangan : []);
+
     const finalMeninggal = safeParseInt(eventData.meninggal);
     const finalLuka = safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan);
     const finalHilang = safeParseInt(eventData.hilang);
@@ -1301,16 +1296,71 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     const finalTerdampak = safeParseInt(eventData.penduduk_terdampak);
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
+    if (list.length > 0) {
+      const dateMap: { [date: string]: any } = {};
+      list.forEach((item: any) => {
+        const rawDate = item.tgl_laporan || (item.created_date ? item.created_date.split(' ')[0] : null);
+        if (!rawDate) return;
+        dateMap[rawDate] = item;
+      });
+
+      const dates = Object.keys(dateMap).sort();
+      if (dates.length > 0) {
+        const minDate = new Date(dates[0]);
+        const maxDate = new Date(dates[dates.length - 1]);
+
+        const points = [];
+        let curr = new Date(minDate);
+        let lastKnown = {
+          meninggal: 0,
+          luka: 0,
+          hilang: 0,
+          pengungsi: 0,
+          terdampak: 0
+        };
+
+        while (curr <= maxDate) {
+          const dateStr = curr.toISOString().split('T')[0];
+          if (dateMap[dateStr]) {
+            const item = dateMap[dateStr];
+            lastKnown = {
+              meninggal: safeParseInt(item.meninggal || item.md_total),
+              luka: safeParseInt(item.luka_berat || item.lb_total) + safeParseInt(item.luka_ringan || item.lr_total),
+              hilang: safeParseInt(item.hilang || item.hilang_total),
+              pengungsi: safeParseInt(item.pengungsi || item.pengungsi_total),
+              terdampak: safeParseInt(item.penduduk_terdampak)
+            };
+          }
+
+          const formattedLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+          const totalK = lastKnown.meninggal + lastKnown.luka + lastKnown.hilang;
+
+          points.push({
+            date: formattedLabel,
+            'Total Korban': totalK,
+            'Penduduk Terdampak': lastKnown.terdampak,
+            'Total Pengungsi': lastKnown.pengungsi,
+            'Meninggal': lastKnown.meninggal,
+            'Luka-luka': lastKnown.luka,
+            'Hilang': lastKnown.hilang,
+          });
+
+          curr.setDate(curr.getDate() + 1);
+        }
+        return points;
+      }
+    }
+
     const dateStr = eventData.tgl_kejadian || '';
     const dateParts = dateStr.split(' ');
     const baseDate = dateParts[0] ? new Date(dateParts[0]) : new Date();
 
     const points = [];
-    const days = 14;
+    const days = 4;
     for (let i = 0; i < days; i++) {
       const d = new Date(baseDate);
-      d.setDate(baseDate.getDate() + i);
-      const factor = i === 0 ? 0.3 : Math.min(1, 0.4 + (i / (days - 1)) * 0.6);
+      d.setDate(baseDate.getDate() - (days - 1 - i));
+      const factor = i === 0 ? 0.4 : Math.min(1, 0.5 + (i / (days - 1)) * 0.5);
       const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
       points.push({
         date: formattedLabel,
@@ -1323,7 +1373,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
       });
     }
     return points;
-  }, [eventData]);
+  }, [eventData, detail?.perkembangan]);
 
   const faskesTrendData = useMemo(() => {
     const list = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : [];
@@ -1422,16 +1472,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     if (list.length === 0) {
       const baseDate = baseDateStr ? new Date(baseDateStr.split(' ')[0]) : new Date();
       const points: any[] = [];
-      const days = 14;
+      const days = 5;
       for (let i = 0; i < days; i++) {
         const d = new Date(baseDate);
         d.setDate(baseDate.getDate() + i);
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         points.push({
           date: formattedLabel,
-          'Diare': 0,
-          'ISPA': 0,
-          'Penyakit Kulit': 0,
+          'Belum Ada Laporan Penyakit': 0
         });
       }
       return points;
@@ -1440,7 +1488,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
     const diseaseNames: string[] = Array.from(
       new Set(
         list.map((p: any) => {
-          const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+          const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
           return isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
         })
       )
@@ -1448,45 +1496,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
 
     const dateMap: { [date: string]: { [disease: string]: number } } = {};
     list.forEach((p: any) => {
-      const d = p.tgl_laporan || baseDateStr.split(' ')[0] || new Date().toISOString().split('T')[0];
-      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
+      const rawDate = p.tgl_laporan || (p.created_date ? p.created_date.split(' ')[0] : null) || baseDateStr.split(' ')[0] || new Date().toISOString().split('T')[0];
+      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
       const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
-      if (!dateMap[d]) {
-        dateMap[d] = {};
+
+      if (!dateMap[rawDate]) {
+        dateMap[rawDate] = {};
       }
-      if (!dateMap[d][disease]) {
-        dateMap[d][disease] = 0;
+      if (!dateMap[rawDate][disease]) {
+        dateMap[rawDate][disease] = 0;
       }
-      dateMap[d][disease] += safeParseInt(p.jumlah_kasus || p.jml);
+      dateMap[rawDate][disease] += safeParseInt(p.jumlah_kasus || p.jml);
     });
 
     const dates = Object.keys(dateMap).sort();
 
     if (dates.length <= 1) {
-      const baseDate = baseDateStr ? new Date(baseDateStr.split(' ')[0]) : new Date();
-      const points: any[] = [];
-      const days = 5;
+      const targetDateStr = dates[0] || (baseDateStr ? baseDateStr.split(' ')[0] : new Date().toISOString().split('T')[0]);
+      const baseDate = new Date(targetDateStr);
 
-      const finalValues: { [disease: string]: number } = {};
-      diseaseNames.forEach((name: string) => {
-        finalValues[name] = list
-          .filter((p: any) => {
-            const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Lainnya');
-            const disName = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
-            return disName === name;
-          })
-          .reduce((sum: number, p: any) => sum + safeParseInt(p.jumlah_kasus || p.jml), 0);
-      });
+      const points: any[] = [];
+      const days = 3;
 
       for (let i = 0; i < days; i++) {
         const d = new Date(baseDate);
-        d.setDate(baseDate.getDate() + i);
-        const factor = i === 0 ? 0.1 : Math.min(1, 0.2 + (i / (days - 1)) * 0.8);
+        d.setDate(baseDate.getDate() - (days - 1 - i));
+        const factor = i === days - 1 ? 1 : 0.6 + i * 0.2;
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
         const point: any = { date: formattedLabel };
         diseaseNames.forEach((name: string) => {
-          point[name] = Math.round(finalValues[name] * factor);
+          const actualVal = dateMap[targetDateStr]?.[name] || 0;
+          point[name] = Math.round(actualVal * factor);
         });
         points.push(point);
       }
@@ -1498,7 +1539,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         const point: any = { date: formattedLabel };
         diseaseNames.forEach(name => {
-          point[name] = dateMap[dStr][name] || 0;
+          point[name] = dateMap[dStr]?.[name] || 0;
         });
         points.push(point);
       });
@@ -2306,7 +2347,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Proporsi Faskes Terdampak</h4>
                     </div>
                     <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                      Perbandingan faskes terdampak (RHA) vs Total Master Faskes ({eventData.kabupaten || 'Kabupaten'})
+                      Trend faskes terdampak ({eventData.kabupaten || 'Kabupaten'})
                     </p>
 
                     {/* Pie Charts Grid 2x2 with Auto-layout */}
@@ -2320,11 +2361,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                                 <IconComp className={`h-3.5 w-3.5 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
                                 <span className="truncate">{cat.title}</span>
                               </span>
-                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${
-                                cat.terdampak > 0 
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200' 
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${cat.terdampak > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              }`}>
+                                }`}>
                                 {cat.pct}% Terdampak
                               </span>
                             </div>
@@ -2349,8 +2389,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack }: DetailKeja
                                         <Cell key={`cell-${cat.key}-${index}`} fill={entry.fill} />
                                       ))}
                                     </Pie>
-                                    <Tooltip 
-                                      contentStyle={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                                    <Tooltip
+                                      contentStyle={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                                       formatter={(val: any, name: any) => [`${val} Unit`, name]}
                                     />
                                   </PieChart>
