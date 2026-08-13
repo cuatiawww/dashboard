@@ -92,6 +92,9 @@ interface DisasterMapProps {
   poskoList?: any[]
   onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter') => void
   disasterType?: string
+  selectedRouteSource?: any
+  onSelectRouteSource?: (source: any) => void
+  lokasiList?: any[]
 }
 
 interface MarkerPopupState {
@@ -239,7 +242,10 @@ export default function DisasterMap({
   faskesList = [],
   poskoList = [],
   onSelectRouteTarget,
-  disasterType
+  disasterType,
+  selectedRouteSource = null,
+  onSelectRouteSource,
+  lokasiList = []
 }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
@@ -2105,6 +2111,46 @@ export default function DisasterMap({
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Seleksi Titik Asal Rute (only when isFloodEocMode is active) */}
+                {isFloodEocMode && Array.isArray(markers) && markers.length > 0 && onSelectRouteSource && (
+                  <div className="mt-2.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <MapPin className="h-4 w-4 text-sky-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-slate-800">Titik Asal Rute (FROM)</p>
+                        <p className="text-[10px] text-slate-400">Pilih titik bencana sebagai asal rute</p>
+                      </div>
+                    </div>
+                    <select
+                      value={selectedRouteSource?.id || ''}
+                      onChange={(e) => {
+                        const targetId = e.target.value;
+                        const idx = markers.findIndex((m, i) => (m.kode_trans || `loc-${i}`) === targetId);
+                        if (idx !== -1) {
+                          const m = markers[idx];
+                          onSelectRouteSource({
+                            id: targetId,
+                            name: `Lokasi Bencana - Kec. ${m.kecamatan || ''}`,
+                            latitude: Number(m.lat),
+                            longitude: Number(m.lng),
+                            type: 'kejadian'
+                          });
+                        }
+                      }}
+                      className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                    >
+                      {markers.map((m, idx) => {
+                        const optId = m.kode_trans || `loc-${idx}`;
+                        return (
+                          <option key={optId} value={optId}>
+                            ⚠️ Kec. {m.kecamatan || '-'} {m.nama_desa ? `, Desa ${m.nama_desa}` : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 )}
 

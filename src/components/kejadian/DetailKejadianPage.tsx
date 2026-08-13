@@ -2382,60 +2382,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             PEMETAAN SPASIAL KEJADIAN BENCANA {isBanjir && '(EOC ROUTING & FASKES)'}
           </h4>
 
-          {isBanjir && (
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-xs">
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="font-extrabold text-slate-700 uppercase tracking-wide">Titik Lokasi Bencana (FROM):</span>
-              </div>
-              <select
-                value={selectedRouteSource?.id || ''}
-                onChange={(e) => {
-                  const targetId = e.target.value;
-                  const foundLoc = detail?.lokasi?.find((l: any) => (l.id || `loc-${detail?.lokasi.indexOf(l)}`) === targetId);
-                  if (foundLoc) {
-                    setSelectedRouteSource({
-                      id: targetId,
-                      name: `Lokasi Bencana - Kec. ${foundLoc.kecamatan || ''}`,
-                      latitude: Number(foundLoc.latitude),
-                      longitude: Number(foundLoc.longitude),
-                      type: 'kejadian'
-                    });
-                  }
-                }}
-                className="form-select bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 font-bold text-slate-750 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-full sm:max-w-xs cursor-pointer shadow-2xs"
-              >
-                {/* Opsi Titik Lokasi Kejadian Bencana */}
-                {Array.isArray(detail?.lokasi) && detail.lokasi.length > 0 ? (
-                  detail.lokasi.map((loc: any, idx: number) => {
-                    const optId = loc.id || `loc-${idx}`;
-                    return (
-                      <option key={optId} value={optId}>
-                        ⚠️ Kec. {loc.kecamatan || ''} {loc.desa ? `, Desa ${loc.desa}` : ''}
-                      </option>
-                    );
-                  })
-                ) : (
-                  <option value="main-loc">⚠️ Pusat Kejadian Bencana</option>
-                )}
-              </select>
-
-              {routeInfo && selectedRouteTarget && (
-                <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-                  <span className="font-semibold text-slate-400">Rute ke:</span>
-                  <span className="font-bold text-teal-800 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md uppercase text-[11px]">
-                    {selectedRouteTarget.name}
-                  </span>
-                  <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
-                    🚗 {routeInfo.distance.toFixed(1)} km
-                  </span>
-                  <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
-                    ⏱️ {Math.ceil(routeInfo.duration)} mnt
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
             <DisasterMap
               markers={mapMarkers}
@@ -2453,6 +2399,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               poskoList={detail?.pos_pengungsi}
               onSelectRouteTarget={handleSelectTarget}
               disasterType={eventData.jenis_bencana}
+              selectedRouteSource={selectedRouteSource}
+              onSelectRouteSource={setSelectedRouteSource}
             />
           </div>
         </div>
