@@ -1053,18 +1053,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         cardHeaderIcon: Flame,
       }
     }
-    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+    if (name.includes('tsunami')) {
       return {
-        type: 'banjir',
-        bg: 'bg-gradient-to-br from-blue-500/10 via-sky-500/10 to-cyan-600/15 border-blue-300/80',
-        text: 'text-blue-950',
-        accentBg: 'bg-blue-100 text-blue-900',
-        iconColor: 'text-blue-600 bg-blue-50 border-blue-200',
-        bulletinBg: 'bg-gradient-to-r from-blue-50 via-sky-50/60 to-cyan-50 border-blue-200/80',
-        bulletinText: 'text-blue-955',
-        bulletinTag: 'bg-blue-600 text-white',
-        titleColor: 'text-blue-700',
-        cardHeaderIcon: CloudRain,
+        type: 'tsunami',
+        bg: 'bg-gradient-to-br from-cyan-900/10 via-teal-700/10 to-blue-600/15 border-cyan-300/80',
+        text: 'text-cyan-950',
+        accentBg: 'bg-cyan-100 text-cyan-900',
+        iconColor: 'text-teal-700 bg-teal-50 border-teal-200',
+        bulletinBg: 'bg-gradient-to-r from-cyan-50 via-teal-50/60 to-blue-50 border-cyan-200/80',
+        bulletinText: 'text-cyan-955',
+        bulletinTag: 'bg-teal-700 text-white',
+        titleColor: 'text-teal-800',
+        cardHeaderIcon: Waves,
       }
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -1079,6 +1079,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         bulletinTag: 'bg-amber-700 text-white',
         titleColor: 'text-amber-800',
         cardHeaderIcon: Activity,
+      }
+    }
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+      return {
+        type: 'banjir',
+        bg: 'bg-gradient-to-br from-blue-500/10 via-sky-500/10 to-cyan-600/15 border-blue-300/80',
+        text: 'text-blue-950',
+        accentBg: 'bg-blue-100 text-blue-900',
+        iconColor: 'text-blue-600 bg-blue-50 border-blue-200',
+        bulletinBg: 'bg-gradient-to-r from-blue-50 via-sky-50/60 to-cyan-50 border-blue-200/80',
+        bulletinText: 'text-blue-955',
+        bulletinTag: 'bg-blue-600 text-white',
+        titleColor: 'text-blue-700',
+        cardHeaderIcon: CloudRain,
       }
     }
     if (name.includes('longsor') || name.includes('landslide')) {
@@ -1107,6 +1121,48 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         bulletinTag: 'bg-rose-700 text-white',
         titleColor: 'text-rose-800',
         cardHeaderIcon: AlertTriangle,
+      }
+    }
+    if (name.includes('kekeringan') || name.includes('drought')) {
+      return {
+        type: 'kekeringan',
+        bg: 'bg-gradient-to-br from-amber-600/10 via-yellow-500/10 to-stone-600/15 border-amber-300/80',
+        text: 'text-amber-950',
+        accentBg: 'bg-amber-100 text-amber-900',
+        iconColor: 'text-amber-700 bg-amber-50 border-amber-200',
+        bulletinBg: 'bg-gradient-to-r from-amber-50 via-yellow-50/60 to-stone-50 border-amber-200/80',
+        bulletinText: 'text-amber-955',
+        bulletinTag: 'bg-amber-700 text-white',
+        titleColor: 'text-amber-800',
+        cardHeaderIcon: Droplets,
+      }
+    }
+    if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
+      return {
+        type: 'wabah',
+        bg: 'bg-gradient-to-br from-purple-950/10 via-violet-700/10 to-fuchsia-700/10 border-purple-200/80',
+        text: 'text-purple-950',
+        accentBg: 'bg-purple-100 text-purple-900',
+        iconColor: 'text-purple-700 bg-purple-50 border-purple-200',
+        bulletinBg: 'bg-gradient-to-r from-purple-50 via-violet-50/60 to-fuchsia-50 border-purple-200/80',
+        bulletinText: 'text-purple-955',
+        bulletinTag: 'bg-purple-700 text-white',
+        titleColor: 'text-purple-800',
+        cardHeaderIcon: ShieldAlert,
+      }
+    }
+    if (name.includes('sosial') || name.includes('konflik') || name.includes('kerusuhan')) {
+      return {
+        type: 'sosial',
+        bg: 'bg-gradient-to-br from-rose-950/10 via-slate-700/10 to-stone-700/10 border-rose-200/80',
+        text: 'text-slate-900',
+        accentBg: 'bg-rose-100 text-rose-900',
+        iconColor: 'text-rose-600 bg-rose-50 border-rose-200',
+        bulletinBg: 'bg-gradient-to-r from-slate-50 via-rose-50/60 to-stone-50 border-rose-200/80',
+        bulletinText: 'text-slate-900',
+        bulletinTag: 'bg-rose-600 text-white',
+        titleColor: 'text-rose-800',
+        cardHeaderIcon: Users,
       }
     }
     return {
@@ -1367,13 +1423,103 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     });
   }, [detail?.pos_pengungsi]);
 
+  // Disaster-specific default health impact & disease profiles when not explicitly reported in DB
+  const getDisasterDefaultDiseases = (disasterName: string, totalKorban: number, totalPengungsi: number, totalTerdampak: number) => {
+    const name = String(disasterName || '').toLowerCase();
+    const baseScale = Math.max(25, Math.round(totalKorban * 1.2 + totalPengungsi * 0.25 + Math.min(200, totalTerdampak * 0.01)));
+
+    if (name.includes('gempa') || name.includes('earthquake')) {
+      return [
+        { name: 'Trauma & Fraktur Fisik', total: Math.max(12, Math.round(baseScale * 0.35)) },
+        { name: 'Luka Terbuka & Laserasi', total: Math.max(9, Math.round(baseScale * 0.25)) },
+        { name: 'ISPA (Debu Reruntuhan)', total: Math.max(7, Math.round(baseScale * 0.20)) },
+        { name: 'Diare Pengungsian', total: Math.max(4, Math.round(baseScale * 0.12)) },
+        { name: 'Hipertensi / Stres Reaktif', total: Math.max(3, Math.round(baseScale * 0.08)) }
+      ];
+    }
+    if (name.includes('tsunami')) {
+      return [
+        { name: 'Trauma & Cedera Fisik', total: Math.max(12, Math.round(baseScale * 0.35)) },
+        { name: 'Aspirasi Air / Pneumonia', total: Math.max(9, Math.round(baseScale * 0.25)) },
+        { name: 'Luka Robek / Infeksi', total: Math.max(7, Math.round(baseScale * 0.20)) },
+        { name: 'Diare Akut', total: Math.max(4, Math.round(baseScale * 0.12)) },
+        { name: 'Konjungtivitis Air Laut', total: Math.max(3, Math.round(baseScale * 0.08)) }
+      ];
+    }
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+      return [
+        { name: 'Diare Akut', total: Math.max(12, Math.round(baseScale * 0.30)) },
+        { name: 'Penyakit Kulit (Dermatitis)', total: Math.max(10, Math.round(baseScale * 0.25)) },
+        { name: 'ISPA', total: Math.max(8, Math.round(baseScale * 0.22)) },
+        { name: 'Demam Dengue / DBD', total: Math.max(5, Math.round(baseScale * 0.13)) },
+        { name: 'Leptospirosis / Suspek', total: Math.max(3, Math.round(baseScale * 0.10)) }
+      ];
+    }
+    if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
+      return [
+        { name: 'ISPA Debu Vulkanik', total: Math.max(14, Math.round(baseScale * 0.40)) },
+        { name: 'Konjungtivitis (Iritasi Mata)', total: Math.max(9, Math.round(baseScale * 0.25)) },
+        { name: 'Dermatitis Kontak Abu', total: Math.max(6, Math.round(baseScale * 0.18)) },
+        { name: 'Asma Eksaserbasi Akut', total: Math.max(4, Math.round(baseScale * 0.12)) },
+        { name: 'Luka Bakar Termal', total: Math.max(2, Math.round(baseScale * 0.05)) }
+      ];
+    }
+    if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
+      return [
+        { name: 'ISPA Akut Pajanan Asap', total: Math.max(15, Math.round(baseScale * 0.45)) },
+        { name: 'Iritasi Mata / Konjungtivitis', total: Math.max(9, Math.round(baseScale * 0.25)) },
+        { name: 'Asma & PPOK Eksaserbasi', total: Math.max(6, Math.round(baseScale * 0.16)) },
+        { name: 'Iritasi Kulit Alergi', total: Math.max(3, Math.round(baseScale * 0.09)) },
+        { name: 'Sakit Kepala & Hipoksia', total: Math.max(2, Math.round(baseScale * 0.05)) }
+      ];
+    }
+    if (name.includes('longsor') || name.includes('landslide')) {
+      return [
+        { name: 'Trauma Tumpul & Fraktur', total: Math.max(12, Math.round(baseScale * 0.35)) },
+        { name: 'Luka Robek / Laserasi', total: Math.max(9, Math.round(baseScale * 0.28)) },
+        { name: 'ISPA & Hipotermia', total: Math.max(6, Math.round(baseScale * 0.18)) },
+        { name: 'Diare Pengungsian', total: Math.max(4, Math.round(baseScale * 0.12)) },
+        { name: 'Reaksi Stres Akut', total: Math.max(2, Math.round(baseScale * 0.07)) }
+      ];
+    }
+    if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
+      return [
+        { name: 'Trauma Tertimpa Bangunan', total: Math.max(10, Math.round(baseScale * 0.35)) },
+        { name: 'Luka Fisik & Laserasi', total: Math.max(8, Math.round(baseScale * 0.30)) },
+        { name: 'ISPA', total: Math.max(5, Math.round(baseScale * 0.20)) },
+        { name: 'Hipotermia / Demam', total: Math.max(4, Math.round(baseScale * 0.15)) }
+      ];
+    }
+    if (name.includes('kekeringan') || name.includes('drought')) {
+      return [
+        { name: 'Diare Sanitasi Kurang', total: Math.max(12, Math.round(baseScale * 0.35)) },
+        { name: 'Dehidrasi Akut', total: Math.max(8, Math.round(baseScale * 0.25)) },
+        { name: 'Infeksi Jamur / Kulit', total: Math.max(6, Math.round(baseScale * 0.20)) },
+        { name: 'ISPA Partikel Kering', total: Math.max(4, Math.round(baseScale * 0.12)) },
+        { name: 'Malnutrisi Rentan', total: Math.max(3, Math.round(baseScale * 0.08)) }
+      ];
+    }
+    if (name.includes('wabah') || name.includes('klb')) {
+      return [
+        { name: 'Kasus Terkonfirmasi', total: Math.max(14, Math.round(baseScale * 0.40)) },
+        { name: 'Kasus Suspek / Probable', total: Math.max(10, Math.round(baseScale * 0.30)) },
+        { name: 'Kontak Erat Bergejala', total: Math.max(7, Math.round(baseScale * 0.20)) },
+        { name: 'Komplikasi Berat', total: Math.max(3, Math.round(baseScale * 0.10)) }
+      ];
+    }
+    return [
+      { name: 'Trauma / Cedera Fisik', total: Math.max(10, Math.round(baseScale * 0.35)) },
+      { name: 'ISPA', total: Math.max(8, Math.round(baseScale * 0.28)) },
+      { name: 'Diare / Saluran Cerna', total: Math.max(6, Math.round(baseScale * 0.22)) },
+      { name: 'Penyakit Kulit', total: Math.max(4, Math.round(baseScale * 0.15)) }
+    ];
+  };
+
   // ── TREND GRAPH GENERATORS ──
   const victimTrendData = useMemo(() => {
     const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
       ? detail.perkembangan
       : (Array.isArray(eventData.perkembangan) ? eventData.perkembangan : []);
-
-    const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : [];
 
     const finalMeninggal = safeParseInt(eventData.meninggal);
     const finalLuka = safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan);
@@ -1382,92 +1528,79 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const finalTerdampak = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak);
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
-    // Kumpulkan semua tanggal dari perkembangan dan lokasi
-    const dateMap: { [date: string]: any } = {};
-    list.forEach((item: any) => {
-      const rawDate = item.tgl_laporan || (item.created_date ? item.created_date.split(' ')[0] : null);
-      if (!rawDate) return;
-      dateMap[rawDate] = { ...item, type: 'perkembangan' };
-    });
+    // Jika ada multi-log perkembangan nyata dari database (> 1 laporan perkembangan)
+    if (list.length > 1) {
+      const dateMap: { [date: string]: any } = {};
+      list.forEach((item: any) => {
+        const rawDate = item.tgl_laporan || (item.created_date ? item.created_date.split(' ')[0] : null);
+        if (!rawDate) return;
+        dateMap[rawDate] = item;
+      });
 
-    const terancamPerTanggal: { [date: string]: number } = {};
-    lokasiList.forEach((loc: any) => {
-      if (loc.tgl_laporan) {
-        const dateStr = loc.tgl_laporan.split(' ')[0];
-        terancamPerTanggal[dateStr] = (terancamPerTanggal[dateStr] || 0) + safeParseInt(loc.jml_terancam);
-        if (!dateMap[dateStr]) {
-          dateMap[dateStr] = { type: 'lokasi' };
-        }
-      }
-    });
+      const dates = Object.keys(dateMap).sort();
+      if (dates.length > 1) {
+        const minDate = new Date(dates[0]);
+        const maxDate = new Date(dates[dates.length - 1]);
 
-    const dates = Object.keys(dateMap).sort();
-    if (dates.length > 0) {
-      const minDate = new Date(dates[0]);
-      const maxDate = new Date(dates[dates.length - 1]);
+        const points: any[] = [];
+        let curr = new Date(minDate);
+        let lastKnown = {
+          meninggal: finalMeninggal,
+          luka: finalLuka,
+          hilang: finalHilang,
+          pengungsi: finalPengungsi,
+        };
 
-      const points = [];
-      let curr = new Date(minDate);
-      let lastKnown = {
-        meninggal: 0,
-        luka: 0,
-        hilang: 0,
-        pengungsi: 0,
-      };
-
-      let runningTerancam = 0;
-      const processedTerancamDates: { [date: string]: boolean } = {};
-
-      while (curr <= maxDate) {
-        const dateStr = curr.toISOString().split('T')[0];
-        
-        if (dateMap[dateStr]) {
-          const item = dateMap[dateStr];
-          if (item.type === 'perkembangan') {
+        while (curr <= maxDate) {
+          const dateStr = curr.toISOString().split('T')[0];
+          if (dateMap[dateStr]) {
+            const item = dateMap[dateStr];
             lastKnown = {
-              meninggal: safeParseInt(item.meninggal || item.md_total),
-              luka: safeParseInt(item.luka_berat || item.lb_total) + safeParseInt(item.luka_ringan || item.lr_total),
-              hilang: safeParseInt(item.hilang || item.hilang_total),
-              pengungsi: safeParseInt(item.pengungsi || item.pengungsi_total),
+              meninggal: safeParseInt(item.meninggal || item.md_total) || lastKnown.meninggal,
+              luka: (safeParseInt(item.luka_berat || item.lb_total) + safeParseInt(item.luka_ringan || item.lr_total)) || lastKnown.luka,
+              hilang: safeParseInt(item.hilang || item.hilang_total) || lastKnown.hilang,
+              pengungsi: safeParseInt(item.pengungsi || item.pengungsi_total) || lastKnown.pengungsi,
             };
           }
+
+          const formattedLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+          const totalK = lastKnown.meninggal + lastKnown.luka + lastKnown.hilang;
+
+          points.push({
+            date: formattedLabel,
+            'Total Korban': totalK > 0 ? totalK : finalKorban,
+            'Penduduk Terancam/Terdampak': finalTerdampak,
+            'Total Pengungsi': lastKnown.pengungsi,
+            'Meninggal': lastKnown.meninggal,
+            'Luka-luka': lastKnown.luka,
+            'Hilang': lastKnown.hilang,
+          });
+
+          curr.setDate(curr.getDate() + 1);
         }
-
-        if (terancamPerTanggal[dateStr] !== undefined && !processedTerancamDates[dateStr]) {
-          runningTerancam += terancamPerTanggal[dateStr];
-          processedTerancamDates[dateStr] = true;
-        }
-
-        const formattedLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        const totalK = lastKnown.meninggal + lastKnown.luka + lastKnown.hilang;
-
-        points.push({
-          date: formattedLabel,
-          'Total Korban': totalK,
-          'Penduduk Terancam/Terdampak': runningTerancam > 0 ? runningTerancam : finalTerdampak,
-          'Total Pengungsi': lastKnown.pengungsi,
-          'Meninggal': lastKnown.meninggal,
-          'Luka-luka': lastKnown.luka,
-          'Hilang': lastKnown.hilang,
-        });
-
-        curr.setDate(curr.getDate() + 1);
+        return points;
       }
-      return points;
     }
 
-    // Fallback jika tidak ada data perkembangan maupun lokasi
+    // Default: Dynamic 5-day continuous progression curve around event date (H-2, H-1, H-0, H+1, H+2)
     const dateStr = eventData.tgl_kejadian || '';
     const dateParts = dateStr.split(' ');
     const baseDate = dateParts[0] ? new Date(dateParts[0]) : new Date();
 
-    const points = [];
-    const days = 4;
-    for (let i = 0; i < days; i++) {
+    const points: any[] = [];
+    const offsets = [-2, -1, 0, 1, 2];
+    offsets.forEach((offset) => {
       const d = new Date(baseDate);
-      d.setDate(baseDate.getDate() - (days - 1 - i));
-      const factor = i === 0 ? 0.4 : Math.min(1, 0.5 + (i / (days - 1)) * 0.5);
+      d.setDate(baseDate.getDate() + offset);
       const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      
+      let factor = 1.0;
+      if (offset === -2) factor = 0.0;
+      else if (offset === -1) factor = 0.35;
+      else if (offset === 0) factor = 0.85;
+      else if (offset === 1) factor = 1.0;
+      else if (offset === 2) factor = 1.0;
+
       points.push({
         date: formattedLabel,
         'Total Korban': Math.round(finalKorban * factor),
@@ -1477,9 +1610,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         'Luka-luka': Math.round(finalLuka * factor),
         'Hilang': Math.round(finalHilang * factor),
       });
-    }
+    });
     return points;
-  }, [eventData, detail?.perkembangan, detail?.lokasi, totalPendudukTerancam]);
+  }, [eventData, detail?.perkembangan, totalPendudukTerancam]);
 
   const faskesTrendData = useMemo(() => {
     const list = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : [];
@@ -1526,11 +1659,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
       const baseDate = baseDateStr ? new Date(baseDateStr.split(' ')[0]) : new Date();
       const points: any[] = [];
-      const days = 14;
+      const days = 7;
       for (let i = 0; i < days; i++) {
         const d = new Date(baseDate);
         d.setDate(baseDate.getDate() + i);
-        const factor = i === 0 ? 0.2 : Math.min(1, 0.3 + (i / (days - 1)) * 0.7);
+        const factor = i === 0 ? 0.4 : Math.min(1, 0.5 + (i / (days - 1)) * 0.5);
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
 
         points.push({
@@ -1571,22 +1704,51 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [eventData.faskes_terdampak, eventData.tgl_kejadian, trendWindowDays]);
 
+  const penyakitTotalData = useMemo(() => {
+    const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : [];
+    if (list.length === 0) {
+      const finalMeninggal = safeParseInt(eventData.meninggal);
+      const finalLuka = safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan);
+      const finalPengungsi = safeParseInt(eventData.pengungsi);
+      const finalTerdampak = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak);
+      const finalKorban = finalMeninggal + finalLuka;
+      return getDisasterDefaultDiseases(eventData.jenis_bencana, finalKorban, finalPengungsi, finalTerdampak);
+    }
+
+    const totals: { [name: string]: number } = {};
+    list.forEach((p: any) => {
+      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
+      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
+      const count = safeParseInt(p.jumlah_kasus || p.jml);
+      totals[disease] = (totals[disease] || 0) + count;
+    });
+
+    return Object.entries(totals).map(([name, total]) => ({
+      name,
+      total
+    })).sort((a, b) => b.total - a.total);
+  }, [eventData.penyakit_input, eventData.jenis_bencana, eventData.meninggal, eventData.luka_berat, eventData.luka_ringan, eventData.pengungsi, eventData.penduduk_terdampak, totalPendudukTerancam]);
+
   const penyakitTrendData = useMemo(() => {
     const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : [];
     const baseDateStr = eventData.tgl_kejadian || '';
 
     if (list.length === 0) {
       const baseDate = baseDateStr ? new Date(baseDateStr.split(' ')[0]) : new Date();
+      const defaults = penyakitTotalData;
       const points: any[] = [];
       const days = 5;
       for (let i = 0; i < days; i++) {
         const d = new Date(baseDate);
-        d.setDate(baseDate.getDate() + i);
+        d.setDate(baseDate.getDate() + (i - 2));
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        points.push({
-          date: formattedLabel,
-          'Belum Ada Laporan Penyakit': 0
+        const factor = i === 0 ? 0.2 : (i === 1 ? 0.6 : (i === 2 ? 0.9 : 1.0));
+        
+        const pt: any = { date: formattedLabel };
+        defaults.forEach(item => {
+          pt[item.name] = Math.round(item.total * factor);
         });
+        points.push(pt);
       }
       return points;
     }
@@ -1651,29 +1813,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       });
       return points;
     }
-  }, [eventData.penyakit_input, eventData.tgl_kejadian]);
-
-  const penyakitTotalData = useMemo(() => {
-    const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : [];
-    if (list.length === 0) {
-      return [
-        { name: 'Belum Ada Kasus', total: 0 }
-      ];
-    }
-
-    const totals: { [name: string]: number } = {};
-    list.forEach((p: any) => {
-      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
-      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
-      const count = safeParseInt(p.jumlah_kasus || p.jml);
-      totals[disease] = (totals[disease] || 0) + count;
-    });
-
-    return Object.entries(totals).map(([name, total]) => ({
-      name,
-      total
-    })).sort((a, b) => b.total - a.total);
-  }, [eventData.penyakit_input]);
+  }, [eventData.penyakit_input, eventData.tgl_kejadian, penyakitTotalData]);
 
   // Flood conditions (Weather, TMA, Luas, Lama) parsed or fallbacks
   const parsedCuaca = useMemo(() => {
@@ -1761,12 +1901,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
       ]
     }
-    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+    if (name.includes('tsunami')) {
+      const waveH = ((eventSeed % 20) / 10 + 2.5).toFixed(1)
+      const inunDist = ((eventSeed % 15) * 50 + 250)
       return [
-        { label: 'TMA Sungai', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
-        { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
-        { label: 'Lama Genangan', value: parsedLama, icon: Clock, color: 'text-amber-500' },
-        { label: 'Saturasi Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-blue-500' }
+        { label: 'Tinggi Gelombang', value: `${waveH} m (Tsunami)`, icon: Waves, color: 'text-teal-650' },
+        { label: 'Limpasan Daratan', value: `${inunDist} m dari Garis Pantai`, icon: Compass, color: 'text-cyan-600' },
+        { label: 'Waktu Tiba Gelombang', value: '15 - 25 Menit Pasca-Gempa', icon: Clock, color: 'text-amber-600' },
+        { label: 'Status Peringatan', value: 'Peringatan Dini / Siaga', icon: ShieldAlert, color: 'text-rose-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -1776,9 +1918,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const mmi = ['IV MMI (Ringan)', 'V MMI (Sedang)', 'VI MMI (Kuat)', 'VII MMI (Sangat Kuat)'][eventSeed % 4]
       return [
         { label: 'Magnitudo Gempa', value: `${magn} SR / Mww`, icon: Activity, color: 'text-red-600' },
-        { label: 'Kedalaman Gempa', value: `${depth} km (Dangkal)`, icon: Compass, color: 'text-amber-700' },
+        { label: 'Kedalaman Gempa', value: `${depth} km (${depth <= 30 ? 'Dangkal' : 'Menengah'})`, icon: Compass, color: 'text-amber-700' },
         { label: 'Status Episentrum', value: tsunami, icon: Waves, color: 'text-blue-600' },
         { label: 'Intensitas MMI', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
+      ]
+    }
+    if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+      return [
+        { label: 'TMA Sungai', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
+        { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
+        { label: 'Lama Genangan', value: parsedLama, icon: Clock, color: 'text-amber-500' },
+        { label: 'Saturasi Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-blue-500' }
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {
@@ -1798,7 +1948,35 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         { label: 'Status Gunung', value: level, icon: ShieldAlert, color: 'text-red-600' },
         { label: 'Tinggi Abu', value: `${height.toLocaleString('id-ID')} m`, icon: CloudRain, color: 'text-slate-600' },
         { label: 'Arah Awan Panas', value: dir, icon: Wind, color: 'text-amber-600' },
-        { label: 'Zona Bahaya', value: `Sektoral ${zone} km`, icon: AlertTriangle, color: 'text-orange-500' }
+        { label: 'Zona Bahaya', value: `Sektoral ${zone} km (KRB III)`, icon: AlertTriangle, color: 'text-orange-500' }
+      ]
+    }
+    if (name.includes('kekeringan') || name.includes('drought')) {
+      const hth = (eventSeed % 30) + 45
+      const lahan = ((eventSeed % 12) * 80 + 350).toLocaleString('id-ID')
+      return [
+        { label: 'Hari Tanpa Hujan', value: `${hth} Hari (Kering Ekstrem)`, icon: Clock, color: 'text-amber-600' },
+        { label: 'Defisit Pasokan Air', value: '-45% Kebutuhan Baku', icon: Droplets, color: 'text-red-500' },
+        { label: 'Lahan Terancam', value: `${lahan} ha Pertanian`, icon: Compass, color: 'text-orange-600' },
+        { label: 'Pasokan Air Bersih', value: 'Mobilisasi Tangki Darurat', icon: Activity, color: 'text-blue-500' }
+      ]
+    }
+    if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
+      return [
+        { label: 'Attack Rate Transmisi', value: 'Tinggi (Klaster Wilayah)', icon: ShieldAlert, color: 'text-purple-600' },
+        { label: 'Status Investigasi PE', value: 'Aktif Lapangan (RHA)', icon: Activity, color: 'text-rose-600' },
+        { label: 'Stok Logistik & Obat', value: 'Buffer Stock Terpenuhi', icon: BriefcaseMedical, color: 'text-teal-600' },
+        { label: 'Cakupan Tracing', value: 'Puskesmas & Posko Siaga', icon: Users, color: 'text-indigo-600' }
+      ]
+    }
+    if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
+      const windSpeed = (eventSeed % 15) * 3 + 45
+      const rain = Math.max(peakRainfall, 65)
+      return [
+        { label: 'Kecepatan Angin Maks', value: `${windSpeed} km/jam`, icon: Wind, color: 'text-indigo-600' },
+        { label: 'Curah Hujan Ekstrem', value: `${rain} mm/hari`, icon: CloudLightning, color: 'text-blue-600' },
+        { label: 'Tinggi Gelombang', value: '2.5 - 4.0 m (Waspada)', icon: Waves, color: 'text-cyan-600' },
+        { label: 'Dampak Kerusakan', value: 'Struktur Bangunan & Pohon', icon: AlertTriangle, color: 'text-amber-600' }
       ]
     }
     return [
@@ -1807,7 +1985,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       { label: 'Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis' : 'Layak', icon: Droplets, color: 'text-blue-500' },
       { label: 'Fasum Berfungsi', value: 'Sebagian Berfungsi', icon: Activity, color: 'text-cyan-600' }
     ]
-  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall])
+  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall])
 
   const eocNarrative = useMemo(() => {
     if (detail?.buletin_eoc) return detail.buletin_eoc;
@@ -2162,9 +2340,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     ? 'TREN KUALITAS UDARA (ISPU / PM2.5) & ANGIN (H-3 S.D. H+3)'
                     : disasterTheme.type === 'gempa'
                       ? 'INTENSITAS MMI & SEJARAH GEMPA (H-3 S.D. H+3)'
-                      : disasterTheme.type === 'longsor'
-                        ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
-                        : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
+                      : disasterTheme.type === 'tsunami'
+                        ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3)'
+                        : disasterTheme.type === 'longsor'
+                          ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
+                          : disasterTheme.type === 'kekeringan'
+                            ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3)'
+                            : disasterTheme.type === 'wabah'
+                              ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3)'
+                              : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
                 </span>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
@@ -2195,8 +2379,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="my-1.5 shrink-0 flex items-center justify-center">
                           {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
                             <ShieldAlert className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-pulse' : (dayIspuVal > 150) ? 'text-orange-500' : 'text-amber-500'}`} />
+                          ) : disasterTheme.type === 'tsunami' ? (
+                            <Waves className={`h-5 w-5 ${isEventDay ? 'text-teal-600 animate-bounce' : 'text-cyan-600'}`} />
                           ) : disasterTheme.type === 'gempa' ? (
                             <Activity className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-bounce' : 'text-amber-600'}`} />
+                          ) : disasterTheme.type === 'kekeringan' ? (
+                            <Thermometer className={`h-5 w-5 ${isEventDay ? 'text-rose-600' : 'text-amber-600'}`} />
+                          ) : disasterTheme.type === 'wabah' ? (
+                            <ShieldAlert className={`h-5 w-5 ${isEventDay ? 'text-purple-600 animate-pulse' : 'text-indigo-500'}`} />
                           ) : day.weather.includes('Lebat') ? (
                             <CloudLightning className={`h-5 w-5 ${isEventDay ? 'text-rose-500 animate-bounce' : 'text-blue-600'}`} />
                           ) : day.weather.includes('Sedang') || day.weather.includes('Ringan') ? (
@@ -2216,6 +2406,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {dayIspuLabel}
                               </span>
                             </>
+                          ) : disasterTheme.type === 'tsunami' ? (
+                            <>
+                              <span className="text-[11px] font-black text-teal-900 block text-center whitespace-nowrap">
+                                {isEventDay ? '3.8 m' : `${['1.2', '1.5', '0.8'][idx % 3]} m`}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                                {isEventDay ? 'Tsunami' : 'Normal'}
+                              </span>
+                            </>
                           ) : disasterTheme.type === 'gempa' ? (
                             <>
                               <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
@@ -2223,6 +2422,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               </span>
                               <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
                                 {isEventDay ? 'Kuat' : 'Ringan'}
+                              </span>
+                            </>
+                          ) : disasterTheme.type === 'kekeringan' ? (
+                            <>
+                              <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
+                                {isEventDay ? '34°C' : `${30 + (idx % 4)}°C`}
+                              </span>
+                              <span className="text-[10px] font-bold text-red-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                                0 mm (HTH)
+                              </span>
+                            </>
+                          ) : disasterTheme.type === 'wabah' ? (
+                            <>
+                              <span className="text-[11px] font-black text-purple-900 block text-center whitespace-nowrap">
+                                {isEventDay ? '15 Kasus' : `${4 + (idx * 2)} Kasus`}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                                {isEventDay ? 'Klaster' : 'Tracing'}
                               </span>
                             </>
                           ) : (
@@ -2410,9 +2627,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const victimLast = victimTrendData[victimTrendData.length - 1] || {};
           const victimFirst = victimTrendData[0] || {};
           const totalKorbanDelta = (victimLast['Total Korban'] || 0) - (victimFirst['Total Korban'] || 0);
-          const pengungsiLast = victimLast['Total Pengungsi'] || 0;
-          const meninggalLast = victimLast['Meninggal'] || 0;
-          const terdampakLast = victimLast['Penduduk Terancam/Terdampak'] || 0;
+          const pengungsiLast = victimLast['Total Pengungsi'] ?? safeParseInt(eventData.pengungsi);
+          const meninggalLast = victimLast['Meninggal'] ?? safeParseInt(eventData.meninggal);
+          const lukaLast = victimLast['Luka-luka'] ?? (safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan));
+          const terdampakLast = victimLast['Penduduk Terancam/Terdampak'] ?? (totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak));
+          const totalKorbanLast = victimLast['Total Korban'] ?? (meninggalLast + lukaLast);
 
           const totalTerdampakFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
           const totalMasterFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.totalMaster, 0);
@@ -2422,19 +2641,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total master faskes (${totalPctFaskes}%) di ${eventData.kabupaten || 'Kabupaten'} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
             : `Seluruh fasilitas kesehatan (${totalMasterFaskes} master faskes) di ${eventData.kabupaten || 'Kabupaten'} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
 
-          const penyakitKeys = Object.keys(penyakitTrendData[0] || {}).filter(k => k !== 'date');
-          const penyakitLast = penyakitTrendData[penyakitTrendData.length - 1] || {};
-          const dominantDisease = penyakitKeys.sort((a, b) => (penyakitLast[b] || 0) - (penyakitLast[a] || 0))[0] || null;
-          const totalPenyakitCases = penyakitKeys.reduce((s, k) => s + (penyakitLast[k] || 0), 0);
+          const dominantDiseaseObj = penyakitTotalData.length > 0 && penyakitTotalData[0].total > 0 ? penyakitTotalData[0] : null;
+          const totalPenyakitCases = penyakitTotalData.reduce((s, item) => s + (item.total || 0), 0);
 
-          const korbanNarrative = totalKorbanDelta > 0
-            ? `Tren naik — korban bertambah ${totalKorbanDelta.toLocaleString('id-ID')} jiwa dalam periode ini. Saat ini ${meninggalLast.toLocaleString('id-ID')} meninggal, ${pengungsiLast.toLocaleString('id-ID')} pengungsi, dan ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak.`
-            : totalKorbanDelta < 0
-              ? `Tren menurun — situasi mulai membaik. Jumlah korban berkurang ${Math.abs(totalKorbanDelta).toLocaleString('id-ID')} jiwa. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa.`
-              : `Data korban stabil dalam periode ini. Pengungsi aktif: ${pengungsiLast.toLocaleString('id-ID')} jiwa, meninggal: ${meninggalLast.toLocaleString('id-ID')} jiwa.`;
+          const korbanNarrative = totalKorbanLast > 0 || terdampakLast > 0
+            ? `Tercatat ${totalKorbanLast.toLocaleString('id-ID')} total korban (${meninggalLast.toLocaleString('id-ID')} meninggal, ${lukaLast.toLocaleString('id-ID')} luka-luka), ${pengungsiLast.toLocaleString('id-ID')} pengungsi, serta ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak.`
+            : `Data korban terpantau nihil/stabil dalam periode ini.`;
 
-          const penyakitNarrative = dominantDisease && totalPenyakitCases > 0
-            ? `Penyakit dominan: ${dominantDisease} (${(penyakitLast[dominantDisease] || 0)} kasus). Total kasus KLB yang dilaporkan: ${totalPenyakitCases} kasus dari ${penyakitKeys.length} jenis penyakit sensitif bencana.`
+          const penyakitNarrative = dominantDiseaseObj && totalPenyakitCases > 0
+            ? `Dampak kesehatan dominan: ${dominantDiseaseObj.name} (${dominantDiseaseObj.total} kasus). Total estimasi/surveilans klinis: ${totalPenyakitCases} kasus sensitif bencana.`
             : `Belum ada laporan kasus penyakit KLB yang masuk. Pantau surveilans harian di posko pengungsian.`;
 
           return (
@@ -2471,7 +2686,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <Line type="monotone" dataKey="Total Korban" stroke="#475569" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Line type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={1.5} dot={{ r: 0 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
+                            <Line type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
+                            <Line type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
                             <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
@@ -2580,9 +2796,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={penyakitTotalData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <BarChart data={penyakitTotalData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} style={{ fontSize: '9px' }} />
+                            <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} interval={0} angle={-12} textAnchor="end" height={40} tick={{ fontSize: 9, fontWeight: 600 }} />
                             <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
                             <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} formatter={(value) => [`${value} kasus`, 'Total']} />
                             <Bar
