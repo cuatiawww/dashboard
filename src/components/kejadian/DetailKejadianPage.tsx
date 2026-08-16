@@ -37,7 +37,8 @@ import {
   Building2,
   Stethoscope,
   PlusSquare,
-  BriefcaseMedical
+  BriefcaseMedical,
+  Globe
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import { useAuthStore } from '@/lib/authStore'
@@ -187,6 +188,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loadingKapasitas, setLoadingKapasitas] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [trendWindowDays, setTrendWindowDays] = useState(7)
+
+  // ── Tenaga Cadangan Kesehatan (TCK) Kemkes ──
+  const [tckRelawan, setTckRelawan] = useState<any[]>([])
+  const [tckTotal, setTckTotal] = useState<number>(0)
+  const [tckLoading, setTckLoading] = useState(false)
+  const [tckSearch, setTckSearch] = useState('')
+  const [tckTab, setTckTab] = useState<'semua' | 'nakes' | 'emt'>('semua')
 
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -733,6 +741,76 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     provinsi: { label: eventData.provinsi || '' },
     kabupaten: { label: eventData.kabupaten || '' },
   }), [eventData.provinsi, eventData.kabupaten]);
+
+  // Mapping nama provinsi → kode_prop TCK Kemkes
+  const PROV_CODE_MAP: Record<string, string> = {
+    'ACEH': '11', 'SUMATERA UTARA': '12', 'SUMUT': '12',
+    'SUMATERA BARAT': '13', 'SUMBAR': '13', 'RIAU': '14',
+    'JAMBI': '15', 'SUMATERA SELATAN': '16', 'SUMSEL': '16',
+    'BENGKULU': '17', 'LAMPUNG': '18',
+    'KEPULAUAN BANGKA BELITUNG': '19', 'BANGKA BELITUNG': '19', 'BABEL': '19',
+    'KEPULAUAN RIAU': '21', 'KEPRI': '21',
+    'DKI JAKARTA': '31', 'JAKARTA': '31',
+    'JAWA BARAT': '32', 'JABAR': '32',
+    'JAWA TENGAH': '33', 'JATENG': '33',
+    'DI YOGYAKARTA': '34', 'YOGYAKARTA': '34', 'DIY': '34',
+    'JAWA TIMUR': '35', 'JATIM': '35',
+    'BANTEN': '36', 'BALI': '51',
+    'NUSA TENGGARA BARAT': '52', 'NTB': '52',
+    'NUSA TENGGARA TIMUR': '53', 'NTT': '53',
+    'KALIMANTAN BARAT': '61', 'KALBAR': '61',
+    'KALIMANTAN TENGAH': '62', 'KALTENG': '62',
+    'KALIMANTAN SELATAN': '63', 'KALSEL': '63',
+    'KALIMANTAN TIMUR': '64', 'KALTIM': '64',
+    'KALIMANTAN UTARA': '65', 'KALTARA': '65',
+    'SULAWESI UTARA': '71', 'SULUT': '71',
+    'SULAWESI TENGAH': '72', 'SULTENG': '72',
+    'SULAWESI SELATAN': '73', 'SULSEL': '73',
+    'SULAWESI TENGGARA': '74', 'SULTRA': '74',
+    'GORONTALO': '75', 'SULAWESI BARAT': '76', 'SULBAR': '76',
+    'MALUKU': '81', 'MALUKU UTARA': '82',
+    'PAPUA BARAT': '91', 'PAPUA': '94',
+    'PAPUA SELATAN': '95', 'PAPUA TENGAH': '96',
+    'PAPUA PEGUNUNGAN': '97', 'PAPUA BARAT DAYA': '92'
+  }
+
+  const getKdProp = (provName: string): string => {
+    if (!provName) return ''
+    const upper = provName.toUpperCase().replace(/^(PROVINSI|PROV\.?|DAERAH ISTIMEWA|DI|DKI)\s+/i, '').trim()
+    for (const [key, code] of Object.entries(PROV_CODE_MAP)) {
+      if (upper.includes(key) || key.includes(upper)) return code
+    }
+    return ''
+  }
+
+  // ── Fetch Tenaga Cadangan Kesehatan (TCK) Kemkes API ──
+  useEffect(() => {
+    const provName = eventData.provinsi || ''
+    const kdProp = getKdProp(provName)
+    if (!kdProp) return
+
+    let active = true
+    setTckLoading(true)
+
+    fetch('/api/tck-relawan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kd_prop: kdProp })
+    })
+      .then(res => res.json())
+      .then(json => {
+        if (!active) return
+        if (json.success && Array.isArray(json.data)) {
+          setTckRelawan(json.data)
+          setTckTotal(json.total || json.data.length)
+        }
+      })
+      .catch(err => console.error('[TCK Fetch Error]', err))
+      .finally(() => { if (active) setTckLoading(false) })
+
+    return () => { active = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventData.provinsi])
 
   // Fetch real route from OSRM Routing API (real road network routing)
   useEffect(() => {
@@ -4083,6 +4161,253 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
             </article>
           );
+        })()}
+
+        {/* ==================== TENAGA CADANGAN KESEHATAN (TCK) ==================== */}
+        {(() => {
+          const filteredTck = tckRelawan.filter(r => {
+            const q = tckSearch.toLowerCase()
+            const matchSearch = !q ||
+              (r.nama_lengkap || '').toLowerCase().includes(q) ||
+              (r.golongan || '').toLowerCase().includes(q) ||
+              (r.spesifikasi || '').toLowerCase().includes(q) ||
+              (r.kab_kota || '').toLowerCase().includes(q)
+
+            const matchTab =
+              tckTab === 'semua' ? true
+              : tckTab === 'nakes' ? (r.kategori || '').toLowerCase() === 'nakes'
+              : (r.organisasi || r.nama_tim_emt || '').toLowerCase().includes('emt')
+
+            return matchSearch && matchTab
+          })
+
+          const golonganColors: Record<string, string> = {
+            'Tenaga Keperawatan': 'bg-blue-50 text-blue-700 border-blue-200',
+            'Tenaga Medis': 'bg-teal-50 text-teal-700 border-teal-200',
+            'Tenaga Kebidanan': 'bg-pink-50 text-pink-700 border-pink-200',
+            'Tenaga Kesmas': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'Tenaga Kefarmasian': 'bg-violet-50 text-violet-700 border-violet-200',
+            'Tenaga Gizi': 'bg-amber-50 text-amber-700 border-amber-200',
+            'Tenaga Laboratorium': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+          }
+          const getGolonganStyle = (golongan: string) => {
+            for (const [key, cls] of Object.entries(golonganColors)) {
+              if ((golongan || '').includes(key.split(' ')[1] || key)) return cls
+            }
+            return 'bg-slate-50 text-slate-700 border-slate-200'
+          }
+
+          const countByGolongan: Record<string, number> = {}
+          filteredTck.forEach(r => {
+            const g = r.golongan || 'Lainnya'
+            countByGolongan[g] = (countByGolongan[g] || 0) + 1
+          })
+          const topGolongan = Object.entries(countByGolongan).sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+          return (
+            <section className="rounded-2xl border border-teal-200/70 bg-gradient-to-br from-teal-50/40 via-white to-emerald-50/20 p-5 sm:p-6 shadow-sm flex flex-col gap-5">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-teal-100">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                      <HeartPulse className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-[15px] font-black uppercase tracking-wider text-teal-900">
+                      TENAGA CADANGAN KESEHATAN (TCK)
+                    </h3>
+                    <span className="ml-1 px-2.5 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black uppercase tracking-wider">
+                      Kemkes RI
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Relawan TCK terlatih siaga di {eventData.provinsi || 'Provinsi'} — total <span className="font-black text-teal-800">{tckTotal.toLocaleString('id-ID')} relawan</span> terdaftar
+                  </p>
+                </div>
+                <a
+                  href="https://tenagacadangankesehatan.kemkes.go.id"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200 bg-white text-teal-700 text-[11px] font-bold hover:bg-teal-50 transition shrink-0"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Portal TCK
+                </a>
+              </div>
+
+              {tckLoading ? (
+                <div className="flex items-center justify-center py-12 gap-3 text-teal-600">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="text-sm font-semibold">Mengambil data TCK dari Kemkes...</span>
+                </div>
+              ) : tckRelawan.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">
+                  <HeartPulse className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm font-semibold">Data TCK tidak tersedia untuk provinsi ini</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* Summary cards + composition */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-xl bg-teal-700 text-white px-4 py-3 flex flex-col">
+                      <span className="text-[10px] font-bold uppercase opacity-80">Total Relawan</span>
+                      <span className="text-2xl font-black mt-1">{tckTotal.toLocaleString('id-ID')}</span>
+                      <span className="text-[10px] opacity-70 mt-0.5">di {eventData.provinsi}</span>
+                    </div>
+                    {topGolongan.slice(0, 3).map(([golongan, count]) => (
+                      <div key={golongan} className={`rounded-xl border px-3 py-3 flex flex-col ${getGolonganStyle(golongan)}`}>
+                        <span className="text-[9px] font-bold uppercase opacity-70 leading-tight">{golongan.replace('Tenaga ', '')}</span>
+                        <span className="text-xl font-black mt-1">{count}</span>
+                        <span className="text-[9px] opacity-60 mt-0.5">relawan</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Filters: Tab + Search */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                    <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+                      {(['semua', 'nakes', 'emt'] as const).map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => setTckTab(tab)}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-bold capitalize transition ${
+                            tckTab === tab
+                              ? 'bg-teal-700 text-white shadow-sm'
+                              : 'text-slate-600 hover:bg-white'
+                          }`}
+                        >
+                          {tab === 'semua' ? 'Semua' : tab === 'nakes' ? 'Nakes' : 'Tim EMT'}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative flex-1 w-full sm:max-w-xs">
+                      <input
+                        type="text"
+                        placeholder="Cari nama, golongan, wilayah..."
+                        value={tckSearch}
+                        onChange={e => setTckSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 text-[11px] rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 placeholder:text-slate-400"
+                      />
+                      <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-semibold shrink-0">
+                      Menampilkan <span className="font-black text-slate-700">{filteredTck.length}</span> relawan
+                    </span>
+                  </div>
+
+                  {/* Relawan Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[520px] overflow-y-auto pr-1">
+                    {filteredTck.slice(0, 30).map((r, idx) => (
+                      <div
+                        key={r.id_user || idx}
+                        className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:shadow-md hover:border-teal-200 transition-all duration-200 flex flex-col gap-2.5"
+                      >
+                        {/* Header: foto + nama */}
+                        <div className="flex items-center gap-3">
+                          <div className="h-11 w-11 rounded-full overflow-hidden border-2 border-teal-100 bg-teal-50 shrink-0">
+                            {r.foto && !r.foto.includes('user.png') ? (
+                              <img
+                                src={r.foto}
+                                alt={r.nama_lengkap}
+                                className="h-full w-full object-cover"
+                                onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <HeartPulse className="h-5 w-5 text-teal-600" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[12px] font-black text-slate-900 leading-tight truncate">
+                              {r.nama_lengkap || 'Nama Tidak Diketahui'}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-semibold truncate">{r.kab_kota || r.provinsi || '-'}</p>
+                          </div>
+                        </div>
+
+                        {/* Badges */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {r.golongan && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black border ${getGolonganStyle(r.golongan)}`}>
+                              {r.golongan.replace('Tenaga ', '')}
+                            </span>
+                          )}
+                          {r.spesifikasi && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">
+                              {r.spesifikasi}
+                            </span>
+                          )}
+                          {r.kategori && r.kategori !== r.golongan && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[9px] font-bold border border-indigo-200">
+                              {r.kategori}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Info rows */}
+                        <div className="space-y-1 text-[11px]">
+                          {r.pekerjaan && (
+                            <div className="flex items-center gap-1.5 text-slate-600">
+                              <BriefcaseMedical className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{r.pekerjaan}</span>
+                            </div>
+                          )}
+                          {(r.organisasi || r.nama_tim_emt) && (
+                            <div className="flex items-center gap-1.5 text-slate-600">
+                              <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
+                              <span className="truncate font-semibold">{r.nama_tim_emt || r.organisasi}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between pt-0.5">
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <Users className="h-3 w-3 shrink-0" />
+                              <span>{r.jenis_kelamin || 'N/A'} · {r.usia ? `${r.usia} th` : 'N/A'}</span>
+                            </div>
+                            {r.nomor_telp && (
+                              <a
+                                href={`https://wa.me/${r.nomor_telp.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-bold hover:bg-emerald-100 transition"
+                              >
+                                <Phone className="h-2.5 w-2.5" />
+                                WA
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {filteredTck.length > 30 && (
+                      <div className="col-span-full text-center py-4 text-[11px] text-slate-400 font-semibold border border-dashed border-slate-200 rounded-xl">
+                        + {(filteredTck.length - 30).toLocaleString('id-ID')} relawan lainnya tersedia.
+                        Gunakan filter pencarian untuk mempersempit hasil.
+                      </div>
+                    )}
+
+                    {filteredTck.length === 0 && (
+                      <div className="col-span-full text-center py-8 text-slate-400">
+                        <p className="text-sm font-semibold">Tidak ada relawan yang cocok dengan filter ini</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer note */}
+                  <div className="flex items-start gap-2 bg-teal-50/80 border border-teal-100 rounded-xl px-3.5 py-2.5 text-[11px] text-teal-800 font-semibold">
+                    <AlertTriangle className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
+                    <span>
+                      Data bersumber dari sistem <span className="font-black">Tenaga Cadangan Kesehatan (TCK)</span> Kemenkes RI.
+                      Kontak relawan hanya untuk keperluan koordinasi penanganan bencana resmi.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </section>
+          )
         })()}
 
       </div>
