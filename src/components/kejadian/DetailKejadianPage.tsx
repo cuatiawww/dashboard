@@ -2284,8 +2284,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         kode_trans: `${selectedEvent?.kode_trans}-loc-${idx}`,
         lat: Number(loc.latitude),
         lng: Number(loc.longitude),
-        nama_desa: loc.nama_desa || selectedEvent?.nama_desa,
-        kecamatan: loc.kecamatan || selectedEvent?.kecamatan,
+        // Gunakan kecamatan dari lokasi spesifik saja - JANGAN fallback ke selectedEvent.kecamatan
+        // karena itu berisi join semua kecamatan terdampak ("Borong, Cibal, Elar...")
+        nama_desa: loc.nama_desa || undefined,
+        kecamatan: loc.kecamatan || undefined,
         topografi: loc.topografi || selectedEvent?.topografi,
         jml_terancam: loc.jml_terancam || selectedEvent?.jml_terancam,
         tgl_kejadian: loc.tgl_laporan || selectedEvent?.tgl_kejadian,

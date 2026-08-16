@@ -1969,7 +1969,17 @@ export default function DisasterMap({
                 </div>
                 <div className="bg-slate-100/70 px-2.5 py-1.5 rounded-lg border border-slate-200/70 text-center">
                   <span className="text-[9px] font-black text-slate-500 uppercase block">Est. Waktu Tempuh</span>
-                  <span className="text-xs sm:text-sm font-black text-teal-800 block mt-0.5">{routeInfo.duration} menit</span>
+                  <span className="text-xs sm:text-sm font-black text-teal-800 block mt-0.5">
+                    {(() => {
+                      const totalMnt = Math.round(routeInfo.duration)
+                      if (totalMnt >= 60) {
+                        const jam = Math.floor(totalMnt / 60)
+                        const mnt = totalMnt % 60
+                        return mnt > 0 ? `${jam} jam ${mnt} mnt` : `${jam} jam`
+                      }
+                      return `${totalMnt} mnt`
+                    })()}
+                  </span>
                 </div>
               </div>
             )}
@@ -2234,7 +2244,11 @@ export default function DisasterMap({
                           const m = markers[idx];
                           onSelectRouteSource({
                             id: targetId,
-                            name: `Lokasi Bencana - Kec. ${m.kecamatan || ''}`,
+                            name: m.nama_desa
+                              ? `Titik ${idx + 1} - Desa ${m.nama_desa}${m.kecamatan ? `, Kec. ${m.kecamatan}` : ''}`
+                              : m.kecamatan
+                                ? `Titik ${idx + 1} - Kec. ${m.kecamatan}`
+                                : `Titik Bencana ${idx + 1}`,
                             latitude: Number(m.lat),
                             longitude: Number(m.lng),
                             type: 'kejadian'
@@ -2245,9 +2259,15 @@ export default function DisasterMap({
                     >
                       {markers.map((m, idx) => {
                         const optId = m.kode_trans || `loc-${idx}`;
+                        // Buat label per-titik yang unik tanpa inherit daftar semua kecamatan
+                        const locLabel = m.nama_desa
+                          ? `Titik ${idx + 1}: Desa ${m.nama_desa}${m.kecamatan ? ` (Kec. ${m.kecamatan})` : ''}`
+                          : m.kecamatan
+                            ? `Titik ${idx + 1}: Kec. ${m.kecamatan}`
+                            : `Titik Bencana ${idx + 1} (${Number(m.lat).toFixed(4)}, ${Number(m.lng).toFixed(4)})`
                         return (
                           <option key={optId} value={optId}>
-                            ⚠️ Kec. {m.kecamatan || '-'} {m.nama_desa ? `, Desa ${m.nama_desa}` : ''}
+                            ⚠️ {locLabel}
                           </option>
                         );
                       })}
