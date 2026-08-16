@@ -193,6 +193,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [tckRelawan, setTckRelawan] = useState<any[]>([])
   const [tckTotal, setTckTotal] = useState<number>(0)
   const [tckLoading, setTckLoading] = useState(false)
+  const [tckError, setTckError] = useState<string | null>(null)
   const [tckSearch, setTckSearch] = useState('')
   const [tckTab, setTckTab] = useState<'semua' | 'nakes' | 'emt'>('semua')
 
@@ -827,6 +828,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     let active = true
     setTckLoading(true)
+    setTckError(null)
 
     fetch('/api/tck-relawan', {
       method: 'POST',
@@ -836,12 +838,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .then(res => res.json())
       .then(json => {
         if (!active) return
-        if (json.success && Array.isArray(json.data)) {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
           setTckRelawan(json.data)
           setTckTotal(json.total || json.data.length)
+          setTckError(null)
+        } else {
+          setTckRelawan([])
+          setTckTotal(0)
+          setTckError(json.message || 'Data TCK belum tersedia dari server Kemenkes RI.')
         }
       })
-      .catch(err => console.error('[TCK Fetch Error]', err))
+      .catch(err => {
+        console.error('[TCK Fetch Error]', err)
+        if (active) {
+          setTckRelawan([])
+          setTckTotal(0)
+          setTckError('Gagal menghubungkan ke layanan TCK Kemkes RI.')
+        }
+      })
       .finally(() => { if (active) setTckLoading(false) })
 
     return () => { active = false }
@@ -4162,10 +4176,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <span className="text-sm font-semibold">Mengambil data TCK dari Kemkes...</span>
                     </div>
                   ) : tckRelawan.length === 0 ? (
-                    <div className="text-center py-10 text-slate-400 border border-dashed border-slate-200 rounded-xl">
-                      <HeartPulse className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm font-semibold">Data TCK tidak tersedia untuk wilayah ini</p>
-                      <p className="text-xs text-slate-400 mt-1">Provinsi: {eventData.provinsi || '-'} | Kab: {eventData.kabupaten || '-'}</p>
+                    <div className="text-center py-10 text-slate-500 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 p-6 space-y-2">
+                      <HeartPulse className="h-10 w-10 mx-auto mb-2 text-teal-600 opacity-60" />
+                      <h5 className="text-sm font-bold text-slate-800">
+                        {tckError ? 'Informasi Akses API TCK Kemkes' : 'Data Relawan TCK Belum Tersedia'}
+                      </h5>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                        {tckError || `Tidak ada data relawan TCK yang terdaftar untuk wilayah ${eventData.provinsi || eventData.kabupaten || 'ini'}.`}
+                      </p>
+                      <div className="pt-2">
+                        <a
+                          href="https://tenagacadangankesehatan.kemkes.go.id/web/site/landing-page"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition shadow-xs"
+                        >
+                          <Globe className="h-3.5 w-3.5" />
+                          Buka Portal TCK Kemenkes RI
+                        </a>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col gap-4">
