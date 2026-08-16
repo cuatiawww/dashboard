@@ -196,6 +196,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [tckError, setTckError] = useState<string | null>(null)
   const [tckSearch, setTckSearch] = useState('')
   const [tckTab, setTckTab] = useState<'semua' | 'nakes' | 'emt'>('semua')
+  const [tckDisplayLimit, setTckDisplayLimit] = useState<number>(30)
 
   // ── Tren Korban Chart View Mode ──
   const [trendMetricMode, setTrendMetricMode] = useState<'dual' | 'korban' | 'penduduk'>('dual')
@@ -4239,7 +4240,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
                       {/* Cards */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[480px] overflow-y-auto pr-1">
-                        {filteredTck.slice(0, 30).map((r, idx) => (
+                        {filteredTck.slice(0, tckDisplayLimit).map((r, idx) => (
                           <div key={r.id_user || idx}
                             className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:shadow-md hover:border-teal-200 transition-all duration-200 flex flex-col gap-2.5">
                             <div className="flex items-center gap-3">
@@ -4298,9 +4299,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             </div>
                           </div>
                         ))}
-                        {filteredTck.length > 30 && (
-                          <div className="col-span-full text-center py-4 text-[11px] text-slate-400 font-semibold border border-dashed border-slate-200 rounded-xl">
-                            + {(filteredTck.length - 30).toLocaleString('id-ID')} relawan lainnya — gunakan filter untuk mempersempit.
+                        {filteredTck.length > tckDisplayLimit && (
+                          <div className="col-span-full text-center py-4 px-3 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-center gap-2">
+                            <span className="text-xs text-slate-600 font-semibold">
+                              Menampilkan <strong className="text-teal-900">{tckDisplayLimit}</strong> dari <strong className="text-slate-900">{filteredTck.length}</strong> relawan
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setTckDisplayLimit(prev => Math.min(prev + 30, filteredTck.length))}
+                                className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 text-teal-800 text-xs font-bold hover:bg-teal-50 transition shadow-2xs"
+                              >
+                                Muat Lebih Banyak (+30)
+                              </button>
+                              <button
+                                onClick={() => setTckDisplayLimit(filteredTck.length)}
+                                className="px-3 py-1.5 rounded-lg bg-teal-700 text-white text-xs font-bold hover:bg-teal-800 transition shadow-2xs"
+                              >
+                                Tampilkan Semua ({filteredTck.length})
+                              </button>
+                            </div>
                           </div>
                         )}
                         {filteredTck.length === 0 && (

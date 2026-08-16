@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 /**
  * Proxy endpoint untuk API Tenaga Cadangan Kesehatan (TCK) Kemkes RI.
  * Endpoint: POST https://tenagacadangankesehatan.kemkes.go.id/web/web_api/v1/relawan-tck
- * Parameters: kd_prop (kode provinsi), kd_kab (opsional, kode kabupaten)
+ * Header: TTOKEN: <token>
+ * Body (FormData): kd_prop, kd_kab
  */
 
 export async function POST(req: NextRequest) {
@@ -22,9 +23,7 @@ export async function POST(req: NextRequest) {
 
     const formData = new FormData()
     formData.append('kd_prop', String(kd_prop))
-    if (kd_kab) {
-      formData.append('kd_kab', String(kd_kab))
-    }
+    formData.append('kd_kab', kd_kab ? String(kd_kab) : '')
 
     const res = await fetch(
       'https://tenagacadangankesehatan.kemkes.go.id/web/web_api/v1/relawan-tck',
@@ -32,12 +31,8 @@ export async function POST(req: NextRequest) {
         method: 'POST',
         body: formData,
         headers: {
+          'TTOKEN': tckToken,
           'Accept': 'application/json, text/plain, */*',
-          'Authorization': `Bearer ${tckToken}`,
-          'Cookie': `token=${tckToken}; tck_session=${tckToken}; XSRF-TOKEN=${tckToken}`,
-          'X-Requested-With': 'XMLHttpRequest',
-          'Origin': 'https://tenagacadangankesehatan.kemkes.go.id',
-          'Referer': 'https://tenagacadangankesehatan.kemkes.go.id/web/tck',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         },
         cache: 'no-store',
@@ -50,23 +45,22 @@ export async function POST(req: NextRequest) {
         success: false,
         source: 'api_kemkes_error',
         status: res.status,
-        message: res.status === 403 
-          ? 'Akses ke API TCK Kemkes ditolak (403 Forbidden). Token API TCK Kemenkes kemungkinan telah kadaluarsa / memerlukan session baru dari Portal TCK.' 
-          : `Gagal memuat data dari API TCK Kemkes (HTTP ${res.status}): ${errorText.substring(0, 200)}`,
+        message: `Gagal memuat data dari API TCK Kemkes (HTTP ${res.status}): ${errorText.substring(0, 200)}`,
         total: 0,
         data: []
-      }, { status: res.status === 403 ? 200 : res.status })
+      }, { status: res.status })
     }
 
     const json = await res.json()
-    const relawanList = Array.isArray(json?.data) ? json.data : (Array.isArray(json) ? json : [])
+    const relawanList = Array.isArray(json?.data) ? json.data : []
     const totalCount = json?.total || relawanList.length
 
     return NextResponse.json({
       success: true,
+      status: json?.status ?? true,
       source: 'live_kemkes',
       total: totalCount,
-      filter: { kd_prop: String(kd_prop), kd_kab: kd_kab || '' },
+      filter: json?.filter || { kd_prop: String(kd_prop), kd_kab: kd_kab || '' },
       data: relawanList
     })
   } catch (error: any) {
