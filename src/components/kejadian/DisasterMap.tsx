@@ -103,6 +103,28 @@ interface MarkerPopupState {
   y: number   // pixel y di dalam container peta
 }
 
+interface EocPopupState {
+  rawItem: any
+  type: 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster'
+  name: string
+  address?: string
+  lat: number
+  lng: number
+  distance?: number
+  details?: {
+    jenis?: string
+    operasional?: string
+    dokter?: number | string
+    perawat?: number | string
+    kapasitas?: number | string
+    ambulans?: number | string
+    pengungsi_jiwa?: number | string
+    kontak?: string
+  }
+  x: number
+  y: number
+}
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
@@ -272,6 +294,8 @@ export default function DisasterMap({
   const markerLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
   const pulseOverlaysRef = useRef<Overlay[]>([])
   const lastFetchedProvinceRef = useRef<string | null>(null)
+  const lastScopeKeyRef = useRef<string | null>(null)
+  const prevTargetIdRef = useRef<string | null>(null)
 
   // BNPB layers refs
   const bnpbAdminLayerRef = useRef<any>(null)
@@ -299,16 +323,6 @@ export default function DisasterMap({
   const [showMarkers, setShowMarkers] = useState(true)  // toggle pin visibility
   const [showEocRoute, setShowEocRoute] = useState(true)
   const [pulseRadius, setPulseRadius] = useState<number>(1) // Default 1 km
-  const [pulsePhase, setPulsePhase] = useState<number>(0)
-
-  // Blinking timer for EOC radius danger pulsing
-  useEffect(() => {
-    if (!isFloodEocMode) return
-    const timer = setInterval(() => {
-      setPulsePhase((p) => (p === 0 ? 1 : 0))
-    }, 900)
-    return () => clearInterval(timer)
-  }, [isFloodEocMode])
 
   // Auto-enable EOC Routing layer when a route target is selected
   useEffect(() => {
@@ -369,6 +383,7 @@ export default function DisasterMap({
 
 
   const [markerPopup, setMarkerPopup] = useState<MarkerPopupState | null>(null)
+  const [eocPopup, setEocPopup] = useState<EocPopupState | null>(null)
 
   // ── BMKG Layer states ──
   const [showBmkg, setShowBmkg] = useState(false)
@@ -509,6 +524,7 @@ export default function DisasterMap({
   useEffect(() => {
     setActivePopup(null)
     setMarkerPopup(null)
+    setEocPopup(null)
   }, [userScope])
 
   // ─────────────────────────────────────────────
@@ -751,7 +767,67 @@ export default function DisasterMap({
 
     // ── Click handler ──
     map.on('singleclick', (evt) => {
-      // Check marker pin first (highest priority)
+      // 1. Check EOC Layer feature first
+      const eocFeature = map.forEachFeatureAtPixel(
+        evt.pixel,
+        (f) => f,
+        { layerFilter: (l) => l === eocLayerRef.current }
+      )
+      if (eocFeature) {
+        const id = eocFeature.get('id')
+        const rawItem = eocFeature.get('rawItem')
+        const itemType = eocFeature.get('itemType')
+        const name = eocFeature.get('name') || rawItem?.nama || rawItem?.nama_faskes || 'Lokasi Terkait'
+
+        if (id && !String(id).startsWith('pulse-circle') && id !== 'route-line' && id !== 'flood' && rawItem) {
+          const container = mapContainerRef.current
+          if (container && mapRef.current) {
+            const rect = container.getBoundingClientRect()
+            const mapRect = mapRef.current.getBoundingClientRect()
+            const x = evt.pixel[0] + (mapRect.left - rect.left)
+            const y = evt.pixel[1] + (mapRect.top - rect.top)
+
+            const lat = Number(rawItem.latitude || rawItem.lat || 0)
+            const lng = Number(rawItem.longitude || rawItem.lng || 0)
+            const firstMarker = markersRef.current && markersRef.current[0]
+            const originLat = firstMarker ? Number(firstMarker.lat) : lat
+            const originLng = firstMarker ? Number(firstMarker.lng) : lng
+            const distKm = getDistanceInKm(originLat, originLng, lat, lng)
+
+            setEocPopup({
+              rawItem,
+              type: itemType || 'clinic',
+              name,
+              address: rawItem.alamat || rawItem.kecamatan || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : ''),
+              lat,
+              lng,
+              distance: distKm > 0.05 ? Number(distKm.toFixed(1)) : 0,
+              details: {
+                jenis: rawItem.jenis || rawItem.jenis_faskes || rawItem.jenis_pos,
+                operasional: rawItem.operasional || rawItem.status_operasional || 'Operasional Normal',
+                dokter: rawItem.dokter,
+                perawat: rawItem.perawat,
+                kapasitas: rawItem.kapasitas || rawItem.tt_tersedia,
+                ambulans: rawItem.ambulans,
+                pengungsi_jiwa: rawItem.jml_pengungsi || rawItem.jiwa,
+                kontak: rawItem.telepon || rawItem.kontak || rawItem.pj_kontak
+              },
+              x,
+              y
+            })
+
+            if (itemType !== 'disaster' && onSelectRouteTargetRef.current) {
+              onSelectRouteTargetRef.current(rawItem, itemType)
+            }
+          }
+
+          setMarkerPopup(null)
+          setActivePopup(null)
+          return
+        }
+      }
+
+      // 2. Check marker pin (highest priority on main dashboard)
       const markerFeature = map.forEachFeatureAtPixel(
         evt.pixel,
         (f) => f,
@@ -762,47 +838,31 @@ export default function DisasterMap({
 
         // Calculate pixel position relative to map container
         const container = mapContainerRef.current
-        if (container) {
+        if (container && mapRef.current) {
           const rect = container.getBoundingClientRect()
-          const mapRect = mapRef.current!.getBoundingClientRect()
+          const mapRect = mapRef.current.getBoundingClientRect()
           const x = evt.pixel[0] + (mapRect.left - rect.left)
           const y = evt.pixel[1] + (mapRect.top - rect.top)
           setMarkerPopup({ data, x, y })
         }
 
+        setEocPopup(null)
         setActivePopup(null)
         return
       }
 
-      // Check EOC Layer feature
-      const eocFeature = map.forEachFeatureAtPixel(
-        evt.pixel,
-        (f) => f,
-        { layerFilter: (l) => l === eocLayerRef.current }
-      )
-      if (eocFeature) {
-        const id = eocFeature.get('id')
-        const name = eocFeature.get('name')
-        const rawItem = eocFeature.get('rawItem')
-        const itemType = eocFeature.get('itemType')
-        if (id && id !== 'flood' && rawItem && onSelectRouteTargetRef.current) {
-          onSelectRouteTargetRef.current(rawItem, itemType)
-        }
-        setActivePopup(null)
-        setMarkerPopup(null)
-        return
-      }
-
-      // Check polygon features
+      // 3. Check polygon features
       const polyFeature = map.forEachFeatureAtPixel(evt.pixel, (f) => f)
 
       if (!polyFeature) {
         setActivePopup(null)
         setMarkerPopup(null)
+        setEocPopup(null)
         return
       }
 
       setMarkerPopup(null)
+      setEocPopup(null)
 
       const currentScope = userScopeRef.current
       const isProvMode = currentScope?.mode === 'provinsi'
@@ -1139,6 +1199,7 @@ export default function DisasterMap({
     const isKabMode = userScope?.mode === 'kabupaten'
     const provinceName = userScope?.provinsi?.label || ''
     const kabupatenName = userScope?.kabupaten?.label || ''
+    const scopeKey = `${userScope?.mode}_${provinceName}_${kabupatenName}`
 
     if ((isProvMode || isKabMode) && provinceName) {
       const focusMap = (features: any[]) => {
@@ -1166,7 +1227,10 @@ export default function DisasterMap({
           })
           kabSource.addFeatures(features)
           updateChoroplethStyles()
-          focusMap(features)
+          if (lastScopeKeyRef.current !== scopeKey) {
+            lastScopeKeyRef.current = scopeKey
+            focusMap(features)
+          }
         }
 
         if (geojsonCache[cacheKey]) {
@@ -1186,15 +1250,21 @@ export default function DisasterMap({
         }
       } else {
         updateChoroplethStyles()
-        focusMap(kabSource.getFeatures())
+        if (lastScopeKeyRef.current !== scopeKey) {
+          lastScopeKeyRef.current = scopeKey
+          focusMap(kabSource.getFeatures())
+        }
       }
     } else {
       lastFetchedProvinceRef.current = null
       kabSource.clear()
       updateChoroplethStyles()
-      map.getView().animate({ center: fromLonLat([118, -2.5]), zoom: 4.8, duration: 500 })
+      if (lastScopeKeyRef.current !== scopeKey) {
+        lastScopeKeyRef.current = scopeKey
+        map.getView().animate({ center: fromLonLat([118, -2.5]), zoom: 4.8, duration: 500 })
+      }
     }
-  }, [mapInstance, userScope, updateChoroplethStyles])
+  }, [mapInstance, userScope?.mode, userScope?.provinsi?.label, userScope?.kabupaten?.label, updateChoroplethStyles])
 
   // ─────────────────────────────────────────────
   // Re-style choropleth & multi-region layers when data/selectedRegions changes
@@ -1601,13 +1671,9 @@ export default function DisasterMap({
           geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
           id: `pulse-circle-${idx}`
         })
-        const fillColor = pulsePhase === 0 ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.15)'
-        const strokeColor = pulsePhase === 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(220, 38, 38, 0.65)'
-        const strokeWidth = pulsePhase === 0 ? 1.2 : 2.0
-        
         circleFeat.setStyle(new Style({
-          fill: new Fill({ color: fillColor }),
-          stroke: new Stroke({ color: strokeColor, width: strokeWidth, lineDash: [4, 6] })
+          fill: new Fill({ color: 'rgba(220, 38, 38, 0.08)' }),
+          stroke: new Stroke({ color: 'rgba(220, 38, 38, 0.45)', width: 1.5, lineDash: [4, 6] })
         }))
         source.addFeature(circleFeat)
 
@@ -1619,15 +1685,15 @@ export default function DisasterMap({
     // 2. Add Faskes List
     const fList = Array.isArray(faskesList) ? faskesList : []
     fList.forEach((f: any, idx: number) => {
-      if (f.latitude && f.longitude && Number(f.latitude) !== 0 && Number(f.longitude) !== 0) {
-        const lat = Number(f.latitude)
-        const lng = Number(f.longitude)
+      const fLat = Number(f.latitude || f.lat || 0)
+      const fLng = Number(f.longitude || f.lng || 0)
+      if (fLat !== 0 && fLng !== 0) {
         const jStr = String(f.jenis || f.jenis_faskes || '').toLowerCase()
         const nStr = String(f.nama || '').toLowerCase()
 
         let pinColor = '#059669' // emerald for Puskesmas
         let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'clinic'
-        let itemCategory: 'hospital' | 'clinic' = 'clinic'
+        let itemCategory: 'hospital' | 'clinic' | 'pustu' = 'clinic'
 
         if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) {
           pinColor = '#2563eb' // blue for RS
@@ -1636,7 +1702,7 @@ export default function DisasterMap({
         } else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')) {
           pinColor = '#d97706' // amber for Pustu
           iconType = 'pustu'
-          itemCategory = 'clinic'
+          itemCategory = 'pustu'
         } else if (jStr.includes('klinik') || nStr.includes('klinik')) {
           pinColor = '#0891b2' // cyan for Klinik
           iconType = 'clinic'
@@ -1644,7 +1710,7 @@ export default function DisasterMap({
         }
 
         const fFeat = new Feature({
-          geometry: new Point(fromLonLat([lng, lat])),
+          geometry: new Point(fromLonLat([fLng, fLat])),
           id: f.nama || `faskes-${idx}`,
           name: f.nama,
           rawItem: f,
@@ -1664,25 +1730,23 @@ export default function DisasterMap({
     // 3. Add Posko List
     const pList = Array.isArray(poskoList) ? poskoList : []
     pList.forEach((pos: any, idx: number) => {
-      if (pos.latitude && pos.longitude && Number(pos.latitude) !== 0 && Number(pos.longitude) !== 0) {
-        const lat = Number(pos.latitude)
-        const lng = Number(pos.longitude)
-        
-        // Customize color & icon based on jenis_pos
+      const pLat = Number(pos.latitude || pos.lat || 0)
+      const pLng = Number(pos.longitude || pos.lng || 0)
+      if (pLat !== 0 && pLng !== 0) {
         const jenisPos = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase()
         let pinColor = '#7c3aed' // purple for Pos Pengungsian
-        let iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' = 'shelter'
+        let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'shelter'
 
         if (jenisPos.includes('kesehatan & pengungsian') || jenisPos.includes('kesehatan dan pengungsian')) {
-          pinColor = '#ea580c' // orange for health & shelter combined
+          pinColor = '#ea580c'
           iconType = 'shelter'
         } else if (jenisPos.includes('kesehatan')) {
-          pinColor = '#059669' // emerald for Pos Kesehatan
+          pinColor = '#059669'
           iconType = 'clinic'
         }
 
         const pFeat = new Feature({
-          geometry: new Point(fromLonLat([lng, lat])),
+          geometry: new Point(fromLonLat([pLng, pLat])),
           id: pos.nama || `posko-${idx}`,
           name: pos.nama || `Posko ${pos.kecamatan || ''}`,
           rawItem: pos,
@@ -1703,11 +1767,12 @@ export default function DisasterMap({
     if (routeCoords && routeCoords.length > 0) {
       const lineCoords = routeCoords.map((c) => fromLonLat(c))
       const routeFeat = new Feature({
-        geometry: new LineString(lineCoords)
+        geometry: new LineString(lineCoords),
+        id: 'route-line'
       })
       routeFeat.setStyle(new Style({
         stroke: new Stroke({
-          color: '#0284c7', // sky-600
+          color: '#0284c7',
           width: 4.5,
           lineDash: [4, 6]
         })
@@ -1715,15 +1780,18 @@ export default function DisasterMap({
       source.addFeature(routeFeat)
     }
 
-    // Zoom view to encompass route or center
-    if (map && selectedRouteTarget) {
+    // Zoom view to encompass route or center ONLY ONCE when target ID changes
+    if (map && selectedRouteTarget && selectedRouteTarget.id !== prevTargetIdRef.current) {
+      prevTargetIdRef.current = selectedRouteTarget.id
       map.getView().animate({
-        center: fromLonLat([startLng, startLat]),
-        zoom: 12,
-        duration: 800
+        center: fromLonLat([Number(selectedRouteTarget.longitude), Number(selectedRouteTarget.latitude)]),
+        zoom: 13,
+        duration: 700
       })
+    } else if (!selectedRouteTarget) {
+      prevTargetIdRef.current = null
     }
-  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius, pulsePhase])
+  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -2665,6 +2733,154 @@ export default function DisasterMap({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── EOC Faskes / Posko / Disaster Interactive Popup ── */}
+      {eocPopup && (
+        <div
+          className="absolute z-20 w-[300px] rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_16px_48px_rgba(0,0,0,0.18)] animate-in fade-in zoom-in-95 duration-200 text-xs overflow-hidden"
+          style={{
+            left: Math.min(Math.max(12, eocPopup.x - 150), (mapContainerRef.current?.offsetWidth || 800) - 315),
+            top: Math.max(12, Math.min(eocPopup.y + 16, (mapContainerRef.current?.offsetHeight || 600) - 380)),
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between border-b border-slate-100 p-3.5 pb-3 bg-slate-50/70">
+            <div className="min-w-0 flex-1">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                eocPopup.type === 'hospital'
+                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                  : eocPopup.type === 'shelter'
+                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                  : eocPopup.type === 'pustu'
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : eocPopup.type === 'disaster'
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              }`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                {eocPopup.type === 'hospital'
+                  ? 'Rumah Sakit Rujukan'
+                  : eocPopup.type === 'shelter'
+                  ? 'Posko Pengungsian & Medis'
+                  : eocPopup.type === 'pustu'
+                  ? 'Puskesmas Pembantu'
+                  : eocPopup.type === 'disaster'
+                  ? 'Pusat Kejadian Bencana'
+                  : 'Puskesmas / Klinik Siaga'}
+              </span>
+              <h4 className="mt-1.5 text-sm font-black text-slate-900 leading-snug">
+                {eocPopup.name}
+              </h4>
+            </div>
+            <button
+              onClick={() => setEocPopup(null)}
+              className="ml-2 rounded-lg p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition shrink-0"
+              title="Tutup"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-3.5 space-y-2.5 text-slate-650">
+            {eocPopup.address && (
+              <div className="flex items-start gap-2 text-[11px]">
+                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                <span className="font-semibold text-slate-700 leading-snug">{eocPopup.address}</span>
+              </div>
+            )}
+
+            {eocPopup.distance !== undefined && eocPopup.distance > 0 && (
+              <div className="flex items-center justify-between rounded-xl bg-teal-50/70 border border-teal-100/80 px-2.5 py-1.5 text-[10px] font-bold text-teal-900">
+                <span>Jarak dari Titik Bencana:</span>
+                <span className="font-black text-teal-800 text-[11px]">± {eocPopup.distance} km</span>
+              </div>
+            )}
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
+              {eocPopup.details?.kapasitas ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Kapasitas TT</span>
+                  <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.kapasitas} Bed</span>
+                </div>
+              ) : null}
+
+              {eocPopup.details?.dokter || eocPopup.details?.perawat ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Tenaga Medis</span>
+                  <span className="font-extrabold text-slate-800 text-[11px]">
+                    {[
+                      eocPopup.details.dokter ? `${eocPopup.details.dokter} Dr` : null,
+                      eocPopup.details.perawat ? `${eocPopup.details.perawat} Ns` : null
+                    ].filter(Boolean).join(' · ') || 'Siaga'}
+                  </span>
+                </div>
+              ) : null}
+
+              {eocPopup.details?.ambulans ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Ambulans</span>
+                  <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.ambulans} Unit</span>
+                </div>
+              ) : null}
+
+              {eocPopup.details?.pengungsi_jiwa ? (
+                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Warga Ditampung</span>
+                  <span className="font-extrabold text-purple-800 text-[11px]">{eocPopup.details.pengungsi_jiwa} Jiwa</span>
+                </div>
+              ) : null}
+
+              {eocPopup.details?.operasional && (
+                <div className="col-span-2 rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5 flex items-center justify-between text-[10px]">
+                  <span className="text-emerald-700 font-bold">Status Kesiapan:</span>
+                  <span className="font-extrabold text-emerald-800">{eocPopup.details.operasional}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="border-t border-slate-100 p-2.5 bg-slate-50/50 flex gap-2">
+            {eocPopup.type !== 'disaster' ? (
+              <>
+                <button
+                  onClick={() => {
+                    if (onSelectRouteTargetRef.current) {
+                      onSelectRouteTargetRef.current(eocPopup.rawItem, eocPopup.type as any)
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 text-[11px] font-bold shadow-xs transition"
+                >
+                  <Compass className="h-3.5 w-3.5" />
+                  Rute Taktis
+                </button>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${eocPopup.lat},${eocPopup.lng}&travelmode=driving`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 px-3 py-2 text-[11px] font-bold transition"
+                  title="Buka di Google Maps"
+                >
+                  <Globe className="h-3.5 w-3.5 text-teal-700" />
+                  G-Maps
+                </a>
+              </>
+            ) : (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${eocPopup.lat},${eocPopup.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white py-2 text-[11px] font-bold shadow-xs transition"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Lihat di Google Maps
+              </a>
+            )}
+          </div>
         </div>
       )}
 

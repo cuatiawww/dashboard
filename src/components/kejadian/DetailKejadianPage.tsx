@@ -1181,19 +1181,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
 
 
-  const handleSelectTarget = (item: any, type: 'hospital' | 'clinic' | 'shelter') => {
-    if (!item || !item.latitude || !item.longitude || Number(item.latitude) === 0 || Number(item.longitude) === 0) return
+  const handleSelectTarget = (item: any, type: 'hospital' | 'clinic' | 'shelter' = 'clinic') => {
+    if (!item) {
+      setSelectedRouteTarget(null)
+      return
+    }
+    const lat = Number(item.latitude || item.lat || 0)
+    const lng = Number(item.longitude || item.lng || 0)
+    if (!lat || !lng) return
+
     setSelectedRouteTarget({
-      id: item.nama || item.nama_faskes || item.id || 'target',
+      id: item.nama || item.nama_faskes || item.id || `target-${lat}-${lng}`,
       name: item.nama || item.nama_faskes || 'Fasilitas Kesehatan',
-      latitude: Number(item.latitude),
-      longitude: Number(item.longitude),
+      latitude: lat,
+      longitude: lng,
       type
     })
-    // Auto scroll smoothly to map
-    setTimeout(() => {
-      document.getElementById('peta-detail')?.scrollIntoView({ behavior: 'smooth' })
-    }, 50)
   }
 
   // Google Maps Directions (From Origin Bencana ➔ To Target Faskes/Posko)
@@ -2583,11 +2586,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
             <DisasterMap
               markers={mapMarkers}
-              userScope={{
-                mode: 'kabupaten',
-                provinsi: { label: eventData.provinsi },
-                kabupaten: { label: eventData.kabupaten },
-              }}
+              userScope={useMemo(() => ({
+                mode: 'kabupaten' as const,
+                provinsi: { label: eventData.provinsi || '' },
+                kabupaten: { label: eventData.kabupaten || '' },
+              }), [eventData.provinsi, eventData.kabupaten])}
               isGuest={true}
               isFloodEocMode={true}
               selectedRouteTarget={selectedRouteTarget}
