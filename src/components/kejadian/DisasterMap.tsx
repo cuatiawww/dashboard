@@ -815,10 +815,7 @@ export default function DisasterMap({
               x,
               y
             })
-
-            if (itemType !== 'disaster' && onSelectRouteTargetRef.current) {
-              onSelectRouteTargetRef.current(rawItem, itemType)
-            }
+            // NOTE: Routing is triggered only when user clicks "Rute Taktis" button in popup
           }
 
           setMarkerPopup(null)
@@ -2849,9 +2846,10 @@ export default function DisasterMap({
               <>
                 <button
                   onClick={() => {
-                    if (onSelectRouteTargetRef.current) {
-                      onSelectRouteTargetRef.current(eocPopup.rawItem, eocPopup.type as any)
+                    if (onSelectRouteTarget) {
+                      onSelectRouteTarget(eocPopup.rawItem, eocPopup.type as any)
                     }
+                    setEocPopup(null)
                   }}
                   className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 text-[11px] font-bold shadow-xs transition"
                 >
