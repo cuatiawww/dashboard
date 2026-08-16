@@ -796,19 +796,22 @@ export default function DashboardKejadianPage() {
   // Handle initial deep-linking from query parameter ?id=... or pathname /detail-kejadian/...
   const initialChecked = useRef(false);
   const hadSelectedEventRef = useRef(false);
+  const pendingSlugRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const markersList = data?.markers || [];
+
     if (!initialChecked.current) {
       initialChecked.current = true;
       
-      const path = window.location.pathname;
-      const pathMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
-      if (pathMatch) {
-        const slugBencana = pathMatch[1];
-        const encryptedId = pathMatch[2];
+      const twoSlugMatch = path.match(/\/detail-kejadian\/([^\/]+)\/([^\/]+)/);
+      if (twoSlugMatch) {
+        const slugBencana = twoSlugMatch[1];
+        const encryptedId = twoSlugMatch[2];
         const decryptedId = decryptId(encryptedId);
         
         // Find matching marker if data already loaded, or use placeholder to query API detail
-        const markersList = data?.markers || [];
         const matchingEvent = markersList.find((m: any) => m.kode_trans === decryptedId);
         if (matchingEvent) {
           setSelectedEvent(matchingEvent);
@@ -828,11 +831,17 @@ export default function DashboardKejadianPage() {
         return;
       }
 
+      // Handle single-slug /detail-kejadian/:slug (e.g. /detail-kejadian/gempa-bumi-dan-tsunami)
+      const oneSlugMatch = path.match(/\/detail-kejadian\/([^\/]+)/);
+      if (oneSlugMatch) {
+        const slugBencana = oneSlugMatch[1].toLowerCase().replace(/-/g, ' ');
+        pendingSlugRef.current = slugBencana;
+      }
+
       // 2. Fallback to old query parameters ?id=...
       const urlParams = new URLSearchParams(window.location.search);
       const initialId = urlParams.get('id') || urlParams.get('detail');
       if (initialId) {
-        const markersList = data?.markers || [];
         const matchingEvent = markersList.find((m: any) => m.kode_trans === initialId);
         if (matchingEvent) {
           setSelectedEvent(matchingEvent);
@@ -849,6 +858,24 @@ export default function DashboardKejadianPage() {
           });
         }
         hadSelectedEventRef.current = true;
+        return;
+      }
+    }
+
+    // If there is a pending slug and markers are now available, pick the latest matching disaster
+    if (pendingSlugRef.current && markersList.length > 0 && !selectedEvent) {
+      const slug = pendingSlugRef.current.toLowerCase();
+      const keywords = slug.split(/\s+/).filter(k => k.length > 2 && k !== 'dan' && k !== 'atau');
+      
+      const matched = markersList.find((m: any) => {
+        const jName = String(m.jenis_bencana || m.nama || '').toLowerCase();
+        return keywords.some(kw => jName.includes(kw));
+      }) || markersList[0];
+
+      if (matched) {
+        setSelectedEvent(matched);
+        hadSelectedEventRef.current = true;
+        pendingSlugRef.current = null;
       }
     }
   }, [data?.markers]);

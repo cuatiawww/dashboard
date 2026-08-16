@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
           source: '/detail-kejadian/:jenis/:id',
           destination: '/',
         },
+        {
+          source: '/detail-kejadian/:jenis',
+          destination: '/',
+        },
       ],
       fallback: [
         // Semua /api/* yang tidak ada dedicated route.ts → proxy ke backend utama (web.php)

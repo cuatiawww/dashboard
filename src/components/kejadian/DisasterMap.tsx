@@ -1547,16 +1547,18 @@ export default function DisasterMap({
     const startLat = firstMarker ? firstMarker.lat : 1.6833
     const startLng = firstMarker ? firstMarker.lng : 98.8472
 
-    const getSvgPin = (color: string, iconType: 'flood' | 'hospital' | 'clinic' | 'shelter') => {
+    const getSvgPin = (color: string, iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster') => {
       let inner = '<circle cx="12" cy="10" r="3" fill="' + color + '"/>'
       if (iconType === 'hospital') {
-        inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.5"/>'
+        inner = '<path d="M12 6v8M8 10h8" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/><path d="M9 18h6" stroke="#ffffff" stroke-width="1.8"/>'
       } else if (iconType === 'clinic') {
-        inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.5"/>'
+        inner = '<path d="M12 6.5v7M8.5 10h7" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>'
+      } else if (iconType === 'pustu') {
+        inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>'
       } else if (iconType === 'shelter') {
-        inner = '<path d="M12 6l5 4v6H7v-6l5-4z" stroke="#ffffff" stroke-width="2"/>'
-      } else if (iconType === 'flood') {
-        inner = '<path d="M12 7v5M12 16h.01" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>'
+        inner = '<path d="M12 6l5 4.5v5.5H7v-5.5l5-4.5z" stroke="#ffffff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>'
+      } else if (iconType === 'flood' || iconType === 'gempa' || iconType === 'disaster') {
+        inner = '<circle cx="12" cy="10" r="3.5" fill="#ffffff"/><circle cx="12" cy="10" r="1.5" fill="' + color + '"/>'
       }
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="34" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" fill="${color}" opacity="0.95"/>${inner}</svg>`
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
@@ -1577,21 +1579,21 @@ export default function DisasterMap({
         const lng = Number(m.lng)
 
         // Draw pin marker
-        const floodFeat = new Feature({
+        const disasterFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
-          id: `flood-${idx}`,
-          name: m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : 'Titik Kejadian Bencana',
+          id: `disaster-${idx}`,
+          name: m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : (m.nama || 'Pusat Kejadian Bencana'),
           rawItem: m,
           itemType: 'disaster'
         })
-        floodFeat.setStyle(new Style({
+        disasterFeat.setStyle(new Style({
           image: new Icon({
-            src: getSvgPin('#ef4444', 'flood'),
-            scale: 0.9,
+            src: getSvgPin('#dc2626', 'disaster'),
+            scale: 0.95,
             anchor: [0.5, 1]
           })
         }))
-        source.addFeature(floodFeat)
+        source.addFeature(disasterFeat)
 
         // Draw pulsing radius circle
         const radiusInMeters = pulseRadius * 1000
@@ -1599,8 +1601,8 @@ export default function DisasterMap({
           geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
           id: `pulse-circle-${idx}`
         })
-        const fillColor = pulsePhase === 0 ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.15)'
-        const strokeColor = pulsePhase === 0 ? 'rgba(239, 68, 68, 0.35)' : 'rgba(239, 68, 68, 0.65)'
+        const fillColor = pulsePhase === 0 ? 'rgba(220, 38, 38, 0.05)' : 'rgba(220, 38, 38, 0.15)'
+        const strokeColor = pulsePhase === 0 ? 'rgba(220, 38, 38, 0.35)' : 'rgba(220, 38, 38, 0.65)'
         const strokeWidth = pulsePhase === 0 ? 1.2 : 2.0
         
         circleFeat.setStyle(new Style({
@@ -1620,18 +1622,38 @@ export default function DisasterMap({
       if (f.latitude && f.longitude && Number(f.latitude) !== 0 && Number(f.longitude) !== 0) {
         const lat = Number(f.latitude)
         const lng = Number(f.longitude)
-        const isRS = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('rs') || String(f.nama || '').toLowerCase().includes('rs')
+        const jStr = String(f.jenis || f.jenis_faskes || '').toLowerCase()
+        const nStr = String(f.nama || '').toLowerCase()
+
+        let pinColor = '#059669' // emerald for Puskesmas
+        let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'clinic'
+        let itemCategory: 'hospital' | 'clinic' = 'clinic'
+
+        if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) {
+          pinColor = '#2563eb' // blue for RS
+          iconType = 'hospital'
+          itemCategory = 'hospital'
+        } else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')) {
+          pinColor = '#d97706' // amber for Pustu
+          iconType = 'pustu'
+          itemCategory = 'clinic'
+        } else if (jStr.includes('klinik') || nStr.includes('klinik')) {
+          pinColor = '#0891b2' // cyan for Klinik
+          iconType = 'clinic'
+          itemCategory = 'clinic'
+        }
+
         const fFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
           id: f.nama || `faskes-${idx}`,
           name: f.nama,
           rawItem: f,
-          itemType: isRS ? 'hospital' : 'clinic'
+          itemType: itemCategory
         })
         fFeat.setStyle(new Style({
           image: new Icon({
-            src: getSvgPin(isRS ? '#3b82f6' : '#10b981', isRS ? 'hospital' : 'clinic'),
-            scale: 0.85,
+            src: getSvgPin(pinColor, iconType),
+            scale: 0.88,
             anchor: [0.5, 1]
           })
         }))
@@ -1648,14 +1670,14 @@ export default function DisasterMap({
         
         // Customize color & icon based on jenis_pos
         const jenisPos = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase()
-        let pinColor = '#2563eb' // default blue for Pos Pengungsian
-        let iconType: 'flood' | 'hospital' | 'clinic' | 'shelter' = 'shelter'
+        let pinColor = '#7c3aed' // purple for Pos Pengungsian
+        let iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' = 'shelter'
 
         if (jenisPos.includes('kesehatan & pengungsian') || jenisPos.includes('kesehatan dan pengungsian')) {
-          pinColor = '#f59e0b' // orange for health & shelter combined
+          pinColor = '#ea580c' // orange for health & shelter combined
           iconType = 'shelter'
         } else if (jenisPos.includes('kesehatan')) {
-          pinColor = '#10b981' // green/emerald for Pos Kesehatan
+          pinColor = '#059669' // emerald for Pos Kesehatan
           iconType = 'clinic'
         }
 
@@ -1669,7 +1691,7 @@ export default function DisasterMap({
         pFeat.setStyle(new Style({
           image: new Icon({
             src: getSvgPin(pinColor, iconType),
-            scale: 0.85,
+            scale: 0.88,
             anchor: [0.5, 1]
           })
         }))
@@ -1736,7 +1758,7 @@ export default function DisasterMap({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
                 <Compass className="h-3.5 w-3.5 text-teal-700" />
-                Info Jalur Evakuasi
+                Info Rujukan Faskes &amp; Evakuasi
               </span>
               {selectedRouteTarget && (
                 <button 
@@ -1775,10 +1797,10 @@ export default function DisasterMap({
                   <span className="text-[9px] font-bold text-slate-455 uppercase block">Rute Taktis Darurat</span>
                   <p className="text-[11px] text-slate-650 leading-relaxed font-semibold">
                     {selectedRouteTarget.type === 'hospital' 
-                      ? 'Rute evakuasi gawat darurat ambulans menuju rumah sakit rujukan utama.'
+                      ? 'Rute evakuasi gawat darurat ambulans menuju Rumah Sakit rujukan utama.'
                       : selectedRouteTarget.type === 'shelter'
-                      ? 'Jalur penyelamatan warga terdampak genangan menuju posko pengungsian terdekat.'
-                      : 'Akses medis menuju Puskesmas pembantu setempat. Awasi titik genangan air.'
+                      ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
+                      : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
                     }
                   </p>
                 </div>
@@ -1786,7 +1808,7 @@ export default function DisasterMap({
             ) : (
               <div className="text-center py-4 text-slate-400">
                 <Compass className="h-7 w-7 mx-auto text-slate-300 mb-1.5 stroke-[1.5]" />
-                <p className="text-[11px] leading-relaxed">Pilih salah satu faskes terdekat atau posko di tabel bawah untuk menggambar rute jalan real-time.</p>
+                <p className="text-[11px] leading-relaxed">Klik salah satu faskes (RS / Puskesmas / Klinik) atau posko untuk menggambar rute jalan real-time.</p>
               </div>
             )}
           </div>
@@ -2099,17 +2121,17 @@ export default function DisasterMap({
                     <div className="flex items-center gap-2.5 mb-2.5">
                       <Compass className="h-4 w-4 text-rose-500 shrink-0" />
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">Radius Denyutan Bencana</p>
-                        <p className="text-[10px] text-slate-400">Jangkauan area dampak (Angka Ganjil)</p>
+                        <p className="text-xs font-semibold text-slate-800">Radius Episentrum &amp; Dampak</p>
+                        <p className="text-[10px] text-slate-400">Jangkauan area dampak (km)</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-5 gap-1">
                       {[
                         { label: '1 km', value: 1 },
-                        { label: '3 km', value: 3 },
                         { label: '5 km', value: 5 },
-                        { label: '7 km', value: 7 },
                         { label: '10 km', value: 10 },
+                        { label: '25 km', value: 25 },
+                        { label: '50 km', value: 50 },
                       ].map((opt) => (
                         <button
                           key={opt.value}

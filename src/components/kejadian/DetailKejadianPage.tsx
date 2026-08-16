@@ -730,7 +730,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   // Fetch real route from OSRM Routing API (real road network routing)
   useEffect(() => {
-    if (!isBanjir || !selectedRouteTarget) {
+    if (!selectedRouteTarget) {
       setRouteCoords([])
       setRouteInfo(null)
       return
@@ -771,7 +771,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .finally(() => {
         setIsLoadingRoute(false)
       })
-  }, [selectedRouteTarget, selectedRouteSource, isBanjir, eventData, detail])
+  }, [selectedRouteTarget, selectedRouteSource, eventData, detail])
 
   // Parse event date (tgl_kejadian) and calculate H-3 to H+3 date strings
   const eventDateObj = useMemo(() => {
@@ -881,7 +881,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10) from Open-Meteo Air Quality API for event date range (startStr to endStr)
   useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
-    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 98.8472)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
     const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&hourly=us_aqi,pm2_5,pm10&daily=us_aqi_max,pm2_5_max&timezone=Asia/Jakarta`
 
@@ -941,7 +941,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   // Fetch weekly weather history/forecast (H-3 to H+3) from Open-Meteo for all disasters
   useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
-    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 98.8472)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
     const isPast = (new Date().getTime() - eventDateObj.getTime()) > 1000 * 60 * 60 * 24 * 14
     const apiDomain = isPast ? 'archive-api.open-meteo.com' : 'api.open-meteo.com'
@@ -2052,69 +2052,50 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   return (
     <div className="w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] animate-in fade-in duration-200">
       {/* Back navigation & Header */}
-      {isBanjir ? (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
-            >
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide">
-                RINGKASAN SITUASI - BANJIR
-              </h2>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
-            <span>Terakhir Diperbarui: {formattedDate}</span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live
-            </span>
-            <button
-              onClick={handleShare}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              title="Bagikan tautan"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              {shareCopied ? 'Tersalin' : 'Share'}
-            </button>
-            <button
-              onClick={handleDownload}
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              title="Unduh ringkasan"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Unduh
-            </button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
+            title="Kembali ke Dashboard"
+          >
+            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div>
+            <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide">
+              RINGKASAN SITUASI - {eventData.jenis_bencana}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pemantauan rincian spasial faskes, logistik darurat, dan dampak korban krisis kesehatan.
+            </p>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
-            >
-              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div>
-              <h2 className="text-[18px] font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                DETAIL KEJADIAN KRISIS KESEHATAN
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Pemantauan rincian komprehensif logistik dan dampak korban untuk kejadian bencana.
-              </p>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
+          <span>Terakhir Diperbarui: {formattedDate}</span>
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live
+          </span>
+          <button
+            onClick={handleShare}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            title="Bagikan tautan"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            {shareCopied ? 'Tersalin' : 'Share'}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            title="Unduh ringkasan"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Unduh
+          </button>
         </div>
-      )}
+      </div>
 
       {/* EOC Top Section Layout (Responsive Flex Container containing Merged Header & Metrics) */}
       {true && (
@@ -2379,7 +2360,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       <article id="peta-detail" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] space-y-5">
         <div>
           <h4 className="text-base font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3">
-            PEMETAAN SPASIAL KEJADIAN BENCANA {isBanjir && '(EOC ROUTING & FASKES)'}
+            PEMETAAN SPASIAL KEJADIAN BENCANA (EOC ROUTING &amp; FASKES)
           </h4>
 
           <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
@@ -2391,7 +2372,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 kabupaten: { label: eventData.kabupaten },
               }}
               isGuest={true}
-              isFloodEocMode={isBanjir}
+              isFloodEocMode={true}
               selectedRouteTarget={selectedRouteTarget}
               routeCoords={routeCoords}
               routeInfo={routeInfo}
@@ -2780,7 +2761,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="space-y-4">
                 {/* Total Counter / Summary Widget Bar */}
                 {Array.isArray(detail?.faskes_terdekat) && (
-                  <div className="hidden grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-slate-900/5 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-slate-900/5 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs">
                     <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-black text-base shadow-2xs">
                         {detail.faskes_terdekat.length}
