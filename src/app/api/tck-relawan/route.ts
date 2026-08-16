@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from 'next/server'
  * Endpoint: POST https://tenagacadangankesehatan.kemkes.go.id/web/web_api/v1/relawan-tck
  * Parameters: kd_prop (kode provinsi), kd_kab (opsional, kode kabupaten)
  */
+
+// Token otorisasi untuk TCK Kemkes API
+const TCK_TOKEN = 'eyJpdiI6InhVTFwvTEsyXC9vZStSYXhzR2lKRmppZz09IiwidmFsdWUiOiJiN3ZlXC9VR2dsZDhWNGJWY0pnRXZ6TVFxQWRweFZMRVdGa1YrZTY5RW9ZY0dmOXBLUFFGbFNIdU5Hck51aWJ6ZW9Tb05ad3BHaFYzQ3pWY3pPYTFxOHArd1pHNWN5SHkxRHl6VEZEemRJMDZ4RFM5bDZYQ05VcGY5aW5qNmdyQ0pqZGQ1OGRYajhGTlwveGZUbU5ZcVNqbkxcL05US29XOE40Z3lDOUNmOGJPRGZSSllYeUw5MHRQSTBuQnIwUjF0SzQiLCJtYWMiOiJlNjk5ZTYzOGMxM2EzZjVmYWQyNjE4Nzg3NWM2NTdlOTNiZGVkNTQwNjY2YjhlMDVhNzFmODQ3MTc0MGM2MGM1In0'
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -30,15 +34,21 @@ export async function POST(req: NextRequest) {
         body: formData,
         headers: {
           'Accept': 'application/json',
+          'Authorization': `Bearer ${TCK_TOKEN}`,
+          'Cookie': `token=${TCK_TOKEN}`,
+          'X-Requested-With': 'XMLHttpRequest',
           'Origin': 'https://tenagacadangankesehatan.kemkes.go.id',
-          'Referer': 'https://tenagacadangankesehatan.kemkes.go.id/',
+          'Referer': 'https://tenagacadangankesehatan.kemkes.go.id/web/tck',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
         },
-        // Next.js cache: revalidate setiap 5 menit
-        next: { revalidate: 300 }
+        // cache bersih agar token baru selalu dipakai
+        cache: 'no-store',
       }
     )
 
     if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error(`[TCK API] HTTP ${res.status}:`, errText.slice(0, 200))
       throw new Error(`TCK API responded with HTTP ${res.status}`)
     }
 
