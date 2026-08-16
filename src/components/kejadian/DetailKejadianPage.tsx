@@ -196,6 +196,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [tckSearch, setTckSearch] = useState('')
   const [tckTab, setTckTab] = useState<'semua' | 'nakes' | 'emt'>('semua')
 
+  // ── Tren Korban Chart View Mode ──
+  const [trendMetricMode, setTrendMetricMode] = useState<'dual' | 'korban' | 'penduduk'>('dual')
+
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
     if (!shareUrl) return
@@ -2815,27 +2818,105 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               {/* ── 3 Column Charts ── */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-300">
 
-                {/* Chart 1: Tren Korban */}
+                {/* Chart 1: Tren Korban & Penduduk (Dual Y-Axis) */}
                 <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-teal-200 transition-all duration-200 flex flex-col justify-between h-full">
                   <div className="flex flex-col flex-1">
-                    <div className="mb-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 mb-1">
                       <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Korban &amp; Penduduk</h4>
+                      {/* Metric Toggle Tabs */}
+                      <div className="flex gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[9px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setTrendMetricMode('dual')}
+                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'dual' ? 'bg-white text-teal-800 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
+                          title="Tampilkan skala ganda (Korban & Penduduk)"
+                        >
+                          Dual Skala
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTrendMetricMode('korban')}
+                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
+                          title="Fokus grafik korban jiwa (Meninggal, Luka, Pengungsi)"
+                        >
+                          Fokus Korban
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTrendMetricMode('penduduk')}
+                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
+                          title="Fokus populasi terdampak/terancam"
+                        >
+                          Penduduk
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Pergerakan total korban, pengungsi, dan penduduk terancam/terdampak</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mb-2">
+                      {trendMetricMode === 'dual' && 'Sumbu Kiri: Korban Jiwa | Sumbu Kanan: Penduduk Terdampak'}
+                      {trendMetricMode === 'korban' && 'Fokus grafik pergerakan korban meninggal, luka-luka & pengungsi'}
+                      {trendMetricMode === 'penduduk' && 'Pergerakan estimasi penduduk terancam / terdampak'}
+                    </p>
                     <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={victimTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <LineChart data={victimTrendData} margin={{ top: 10, right: trendMetricMode === 'dual' ? 10 : 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                             <XAxis dataKey="date" stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-3 text-slate-700 font-bold">{value}</span>} />
-                            <Line type="monotone" dataKey="Total Korban" stroke="#475569" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
-                            <Line type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" />
+                            
+                            {/* Left Y-Axis: Korban (0 - puluhan/ratusan) */}
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                              <YAxis
+                                yAxisId="left"
+                                stroke="#e11d48"
+                                tickLine={false}
+                                style={{ fontSize: '10px' }}
+                                allowDecimals={false}
+                              />
+                            )}
+
+                            {/* Right Y-Axis: Penduduk Terancam/Terdampak (skala ribuan) */}
+                            {trendMetricMode === 'dual' && (
+                              <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                stroke="#0f766e"
+                                tickLine={false}
+                                style={{ fontSize: '9px' }}
+                                tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                              />
+                            )}
+
+                            {trendMetricMode === 'penduduk' && (
+                              <YAxis
+                                yAxisId="right"
+                                stroke="#0f766e"
+                                tickLine={false}
+                                style={{ fontSize: '10px' }}
+                                tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                              />
+                            )}
+
+                            <Tooltip
+                              contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                              formatter={(value: any) => [Number(value || 0).toLocaleString('id-ID')]}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-2 text-slate-700 font-bold">{value}</span>} />
+
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                              <Line yAxisId="left" type="monotone" dataKey="Total Korban" stroke="#475569" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                            )}
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'penduduk') && (
+                              <Line yAxisId="right" type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2} strokeDasharray={trendMetricMode === 'dual' ? '4 4' : undefined} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                            )}
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                              <Line yAxisId="left" type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                            )}
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                              <Line yAxisId="left" type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                            )}
+                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                              <Line yAxisId="left" type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                            )}
                             <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
