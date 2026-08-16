@@ -240,7 +240,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     name: string
     latitude: number
     longitude: number
-    type: 'hospital' | 'clinic' | 'shelter'
+    type: 'hospital' | 'clinic' | 'shelter' | 'tck'
   } | null>(null)
 
   const [selectedRouteSource, setSelectedRouteSource] = useState<{
@@ -1331,7 +1331,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
 
 
-  const handleSelectTarget = (item: any, type: 'hospital' | 'clinic' | 'shelter' = 'clinic') => {
+  const handleSelectTarget = (item: any, type: 'hospital' | 'clinic' | 'shelter' | 'tck' = 'clinic') => {
     if (!item) {
       setSelectedRouteTarget(null)
       return
@@ -1341,8 +1341,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (!lat || !lng) return
 
     setSelectedRouteTarget({
-      id: item.nama || item.nama_faskes || item.id || `target-${lat}-${lng}`,
-      name: item.nama || item.nama_faskes || 'Fasilitas Kesehatan',
+      id: item.nama || item.nama_lengkap || item.nama_faskes || item.id || `target-${lat}-${lng}`,
+      name: item.nama_lengkap || item.nama || item.nama_faskes || 'Relawan / Fasilitas Kesehatan',
       latitude: lat,
       longitude: lng,
       type
@@ -2746,6 +2746,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               routeInfo={routeInfo}
               faskesList={detail?.faskes_terdekat}
               poskoList={detail?.pos_pengungsi}
+              tckList={tckRelawan}
               onSelectRouteTarget={handleSelectTarget}
               disasterType={eventData.jenis_bencana}
               selectedRouteSource={selectedRouteSource}
@@ -4235,18 +4236,35 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <div className="space-y-1 text-[11px]">
                               {r.pekerjaan && <div className="flex items-center gap-1.5 text-slate-600"><BriefcaseMedical className="h-3 w-3 text-slate-400 shrink-0" /><span className="truncate">{r.pekerjaan}</span></div>}
                               {(r.nama_tim_emt || r.organisasi) && <div className="flex items-center gap-1.5 text-slate-600"><Building2 className="h-3 w-3 text-slate-400 shrink-0" /><span className="truncate font-semibold">{r.nama_tim_emt || r.organisasi}</span></div>}
-                              <div className="flex items-center justify-between pt-0.5">
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-1">
                                 <div className="flex items-center gap-1.5 text-slate-500">
                                   <Users className="h-3 w-3 shrink-0" />
                                   <span>{r.jenis_kelamin || 'N/A'} · {r.usia ? `${r.usia} th` : 'N/A'}</span>
                                 </div>
-                                {r.nomor_telp && (
-                                  <a href={`https://wa.me/${r.nomor_telp.replace(/[^0-9]/g, '').replace(/^0/, '62')}`}
-                                    target="_blank" rel="noopener noreferrer"
-                                    className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-bold hover:bg-emerald-100 transition">
-                                    <Phone className="h-2.5 w-2.5" />WA
-                                  </a>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      // Scroll smoothly to map
+                                      const mapEl = document.getElementById('peta-detail')
+                                      if (mapEl) {
+                                        mapEl.scrollIntoView({ behavior: 'smooth' })
+                                      }
+                                      handleSelectTarget(r, 'tck')
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[10px] font-bold hover:bg-teal-100 transition shadow-2xs"
+                                    title="Pilih dan Buat Rute ke Relawan TCK ini"
+                                  >
+                                    <Compass className="h-3 w-3 text-teal-700" />
+                                    Rute
+                                  </button>
+                                  {r.nomor_telp && (
+                                    <a href={`https://wa.me/${r.nomor_telp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20${encodeURIComponent(r.nama_lengkap || 'Relawan TCK')},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes.`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold hover:bg-emerald-100 transition shadow-2xs">
+                                      <Phone className="h-3 w-3" />WA
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>

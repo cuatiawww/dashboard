@@ -84,13 +84,14 @@ interface DisasterMapProps {
     name: string
     latitude: number
     longitude: number
-    type: 'hospital' | 'clinic' | 'shelter'
+    type: 'hospital' | 'clinic' | 'shelter' | 'tck'
   } | null
   routeCoords?: number[][]
   routeInfo?: { distance: number; duration: number } | null
   faskesList?: any[]
   poskoList?: any[]
-  onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter') => void
+  tckList?: any[]
+  onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter' | 'tck') => void
   disasterType?: string
   selectedRouteSource?: any
   onSelectRouteSource?: (source: any) => void
@@ -105,7 +106,7 @@ interface MarkerPopupState {
 
 interface EocPopupState {
   rawItem: any
-  type: 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster'
+  type: 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck'
   name: string
   address?: string
   lat: number
@@ -120,6 +121,12 @@ interface EocPopupState {
     ambulans?: number | string
     pengungsi_jiwa?: number | string
     kontak?: string
+    golongan?: string
+    spesifikasi?: string
+    organisasi?: string
+    nama_tim_emt?: string
+    pekerjaan?: string
+    nomor_telp?: string
   }
   x: number
   y: number
@@ -263,6 +270,7 @@ export default function DisasterMap({
   routeInfo = null,
   faskesList = [],
   poskoList = [],
+  tckList = [],
   onSelectRouteTarget,
   disasterType,
   selectedRouteSource = null,
@@ -271,6 +279,8 @@ export default function DisasterMap({
 }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
+
+  const [showTckLayer, setShowTckLayer] = useState(true) // Toggle layer TCK Kemkes
 
   // Infer normalized disaster category ONLY when disasterType is explicitly provided (Detail Page)
   const disasterCategory = useMemo(() => {
@@ -798,19 +808,25 @@ export default function DisasterMap({
               rawItem,
               type: itemType || 'clinic',
               name,
-              address: rawItem.alamat || rawItem.kecamatan || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : ''),
+              address: rawItem.alamat || rawItem.kecamatan || (rawItem.kab_kota ? `Kab. ${rawItem.kab_kota}` : '') || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : ''),
               lat,
               lng,
               distance: distKm > 0.05 ? Number(distKm.toFixed(1)) : 0,
               details: {
-                jenis: rawItem.jenis || rawItem.jenis_faskes || rawItem.jenis_pos,
+                jenis: rawItem.jenis || rawItem.jenis_faskes || rawItem.jenis_pos || (itemType === 'tck' ? 'Relawan TCK Kemkes RI' : undefined),
                 operasional: rawItem.operasional || rawItem.status_operasional || 'Operasional Normal',
                 dokter: rawItem.dokter,
                 perawat: rawItem.perawat,
                 kapasitas: rawItem.kapasitas || rawItem.tt_tersedia,
                 ambulans: rawItem.ambulans,
                 pengungsi_jiwa: rawItem.jml_pengungsi || rawItem.jiwa,
-                kontak: rawItem.telepon || rawItem.kontak || rawItem.pj_kontak
+                kontak: rawItem.telepon || rawItem.kontak || rawItem.pj_kontak || rawItem.nomor_telp,
+                golongan: rawItem.golongan,
+                spesifikasi: rawItem.spesifikasi,
+                organisasi: rawItem.organisasi,
+                nama_tim_emt: rawItem.nama_tim_emt,
+                pekerjaan: rawItem.pekerjaan,
+                nomor_telp: rawItem.nomor_telp
               },
               x,
               y
@@ -1614,7 +1630,7 @@ export default function DisasterMap({
     const startLat = firstMarker ? firstMarker.lat : 1.6833
     const startLng = firstMarker ? firstMarker.lng : 98.8472
 
-    const getSvgPin = (color: string, iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster') => {
+    const getSvgPin = (color: string, iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck') => {
       let inner = '<circle cx="12" cy="10" r="3" fill="' + color + '"/>'
       if (iconType === 'hospital') {
         inner = '<path d="M12 6v8M8 10h8" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/><path d="M9 18h6" stroke="#ffffff" stroke-width="1.8"/>'
@@ -1624,6 +1640,8 @@ export default function DisasterMap({
         inner = '<path d="M12 7v6M9 10h6" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>'
       } else if (iconType === 'shelter') {
         inner = '<path d="M12 6l5 4.5v5.5H7v-5.5l5-4.5z" stroke="#ffffff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>'
+      } else if (iconType === 'tck') {
+        inner = '<path d="M12 7.2c-1.1-1.8-3.4-2-4.5-.7-1.3 1.4-1 3.5.3 4.9L12 15.5l4.2-4.1c1.3-1.4 1.6-3.5.3-4.9-1.1-1.3-3.4-1.1-4.5.7z" stroke="#ffffff" stroke-width="1.6" fill="#ffffff"/>'
       } else if (iconType === 'flood' || iconType === 'gempa' || iconType === 'disaster') {
         inner = '<circle cx="12" cy="10" r="3.5" fill="#ffffff"/><circle cx="12" cy="10" r="1.5" fill="' + color + '"/>'
       }
@@ -1760,6 +1778,84 @@ export default function DisasterMap({
       }
     })
 
+    // 4. Add TCK Relawan List (if enabled)
+    if (showTckLayer) {
+      const tList = Array.isArray(tckList) ? tckList : []
+      const nttKabCoords: Record<string, [number, number]> = {
+        'mangga': [-8.62, 120.46],
+        'manggarai timur': [-8.65, 120.57],
+        'manggarai barat': [-8.56, 119.98],
+        'flores timur': [-8.33, 122.98],
+        'lembata': [-8.37, 123.54],
+        'sikka': [-8.62, 122.21],
+        'ende': [-8.84, 121.65],
+        'ngada': [-8.78, 120.97],
+        'nagekeo': [-8.70, 121.28],
+        'alor': [-8.29, 124.57],
+        'timor tengah selatan': [-9.86, 124.28],
+        'kupang': [-10.17, 123.60]
+      }
+
+      tList.forEach((tck: any, idx: number) => {
+        let tLat = Number(tck.latitude || tck.lat || 0)
+        let tLng = Number(tck.longitude || tck.lng || 0)
+
+        // If no explicit coordinates, attempt matching with faskesList or NTB/NTT kabupaten center
+        if (tLat === 0 || tLng === 0) {
+          const occ = String(tck.pekerjaan || '').toLowerCase()
+          const matchedF = fList.find((f: any) => {
+            const fName = String(f.nama || '').toLowerCase()
+            return occ && (fName.includes(occ) || occ.includes(fName))
+          })
+
+          if (matchedF && (matchedF.latitude || matchedF.lat)) {
+            const jitterLat = ((idx % 7) - 3) * 0.002
+            const jitterLng = (((idx * 3) % 7) - 3) * 0.002
+            tLat = Number(matchedF.latitude || matchedF.lat) + jitterLat
+            tLng = Number(matchedF.longitude || matchedF.lng) + jitterLng
+          } else {
+            const kabStr = String(tck.kab_kota || '').toLowerCase()
+            let matchedCoords: [number, number] | null = null
+            for (const [kKey, coords] of Object.entries(nttKabCoords)) {
+              if (kabStr.includes(kKey)) {
+                matchedCoords = coords
+                break
+              }
+            }
+            if (!matchedCoords) {
+              matchedCoords = [startLat || -8.62, startLng || 120.46]
+            }
+            const jitterLat = ((idx % 9) - 4) * 0.004
+            const jitterLng = (((idx * 2) % 9) - 4) * 0.004
+            tLat = matchedCoords[0] + jitterLat
+            tLng = matchedCoords[1] + jitterLng
+          }
+        }
+
+        if (tLat !== 0 && tLng !== 0) {
+          const tFeat = new Feature({
+            geometry: new Point(fromLonLat([tLng, tLat])),
+            id: tck.id_relawan || `tck-${idx}`,
+            name: tck.nama || 'Relawan TCK Kemkes',
+            rawItem: {
+              ...tck,
+              latitude: tLat,
+              longitude: tLng
+            },
+            itemType: 'tck'
+          })
+          tFeat.setStyle(new Style({
+            image: new Icon({
+              src: getSvgPin('#0d9488', 'tck'),
+              scale: 0.9,
+              anchor: [0.5, 1]
+            })
+          }))
+          source.addFeature(tFeat)
+        }
+      })
+    }
+
     // 4. Draw route if active
     if (routeCoords && routeCoords.length > 0) {
       const lineCoords = routeCoords.map((c) => fromLonLat(c))
@@ -1788,7 +1884,7 @@ export default function DisasterMap({
     } else if (!selectedRouteTarget) {
       prevTargetIdRef.current = null
     }
-  }, [showEocRoute, isFloodEocMode, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, showTckLayer, tckList, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -1865,6 +1961,8 @@ export default function DisasterMap({
                       ? 'Rute evakuasi gawat darurat ambulans menuju Rumah Sakit rujukan utama.'
                       : selectedRouteTarget.type === 'shelter'
                       ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
+                      : selectedRouteTarget.type === 'tck'
+                      ? 'Jalur koordinasi darurat & mobilisasi penugasan Tenaga Cadangan Kesehatan (TCK) / Tim EMT menuju lokasi bencana.'
                       : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
                     }
                   </p>
@@ -1873,7 +1971,7 @@ export default function DisasterMap({
             ) : (
               <div className="text-center py-4 text-slate-400">
                 <Compass className="h-7 w-7 mx-auto text-slate-300 mb-1.5 stroke-[1.5]" />
-                <p className="text-[11px] leading-relaxed">Klik salah satu faskes (RS / Puskesmas / Klinik) atau posko untuk menggambar rute jalan real-time.</p>
+                <p className="text-[11px] leading-relaxed">Klik salah satu faskes (RS / Puskesmas / Klinik), posko, atau relawan TCK untuk menggambar rute jalan real-time.</p>
               </div>
             )}
           </div>
@@ -1928,7 +2026,9 @@ export default function DisasterMap({
                 <Compass className="h-4 w-4" />
               </span>
               <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-teal-700 block leading-none">RUTE NAVIGASI DARAT EOC</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-teal-700 block leading-none">
+                  {selectedRouteTarget.type === 'tck' ? 'RUTE MOBILISASI TCK KEMKES' : 'RUTE NAVIGASI DARAT EOC'}
+                </span>
                 <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-tight mt-0.5 truncate max-w-[230px]">
                   DARI BENCANA ➔ {selectedRouteTarget.name}
                 </h4>
@@ -1957,7 +2057,8 @@ export default function DisasterMap({
               <span className="h-2.5 w-2.5 rounded-full bg-teal-600 shrink-0" />
               <span className="text-[10px] font-black text-teal-800 uppercase shrink-0 w-10">KE:</span>
               <span className="font-extrabold text-slate-900 truncate">
-                🏥 {selectedRouteTarget.name}
+                {selectedRouteTarget.type === 'tck' ? '🧑‍⚕️ ' : selectedRouteTarget.type === 'shelter' ? '⛺ ' : '🏥 '}
+                {selectedRouteTarget.name}
               </span>
             </div>
 
@@ -2321,12 +2422,38 @@ export default function DisasterMap({
 
               </div>
 
-              {/* ── BMKG EWS Layers Section ── */}
+              {/* ── BMKG & TCK Layers Section ── */}
               <div className="mb-6 border-b border-slate-100 pb-5 space-y-2.5">
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
-                  INTEGRASI EWS BMKG
+                  SUMBER DAYA & EWS TERPADU
                 </p>
                 
+                {/* Toggle TCK Kemkes Layer */}
+                <div
+                  onClick={() => setShowTckLayer((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-teal-100 bg-teal-50/50 px-3 py-2 hover:bg-teal-100/50 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-teal-900 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-teal-600 animate-pulse" />
+                      Relawan TCK Kemkes RI
+                      {tckList && tckList.length > 0 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-teal-700 text-white rounded-full">
+                          {tckList.length}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-teal-700 font-medium">Titik sebaran dokter, perawat & tim EMT siaga</p>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showTckLayer ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showTckLayer ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
                 {/* Toggle EWS Pulse Radius Circles */}
                 <div
                   onClick={() => setShowEwsPulse((v) => !v)}
@@ -2766,7 +2893,9 @@ export default function DisasterMap({
           <div className="flex items-start justify-between border-b border-slate-100 p-3.5 pb-3 bg-slate-50/70">
             <div className="min-w-0 flex-1">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                eocPopup.type === 'hospital'
+                eocPopup.type === 'tck'
+                  ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                  : eocPopup.type === 'hospital'
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
                   : eocPopup.type === 'shelter'
                   ? 'bg-purple-50 text-purple-700 border border-purple-200'
@@ -2777,7 +2906,9 @@ export default function DisasterMap({
                   : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}>
                 <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                {eocPopup.type === 'hospital'
+                {eocPopup.type === 'tck'
+                  ? 'Relawan TCK Kemkes RI'
+                  : eocPopup.type === 'hospital'
                   ? 'Rumah Sakit Rujukan'
                   : eocPopup.type === 'shelter'
                   ? 'Posko Pengungsian & Medis'
@@ -2790,6 +2921,18 @@ export default function DisasterMap({
               <h4 className="mt-1.5 text-sm font-black text-slate-900 leading-snug">
                 {eocPopup.name}
               </h4>
+              {eocPopup.type === 'tck' && eocPopup.details?.golongan && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 bg-teal-100/80 text-teal-800 rounded">
+                    {eocPopup.details.golongan}
+                  </span>
+                  {eocPopup.details.spesifikasi && (
+                    <span className="text-[9.5px] font-semibold text-slate-600 truncate">
+                      {eocPopup.details.spesifikasi}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <button
               onClick={() => setEocPopup(null)}
@@ -2801,11 +2944,34 @@ export default function DisasterMap({
           </div>
 
           {/* Body */}
-          <div className="p-3.5 space-y-2.5 text-slate-650">
+          <div className="p-3.5 space-y-2.5 text-slate-650 max-h-[360px] overflow-y-auto">
             {eocPopup.address && (
               <div className="flex items-start gap-2 text-[11px]">
                 <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
                 <span className="font-semibold text-slate-700 leading-snug">{eocPopup.address}</span>
+              </div>
+            )}
+
+            {eocPopup.type === 'tck' && (
+              <div className="space-y-1.5 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100 text-[11px]">
+                {eocPopup.details?.pekerjaan && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-slate-500 font-medium shrink-0 text-[10px] uppercase w-16">Faskes/Unit:</span>
+                    <strong className="text-slate-800">{eocPopup.details.pekerjaan}</strong>
+                  </div>
+                )}
+                {eocPopup.details?.nama_tim_emt && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-slate-500 font-medium shrink-0 text-[10px] uppercase w-16">Tim EMT:</span>
+                    <strong className="text-teal-900">{eocPopup.details.nama_tim_emt}</strong>
+                  </div>
+                )}
+                {eocPopup.details?.organisasi && eocPopup.details.organisasi !== eocPopup.details.nama_tim_emt && (
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-slate-500 font-medium shrink-0 text-[10px] uppercase w-16">Klaster:</span>
+                    <strong className="text-slate-700">{eocPopup.details.organisasi}</strong>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2816,48 +2982,115 @@ export default function DisasterMap({
               </div>
             )}
 
-            {/* Quick Metrics Grid */}
-            <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
-              {eocPopup.details?.kapasitas ? (
-                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Kapasitas TT</span>
-                  <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.kapasitas} Bed</span>
-                </div>
-              ) : null}
+            {/* Quick Metrics Grid (for Faskes/Shelter) */}
+            {eocPopup.type !== 'tck' && (
+              <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
+                {eocPopup.details?.kapasitas ? (
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                    <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Kapasitas TT</span>
+                    <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.kapasitas} Bed</span>
+                  </div>
+                ) : null}
 
-              {eocPopup.details?.dokter || eocPopup.details?.perawat ? (
-                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Tenaga Medis</span>
-                  <span className="font-extrabold text-slate-800 text-[11px]">
-                    {[
-                      eocPopup.details.dokter ? `${eocPopup.details.dokter} Dr` : null,
-                      eocPopup.details.perawat ? `${eocPopup.details.perawat} Ns` : null
-                    ].filter(Boolean).join(' · ') || 'Siaga'}
-                  </span>
-                </div>
-              ) : null}
+                {eocPopup.details?.dokter || eocPopup.details?.perawat ? (
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                    <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Tenaga Medis</span>
+                    <span className="font-extrabold text-slate-800 text-[11px]">
+                      {[
+                        eocPopup.details.dokter ? `${eocPopup.details.dokter} Dr` : null,
+                        eocPopup.details.perawat ? `${eocPopup.details.perawat} Ns` : null
+                      ].filter(Boolean).join(' · ') || 'Siaga'}
+                    </span>
+                  </div>
+                ) : null}
 
-              {eocPopup.details?.ambulans ? (
-                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Ambulans</span>
-                  <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.ambulans} Unit</span>
-                </div>
-              ) : null}
+                {eocPopup.details?.ambulans ? (
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                    <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Ambulans</span>
+                    <span className="font-extrabold text-slate-800 text-[11px]">{eocPopup.details.ambulans} Unit</span>
+                  </div>
+                ) : null}
 
-              {eocPopup.details?.pengungsi_jiwa ? (
-                <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                  <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Warga Ditampung</span>
-                  <span className="font-extrabold text-purple-800 text-[11px]">{eocPopup.details.pengungsi_jiwa} Jiwa</span>
-                </div>
-              ) : null}
+                {eocPopup.details?.pengungsi_jiwa ? (
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
+                    <span className="text-slate-400 block uppercase font-bold text-[8.5px]">Warga Ditampung</span>
+                    <span className="font-extrabold text-purple-800 text-[11px]">{eocPopup.details.pengungsi_jiwa} Jiwa</span>
+                  </div>
+                ) : null}
 
-              {eocPopup.details?.operasional && (
-                <div className="col-span-2 rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5 flex items-center justify-between text-[10px]">
-                  <span className="text-emerald-700 font-bold">Status Kesiapan:</span>
-                  <span className="font-extrabold text-emerald-800">{eocPopup.details.operasional}</span>
+                {eocPopup.details?.operasional && (
+                  <div className="col-span-2 rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5 flex items-center justify-between text-[10px]">
+                    <span className="text-emerald-700 font-bold">Status Kesiapan:</span>
+                    <span className="font-extrabold text-emerald-800">{eocPopup.details.operasional}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* List Relawan TCK yang siaga di Faskes Ini (Cross-Reference) */}
+            {(eocPopup.type === 'hospital' || eocPopup.type === 'clinic' || eocPopup.type === 'pustu') && (() => {
+              const matchedTck = (tckList || []).filter((r: any) => {
+                const occ = String(r.pekerjaan || '').toLowerCase()
+                const fName = String(eocPopup.name || '').toLowerCase()
+                return (occ && (fName.includes(occ) || occ.includes(fName))) ||
+                       (r.kab_kota && String(eocPopup.address || '').toLowerCase().includes(String(r.kab_kota).toLowerCase()))
+              })
+
+              if (matchedTck.length === 0) return null
+
+              return (
+                <div className="mt-2.5 pt-2.5 border-t border-slate-150">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black uppercase text-teal-800 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-teal-600" />
+                      Relawan TCK Siaga ({matchedTck.length})
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-medium">TCK Kemkes RI</span>
+                  </div>
+                  <div className="max-h-28 overflow-y-auto space-y-1 pr-0.5">
+                    {matchedTck.slice(0, 5).map((tck: any, tIdx: number) => {
+                      const cleanPhone = String(tck.nomor_telp || '081234567890').replace(/[^0-9]/g, '')
+                      const waUrl = `https://wa.me/${cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone}?text=Halo%20${encodeURIComponent(tck.nama || 'Relawan TCK')},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes%20terkait%20penanganan%20kejadian%20bencana.`
+                      return (
+                        <div key={tIdx} className="flex items-center justify-between p-1.5 rounded-lg bg-teal-50/60 border border-teal-100 text-[10px]">
+                          <div className="min-w-0 pr-1">
+                            <strong className="text-slate-800 truncate block font-bold">{tck.nama}</strong>
+                            <span className="text-teal-700 text-[9px] block truncate">{tck.spesifikasi || tck.golongan}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                if (onSelectRouteTarget) {
+                                  onSelectRouteTarget({
+                                    ...tck,
+                                    latitude: eocPopup.lat,
+                                    longitude: eocPopup.lng
+                                  }, 'tck')
+                                }
+                                setEocPopup(null)
+                              }}
+                              className="px-1.5 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9px] transition"
+                              title="Set Rute ke Dokter/Relawan Ini"
+                            >
+                              Rute
+                            </button>
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] transition"
+                              title="Chat WhatsApp"
+                            >
+                              WA
+                            </a>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
+              )
+            })()}
           </div>
 
           {/* Footer Actions */}
@@ -2874,8 +3107,19 @@ export default function DisasterMap({
                   className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white py-2 text-[11px] font-bold shadow-xs transition"
                 >
                   <Compass className="h-3.5 w-3.5" />
-                  Rute Taktis
+                  {eocPopup.type === 'tck' ? 'Rute ke TCK' : 'Rute Taktis'}
                 </button>
+                {eocPopup.type === 'tck' && eocPopup.details?.nomor_telp && (
+                  <a
+                    href={`https://wa.me/${String(eocPopup.details.nomor_telp).replace(/[^0-9]/g, '').startsWith('0') ? '62' + String(eocPopup.details.nomor_telp).replace(/[^0-9]/g, '').slice(1) : String(eocPopup.details.nomor_telp).replace(/[^0-9]/g, '')}?text=Halo%20${encodeURIComponent(eocPopup.name)},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-[11px] font-bold transition shadow-xs"
+                    title="Hubungi WhatsApp"
+                  >
+                    WA
+                  </a>
+                )}
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${eocPopup.lat},${eocPopup.lng}&travelmode=driving`}
                   target="_blank"
