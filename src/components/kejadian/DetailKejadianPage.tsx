@@ -38,7 +38,9 @@ import {
   Stethoscope,
   PlusSquare,
   BriefcaseMedical,
-  Globe
+  Globe,
+  History,
+  UserCheck
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import { useAuthStore } from '@/lib/authStore'
@@ -182,11 +184,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'timeline_log'>('faskes')
   const [showHealthInfo, setShowHealthInfo] = useState(false)
   const [kapasitasNakes, setKapasitasNakes] = useState<any[]>([])
   const [loadingKapasitas, setLoadingKapasitas] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
+
+  // ── Timeline Log Aktivitas Kejadian ──
+  const [timelineLogs, setTimelineLogs] = useState<any[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(false)
+  const [logsError, setLogsError] = useState<string | null>(null)
+  const [showLogModal, setShowLogModal] = useState(false)
   const [trendWindowDays, setTrendWindowDays] = useState(7)
 
   // ── Tenaga Cadangan Kesehatan (TCK) Kemkes ──
@@ -282,6 +290,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Fetch timeline logs when selectedEvent changes
+  useEffect(() => {
+    let active = true
+    async function fetchLogs() {
+      if (!selectedEvent?.kode_trans) return
+      try {
+        setLoadingLogs(true)
+        setLogsError(null)
+        const res = await fetch(`/api/bencana-logs?id=${encodeURIComponent(selectedEvent.kode_trans)}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json = await res.json()
+        if (active && json.success && Array.isArray(json.logs)) {
+          setTimelineLogs(json.logs)
+        }
+      } catch (err: any) {
+        if (active) {
+          setLogsError(err.message || 'Gagal memuat riwayat log aktivitas.')
+        }
+      } finally {
+        if (active) setLoadingLogs(false)
+      }
+    }
+    fetchLogs()
+    return () => { active = false }
+  }, [selectedEvent?.kode_trans])
 
   const getFaskesCondition = (fName: string) => {
     const affected = detail?.faskes_terdampak?.find((ft: any) => ft.nama_faskes?.toLowerCase() === fName.toLowerCase());
@@ -2427,6 +2461,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             Live
           </span>
           <button
+            onClick={() => setShowLogModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-800 shadow-xs transition hover:bg-teal-100 hover:border-teal-300"
+            title="Lihat Riwayat & Timeline Log Aktivitas Kejadian"
+          >
+            <History className="h-3.5 w-3.5 text-teal-700" />
+            <span>Timeline Log</span>
+            {timelineLogs.length > 0 && (
+              <span className="ml-0.5 rounded-full bg-teal-600 px-1.5 py-0.2 text-[9px] font-black text-white">
+                {timelineLogs.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={handleShare}
             className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
             title="Bagikan tautan"
@@ -3227,6 +3274,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               TCK Kemkes
               {tckTotal > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">{tckTotal.toLocaleString('id-ID')}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatrixTab('timeline_log')}
+              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'timeline_log'
+                ? 'bg-teal-50 text-teal-800 border-teal-400 shadow-sm'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+            >
+              <History className="h-3.5 w-3.5" />
+              Timeline Log
+              {timelineLogs.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">{timelineLogs.length}</span>
               )}
             </button>
           </div>
@@ -4337,6 +4398,86 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               )
             })()}
+            {matrixTab === 'timeline_log' && (
+              <div className="space-y-4">
+                {/* Header widget */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-teal-900/5 via-slate-900/5 to-emerald-900/5 p-4 rounded-2xl border border-teal-200/80 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white shadow-xs">
+                      <History className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h5 className="text-sm font-black text-slate-900 leading-tight uppercase tracking-wide">
+                        Riwayat Aktivitas &amp; Perubahan Kejadian (Timeline Log)
+                      </h5>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Rekam jejak setiap pembaharuan data, pengisian formulir, dan verifikasi oleh operator/admin.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-black">
+                      {timelineLogs.length} Aktivitas Tercatat
+                    </span>
+                    <button
+                      onClick={() => setShowLogModal(true)}
+                      className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Buka Pop-up Log
+                    </button>
+                  </div>
+                </div>
+
+                {loadingLogs ? (
+                  <div className="text-center py-10">
+                    <Loader2 className="h-7 w-7 animate-spin text-teal-700 mx-auto" />
+                    <p className="text-xs text-slate-500 mt-2 font-semibold">Memuat log riwayat timeline aktivitas...</p>
+                  </div>
+                ) : logsError ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-xs font-semibold text-rose-700">
+                    {logsError}
+                  </div>
+                ) : timelineLogs.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-xs font-semibold text-slate-500">
+                    Belum ada riwayat aktivitas tercatat untuk laporan kejadian ini.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                    {timelineLogs.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-xl shadow-xs border border-slate-200 bg-white hover:border-teal-300 transition"
+                        style={{ borderLeft: '4px solid #047d78' }}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
+                            <Clock className="h-3 w-3 text-teal-700" />
+                            {item.tgl}
+                          </span>
+                        </div>
+                        <h6 className="font-bold text-[14px] text-slate-900 mb-1">
+                          {item.judul}
+                        </h6>
+                        {item.deskripsi && (
+                          <p className="text-xs text-slate-600 leading-relaxed mb-2.5 whitespace-pre-line">
+                            {item.deskripsi}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                          <UserCheck className="h-4 w-4 text-teal-700" />
+                          <span className="font-bold text-slate-800">{item.user_name || 'Petugas EOC'}</span>
+                          <span className="text-slate-300">|</span>
+                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold">
+                            {item.user_level || 'Operator'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Bottom action info and button */}
@@ -4685,6 +4826,132 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             >
               Mengerti
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL LOG TIMELINE AKTIVITAS KEJADIAN ── */}
+      {showLogModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowLogModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 bg-[#047d78] text-white">
+              <h5 className="text-base font-bold text-white flex items-center gap-2 m-0">
+                <History className="h-5 w-5" />
+                Log Timeline Aktivitas Kejadian
+              </h5>
+              <button
+                onClick={() => setShowLogModal(false)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
+                title="Tutup"
+              >
+                <XCircle className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1">
+              {/* Card 1: Informasi Kejadian */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 mb-1.5">
+                      INFORMASI KEJADIAN
+                    </span>
+                    <h5 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                      {eventData.jenis_bencana}
+                    </h5>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                      {locationFull}
+                    </p>
+                  </div>
+                  <div className="md:border-l md:border-slate-200 md:pl-4 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Tanggal Kejadian:</span>
+                      <span className="font-bold text-slate-800">{eventData.tgl_kejadian || formattedDate || '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Status Operasional:</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Terverifikasi
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subheading: Riwayat Aktivitas */}
+              <h6 className="font-bold text-slate-800 text-sm flex items-center gap-2 pt-1 m-0">
+                <History className="h-4.5 w-4.5 text-teal-700" />
+                Riwayat Aktivitas &amp; Perubahan (Timeline Log)
+              </h6>
+
+              {/* Timeline Cards Container */}
+              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                {loadingLogs ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="h-7 w-7 animate-spin text-teal-700 mx-auto" />
+                    <p className="text-xs text-slate-500 mt-2 font-semibold">Memuat log riwayat timeline...</p>
+                  </div>
+                ) : logsError ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs font-semibold text-rose-700">
+                    {logsError}
+                  </div>
+                ) : timelineLogs.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-xs font-semibold text-slate-500">
+                    Belum ada riwayat aktivitas tercatat.
+                  </div>
+                ) : (
+                  timelineLogs.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3.5 rounded-xl shadow-xs border border-slate-200 bg-white"
+                      style={{ borderLeft: '4px solid #047d78', borderRadius: '10px' }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-[11px] inline-flex items-center gap-1 bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-md">
+                          <Clock className="h-3 w-3 text-teal-700" />
+                          {item.tgl}
+                        </span>
+                      </div>
+                      <h6 className="font-bold text-[14px] text-slate-900 mb-1">
+                        {item.judul}
+                      </h6>
+                      {item.deskripsi && (
+                        <p className="text-xs text-slate-600 leading-relaxed mb-2 whitespace-pre-line">
+                          {item.deskripsi}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                        <UserCheck className="h-3.5 w-3.5 text-teal-700" />
+                        <span className="font-bold text-slate-800">{item.user_name || 'System Admin'}</span>
+                        <span className="text-slate-300">|</span>
+                        <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold">
+                          {item.user_level || 'Pusat / Admin'}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLogModal(false)}
+                className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
