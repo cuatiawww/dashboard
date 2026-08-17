@@ -91,6 +91,8 @@ interface DisasterMapProps {
   faskesList?: any[]
   poskoList?: any[]
   tckList?: any[]
+  /** Daftar faskes yang terdampak/rusak (dari laporan RHA). Ditampilkan dengan pin merah dan popup info kerusakan. */
+  faskesRusakList?: any[]
   onSelectRouteTarget?: (target: any, type: 'hospital' | 'clinic' | 'shelter' | 'tck') => void
   disasterType?: string
   selectedRouteSource?: any
@@ -112,6 +114,18 @@ interface EocPopupState {
   lat: number
   lng: number
   distance?: number
+  /** Apakah faskes ini masuk daftar terdampak/rusak bencana */
+  isTerdampak?: boolean
+  /** Info kerusakan dari data inputan RHA */
+  dampakInfo?: {
+    rusak_berat?: number
+    rusak_sedang?: number
+    rusak_ringan?: number
+    kondisi_faskes?: string
+    fungsi_pelayanan?: string
+    jenis_faskes?: string
+    status?: string
+  }
   details?: {
     jenis?: string
     operasional?: string
@@ -271,6 +285,7 @@ export default function DisasterMap({
   faskesList = [],
   poskoList = [],
   tckList = [],
+  faskesRusakList = [],
   onSelectRouteTarget,
   disasterType,
   selectedRouteSource = null,
@@ -804,6 +819,7 @@ export default function DisasterMap({
             const originLng = firstMarker ? Number(firstMarker.lng) : lng
             const distKm = getDistanceInKm(originLat, originLng, lat, lng)
 
+            const isTerdampak = !!rawItem._isTerdampak
             setEocPopup({
               rawItem,
               type: itemType || 'clinic',
@@ -812,6 +828,16 @@ export default function DisasterMap({
               lat,
               lng,
               distance: distKm > 0.05 ? Number(distKm.toFixed(1)) : 0,
+              isTerdampak,
+              dampakInfo: isTerdampak ? {
+                rusak_berat: Number(rawItem.rusak_berat || 0),
+                rusak_sedang: Number(rawItem.rusak_sedang || 0),
+                rusak_ringan: Number(rawItem.rusak_ringan || 0),
+                kondisi_faskes: rawItem.kondisi_faskes || rawItem.kondisi || '',
+                fungsi_pelayanan: rawItem.fungsi_pelayanan || rawItem.fungsi || '',
+                jenis_faskes: rawItem.jenis_faskes || rawItem.jenis || '',
+                status: rawItem.status || ''
+              } : undefined,
               details: {
                 jenis: rawItem.jenis || rawItem.jenis_faskes || rawItem.jenis_pos || (itemType === 'tck' ? 'Relawan TCK Kemkes RI' : undefined),
                 operasional: rawItem.operasional || rawItem.status_operasional || 'Operasional Normal',
@@ -1735,6 +1761,34 @@ export default function DisasterMap({
           image: new Icon({
             src: getSvgPin(pinColor, iconType),
             scale: 0.88,
+            anchor: [0.5, 1]
+          })
+        }))
+        source.addFeature(fFeat)
+      }
+    })
+
+    // 2b. Add Faskes Terdampak/Rusak (pin merah — dari data inputan RHA)
+    const fRusakList = Array.isArray(faskesRusakList) ? faskesRusakList : []
+    fRusakList.forEach((f: any, idx: number) => {
+      const fLat = Number(f.latitude || f.lat || 0)
+      const fLng = Number(f.longitude || f.lng || 0)
+      // Only show on map if has coordinates
+      if (fLat !== 0 && fLng !== 0) {
+        const hasBerat = Number(f.rusak_berat || 0) > 0
+        const hasSedang = Number(f.rusak_sedang || 0) > 0
+        const pinColor = hasBerat ? '#dc2626' : hasSedang ? '#ea580c' : '#f59e0b' // red / orange / amber
+        const fFeat = new Feature({
+          geometry: new Point(fromLonLat([fLng, fLat])),
+          id: `rusak-${f.nama_faskes || f.nama || idx}`,
+          name: f.nama_faskes || f.nama || 'Faskes Terdampak',
+          rawItem: { ...f, _isTerdampak: true },
+          itemType: 'clinic'
+        })
+        fFeat.setStyle(new Style({
+          image: new Icon({
+            src: getSvgPin(pinColor, 'clinic'),
+            scale: 0.95,
             anchor: [0.5, 1]
           })
         }))
@@ -2893,7 +2947,9 @@ export default function DisasterMap({
           <div className="flex items-start justify-between border-b border-slate-100 p-3.5 pb-3 bg-slate-50/70">
             <div className="min-w-0 flex-1">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                eocPopup.type === 'tck'
+                eocPopup.isTerdampak
+                  ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                  : eocPopup.type === 'tck'
                   ? 'bg-teal-50 text-teal-800 border border-teal-200'
                   : eocPopup.type === 'hospital'
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
@@ -2906,7 +2962,9 @@ export default function DisasterMap({
                   : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}>
                 <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                {eocPopup.type === 'tck'
+                {eocPopup.isTerdampak
+                  ? '⚠ Faskes Terdampak Bencana'
+                  : eocPopup.type === 'tck'
                   ? 'Relawan TCK Kemkes RI'
                   : eocPopup.type === 'hospital'
                   ? 'Rumah Sakit Rujukan'
@@ -2976,11 +3034,76 @@ export default function DisasterMap({
             )}
 
             {eocPopup.distance !== undefined && eocPopup.distance > 0 && (
-              <div className="flex items-center justify-between rounded-xl bg-teal-50/70 border border-teal-100/80 px-2.5 py-1.5 text-[10px] font-bold text-teal-900">
+              <div className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold border ${
+                eocPopup.isTerdampak
+                  ? 'bg-rose-50/70 border-rose-100/80 text-rose-900'
+                  : 'bg-teal-50/70 border-teal-100/80 text-teal-900'
+              }`}>
                 <span>Jarak dari Titik Bencana:</span>
-                <span className="font-black text-teal-800 text-[11px]">± {eocPopup.distance} km</span>
+                <span className={`font-black text-[11px] ${eocPopup.isTerdampak ? 'text-rose-800' : 'text-teal-800'}`}>± {eocPopup.distance} km</span>
               </div>
             )}
+
+            {/* Informasi Kerusakan untuk Faskes Terdampak */}
+            {eocPopup.isTerdampak && eocPopup.dampakInfo && (() => {
+              const d = eocPopup.dampakInfo
+              const hasBerat = (d.rusak_berat || 0) > 0
+              const hasSedang = (d.rusak_sedang || 0) > 0
+              const hasRingan = (d.rusak_ringan || 0) > 0
+              const kondisiLabel = hasBerat ? 'Rusak Berat' : hasSedang ? 'Rusak Sedang' : hasRingan ? 'Rusak Ringan' : (d.kondisi_faskes || d.status || 'Terdampak')
+              const kondisiColor = hasBerat ? 'text-rose-700 bg-rose-50 border-rose-200' : hasSedang ? 'text-orange-700 bg-orange-50 border-orange-200' : 'text-amber-700 bg-amber-50 border-amber-200'
+              return (
+                <div className="space-y-1.5 rounded-xl border border-rose-200 bg-rose-50/60 p-2.5 text-[11px]">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-rose-700 flex items-center gap-1.5 mb-1.5">
+                    <AlertTriangle className="h-3 w-3" />
+                    Kondisi Kerusakan Dilaporkan
+                  </div>
+                  {/* Tingkat Kerusakan Struktural */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium">Tingkat Kerusakan:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${kondisiColor}`}>
+                      {kondisiLabel}
+                    </span>
+                  </div>
+                  {/* Detail Unit Rusak */}
+                  {(hasBerat || hasSedang || hasRingan) && (
+                    <div className="grid grid-cols-3 gap-1 mt-1">
+                      {hasBerat && (
+                        <div className="rounded-lg bg-rose-100 border border-rose-200 p-1.5 text-center">
+                          <span className="block text-[8.5px] font-bold text-rose-600 uppercase">Berat</span>
+                          <span className="text-[12px] font-black text-rose-800">{d.rusak_berat}</span>
+                        </div>
+                      )}
+                      {hasSedang && (
+                        <div className="rounded-lg bg-orange-100 border border-orange-200 p-1.5 text-center">
+                          <span className="block text-[8.5px] font-bold text-orange-600 uppercase">Sedang</span>
+                          <span className="text-[12px] font-black text-orange-800">{d.rusak_sedang}</span>
+                        </div>
+                      )}
+                      {hasRingan && (
+                        <div className="rounded-lg bg-amber-100 border border-amber-200 p-1.5 text-center">
+                          <span className="block text-[8.5px] font-bold text-amber-600 uppercase">Ringan</span>
+                          <span className="text-[12px] font-black text-amber-800">{d.rusak_ringan}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Status Fungsi Pelayanan */}
+                  {d.fungsi_pelayanan && (
+                    <div className="flex items-start gap-1.5 pt-1 border-t border-rose-100">
+                      <span className="text-slate-500 font-medium shrink-0">Fungsi Layanan:</span>
+                      <span className="font-bold text-rose-800 leading-snug">{d.fungsi_pelayanan}</span>
+                    </div>
+                  )}
+                  {d.kondisi_faskes && !d.fungsi_pelayanan && (
+                    <div className="flex items-start gap-1.5 pt-1 border-t border-rose-100">
+                      <span className="text-slate-500 font-medium shrink-0">Kondisi:</span>
+                      <span className="font-bold text-rose-800 leading-snug">{d.kondisi_faskes}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Quick Metrics Grid (for Faskes/Shelter) */}
             {eocPopup.type !== 'tck' && (
@@ -3095,7 +3218,25 @@ export default function DisasterMap({
 
           {/* Footer Actions */}
           <div className="border-t border-slate-100 p-2.5 bg-slate-50/50 flex gap-2">
-            {eocPopup.type !== 'disaster' ? (
+            {eocPopup.isTerdampak ? (
+              /* Faskes Terdampak: tidak bisa dijadikan rute, tampilkan peringatan + link lokasi */
+              <>
+                <div className="flex-1 flex items-center gap-1.5 rounded-xl bg-rose-50 border border-rose-200 px-2.5 py-2 text-[10px] font-bold text-rose-700">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Tidak dapat dijadikan tujuan rute — faskes ini sedang terdampak bencana</span>
+                </div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${eocPopup.lat},${eocPopup.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 px-3 py-2 text-[11px] font-bold transition shrink-0"
+                  title="Lihat di Google Maps"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Lokasi
+                </a>
+              </>
+            ) : eocPopup.type !== 'disaster' ? (
               <>
                 <button
                   onClick={() => {

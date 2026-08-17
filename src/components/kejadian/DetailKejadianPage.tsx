@@ -2762,6 +2762,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               faskesList={detail?.faskes_terdekat}
               poskoList={detail?.pos_pengungsi}
               tckList={tckRelawan}
+              faskesRusakList={detail?.faskes_terdampak}
               onSelectRouteTarget={handleSelectTarget}
               disasterType={eventData.jenis_bencana}
               selectedRouteSource={selectedRouteSource}
