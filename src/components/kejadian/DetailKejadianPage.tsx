@@ -4419,13 +4419,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <span className="px-3 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-black">
                       {timelineLogs.length} Aktivitas Tercatat
                     </span>
-                    <button
-                      onClick={() => setShowLogModal(true)}
-                      className="px-3 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      Buka Pop-up Log
-                    </button>
                   </div>
                 </div>
 
@@ -4478,21 +4471,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 )}
               </div>
             )}
-          </div>
-
-          {/* Bottom action info and button */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-3 border-t border-slate-100 text-[12px] text-slate-400 font-bold uppercase tracking-wider gap-3">
-            <span>* Jarak &amp; waktu tempuh berdasarkan rute akses utama saat ini (dapat berubah sewaktu-waktu)</span>
-            <button
-              type="button"
-              onClick={() => {
-                document.getElementById('peta-detail')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[13px] font-black uppercase tracking-wider transition-colors duration-150 shadow-sm shadow-emerald-200 border-none cursor-pointer"
-            >
-              <Map className="h-3.5 w-3.5" />
-              Lihat Peta Rute
-            </button>
           </div>
         </article>
 
