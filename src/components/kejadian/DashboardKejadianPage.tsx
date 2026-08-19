@@ -385,7 +385,7 @@ export default function DashboardKejadianPage() {
   }
 
   // 1=1bln, 3=3bln, 6=6bln, 12=1thn, 0=semua periode
-  const [markerMonths, setMarkerMonths] = useState(0)
+  const [markerMonths, setMarkerMonths] = useState(1)
 
   // State untuk pencarian & filter multi-wilayah gabungan
   const [selectedRegions, setSelectedRegions] = useState<SelectedRegionItem[]>([])
@@ -476,10 +476,19 @@ export default function DashboardKejadianPage() {
 
     let result = data.markers
 
+    // 0. Filter blok tanggal masa depan (kejadian di masa depan tidak valid)
+    const nowMs = Date.now() + 60000 // toleransi 1 menit
+    result = result.filter((m) => {
+      if (!m.tgl_kejadian) return true
+      const d = parseMarkerDate(m.tgl_kejadian)
+      if (d && d.getTime() > nowMs) return false
+      return true
+    })
+
     // 1. Filter berdasarkan date range (frontend filtering)
     if (filterStartDate && filterEndDate) {
       const startMs = new Date(filterStartDate).getTime()
-      const endMs = new Date(filterEndDate).getTime() + 86399999 // end of day
+      const endMs = Math.min(new Date(filterEndDate).getTime() + 86399999, nowMs)
       result = result.filter((m) => {
         const d = parseMarkerDate(m.tgl_kejadian)
         if (!d) return true // Jika tanggal tidak bisa diparse, jangan hapus marker dari statistik
@@ -958,7 +967,7 @@ export default function DashboardKejadianPage() {
   }, [data?.markers]);
 
   useNewEventDetection(
-    data?.markers || [],
+    effectiveMarkers,
     (items) => {
       console.log('[DashboardKejadianPage] New events detected:', items)
       if (alertIntervalId) {
@@ -1025,7 +1034,7 @@ export default function DashboardKejadianPage() {
 
   // Trigger EWS proximity modal on load/refresh for existing active close disasters
   useEffect(() => {
-    if (!data?.markers || data.markers.length === 0) return
+    if (!effectiveMarkers || effectiveMarkers.length === 0) return
 
     const savedCoords = localStorage.getItem('user_coords')
     if (!savedCoords) return
@@ -1033,7 +1042,7 @@ export default function DashboardKejadianPage() {
     try {
       const userCoords = JSON.parse(savedCoords)
       if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
-        const closeEvents = data.markers
+        const closeEvents = effectiveMarkers
           .map(m => {
             if (m.lat && m.lng) {
               const dist = getDistanceInKm(userCoords.lat, userCoords.lng, m.lat, m.lng)
@@ -1063,10 +1072,10 @@ export default function DashboardKejadianPage() {
   }, [ewsAlertQueue.length, alertIntervalId])
 
   const filteredMarkersForTable = useMemo(() => {
-    if (!data?.markers) return []
-    const sorted = [...data.markers].sort((a, b) => {
-      const dateA = a.tgl_kejadian ? new Date(a.tgl_kejadian).getTime() : 0
-      const dateB = b.tgl_kejadian ? new Date(b.tgl_kejadian).getTime() : 0
+    if (!effectiveMarkers) return []
+    const sorted = [...effectiveMarkers].sort((a, b) => {
+      const dateA = a.tgl_kejadian ? (parseMarkerDate(a.tgl_kejadian)?.getTime() || new Date(a.tgl_kejadian).getTime() || 0) : 0
+      const dateB = b.tgl_kejadian ? (parseMarkerDate(b.tgl_kejadian)?.getTime() || new Date(b.tgl_kejadian).getTime() || 0) : 0
       return dateB - dateA
     })
     if (!tableSearchQuery) return sorted
@@ -1077,7 +1086,7 @@ export default function DashboardKejadianPage() {
       (m.provinsi || '').toLowerCase().includes(q) ||
       (m.kecamatan || '').toLowerCase().includes(q)
     )
-  }, [data?.markers, tableSearchQuery])
+  }, [effectiveMarkers, tableSearchQuery])
 
   const itemsPerPage = 10
   const totalPages = Math.ceil(filteredMarkersForTable.length / itemsPerPage)
@@ -1117,14 +1126,14 @@ export default function DashboardKejadianPage() {
   }
 
   const warningsList = useMemo(() => {
-    if (!data?.markers || data.markers.length === 0) {
+    if (!effectiveMarkers || effectiveMarkers.length === 0) {
       return earlyWarnings.map(w => ({
         ...w,
         iconUrl: null
       }))
     }
 
-    return data.markers.slice(0, 10).map((m, idx) => {
+    return effectiveMarkers.slice(0, 10).map((m, idx) => {
       let status = 'Waspada'
       let statusColor = 'text-[#1e293b] bg-[#f1c40f] border-[#d4ac0d]' // Yellow/Gold
 
@@ -2820,7 +2829,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                           <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalCount}</span>
-                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Kejadian</span>
                         </div>
                       </>
                     )}
@@ -2899,7 +2907,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                           <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalCategory}</span>
-                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Laporan</span>
                         </div>
                       </>
                     )}
@@ -2978,7 +2985,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                           <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalWilayah}</span>
-                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Wilayah</span>
                         </div>
                       </>
                     )}
