@@ -5,18 +5,17 @@ import Link from 'next/link'
 import {
   FileText,
   Search,
-  Sparkles,
   Download,
   Eye,
   FileDown,
   Clock,
   Filter,
-  Wand2,
   X,
-  CheckCircle,
   HelpCircle,
   Loader2,
   ExternalLink,
+  RefreshCw,
+  Layers,
 } from 'lucide-react'
 
 type InfographicItem = {
@@ -41,6 +40,59 @@ const INFOGRAPHIC_CATEGORIES = [
   'Infografis Logistik Krisis Kesehatan',
   'Infografis Upaya Krisis Kesehatan',
 ]
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
+const MONTH_COVERS: Record<string, string> = {
+  januari: '/jan.png',
+  februari: '/feb.png',
+  maret: '/mar.png',
+  april: '/apr.png',
+  mei: '/mei.png',
+  juni: '/jun.png',
+  juli: '/jun.png',
+  agustus: '/jun.png',
+  september: '/jun.png',
+  oktober: '/jun.png',
+  november: '/jun.png',
+  desember: '/jun.png',
+}
+
+const CATEGORY_COVERS: Record<string, string> = {
+  'Infografis Peringatan Dini': '/Infografis Peringatan Dini.png',
+  'Tata Kelola Peta Respon & Renkon': '/Tatkelola Peta Respon & Renkon.png',
+  'Panduan Krisis Kesehatan': '/Panduan Krisis Kesehatan.png',
+  'Infografis Bencana/ Krisis Kesehatan': '/Lap_Juni.jpeg',
+  'Infografis Risiko Krisis': '/Infografis Risiko Krisis.png',
+  'Infografis Logistik Krisis Kesehatan': '/Infografis Logistik Krisis Kesehatan.png',
+  'Infografis Upaya Krisis Kesehatan': '/Infografis Upaya Krisis Kesehatan.png',
+}
+
+/**
+ * Resolver cover image: memastikan gambar selalu valid dan tidak broken
+ */
+function getCoverSrc(item: InfographicItem): string {
+  if (item.imageCover && item.imageCover.trim() !== '') {
+    if (item.imageCover.startsWith('http://') || item.imageCover.startsWith('https://')) {
+      return item.imageCover
+    }
+    const clean = item.imageCover.startsWith('/') ? item.imageCover : `/${item.imageCover}`
+    return `${basePath}${clean}`
+  }
+
+  if (item.category && CATEGORY_COVERS[item.category]) {
+    return `${basePath}${CATEGORY_COVERS[item.category]}`
+  }
+
+  const dateLower = (item.date || '').toLowerCase()
+  for (const [month, file] of Object.entries(MONTH_COVERS)) {
+    if (dateLower.includes(month)) {
+      return `${basePath}${file}`
+    }
+  }
+
+  return `${basePath}/jun.png`
+}
 
 const fallbackInfographics: InfographicItem[] = [
   {
@@ -191,18 +243,10 @@ const fallbackInfographics: InfographicItem[] = [
 export default function InfografisPage() {
   const [infographics, setInfographics] = useState<InfographicItem[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Semua')
-  const [isGeneratorOpen, setIsGeneratorOpen] = useState(false)
   const [activePreview, setActivePreview] = useState<InfographicItem | null>(null)
-
-  // Generator form states
-  const [genTitle, setGenTitle] = useState('')
-  const [genCategory, setGenCategory] = useState('Infografis Bulanan EOC')
-  const [genPrompt, setGenPrompt] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [genSuccess, setGenSuccess] = useState(false)
-  const [genError, setGenError] = useState<string | null>(null)
 
   // Download PDF handler
   const handleDownloadPdf = async (e: React.MouseEvent, item?: InfographicItem | string) => {
@@ -220,7 +264,6 @@ export default function InfografisPage() {
       : 'Laporan_Infografis_EOC_Kemenkes.pdf'
 
     try {
-      // Try fetch blob to trigger immediate file download
       const res = await fetch(url)
       if (res.ok) {
         const blob = await res.blob()
@@ -247,23 +290,27 @@ export default function InfografisPage() {
     document.body.removeChild(a)
   }
 
-  useEffect(() => {
-    async function loadInfographics() {
-      try {
-        const res = await fetch('/api/infografis-list', { cache: 'no-store' })
-        const json = await res.json()
-        if (json?.success && Array.isArray(json.data)) {
-          setInfographics(json.data)
-        } else {
-          setInfographics(fallbackInfographics)
-        }
-      } catch (error) {
-        setInfographics(fallbackInfographics)
-      } finally {
-        setIsLoadingData(false)
-      }
-    }
+  async function loadInfographics(showRefreshingState = false) {
+    if (showRefreshingState) setIsRefreshing(true)
+    else setIsLoadingData(true)
 
+    try {
+      const res = await fetch('/api/infografis-list', { cache: 'no-store' })
+      const json = await res.json()
+      if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
+        setInfographics(json.data)
+      } else {
+        setInfographics(fallbackInfographics)
+      }
+    } catch {
+      setInfographics(fallbackInfographics)
+    } finally {
+      setIsLoadingData(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
     loadInfographics()
   }, [])
 
@@ -286,54 +333,10 @@ export default function InfografisPage() {
     })
   }, [infographics, searchQuery, selectedCategory])
 
-  // Real Generator PDF submission via Gemini AI & mPDF
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!genTitle.trim()) return
-
-    setGenerating(true)
-    setGenError(null)
-
-    try {
-      const res = await fetch('/api/generate-infografis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: genTitle,
-          category: genCategory,
-          prompt: genPrompt,
-        }),
-      })
-
-      const json = await res.json()
-      if (json?.success && json?.data) {
-        const newItem: InfographicItem = {
-          ...json.data,
-          pdfUrl: json.data.pdfUrl || '/laporan_eoc_kemenkes.pdf',
-        }
-        setInfographics((prev) => [newItem, ...prev])
-        setGenSuccess(true)
-        setGenTitle('')
-        setGenPrompt('')
-
-        setTimeout(() => {
-          setGenSuccess(false)
-          setIsGeneratorOpen(false)
-        }, 1800)
-      } else {
-        setGenError(json?.message || 'Gagal membuat file PDF. Silakan coba lagi.')
-      }
-    } catch (err: any) {
-      setGenError(err?.message || 'Terjadi kesalahan jaringan saat memicu generator.')
-    } finally {
-      setGenerating(false)
-    }
-  }
-
   return (
-    <div className="w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] min-h-[calc(100vh-140px)] animate-in fade-in duration-200">
+    <div className="relative w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] min-h-[calc(100vh-140px)] animate-in fade-in duration-200">
 
-      {/* Header bar matching Detail Kejadian layout with Back Arrow */}
+      {/* Header bar matching Detail Kejadian layout with Back Arrow & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           <Link
@@ -346,31 +349,33 @@ export default function InfografisPage() {
             </svg>
           </Link>
           <div>
-            <h1 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">
-              Galeri Infografis & Dokumen AI
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Galeri Infografis & Dokumen AI</span>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-50 text-[#047D78] border border-teal-200">
+                EOC Kemenkes RI
+              </span>
             </h1>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Kumpulan dokumen laporan infografis hasil generate Gemini AI berdasarkan data riil kebencanaan.
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1">
+              Kumpulan dokumen laporan resmi dan infografis hasil evaluasi AI EOC Kemenkes RI.
             </p>
           </div>
         </div>
-        {/* 
-        <button
-          onClick={() => {
-            setGenError(null)
-            setGenSuccess(false)
-            setIsGeneratorOpen(true)
-          }}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#047D78] hover:bg-[#03605c] text-white rounded-xl text-xs font-bold transition shadow-sm shrink-0"
-        >
-          <Sparkles className="h-4 w-4" />
-          <span>Generate Infografis AI</span>
-        </button> */}
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <button
+            onClick={() => loadInfographics(true)}
+            disabled={isRefreshing || isLoadingData}
+            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold transition shadow-xs cursor-pointer disabled:opacity-50"
+            title="Muat ulang data dokumen terbaru"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-[#047D78] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Memuat...' : 'Muat Ulang'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Clean Filter and Search Bar */}
       <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
-
         {/* Search */}
         <div className="relative w-full md:max-w-md">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -379,7 +384,7 @@ export default function InfografisPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari judul infografis atau dokumen..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none bg-slate-50/50"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none bg-slate-50/50"
           />
         </div>
 
@@ -390,10 +395,11 @@ export default function InfografisPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition shrink-0 ${selectedCategory === cat
-                ? 'bg-[#047D78] text-white border-[#047D78] shadow-sm'
-                : 'bg-white hover:bg-slate-50 text-slate-650 border-slate-200'
-                }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition shrink-0 ${
+                selectedCategory === cat
+                  ? 'bg-[#047D78] text-white border-[#047D78] shadow-sm'
+                  : 'bg-white hover:bg-slate-50 text-slate-650 border-slate-200'
+              }`}
             >
               {cat}
             </button>
@@ -405,7 +411,7 @@ export default function InfografisPage() {
       {isLoadingData ? (
         <div className="w-full min-h-[300px] flex flex-col items-center justify-center space-y-3 bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
           <Loader2 className="h-8 w-8 animate-spin text-[#047D78]" />
-          <p className="text-xs font-semibold text-slate-500">Memuat berkas infografis dari database...</p>
+          <p className="text-xs sm:text-sm font-semibold text-slate-500">Memuat berkas infografis dari database...</p>
         </div>
       ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
@@ -414,12 +420,14 @@ export default function InfografisPage() {
               key={item.id}
               className="flex flex-col bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
             >
-
-              {/* Real Image Cover (4:5 Aspect Ratio, Premium Preview) */}
+              {/* Real Image Cover (4:5 Aspect Ratio, Guaranteed Monthly Fallback) */}
               <div className="relative aspect-[4/5] w-full bg-slate-100 border-b border-slate-200 overflow-hidden select-none group">
                 <img
-                  src={item.imageCover || '/jun.png'}
+                  src={getCoverSrc(item)}
                   alt={item.title}
+                  onError={(e) => {
+                    e.currentTarget.src = `${basePath}/jun.png`
+                  }}
                   className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
                 />
 
@@ -508,125 +516,16 @@ export default function InfografisPage() {
         </div>
       )}
 
-      {/* ── Generate Infografis Modal ── */}
-      {isGeneratorOpen && (
-        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4.5 w-4.5 text-[#047D78]" />
-                <h3 className="text-sm font-bold text-slate-800">
-                  Generate Infografis AI
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsGeneratorOpen(false)}
-                className="text-slate-400 hover:bg-slate-100 p-1 rounded-lg transition"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
-            </div>
-
-            {genSuccess ? (
-              <div className="p-8 text-center space-y-3 flex flex-col items-center justify-center">
-                <div className="h-12 w-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center border border-teal-100">
-                  <CheckCircle className="h-6 w-6" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-800">Infografis AI Berhasil Dibuat</h4>
-                  <p className="text-xs text-slate-500">Berkas PDF resmi telah tersimpan di database dan folder aset.</p>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleGenerate} className="p-5 space-y-4">
-
-                {genError && (
-                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
-                    {genError}
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Judul Laporan Infografis
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={genTitle}
-                    onChange={(e) => setGenTitle(e.target.value)}
-                    placeholder="Contoh: Laporan Analisis Respon Cepat Bencana EOC"
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Kategori Laporan
-                  </label>
-                  <select
-                    value={genCategory}
-                    onChange={(e) => setGenCategory(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white focus:border-teal-500 focus:outline-none"
-                  >
-                    {INFOGRAPHIC_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">
-                    Instruksi Khusus ke Gemini AI (Opsional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={genPrompt}
-                    onChange={(e) => setGenPrompt(e.target.value)}
-                    placeholder="Masukkan instruksi khusus atau area fokus yang ingin disorot oleh AI..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-700 placeholder-slate-400 focus:border-teal-500 focus:outline-none resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={generating}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#047D78] hover:bg-[#03605c] disabled:bg-teal-600/60 text-white rounded-xl text-xs font-bold transition shadow-sm"
-                >
-                  {generating ? (
-                    <>
-                      <Wand2 className="h-4 w-4 animate-spin" />
-                      <span>Sedang Merancang Infografis AI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wand2 className="h-4 w-4" />
-                      <span>Generate Infografis AI</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── Preview Modal Overlay ── */}
       {activePreview && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/70 p-3 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="relative w-[95vw] max-w-5xl lg:max-w-6xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[90vh] max-h-[92vh] animate-in zoom-in-95 duration-200">
-
             <div className="px-6 py-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center shrink-0">
               <div className="space-y-0.5">
                 <span className="text-[10px] font-bold text-[#047D78] uppercase tracking-wider">
                   {activePreview.category}
                 </span>
-                <h3 className="text-base font-bold text-slate-800">
-                  {activePreview.title}
-                </h3>
+                <h3 className="text-base font-bold text-slate-800">{activePreview.title}</h3>
               </div>
               <div className="flex items-center gap-2">
                 <a
