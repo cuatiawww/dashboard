@@ -28,6 +28,7 @@ const EMPTY_RESPONSE = {
   },
   jenis_bencana: [],
   wilayah: [],
+  penyakit: [],
   markers: [],
 }
 

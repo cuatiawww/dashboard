@@ -43,6 +43,7 @@ import {
   UserCheck
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
+import TimelineCalendarModal from './TimelineCalendarModal'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -2456,10 +2457,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
           <span>Terakhir Diperbarui: {formattedDate}</span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live
-          </span>
           <button
             onClick={() => setShowLogModal(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-800 shadow-xs transition hover:bg-teal-100 hover:border-teal-300"
@@ -2791,11 +2788,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       )}
 
       {/* Map & Chronology Card (Full Width) */}
-      <article id="peta-detail" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] space-y-5">
+      <article id="peta-detail" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)] space-y-5">
         <div>
-          <h4 className="text-base font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-3">
-            PEMETAAN SPASIAL KEJADIAN BENCANA (EOC ROUTING &amp; FASKES)
+          <h4 className="text-xl sm:text-2xl font-black text-slate-900 border-b border-slate-100 pb-2 mb-1">
+            Pemetaan Spasial Kejadian Bencana - {eventData.kabupaten || 'Wilayah Bencana'}
           </h4>
+          <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
+            Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
+          </p>
 
           <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
             <DisasterMap
@@ -2819,11 +2819,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         </div>
 
         <div className="border-t border-slate-100 pt-4">
-          <h4 className="text-base font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2 mb-2 flex items-center gap-2">
-            <FileText className="h-4.5 w-4.5 text-teal-700" />
-            KRONOLOGI / DESKRIPSI KEJADIAN
+          <h4 className="text-lg sm:text-xl font-black text-slate-900 border-b border-slate-100 pb-2 mb-2">
+            Kronologi / Deskripsi Kejadian
           </h4>
-          <p className="text-[14px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+          <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal whitespace-pre-line">
             {kronologi}
           </p>
         </div>
@@ -2853,8 +2852,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const totalPctFaskes = totalMasterFaskes > 0 ? Math.round((totalTerdampakFaskes / totalMasterFaskes) * 100) : 0;
 
           const faskesNarrative = totalTerdampakFaskes > 0
-            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total master faskes (${totalPctFaskes}%) di ${eventData.kabupaten || 'Kabupaten'} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
-            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} master faskes) di ${eventData.kabupaten || 'Kabupaten'} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
+            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total fasilitas kesehatan (${totalPctFaskes}%) di ${eventData.kabupaten || 'Kabupaten'} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
+            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${eventData.kabupaten || 'Kabupaten'} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
 
           const dominantDiseaseObj = penyakitTotalData.length > 0 && penyakitTotalData[0].total > 0 ? penyakitTotalData[0] : null;
           const totalPenyakitCases = penyakitTotalData.reduce((s, item) => s + (item.total || 0), 0);
@@ -2868,84 +2867,123 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             : `Belum ada laporan kasus penyakit KLB yang masuk. Pantau surveilans harian di posko pengungsian.`;
 
           return (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm flex flex-col gap-5 mt-5">
+            <section className="space-y-6 mt-6">
               {/* ── Section Header ── */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
-                <div>
-                  <h3 className="text-[15px] font-black uppercase tracking-wider text-slate-800">
-                    ANALISIS TREN DAMPAK KEJADIAN
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-semibold mt-0.5">Pergerakan data berdasarkan tanggal laporan dari SIPKK</p>
-                </div>
+              <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
+                  Analisis Tren &amp; Dinamika Dampak Bencana - {eventData.kabupaten || 'Wilayah Bencana'}
+                </h3>
+                <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
+                  Visualisasi pergerakan data dari tanggal kejadian awal hingga perkembangan terkini berdasarkan laporan terverifikasi SIPKK
+                </p>
               </div>
 
-              {/* ── 3 Column Charts ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {/* ─── SECTION 1: TREN KORBAN & PENDUDUK TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
+              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                  {/* Sisi Kiri (30% / 4 cols): Judul Besar, Deskripsi Jelas, Quick Stat Cards, & Insight Box */}
+                  <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug m-0">
+                        Tren Korban &amp; Penduduk Terdampak
+                      </h4>
+                      <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal mt-2.5 mb-0">
+                        Dinamika penambahan korban jiwa (meninggal &amp; luka-luka), fluktuasi jumlah pengungsi di titik kumpul posko, serta estimasi populasi rentan/terancam yang tercatat pada setiap pembaruan laporan SIPKK.
+                      </p>
 
-                {/* Chart 1: Tren Korban & Penduduk (Dual Y-Axis) */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-teal-200 transition-all duration-200 flex flex-col justify-between h-full">
-                  <div className="flex flex-col flex-1">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 mb-1">
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Tren Korban &amp; Penduduk</h4>
+                      {/* Quick Metrics 2x2 Grid with Big Numbers */}
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Meninggal</span>
+                          <span className="text-xl sm:text-2xl font-black text-rose-950">{meninggalLast.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-rose-700">Jiwa</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-orange-50/70 border border-orange-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-orange-800 block">Luka-Luka</span>
+                          <span className="text-xl sm:text-2xl font-black text-orange-950">{lukaLast.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-orange-700">Jiwa</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block">Pengungsi</span>
+                          <span className="text-xl sm:text-2xl font-black text-amber-950">{pengungsiLast.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-amber-700">Jiwa</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-teal-800 block">Terdampak</span>
+                          <span className="text-xl sm:text-2xl font-black text-teal-950">{terdampakLast.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-teal-700">Jiwa</span></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Insight Box di Sisi Kiri */}
+                    <div className="rounded-xl bg-teal-50/90 border border-teal-200 p-4 text-xs sm:text-sm text-teal-950 leading-relaxed font-medium">
+                      <div className="flex items-center gap-2 text-teal-900 font-black text-sm mb-1.5">
+                        <Activity className="h-4 w-4 text-[#047d78]" />
+                        <span>Insight Perkembangan Korban:</span>
+                      </div>
+                      <p className="text-teal-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
+                        {korbanNarrative}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Sisi Kanan (70% / 8 cols): Big Spacious LineChart */}
+                  <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
+                    <div className="flex flex-wrap items-center justify-end gap-2 pb-3 mb-3 border-b border-slate-200/80">
                       {/* Metric Toggle Tabs */}
-                      <div className="flex gap-1 bg-slate-200/60 p-0.5 rounded-lg text-[9px] font-bold">
+                      <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs text-xs font-bold">
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('dual')}
-                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'dual' ? 'bg-white text-teal-800 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
-                          title="Tampilkan skala ganda (Korban & Penduduk)"
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
+                            trendMetricMode === 'dual' ? 'bg-[#047d78] text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                          }`}
                         >
                           Dual Skala
                         </button>
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('korban')}
-                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
-                          title="Fokus grafik korban jiwa (Meninggal, Luka, Pengungsi)"
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
+                            trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                          }`}
                         >
                           Fokus Korban
                         </button>
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('penduduk')}
-                          className={`px-2 py-0.5 rounded-md transition ${trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'}`}
-                          title="Fokus populasi terdampak/terancam"
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
+                            trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                          }`}
                         >
-                          Penduduk
+                          Fokus Penduduk
                         </button>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                      {trendMetricMode === 'dual' && 'Sumbu Kiri: Korban Jiwa | Sumbu Kanan: Penduduk Terdampak'}
-                      {trendMetricMode === 'korban' && 'Fokus grafik pergerakan korban meninggal, luka-luka & pengungsi'}
-                      {trendMetricMode === 'penduduk' && 'Pergerakan estimasi penduduk terancam / terdampak'}
-                    </p>
-                    <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
+
+                    {/* Chart Container */}
+                    <div className="w-full flex-1 min-h-[320px] sm:min-h-[360px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={victimTrendData} margin={{ top: 10, right: trendMetricMode === 'dual' ? 10 : 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="date" stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
+                          <LineChart data={victimTrendData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="date" stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
                             
-                            {/* Left Y-Axis: Korban (0 - puluhan/ratusan) */}
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
                               <YAxis
                                 yAxisId="left"
                                 stroke="#e11d48"
                                 tickLine={false}
-                                style={{ fontSize: '10px' }}
+                                style={{ fontSize: '12px', fontWeight: 'bold' }}
                                 allowDecimals={false}
                               />
                             )}
 
-                            {/* Right Y-Axis: Penduduk Terancam/Terdampak (skala ribuan) */}
                             {trendMetricMode === 'dual' && (
                               <YAxis
                                 yAxisId="right"
                                 orientation="right"
                                 stroke="#0f766e"
                                 tickLine={false}
-                                style={{ fontSize: '9px' }}
+                                style={{ fontSize: '12px', fontWeight: 'bold' }}
                                 tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
                               />
                             )}
@@ -2955,78 +2993,114 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 yAxisId="right"
                                 stroke="#0f766e"
                                 tickLine={false}
-                                style={{ fontSize: '10px' }}
+                                style={{ fontSize: '12px', fontWeight: 'bold' }}
                                 tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
                               />
                             )}
 
                             <Tooltip
-                              contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                              formatter={(value: any) => [Number(value || 0).toLocaleString('id-ID')]}
+                              contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '13px', fontWeight: 600 }}
+                              formatter={(value: any) => [Number(value || 0).toLocaleString('id-ID') + ' Jiwa']}
                             />
-                            <Legend verticalAlign="top" height={36} iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-2 text-slate-700 font-bold">{value}</span>} />
+                            <Legend verticalAlign="top" height={38} iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-4 text-slate-800 font-bold">{value}</span>} />
 
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Total Korban" stroke="#475569" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                              <Line yAxisId="left" type="monotone" dataKey="Total Korban" stroke="#334155" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
                             )}
                             {(trendMetricMode === 'dual' || trendMetricMode === 'penduduk') && (
-                              <Line yAxisId="right" type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2} strokeDasharray={trendMetricMode === 'dual' ? '4 4' : undefined} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                              <Line yAxisId="right" type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2.5} strokeDasharray={trendMetricMode === 'dual' ? '4 4' : undefined} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} />
                             )}
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                              <Line yAxisId="left" type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} />
                             )}
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                              <Line yAxisId="left" type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
                             )}
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} animationEasing="ease-out" />
+                              <Line yAxisId="left" type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
                             )}
-                            <Brush dataKey="date" height={22} stroke="#0f766e" fill="#e6f4f1" gap={1} />
+                            <Brush dataKey="date" height={26} stroke="#047d78" fill="#e6f4f3" gap={1} />
                           </LineChart>
                         </ResponsiveContainer>
                       )}
                     </div>
                   </div>
-                  {/* Narrative */}
-                  <div className="mt-3 rounded-lg bg-teal-50/70 border border-teal-100 px-3 py-2.5">
-                    <p className="text-[11px] text-teal-900 font-semibold leading-relaxed">
-                      <span className="font-black text-teal-800">Insight: </span>
-                      {korbanNarrative}
-                    </p>
-                  </div>
-                </article>
+                </div>
+              </article>
 
-                {/* Chart 2: Proporsi Faskes Terdampak Per Jenis (Pie Charts) */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-rose-200 transition-all duration-200 flex flex-col justify-between h-full">
-                  <div className="flex flex-col flex-1">
-                    <div className="mb-1">
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Proporsi Faskes Terdampak</h4>
+              {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
+              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                  {/* Sisi Kiri (30% / 4 cols) */}
+                  <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug m-0">
+                        Proporsi &amp; Status Kesiapan Faskes
+                      </h4>
+                      <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal mt-2.5 mb-0">
+                        Kondisi fungsional fasilitas pelayanan kesehatan (Rumah Sakit, Puskesmas, Klinik, dan Poskesdes) di {eventData.kabupaten || 'wilayah bencana'} guna memastikan ketersediaan layanan rujukan darurat pasca bencana.
+                      </p>
+
+                      {/* Quick Metrics 2x2 Grid with Big Numbers */}
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Total Faskes</span>
+                          <span className="text-xl sm:text-2xl font-black text-slate-900">{totalMasterFaskes} <span className="text-xs sm:text-sm font-bold text-slate-500">Unit</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Terdampak/Rusak</span>
+                          <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">({totalPctFaskes}%)</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Berfungsi Normal</span>
+                          <span className="text-xl sm:text-2xl font-black text-emerald-950">{totalMasterFaskes - totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-emerald-700">Unit</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-teal-800 block">Status Layanan</span>
+                          <span className="text-sm sm:text-base font-black text-teal-950 leading-tight block mt-1">{totalPctFaskes > 30 ? 'Perlu Backup' : 'Layanan Aman'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">
-                      Trend faskes terdampak ({eventData.kabupaten || 'Kabupaten'})
-                    </p>
 
-                    {/* Pie Charts Grid 2x2 with Auto-layout */}
-                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold flex-1 items-stretch my-auto">
+                    {/* Insight Box di Sisi Kiri */}
+                    <div className="rounded-xl bg-rose-50/90 border border-rose-200 p-4 text-xs sm:text-sm text-rose-950 leading-relaxed font-medium">
+                      <div className="flex items-center gap-2 text-rose-900 font-black text-sm mb-1.5">
+                        <Building2 className="h-4 w-4 text-rose-600" />
+                        <span>Insight Kesiapan Faskes:</span>
+                      </div>
+                      <p className="text-rose-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
+                        {faskesNarrative}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Sisi Kanan (70% / 8 cols): 4 Donut Pie Charts */}
+                  <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
+                    <div className="flex items-center justify-end gap-5 pb-3 mb-3 border-b border-slate-200/80 text-xs sm:text-sm font-bold text-slate-700">
+                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>
+                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Berfungsi Normal</span>
+                    </div>
+
+                    {/* 4 Cards Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 flex-1 items-stretch my-auto">
                       {faskesPieBreakdown.map((cat) => {
                         const IconComp = cat.icon
                         return (
-                          <div key={cat.key} className="rounded-lg border border-slate-200/90 bg-white p-2.5 flex flex-col justify-between shadow-xs hover:border-rose-200 transition-all">
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className="text-[10px] font-black text-slate-800 truncate flex items-center gap-1.5" title={cat.title}>
-                                <IconComp className={`h-3.5 w-3.5 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
+                          <div key={cat.key} className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs hover:border-rose-300 hover:shadow-xs transition-all">
+                            <div className="flex items-center justify-between gap-1 mb-2">
+                              <span className="text-sm font-black text-slate-900 truncate flex items-center gap-1.5" title={cat.title}>
+                                <IconComp className={`h-4 w-4 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
                                 <span className="truncate">{cat.title}</span>
                               </span>
-                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${cat.terdampak > 0
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                }`}>
-                                {cat.pct}% Terdampak
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${
+                                cat.terdampak > 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {cat.pct}%
                               </span>
                             </div>
 
-                            {/* Pie Chart Donut */}
-                            <div className="relative w-full h-[90px] flex items-center justify-center my-auto">
+                            {/* Donut Chart */}
+                            <div className="relative w-full h-[125px] flex items-center justify-center my-auto">
                               {typeof window !== 'undefined' && (
                                 <ResponsiveContainer width="100%" height="100%">
                                   <PieChart>
@@ -3034,8 +3108,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       data={cat.pieData}
                                       cx="50%"
                                       cy="50%"
-                                      innerRadius={20}
-                                      outerRadius={36}
+                                      innerRadius={30}
+                                      outerRadius={50}
                                       paddingAngle={3}
                                       dataKey="value"
                                       isAnimationActive={true}
@@ -3046,58 +3120,99 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       ))}
                                     </Pie>
                                     <Tooltip
-                                      contentStyle={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                                      contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                                       formatter={(val: any, name: any) => [`${val} Unit`, name]}
                                     />
                                   </PieChart>
                                 </ResponsiveContainer>
                               )}
-                              {/* Overlay Center Label */}
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-[11px] font-black text-slate-800 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
-                                <span className="text-[7.5px] font-bold text-slate-400 leading-tight">Unit</span>
+                                <span className="text-base font-black text-slate-900 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
+                                <span className="text-[10px] font-bold text-slate-400 leading-tight">Unit</span>
                               </div>
                             </div>
 
-                            {/* Footer Stats */}
-                            <div className="mt-1 pt-1 border-t border-slate-100 flex items-center justify-between text-[8px] font-bold">
-                              <span className="text-rose-600">🔴 Terdampak: {cat.terdampak}</span>
-                              <span className="text-emerald-600">🟢 Normal: {cat.berfungsi}</span>
+                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                              <span className="text-rose-600 font-bold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" /> Rusak: {cat.terdampak}</span>
+                              <span className="text-emerald-600 font-bold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" /> Normal: {cat.berfungsi}</span>
                             </div>
                           </div>
                         )
                       })}
                     </div>
                   </div>
+                </div>
+              </article>
 
-                  {/* Narrative */}
-                  <div className="mt-3 rounded-lg bg-rose-50/70 border border-rose-100 px-3 py-2.5">
-                    <p className="text-[11px] text-rose-900 font-semibold leading-relaxed">
-                      <span className="font-black text-rose-800">Insight: </span>
-                      {faskesNarrative}
-                    </p>
-                  </div>
-                </article>
+              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT KLB (30% KIRI - 70% KANAN) ─── */}
+              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+                  {/* Sisi Kiri (30% / 4 cols) */}
+                  <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug m-0">
+                        Distribusi Kasus Penyakit Potensial KLB
+                      </h4>
+                      <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal mt-2.5 mb-0">
+                        Surveilans penyakit menular dan penyakit potensial KLB (ISPA, Diare, Penyakit Kulit, DBD, Leptospirosis) pasca kejadian bencana pada posko-posko pengungsian dan fasilitas kesehatan.
+                      </p>
 
-                {/* Chart 3: Tren Penyakit KLB (Bar Chart / Diagram Batang) */}
-                <article className="rounded-xl border border-slate-200/80 bg-slate-50/40 p-4 hover:bg-white hover:border-amber-200 transition-all duration-200 flex flex-col justify-between h-full">
-                  <div className="flex flex-col flex-1">
-                    <div className="mb-1">
-                      <h4 className="text-sm font-black uppercase tracking-wider text-slate-800">Distribusi Total Kasus Penyakit</h4>
+                      {/* Quick Metrics 2x2 Grid with Big Numbers */}
+                      <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-amber-800 block">Total Kasus</span>
+                          <span className="text-xl sm:text-2xl font-black text-amber-950">{totalPenyakitCases} <span className="text-xs sm:text-sm font-bold text-amber-700">Kasus</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-sky-800 block">Dominan</span>
+                          <span className="text-sm sm:text-base font-black text-sky-950 leading-tight block truncate mt-1" title={dominantDiseaseObj?.name || 'Nihil'}>
+                            {dominantDiseaseObj?.name || 'Nihil'}
+                          </span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-purple-800 block">Penyakit Aktif</span>
+                          <span className="text-xl sm:text-2xl font-black text-purple-950">{penyakitTotalData.filter(x => x.total > 0).length} <span className="text-xs sm:text-sm font-bold text-purple-700">Jenis</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-teal-800 block">Status SKDR</span>
+                          <span className="text-sm sm:text-base font-black text-teal-950 leading-tight block mt-1">{totalPenyakitCases > 50 ? 'Waspada' : 'Terkendali'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-semibold mb-2">Total kasus kumulatif penyakit berpotensi KLB (Diagram Batang)</p>
-                    <div className="w-full flex-1 min-h-[220px] text-xs font-semibold">
+
+                    {/* Insight Box di Sisi Kiri */}
+                    <div className="rounded-xl bg-amber-50/90 border border-amber-200 p-4 text-xs sm:text-sm text-amber-950 leading-relaxed font-medium">
+                      <div className="flex items-center gap-2 text-amber-900 font-black text-sm mb-1.5">
+                        <HeartPulse className="h-4 w-4 text-amber-700" />
+                        <span>Insight Epidemiologi Klinis:</span>
+                      </div>
+                      <p className="text-amber-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
+                        {penyakitNarrative}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Sisi Kanan (70% / 8 cols): Big BarChart */}
+                  <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
+                    <div className="flex items-center justify-end pb-3 mb-3 border-b border-slate-200/80">
+                      <span className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm font-bold shadow-2xs">
+                        {totalPenyakitCases} Total Pasien Kasus
+                      </span>
+                    </div>
+
+                    {/* BarChart Container */}
+                    <div className="w-full flex-1 min-h-[320px] sm:min-h-[360px] text-xs font-semibold">
                       {typeof window !== 'undefined' && (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={penyakitTotalData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} interval={0} angle={-12} textAnchor="end" height={40} tick={{ fontSize: 9, fontWeight: 600 }} />
-                            <YAxis stroke="#94a3b8" tickLine={false} style={{ fontSize: '10px' }} />
-                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} formatter={(value) => [`${value} kasus`, 'Total']} />
+                          <BarChart data={penyakitTotalData} margin={{ top: 15, right: 15, left: -5, bottom: 25 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" stroke="#475569" tickLine={false} interval={0} angle={-10} textAnchor="end" height={45} tick={{ fontSize: 12, fontWeight: 700 }} />
+                            <YAxis stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} allowDecimals={false} />
+                            <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '13px', fontWeight: 600 }} formatter={(value) => [`${value} Kasus`, 'Total Pasien']} />
                             <Bar
                               dataKey="total"
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={32}
+                              radius={[6, 6, 0, 0]}
+                              maxBarSize={44}
                               isAnimationActive={true}
                               animationDuration={1200}
                             >
@@ -3111,25 +3226,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       )}
                     </div>
                   </div>
-                  {/* Narrative */}
-                  <div className="mt-3 rounded-lg bg-amber-50/70 border border-amber-100 px-3 py-2.5">
-                    <p className="text-[11px] text-amber-900 font-semibold leading-relaxed">
-                      <span className="font-black text-amber-800">Insight: </span>
-                      {penyakitNarrative}
-                    </p>
-                  </div>
-                </article>
-              </div>
+                </div>
+              </article>
 
-              {/* ── Combined Conclusion Section (Bottom of Card) ── */}
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 text-xs sm:text-[13px] text-slate-700 leading-relaxed space-y-2">
+              {/* ─── KESIMPULAN REKOMENDASI OPERASIONAL ─── */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200">
+                    KESIMPULAN ANALISIS
+                  </span>
+                  <span className="text-sm sm:text-base font-bold text-slate-900">Sintesis Rekomendasi Terpadu EOC Kemenkes</span>
+                </div>
                 {eocNarrative && (
-                  <p className="text-slate-800 font-normal leading-relaxed">
-                    <span className="font-bold text-slate-900">Insight: </span>
+                  <p className="text-sm sm:text-base text-slate-900 font-normal leading-relaxed m-0">
+                    <strong className="font-bold text-slate-950">Rekomendasi Utama: </strong>
                     {eocNarrative}
                   </p>
                 )}
-                <p className="text-slate-600 font-normal leading-relaxed">
+                <p className="text-sm sm:text-base text-slate-700 font-normal leading-relaxed m-0">
                   {korbanNarrative} {faskesNarrative} {penyakitNarrative}
                 </p>
               </div>
@@ -3191,22 +3305,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         })()}
 
         {/* Matriks Akses Lokasi Terdekat Card */}
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-3 gap-2">
-            <h4 className="text-base font-black uppercase tracking-wider text-slate-850 flex items-center gap-2">
-              <Compass className="h-5 w-5 text-teal-700" />
-              PETA AKSES &amp; STATUS SUMBER DAYA KESEHATAN <span className="text-[12px] text-slate-400 font-bold normal-case">(DARI WILAYAH TERDAMPAK)</span>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
+          <div className="border-b border-slate-100 pb-3.5 mb-2">
+            <h4 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
+              Peta Akses &amp; Status Sumber Daya Kesehatan - {eventData.kabupaten || 'Wilayah Bencana'}
             </h4>
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
+              Pemantauan matriks faskes terdekat, pos pengungsian, ketersediaan SDM kesehatan, sanitasi lingkungan, logistik, dan relawan TCK
+            </p>
           </div>
 
           {/* Tab buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-1">
             <button
               type="button"
               onClick={() => setMatrixTab('faskes')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'faskes'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'faskes'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Faskes Terdekat
@@ -3214,9 +3330,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('pengungsian')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'pengungsian'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'pengungsian'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Pos Pengungsian &amp; Kesehatan
@@ -3225,9 +3341,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('status_faskes')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'status_faskes'
-                ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'status_faskes'
+                ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Status Fasilitas Kesehatan
@@ -3235,9 +3351,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('sumber_daya')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'sumber_daya'
-                ? 'bg-indigo-50 text-indigo-700 border-indigo-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'sumber_daya'
+                ? 'bg-indigo-50 text-indigo-800 border-indigo-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Sumber Daya Kesehatan
@@ -3245,9 +3361,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('sanitasi_kesling')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'sanitasi_kesling'
-                ? 'bg-teal-50 text-teal-700 border-teal-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'sanitasi_kesling'
+                ? 'bg-teal-50 text-teal-800 border-teal-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Sanitasi &amp; Kesling
@@ -3255,9 +3371,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('logistik_kesehatan')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 ${matrixTab === 'logistik_kesehatan'
-                ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'logistik_kesehatan'
+                ? 'bg-amber-50 text-amber-900 border-amber-300 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
               Logistik Kesehatan
@@ -3265,29 +3381,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('tck')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'tck'
-                ? 'bg-teal-50 text-teal-800 border-teal-400 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'tck'
+                ? 'bg-teal-50 text-teal-900 border-teal-400 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
-              <HeartPulse className="h-3.5 w-3.5" />
+              <HeartPulse className="h-4 w-4" />
               TCK Kemkes
               {tckTotal > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">{tckTotal.toLocaleString('id-ID')}</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMatrixTab('timeline_log')}
-              className={`px-3.5 py-2 rounded-lg text-[13px] font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'timeline_log'
-                ? 'bg-teal-50 text-teal-800 border-teal-400 shadow-sm'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-            >
-              <History className="h-3.5 w-3.5" />
-              Timeline Log
-              {timelineLogs.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">{timelineLogs.length}</span>
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-teal-700 text-white text-[10px] font-black">{tckTotal.toLocaleString('id-ID')}</span>
               )}
             </button>
           </div>
@@ -4015,10 +4117,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
 
             {matrixTab === 'logistik_kesehatan' && (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {/* Header */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
+                <div className="bg-slate-50 p-3.5 sm:p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <span className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wider">
                     Sumber Daya &amp; Kesiapan Logistik Kesehatan
                   </span>
                 </div>
@@ -4027,29 +4129,31 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 {(() => {
                   const rows: any[] = Array.isArray(detail?.tenaga_input) ? detail.tenaga_input : []
                   if (rows.length === 0) return (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center">
-                      <p className="text-[12px] font-semibold text-slate-400">Belum ada data kebutuhan tenaga kesehatan.</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                      <p className="text-sm sm:text-base font-medium text-slate-500 m-0">Belum ada data kebutuhan tenaga kesehatan yang diinputkan.</p>
                     </div>
                   )
                   return (
                     <div>
-                      <div className="text-[11px] font-black text-slate-700 uppercase tracking-wider mb-2">A. Kebutuhan Tenaga Kesehatan per Faskes</div>
-                      <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
-                        <table className="w-full text-[12px] border-collapse">
+                      <div className="text-sm sm:text-base font-black text-slate-900 uppercase tracking-wider mb-2.5">A. Kebutuhan Tenaga Kesehatan per Faskes</div>
+                      <div className="overflow-x-auto max-h-[340px] overflow-y-auto">
+                        <table className="w-full text-xs sm:text-sm border-collapse">
                           <thead className="sticky top-0 z-10">
                             <tr className="bg-slate-50 border-b border-slate-200">
-                              <th className="py-2 px-3 text-left font-extrabold text-slate-500 text-[10px] uppercase">Nama Faskes</th>
+                              <th className="py-2.5 px-3 text-left font-black text-slate-700 text-xs uppercase">Nama Faskes</th>
                               {['Dokter', 'Perawat', 'Bidan', 'Farmasi', 'Gizi', 'Kesling', 'Lainnya'].map(h => (
-                                <th key={h} className="py-2 px-2 text-center font-extrabold text-slate-500 text-[10px] uppercase" colSpan={2}>{h}</th>
+                                <th key={h} className="py-2.5 px-2 text-center font-black text-slate-700 text-xs uppercase" colSpan={2}>{h}</th>
                               ))}
                             </tr>
-                            <tr className="bg-slate-50 border-b border-slate-100">
+                            <tr className="bg-slate-50 border-b border-slate-200">
                               <th className="py-1.5 px-3"></th>
                               {['Dokter', 'Perawat', 'Bidan', 'Farmasi', 'Gizi', 'Kesling', 'Lainnya'].map(h => (
-                                <>
-                                  <th key={h+'_ada'} className="py-1.5 px-2 text-center text-[9px] font-extrabold text-emerald-600 uppercase">Ada</th>
-                                  <th key={h+'_bth'} className="py-1.5 px-2 text-center text-[9px] font-extrabold text-rose-600 uppercase">Butuh</th>
-                                </>
+                                <th key={h+'_grp'} colSpan={2} className="py-1 px-1 text-center">
+                                  <div className="grid grid-cols-2 gap-1 text-[10px] font-black uppercase">
+                                    <span className="text-emerald-700">Ada</span>
+                                    <span className="text-rose-700">Butuh</span>
+                                  </div>
+                                </th>
                               ))}
                             </tr>
                           </thead>
@@ -4066,17 +4170,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               ]
                               return (
                                 <tr key={idx} className={`border-b border-slate-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                  <td className="py-2.5 px-3 font-bold text-slate-800">{row.nama_faskes || '-'}</td>
+                                  <td className="py-3 px-3 font-bold text-slate-900">{row.nama_faskes || '-'}</td>
                                   {pairs.map(([ada, butuh, key]) => {
                                     const gap = butuh - ada
                                     return (
-                                      <>
-                                        <td key={key+'_a'} className="py-2.5 px-2 text-center font-bold text-emerald-700">{ada}</td>
-                                        <td key={key+'_b'} className="py-2.5 px-2 text-center">
-                                          <span className={`font-bold ${gap > 0 ? 'text-rose-600' : 'text-slate-500'}`}>{butuh}</span>
-                                          {gap > 0 && <span className="ml-1 text-[9px] font-extrabold text-rose-500 bg-rose-50 border border-rose-200 px-1 rounded">-{gap}</span>}
-                                        </td>
-                                      </>
+                                      <td key={key+'_cell'} colSpan={2} className="py-3 px-1 text-center">
+                                        <div className="grid grid-cols-2 gap-1 items-center">
+                                          <span className="font-bold text-emerald-800">{ada}</span>
+                                          <span className={`font-bold ${gap > 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                                            {butuh}
+                                            {gap > 0 && <span className="ml-1 text-[10px] font-extrabold text-rose-600 bg-rose-50 border border-rose-200 px-1 rounded">-{gap}</span>}
+                                          </span>
+                                        </div>
+                                      </td>
                                     )
                                   })}
                                 </tr>
@@ -4119,8 +4225,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     const label = map[val] || val
                     const ok = val === '1'
                     return (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${
-                        ok ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black border ${
+                        ok ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'
                       }`}>{label}</span>
                     )
                   }
@@ -4132,20 +4238,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   const rsKeys = [...fieldGroups, ...rsExtra].filter(k => h[`rs_${k}`])
 
                   if (dinkesKeys.length === 0 && rsKeys.length === 0) return (
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-center">
-                      <p className="text-[12px] font-semibold text-slate-400">Belum ada data kesiapan logistik dari Formulir Lengkap (Tab 6).</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                      <p className="text-sm sm:text-base font-medium text-slate-500 m-0">Belum ada data kesiapan logistik dari Formulir Lengkap (Tab 6).</p>
                     </div>
                   )
 
                   return (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {dinkesKeys.length > 0 && (
-                        <div className="bg-white border border-blue-100 rounded-xl p-3.5">
-                          <div className="text-[11px] font-black text-blue-900 uppercase tracking-wider mb-3 pb-2 border-b border-blue-100">B. Kesiapan Logistik — Dinas Kesehatan</div>
-                          <div className="space-y-2">
+                        <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-2xs">
+                          <div className="text-sm sm:text-base font-black text-blue-950 uppercase tracking-wider mb-3 pb-2 border-b border-blue-100">B. Kesiapan Logistik — Dinas Kesehatan</div>
+                          <div className="space-y-2.5">
                             {dinkesKeys.map(k => (
                               <div key={k} className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold text-slate-700">{labels[k] || k}</span>
+                                <span className="text-xs sm:text-sm font-bold text-slate-800">{labels[k] || k}</span>
                                 {getStatusBadge(h[`dinkes_${k}`], k)}
                               </div>
                             ))}
@@ -4153,12 +4259,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </div>
                       )}
                       {rsKeys.length > 0 && (
-                        <div className="bg-white border border-amber-100 rounded-xl p-3.5">
-                          <div className="text-[11px] font-black text-amber-900 uppercase tracking-wider mb-3 pb-2 border-b border-amber-100">B. Kesiapan Logistik — RS / Puskesmas</div>
-                          <div className="space-y-2">
+                        <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-2xs">
+                          <div className="text-sm sm:text-base font-black text-amber-950 uppercase tracking-wider mb-3 pb-2 border-b border-amber-100">B. Kesiapan Logistik — RS / Puskesmas</div>
+                          <div className="space-y-2.5">
                             {rsKeys.map(k => (
                               <div key={k} className="flex items-center justify-between">
-                                <span className="text-[11px] font-semibold text-slate-700">{labels[k] || k}</span>
+                                <span className="text-xs sm:text-sm font-bold text-slate-800">{labels[k] || k}</span>
                                 {getStatusBadge(h[`rs_${k}`], k)}
                               </div>
                             ))}
@@ -4398,79 +4504,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               )
             })()}
-            {matrixTab === 'timeline_log' && (
-              <div className="space-y-4">
-                {/* Header widget */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-gradient-to-r from-teal-900/5 via-slate-900/5 to-emerald-900/5 p-4 rounded-2xl border border-teal-200/80 shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white shadow-xs">
-                      <History className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h5 className="text-sm font-black text-slate-900 leading-tight uppercase tracking-wide">
-                        Riwayat Aktivitas &amp; Perubahan Kejadian (Timeline Log)
-                      </h5>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Rekam jejak setiap pembaharuan data, pengisian formulir, dan verifikasi oleh operator/admin.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-full bg-teal-100 text-teal-800 text-xs font-black">
-                      {timelineLogs.length} Aktivitas Tercatat
-                    </span>
-                  </div>
-                </div>
-
-                {loadingLogs ? (
-                  <div className="text-center py-10">
-                    <Loader2 className="h-7 w-7 animate-spin text-teal-700 mx-auto" />
-                    <p className="text-xs text-slate-500 mt-2 font-semibold">Memuat log riwayat timeline aktivitas...</p>
-                  </div>
-                ) : logsError ? (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-xs font-semibold text-rose-700">
-                    {logsError}
-                  </div>
-                ) : timelineLogs.length === 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center text-xs font-semibold text-slate-500">
-                    Belum ada riwayat aktivitas tercatat untuk laporan kejadian ini.
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                    {timelineLogs.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-xl shadow-xs border border-slate-200 bg-white hover:border-teal-300 transition"
-                        style={{ borderLeft: '4px solid #047d78' }}
-                      >
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-200">
-                            <Clock className="h-3 w-3 text-teal-700" />
-                            {item.tgl}
-                          </span>
-                        </div>
-                        <h6 className="font-bold text-[14px] text-slate-900 mb-1">
-                          {item.judul}
-                        </h6>
-                        {item.deskripsi && (
-                          <p className="text-xs text-slate-600 leading-relaxed mb-2.5 whitespace-pre-line">
-                            {item.deskripsi}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
-                          <UserCheck className="h-4 w-4 text-teal-700" />
-                          <span className="font-bold text-slate-800">{item.user_name || 'Petugas EOC'}</span>
-                          <span className="text-slate-300">|</span>
-                          <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold">
-                            {item.user_level || 'Operator'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </article>
 
@@ -4486,61 +4519,59 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
           return (
             <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3.5 border-b border-slate-100">
-                <div>
-                  <h4 className="text-[15px] font-black uppercase tracking-wider text-slate-850">
-                    RESPON DINKES &amp; EOC KEMENKES
-                  </h4>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                    Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
-                  </p>
-                </div>
+              <div className="pb-3.5 border-b border-slate-100">
+                <h4 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
+                  Respon Dinkes &amp; EOC Kemenkes
+                </h4>
+                <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
+                  Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian
+                </p>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Col 1: Upaya Penanggulangan */}
-                <div className="rounded-xl border border-amber-200/70 bg-gradient-to-b from-amber-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-amber-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-amber-950">
-                        UPAYA PENANGGULANGAN KRISIS
+                    <div className="flex items-center justify-between pb-2.5 border-b border-amber-200/60">
+                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-amber-950 m-0">
+                        Upaya Penanggulangan Krisis
                       </h5>
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100/80 text-amber-900 font-extrabold text-[10px]">
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs">
                         {compiledUpaya.length > 0 ? `${compiledUpaya.length} Upaya Terinput` : 'Prosedur EOC'}
                       </span>
                     </div>
 
-                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
                       {compiledUpaya.length > 0 ? (
                         compiledUpaya.map((item, idx) => (
-                          <div key={idx} className="bg-white p-2.5 rounded-lg border border-amber-100/90 shadow-2xs space-y-1">
+                          <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150 shadow-2xs space-y-1">
                             <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black uppercase tracking-wide text-amber-800">{item.label}</span>
+                              <span className="text-xs font-black uppercase tracking-wide text-amber-800">{item.label}</span>
                               {item.category && (
-                                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/60">{item.category}</span>
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">{item.category}</span>
                               )}
                             </div>
-                            <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                            <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                               {item.text}
                             </p>
                           </div>
                         ))
                       ) : (
-                        <ul className="space-y-2 text-[12px] font-normal text-slate-700 leading-relaxed">
-                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                        <ul className="space-y-2 text-xs sm:text-sm font-normal text-slate-800 leading-relaxed m-0 p-0 list-none">
+                          <li className="flex items-start gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                             <span>Mobilisasi TRC &amp; Tim Cadangan Kesehatan ke lokasi kejadian.</span>
                           </li>
-                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                          <li className="flex items-start gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                             <span>Penyaluran dan distribusi logistik obat-obatan darurat.</span>
                           </li>
-                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                          <li className="flex items-start gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                             <span>Surveilans aktif penyakit berpotensi KLB di lokasi pengungsian.</span>
                           </li>
-                          <li className="flex items-start gap-2 bg-white p-2 rounded-lg border border-slate-150">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                          <li className="flex items-start gap-2.5 bg-white p-3 rounded-xl border border-slate-200">
+                            <span className="h-2 w-2 rounded-full bg-amber-500 mt-1.5 shrink-0" />
                             <span>Koordinasi 24 jam dengan klaster kesehatan, BPBD, dan TNI/POLRI.</span>
                           </li>
                         </ul>
@@ -4550,46 +4581,46 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
 
                 {/* Col 2: Mobilisasi & Distribusi Logistik Bantuan */}
-                <div className="rounded-xl border border-cyan-200/70 bg-gradient-to-b from-cyan-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                <div className="rounded-xl border border-cyan-200/80 bg-gradient-to-b from-cyan-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-cyan-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-cyan-950">
-                        DISTRIBUSI LOGISTIK &amp; BANTUAN
+                    <div className="flex items-center justify-between pb-2.5 border-b border-cyan-200/60">
+                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-cyan-950 m-0">
+                        Distribusi Logistik &amp; Bantuan
                       </h5>
-                      <span className="px-2 py-0.5 rounded-full bg-cyan-100/80 text-cyan-900 font-extrabold text-[10px]">
+                      <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 font-extrabold text-xs">
                         Klaster Logistik
                       </span>
                     </div>
 
-                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
                       {(emtText || pscText) && (
                         <div className="grid grid-cols-2 gap-2">
                           {emtText && (
-                            <div className="bg-white p-2 rounded-lg border border-cyan-100 shadow-2xs">
-                              <span className="text-[9px] font-black uppercase text-slate-400 block">Tim EMT</span>
-                              <span className="text-[11px] font-bold text-cyan-900 block truncate" title={emtText}>{emtText}</span>
+                            <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
+                              <span className="text-[10px] font-black uppercase text-slate-400 block">Tim EMT</span>
+                              <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={emtText}>{emtText}</span>
                             </div>
                           )}
                           {pscText && (
-                            <div className="bg-white p-2 rounded-lg border border-cyan-100 shadow-2xs">
-                              <span className="text-[9px] font-black uppercase text-slate-400 block">PSC 119</span>
-                              <span className="text-[11px] font-bold text-cyan-900 block truncate" title={pscText}>{pscText}</span>
+                            <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
+                              <span className="text-[10px] font-black uppercase text-slate-400 block">PSC 119</span>
+                              <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={pscText}>{pscText}</span>
                             </div>
                           )}
                         </div>
                       )}
 
-                      <div className="bg-white p-3 rounded-lg border border-cyan-100/90 shadow-2xs space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-wide text-cyan-800 block">Logistik Tersalurkan / Diterima</span>
-                        <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                      <div className="bg-white p-3.5 rounded-xl border border-cyan-150 shadow-2xs space-y-1">
+                        <span className="text-xs font-black uppercase tracking-wide text-cyan-800 block">Logistik Tersalurkan / Diterima</span>
+                        <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                           {bantuanText || "Penyaluran logistik dasar (obat-obatan esensial, masker, hygiene kit) disalurkan langsung oleh dinkes kabupaten/kota setempat."}
                         </p>
                       </div>
 
                       {bantuanDiperlukanText && (
-                        <div className="bg-white p-3 rounded-lg border border-teal-200/80 shadow-2xs space-y-1">
-                          <span className="text-[10px] font-black uppercase tracking-wide text-teal-800 block">Bantuan Yang Diperlukan Segera</span>
-                          <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                        <div className="bg-white p-3.5 rounded-xl border border-teal-200 shadow-2xs space-y-1">
+                          <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Bantuan Yang Diperlukan Segera</span>
+                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                             {bantuanDiperlukanText}
                           </p>
                         </div>
@@ -4599,41 +4630,41 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
 
                 {/* Col 3: Rekomendasi, Tindak Lanjut & Hambatan */}
-                <div className="rounded-xl border border-teal-200/70 bg-gradient-to-b from-teal-50/40 to-slate-50/30 p-4 space-y-3 flex flex-col justify-between">
+                <div className="rounded-xl border border-teal-200/80 bg-gradient-to-b from-teal-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-teal-200/50">
-                      <h5 className="text-xs font-black uppercase tracking-wider text-teal-950">
-                        REKOMENDASI &amp; TINDAK LANJUT
+                    <div className="flex items-center justify-between pb-2.5 border-b border-teal-200/60">
+                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-teal-950 m-0">
+                        Rekomendasi &amp; Tindak Lanjut
                       </h5>
-                      <span className="px-2 py-0.5 rounded-full bg-teal-100/80 text-teal-900 font-extrabold text-[10px]">
+                      <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 font-extrabold text-xs">
                         Rencana Aksi
                       </span>
                     </div>
 
-                    <div className="mt-3 space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
-                      <div className="bg-white p-3 rounded-lg border border-teal-100/90 shadow-2xs space-y-1">
-                        <span className="text-[10px] font-black uppercase tracking-wide text-teal-800 block">Rekomendasi EOC</span>
-                        <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                      <div className="bg-white p-3.5 rounded-xl border border-teal-150 shadow-2xs space-y-1">
+                        <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Rekomendasi EOC</span>
+                        <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                           {rekomendasiText || "Tingkatkan surveilans penyakit pasca bencana di pos pengungsian, pantau kecukupan logistik, serta koordinasi aktif 24 jam dengan EOC Kemenkes."}
                         </p>
                       </div>
 
                       {tindakLanjutText && (
-                        <div className="bg-white p-3 rounded-lg border border-indigo-100/90 shadow-2xs space-y-1">
-                          <span className="text-[10px] font-black uppercase tracking-wide text-indigo-800 block">Rencana Tindak Lanjut (RTL)</span>
-                          <p className="text-[12px] text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+                        <div className="bg-white p-3.5 rounded-xl border border-indigo-150 shadow-2xs space-y-1">
+                          <span className="text-xs font-black uppercase tracking-wide text-indigo-800 block">Rencana Tindak Lanjut (RTL)</span>
+                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                             {tindakLanjutText}
                           </p>
                         </div>
                       )}
 
                       {hambatanText && (
-                        <div className="bg-rose-50/80 p-3 rounded-lg border border-rose-200/80 shadow-2xs space-y-1">
-                          <span className="text-[10px] font-black uppercase tracking-wide text-rose-800 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3 text-rose-600" />
+                        <div className="bg-rose-50/90 p-3.5 rounded-xl border border-rose-200 shadow-2xs space-y-1">
+                          <span className="text-xs font-black uppercase tracking-wide text-rose-800 flex items-center gap-1.5">
+                            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
                             Hambatan Pelayanan Lapangan
                           </span>
-                          <p className="text-[12px] text-rose-950 leading-relaxed font-semibold whitespace-pre-line">
+                          <p className="text-xs sm:text-sm text-rose-950 leading-relaxed font-semibold whitespace-pre-line m-0">
                             {hambatanText}
                           </p>
                         </div>
@@ -4644,12 +4675,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
 
               {eventData.pelapor_nama && (
-                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-semibold gap-2">
+                <div className="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs sm:text-sm text-slate-600 font-medium gap-2">
                   <span className="flex items-center gap-1.5 text-slate-700">
                     <span className="font-bold text-slate-900">Penanggung Jawab / Pelapor:</span> {eventData.pelapor_nama} {eventData.pelapor_jabatan ? `(${eventData.pelapor_jabatan})` : ''} {eventData.pelapor_instansi ? `- ${eventData.pelapor_instansi}` : ''} {eventData.pelapor_nip ? `[NIP: ${eventData.pelapor_nip}]` : ''}
                   </span>
                   {eventData.pelapor_no_telp && (
-                    <span className="text-teal-700 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">Kontak: {eventData.pelapor_no_telp}</span>
+                    <span className="text-teal-800 font-bold bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">Kontak: {eventData.pelapor_no_telp}</span>
                   )}
                 </div>
               )}
@@ -4808,131 +4839,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         </div>
       )}
 
-      {/* ── MODAL LOG TIMELINE AKTIVITAS KEJADIAN ── */}
-      {showLogModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setShowLogModal(false)}
-        >
-          <div
-            className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 animate-in zoom-in-95 duration-200"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-3.5 bg-[#047d78] text-white">
-              <h5 className="text-base font-bold text-white flex items-center gap-2 m-0">
-                <History className="h-5 w-5" />
-                Log Timeline Aktivitas Kejadian
-              </h5>
-              <button
-                onClick={() => setShowLogModal(false)}
-                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition"
-                title="Tutup"
-              >
-                <XCircle className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              {/* Card 1: Informasi Kejadian */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                  <div>
-                    <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 mb-1.5">
-                      INFORMASI KEJADIAN
-                    </span>
-                    <h5 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
-                      {eventData.jenis_bencana}
-                    </h5>
-                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                      {locationFull}
-                    </p>
-                  </div>
-                  <div className="md:border-l md:border-slate-200 md:pl-4 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Tanggal Kejadian:</span>
-                      <span className="font-bold text-slate-800">{eventData.tgl_kejadian || formattedDate || '-'}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-500">Status Operasional:</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Terverifikasi
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Subheading: Riwayat Aktivitas */}
-              <h6 className="font-bold text-slate-800 text-sm flex items-center gap-2 pt-1 m-0">
-                <History className="h-4.5 w-4.5 text-teal-700" />
-                Riwayat Aktivitas &amp; Perubahan (Timeline Log)
-              </h6>
-
-              {/* Timeline Cards Container */}
-              <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                {loadingLogs ? (
-                  <div className="text-center py-8">
-                    <Loader2 className="h-7 w-7 animate-spin text-teal-700 mx-auto" />
-                    <p className="text-xs text-slate-500 mt-2 font-semibold">Memuat log riwayat timeline...</p>
-                  </div>
-                ) : logsError ? (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-center text-xs font-semibold text-rose-700">
-                    {logsError}
-                  </div>
-                ) : timelineLogs.length === 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-center text-xs font-semibold text-slate-500">
-                    Belum ada riwayat aktivitas tercatat.
-                  </div>
-                ) : (
-                  timelineLogs.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3.5 rounded-xl shadow-xs border border-slate-200 bg-white"
-                      style={{ borderLeft: '4px solid #047d78', borderRadius: '10px' }}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-[11px] inline-flex items-center gap-1 bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-md">
-                          <Clock className="h-3 w-3 text-teal-700" />
-                          {item.tgl}
-                        </span>
-                      </div>
-                      <h6 className="font-bold text-[14px] text-slate-900 mb-1">
-                        {item.judul}
-                      </h6>
-                      {item.deskripsi && (
-                        <p className="text-xs text-slate-600 leading-relaxed mb-2 whitespace-pre-line">
-                          {item.deskripsi}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 text-xs text-slate-500">
-                        <UserCheck className="h-3.5 w-3.5 text-teal-700" />
-                        <span className="font-bold text-slate-800">{item.user_name || 'System Admin'}</span>
-                        <span className="text-slate-300">|</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-semibold">
-                          {item.user_level || 'Pusat / Admin'}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowLogModal(false)}
-                className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold transition"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── MODAL LOG TIMELINE AKTIVITAS KEJADIAN (DENGAN KALENDER 14 HARI SIAGA) ── */}
+      <TimelineCalendarModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        disasterName={eventData.jenis_bencana}
+        locationName={locationFull}
+        tglKejadianRaw={eventData.tgl_kejadian || formattedDate}
+        timelineLogs={timelineLogs}
+        loadingLogs={loadingLogs}
+        logsError={logsError}
+      />
 
     </div>
   )

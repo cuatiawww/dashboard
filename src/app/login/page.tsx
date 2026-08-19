@@ -182,7 +182,7 @@ export default function LoginPage() {
   return (
     <div className="relative grid min-h-screen overflow-hidden bg-[#f0f7f7] lg:grid-cols-[minmax(0,1fr)_520px]">
 
-      {/* â”€â”€ LEFT: Hero Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── LEFT: Hero Panel ──────────────────────────────────────────────── */}
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
@@ -195,7 +195,7 @@ export default function LoginPage() {
           onError={() => setBgSrc(localAsset('pkk.webp'))}
         />
 
-        {/* Overlay gradient â€” matches dashboard's teal palette */}
+        {/* Overlay gradient — matches dashboard's teal palette */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-950/80 via-teal-900/65 to-[#0e6b65]/50" />
 
         {/* Subtle grid texture overlay */}
@@ -241,7 +241,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* â”€â”€ RIGHT: Login Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── RIGHT: Login Panel ────────────────────────────────────────────── */}
       <section className="flex min-h-screen items-center justify-center bg-[#f0f7f7] px-5 py-8 sm:px-8 lg:bg-white">
         <div className="w-full max-w-[420px]">
 

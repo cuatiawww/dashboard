@@ -22,6 +22,11 @@ export default function AppShell({ children }: AppShellProps) {
 
   const publicRoutes = ['/login', '/register', '/forgot-password', '/sso']
   const isPublicRoute = publicRoutes.includes(pathname)
+  const isTvRoute =
+    pathname === '/tv' ||
+    pathname?.startsWith('/tv/') ||
+    pathname === '/dashboard-eoc/tv' ||
+    pathname?.startsWith('/dashboard-eoc/tv')
 
   useEffect(() => {
     initialize()
@@ -57,6 +62,10 @@ export default function AppShell({ children }: AppShellProps) {
         <Loader2 className="h-8 w-8 animate-spin text-[#047D78]" />
       </div>
     )
+  }
+
+  if (isTvRoute) {
+    return <main className="h-screen w-screen overflow-hidden bg-slate-950">{children}</main>
   }
 
   if (isPublicRoute) {

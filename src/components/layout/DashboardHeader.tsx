@@ -42,6 +42,7 @@ import {
   Users,
   Key,
   FileText,
+  Tv,
 } from 'lucide-react'
 import { buildApiUrl } from '@/lib/utils/api'
 import { useHeaderStore } from '@/lib/headerStore'
@@ -75,6 +76,7 @@ const sidebarMenu: SidebarMenuGroup[] = [
     title: 'DASHBOARD EOC',
     items: [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
+      { label: 'TAMPILAN TV (COMMAND CENTER)', href: '/tv', icon: Tv },
       { label: 'UNDUH LAPORAN BENCANA', href: '/unduh-laporan', icon: Download },
       { label: 'INFOGRAFIS AI (PDF)', href: '/infografis-ai', icon: FileText },
     ],

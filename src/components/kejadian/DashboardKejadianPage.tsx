@@ -2585,13 +2585,13 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           >
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div className="flex-1">
-                <h3 className="text-[22px] font-bold leading-tight text-[#2f2f2f] sm:text-[28px] uppercase">
+                <h3 className="text-xl sm:text-2xl font-black leading-tight text-slate-900 uppercase">
                   SEBARAN SPASIAL KEJADIAN BENCANA
                 </h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-[#4b4b4b] sm:text-[14px]">
+                <p className="mt-1.5 text-sm sm:text-base leading-relaxed text-slate-600 font-normal">
                   Pemetaan ini menyajikan gambaran komprehensif distribusi geografis dan lokasi kejadian bencana{dateRangeText}.
                 </p>
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
                   <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
                   <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
                 </div>
@@ -2639,13 +2639,13 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             borderBottomLeftRadius: '17px',
           }}
         >
-          <h3 className="text-base font-bold text-slate-900 uppercase mb-1 tracking-wider">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase mb-1 tracking-wide">
             TREND KEJADIAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
           </h3>
-          <p className="text-xs text-slate-500 mb-2">
+          <p className="text-sm sm:text-base text-slate-600 font-normal mb-2 leading-relaxed">
             Grafik perbandingan tren jumlah kejadian bencana alam dengan laporan krisis kesehatan bulanan.
           </p>
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
             <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
             <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
           </div>
@@ -2700,13 +2700,13 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             borderBottomLeftRadius: '17px',
           }}
         >
-          <h3 className="text-base font-bold text-slate-900 uppercase mb-1 tracking-wider">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase mb-1 tracking-wide">
             TREND KORBAN BENCANA DAN KRISIS KESEHATAN TAHUN {targetYear}
           </h3>
-          <p className="text-xs text-slate-500 mb-2">
+          <p className="text-sm sm:text-base text-slate-600 font-normal mb-2 leading-relaxed">
             Grafik perbandingan tren dampak korban (meninggal, luka, hilang, mengungsi, terdampak) akibat bencana alam dan krisis kesehatan bulanan.
           </p>
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
             <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
             <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
           </div>
@@ -2772,192 +2772,251 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
       {/* Donut Charts & Disease Risks Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:grid-cols-3">
         {/* Pie Chart 1: Jenis Bencana */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA</h3>
-          <p className="text-xs text-slate-500 mt-0.5 mb-2">Persentase kejadian berdasarkan tipe bencana.</p>
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
-            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
-            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
-          </div>
-          <div className="h-[180px] sm:h-[220px]">
-            {loading ? (
-              <div className="h-full w-full flex items-center justify-center animate-pulse">
-                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
-              </div>
-            ) : isDbEmpty ? (
-              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={formattedJenisBencana}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="jumlah"
-                    nameKey="nama"
-                  >
-                    {formattedJenisBencana.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase">DISTRIBUSI JENIS BENCANA</h3>
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1 mb-2.5">Persentase kejadian berdasarkan tipe bencana.</p>
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
+              <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+              <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+            </div>
 
+            {(() => {
+              const totalCount = formattedJenisBencana.reduce((sum, item) => sum + (item.jumlah || 0), 0)
+              return (
+                <div>
+                  <div className="relative h-[200px] sm:h-[220px] w-full flex items-center justify-center">
+                    {loading ? (
+                      <div className="h-full w-full flex items-center justify-center animate-pulse">
+                        <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+                      </div>
+                    ) : isDbEmpty || formattedJenisBencana.length === 0 ? (
+                      <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
+                      </div>
+                    ) : (
+                      <>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={formattedJenisBencana}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={85}
+                              paddingAngle={3}
+                              dataKey="jumlah"
+                              nameKey="nama"
+                            >
+                              {formattedJenisBencana.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              formatter={(val: any, name: any) => [`${val} Kejadian`, name]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalCount}</span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Kejadian</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Top 4 Breakdown Legend */}
+                  {formattedJenisBencana.length > 0 && !isDbEmpty && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                      {formattedJenisBencana.slice(0, 4).map((item, idx) => {
+                        const pct = totalCount > 0 ? Math.round((item.jumlah / totalCount) * 100) : 0
+                        const color = COLORS[idx % COLORS.length]
+                        return (
+                          <div key={idx} className="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                            <span className="flex items-center gap-1.5 truncate text-slate-700 font-bold" title={item.nama}>
+                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                              <span className="truncate">{item.nama}</span>
+                            </span>
+                            <span className="text-slate-900 font-black shrink-0">{item.jumlah} <span className="text-[10px] text-slate-500 font-semibold">({pct}%)</span></span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
         </article>
 
         {/* Pie Chart 2: Kategori Bencana */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA</h3>
-          <p className="text-xs text-slate-500 mt-0.5 mb-2">Persentase kejadian berdasarkan kategori bencana.</p>
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
-            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
-            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
-          </div>
-          <div className="h-[180px] sm:h-[220px]">
-            {loading ? (
-              <div className="h-full w-full flex items-center justify-center animate-pulse">
-                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
-              </div>
-            ) : isDbEmpty || isCategoryDataEmpty ? (
-              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="jumlah"
-                    nameKey="nama"
-                  >
-                    {categoryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase">DISTRIBUSI KATEGORI BENCANA</h3>
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1 mb-2.5">Persentase kejadian berdasarkan kategori bencana.</p>
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
+              <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+              <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
+            </div>
 
+            {(() => {
+              const totalCategory = categoryChartData.reduce((sum, item) => sum + (item.jumlah || 0), 0)
+              return (
+                <div>
+                  <div className="relative h-[200px] sm:h-[220px] w-full flex items-center justify-center">
+                    {loading ? (
+                      <div className="h-full w-full flex items-center justify-center animate-pulse">
+                        <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+                      </div>
+                    ) : isDbEmpty || isCategoryDataEmpty ? (
+                      <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
+                      </div>
+                    ) : (
+                      <>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={categoryChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={85}
+                              paddingAngle={3}
+                              dataKey="jumlah"
+                              nameKey="nama"
+                            >
+                              {categoryChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              formatter={(val: any, name: any) => [`${val} Laporan`, name]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalCategory}</span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Laporan</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Category Breakdown Legend */}
+                  {categoryChartData.length > 0 && !isCategoryDataEmpty && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-xs">
+                      {categoryChartData.map((item, idx) => {
+                        const pct = totalCategory > 0 ? Math.round((item.jumlah / totalCategory) * 100) : 0
+                        const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
+                        return (
+                          <div key={idx} className="flex items-center justify-between gap-1 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                            <span className="flex items-center gap-1.5 truncate text-slate-700 font-bold" title={item.nama}>
+                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                              <span className="truncate">{item.nama.replace('Bencana ', '')}</span>
+                            </span>
+                            <span className="text-slate-900 font-black shrink-0">{item.jumlah} <span className="text-[10px] text-slate-500 font-semibold">({pct}%)</span></span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
         </article>
 
         {/* Pie Chart 3: Wilayah Bencana */}
-        <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)]">
-          <h3 className="text-base font-bold text-slate-900 uppercase">SEBARAN KRISIS PER KECAMATAN / WILAYAH</h3>
-          <p className="text-xs text-slate-500 mt-0.5 mb-2">Distribusi kejadian bencana pada tingkat wilayah.</p>
-          <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-[11px] font-bold text-[#047D78] max-w-full truncate">
-            <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
-            <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
-          </div>
-          <div className="h-[180px] sm:h-[220px]">
-            {loading ? (
-              <div className="h-full w-full flex items-center justify-center animate-pulse">
-                <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
-              </div>
-            ) : isDbEmpty || !data?.wilayah || data.wilayah.length === 0 ? (
-              <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={formattedWilayah}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="jumlah"
-                    nameKey="nama"
-                  >
-                    {formattedWilayah.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-        </article>
-
-        {/* Post-Disaster Disease Risk - Hidden / Commented Out
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(15,118,110,0.04)] flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4.5 w-4.5 text-teal-650" />
-              <h3 className="text-base font-bold text-slate-900 uppercase">RISIKO PENYAKIT PASCA-BENCANA - {getRegionLabel()}</h3>
+            <h3 className="text-lg sm:text-xl font-black text-slate-900 uppercase">SEBARAN KRISIS PER KECAMATAN / WILAYAH</h3>
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1 mb-2.5">Distribusi kejadian bencana pada tingkat wilayah.</p>
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg bg-teal-50 border border-teal-200/80 px-2.5 py-1 text-xs font-bold text-[#047D78] max-w-full truncate">
+              <MapPin className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+              <span className="truncate">Wilayah: {activeRegionBadgeLabel}</span>
             </div>
-            <p className="text-xs text-slate-500 mb-4">Indeks kerentanan KLB penyakit menular di posko pengungsian wilayah {getRegionLabel()}.</p>
 
-            {loading ? (
-              <div className="space-y-4 animate-pulse pt-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between">
-                      <div className="h-3.5 w-1/3 bg-slate-100 rounded" />
-                      <div className="h-3.5 w-1/4 bg-slate-100 rounded" />
-                    </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full" />
+            {(() => {
+              const totalWilayah = formattedWilayah.reduce((sum, item) => sum + (item.jumlah || 0), 0)
+              return (
+                <div>
+                  <div className="relative h-[200px] sm:h-[220px] w-full flex items-center justify-center">
+                    {loading ? (
+                      <div className="h-full w-full flex items-center justify-center animate-pulse">
+                        <div className="h-36 w-36 rounded-full border-[18px] border-slate-100 flex items-center justify-center" />
+                      </div>
+                    ) : isDbEmpty || !data?.wilayah || data.wilayah.length === 0 ? (
+                      <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-50/50 border border-dashed border-slate-200">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tidak Ada Data</p>
+                      </div>
+                    ) : (
+                      <>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={formattedWilayah}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={85}
+                              paddingAngle={3}
+                              dataKey="jumlah"
+                              nameKey="nama"
+                            >
+                              {formattedWilayah.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              formatter={(val: any, name: any) => [`${val} Kejadian`, name]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-2xl sm:text-3xl font-black text-slate-900 leading-none">{totalWilayah}</span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Wilayah</span>
+                        </div>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {[
-                  { name: 'ISPA / Pneumonia', risk: isDbEmpty ? 0 : 85, color: 'bg-red-500' },
-                  { name: 'Penyakit Kulit & Gatal', risk: isDbEmpty ? 0 : 72, color: 'bg-orange-500' },
-                  { name: 'Diare Akut / Gastroenteritis', risk: isDbEmpty ? 0 : 65, color: 'bg-amber-500' },
-                  { name: 'Leptospirosis / Demam Tikus', risk: isDbEmpty ? 0 : 34, color: 'bg-indigo-500' },
-                ].map((disease, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-slate-700">{disease.name}</span>
-                      <span className="text-slate-900">{isDbEmpty ? 'N/A' : `${disease.risk}% Tingkat Bahaya`}</span>
-                    </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full ${disease.color}`} style={{ width: isDbEmpty ? '0%' : `${disease.risk}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
 
+                  {/* Top 4 Breakdown Legend */}
+                  {formattedWilayah.length > 0 && !isDbEmpty && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                      {formattedWilayah.slice(0, 4).map((item, idx) => {
+                        const pct = totalWilayah > 0 ? Math.round((item.jumlah / totalWilayah) * 100) : 0
+                        const color = COLORS[(idx + 3) % COLORS.length]
+                        return (
+                          <div key={idx} className="flex items-center justify-between gap-1.5 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                            <span className="flex items-center gap-1.5 truncate text-slate-700 font-bold" title={item.nama}>
+                              <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                              <span className="truncate">{item.nama}</span>
+                            </span>
+                            <span className="text-slate-900 font-black shrink-0">{item.jumlah} <span className="text-[10px] text-slate-500 font-semibold">({pct}%)</span></span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </article>
-        */}
       </section>
 
       {/* Tabel Informasi Kejadian Krisis Kesehatan Terkini */}
       <section className="w-full bg-[#fbffff] pb-8 pt-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-base font-extrabold text-[#1a3535] uppercase tracking-wide">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 uppercase tracking-wide m-0">
               TABEL ANALISIS KEJADIAN KRISIS KESEHATAN TERKINI - {getRegionLabel()}
             </h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
               Matriks pemantauan sebaran laporan kejadian bencana alam/non-alam serta dampaknya terhadap krisis kesehatan masyarakat.
             </p>
           </div>
@@ -2971,12 +3030,12 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                   setTableSearchQuery(e.target.value)
                   setTableCurrentPage(1)
                 }}
-                className="w-full md:w-60 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-teal-500 focus:bg-white transition"
+                className="w-full md:w-64 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:border-teal-500 focus:bg-white transition"
               />
             </div>
             <button
               onClick={handleExportCsv}
-              className="inline-flex items-center justify-center gap-2 w-full md:w-auto rounded-xl bg-[#047D78] hover:bg-[#03605c] px-4 py-2 text-xs font-bold text-white shadow-sm transition"
+              className="inline-flex items-center justify-center gap-2 w-full md:w-auto rounded-xl bg-[#047D78] hover:bg-[#03605c] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition cursor-pointer border-none"
             >
               <Download className="h-4 w-4" />
               <span>Ekspor CSV</span>
@@ -2988,19 +3047,19 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-250 text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                  <th className="py-3.5 px-5 text-center w-12">No</th>
-                  <th className="py-3.5 px-5">Tanggal Kejadian</th>
-                  <th className="py-3.5 px-5">Jenis Kejadian</th>
-                  <th className="py-3.5 px-5">Kab/Kota</th>
-                  <th className="py-3.5 px-5 text-center">Total Penduduk Terdampak</th>
-                  <th className="py-3.5 px-5 text-center w-20">Detail</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs sm:text-sm font-black uppercase text-slate-700 tracking-wider">
+                  <th className="py-3.5 px-4 sm:px-5 text-center w-14">No</th>
+                  <th className="py-3.5 px-4 sm:px-5">Tanggal Kejadian</th>
+                  <th className="py-3.5 px-4 sm:px-5">Jenis Kejadian</th>
+                  <th className="py-3.5 px-4 sm:px-5">Kab/Kota</th>
+                  <th className="py-3.5 px-4 sm:px-5 text-center">Total Penduduk Terdampak</th>
+                  <th className="py-3.5 px-4 sm:px-5 text-center w-20">Detail</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredMarkersForTable.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-xs text-slate-400 italic">
+                    <td colSpan={6} className="py-10 text-center text-sm font-medium text-slate-400 italic">
                       Tidak ada data kejadian krisis kesehatan yang cocok dengan pencarian Anda.
                     </td>
                   </tr>
@@ -3017,20 +3076,20 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                     return (
                       <tr
                         key={m.kode_trans ? `${m.kode_trans}-${idx}` : `event-${idx}`}
-                        className={`transition-colors text-xs cursor-pointer ${isEven ? 'bg-slate-50/50 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-100/70'
+                        className={`transition-colors cursor-pointer ${isEven ? 'bg-slate-50/50 hover:bg-slate-100/70' : 'bg-white hover:bg-slate-100/70'
                           }`}
                         onClick={() => setSelectedEvent(m)}
                       >
-                        <td className="py-3 px-5 text-center font-bold text-slate-400">{absoluteIdx}</td>
-                        <td className="py-3 px-5 font-semibold text-slate-650">{formattedDate}</td>
-                        <td className="py-3 px-5 font-bold text-slate-800">{m.jenis_bencana}</td>
-                        <td className="py-3 px-5 font-semibold text-slate-600">{location}</td>
-                        <td className="py-3 px-5 text-center font-extrabold text-slate-850">
+                        <td className="py-3.5 px-4 sm:px-5 text-center font-bold text-slate-500 text-xs sm:text-sm">{absoluteIdx}</td>
+                        <td className="py-3.5 px-4 sm:px-5 font-bold text-slate-900 text-xs sm:text-sm">{formattedDate}</td>
+                        <td className="py-3.5 px-4 sm:px-5 font-bold text-slate-900 text-xs sm:text-sm">{m.jenis_bencana}</td>
+                        <td className="py-3.5 px-4 sm:px-5 font-bold text-slate-800 text-xs sm:text-sm">{location}</td>
+                        <td className="py-3.5 px-4 sm:px-5 text-center font-black text-slate-900 text-sm sm:text-base">
                           {m.total_korban ? m.total_korban.toLocaleString('id-ID') : 0} Jiwa
                         </td>
-                        <td className="py-3 px-5 text-center">
-                          <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors">
-                            <ChevronRight className="h-4 w-4" />
+                        <td className="py-3.5 px-4 sm:px-5 text-center">
+                          <span className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors">
+                            <ChevronRight className="h-5 w-5" />
                           </span>
                         </td>
                       </tr>
@@ -3041,7 +3100,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
             </table>
           </div>
           <div className="bg-slate-50 border-t border-slate-200 py-3.5 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="text-[11px] text-slate-505 font-bold uppercase tracking-wider">
+            <div className="text-xs sm:text-sm text-slate-600 font-bold uppercase tracking-wider">
               {filteredMarkersForTable.length === 0 ? (
                 'Tidak ada laporan'
               ) : (

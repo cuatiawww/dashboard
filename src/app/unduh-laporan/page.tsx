@@ -1094,7 +1094,7 @@ export default function UnduhLaporanPage() {
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #047D78; text-transform: uppercase;">ðŸ“ ${g.name}</strong>
+          <strong style="color: #047D78; text-transform: uppercase;">${g.name}</strong>
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
           ${g.total_laporan} Kejadian
@@ -1171,12 +1171,12 @@ export default function UnduhLaporanPage() {
               <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View</span>
             </div>
             <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              ðŸ–¨ï¸ Cetak ke PDF / Print
+              🖨️ Cetak ke PDF / Print
             </button>
           </div>
 
           <h2>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h2>
-          <p>PUSAT KRISIS KESEHATAN â€” REKAPITULASI LAPORAN KEJADIAN BENCANA (BERDASARKAN ${groupByLabel})</p>
+          <p>PUSAT KRISIS KESEHATAN — REKAPITULASI LAPORAN KEJADIAN BENCANA (BERDASARKAN ${groupByLabel})</p>
           <div class="meta-box">
             <strong>Total Data Terfilter:</strong> ${filteredReports.length} Laporan (${sortedRegions.length} ${groupByLabel}) | 
             <strong>Total Korban Meninggal:</strong> ${metrics.totalMeninggal} | 
@@ -1337,7 +1337,7 @@ export default function UnduhLaporanPage() {
       <tr>
         <td style="text-align: center; font-weight: bold; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">${idx + 1}</td>
         <td style="border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px;">
-          <strong style="color: #047D78; text-transform: uppercase;">ðŸ“ ${g.name}</strong>
+          <strong style="color: #047D78; text-transform: uppercase;">${g.name}</strong>
         </td>
         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 7px 8px; font-size: 10px; font-weight: 900; color: #0f172a;">
           ${g.total_laporan} Kejadian
@@ -1459,7 +1459,7 @@ export default function UnduhLaporanPage() {
           <!-- Grid lines -->
           <line x1="0" y1="45" x2="500" y2="45" stroke="#e6fffa" stroke-width="1" />
           <line x1="0" y1="90" x2="500" y2="90" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="3,3" />
-          <text x="6" y="86" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0Â°)</text>
+          <text x="6" y="86" font-size="6" fill="#94a3b8" font-weight="bold">KHATULISTIWA (0°)</text>
 
           <!-- REALISTIC ISLAND VECTOR PATHS -->
           <!-- SUMATERA -->
@@ -2349,14 +2349,14 @@ const secondDisasterCount = sortedJenis.length > 1 ? sortedJenis[1][1] : 0
               <span style="background: rgba(255,255,255,0.2); font-size: 10px; padding: 3px 9px; border-radius: 12px; font-weight: 600;">HTML View</span>
             </div>
             <button onclick="window.print()" style="background: #ffffff; color: #047D78; font-weight: bold; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 11px; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-              ðŸ–¨ï¸ Cetak ke PDF / Print
+              🖨️ Cetak ke PDF / Print
             </button>
           </div>
 
           <div class="header">
             <h3>KEMENTERIAN KESEHATAN REPUBLIK INDONESIA</h3>
-            <h4>PUSAT KRISIS KESEHATAN â€” DOKUMEN LAPORAN BENCANA</h4>
-            <span class="badge">${item.kode_laporan} â€” ${item.status_verifikasi}</span>
+            <h4>PUSAT KRISIS KESEHATAN — DOKUMEN LAPORAN BENCANA</h4>
+            <span class="badge">${item.kode_laporan} — ${item.status_verifikasi}</span>
           </div>
 
           <div class="section">
