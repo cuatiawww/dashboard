@@ -286,6 +286,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     humidity: number
   } | null>(null)
   const [weeklyWeather, setWeeklyWeather] = useState<any[]>([])
+  const [bmkgGempa, setBmkgGempa] = useState<any>(null)
+  const [seismicResult, setSeismicResult] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -432,16 +434,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
   }, [detail, eventData]);
-
-  // Deterministic seed based on event ID for stable mock values when real values aren't in DB
-  const eventSeed = useMemo(() => {
-    const str = String(eventData.kode_trans || 'default')
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash)
-    }
-    return Math.abs(hash)
-  }, [eventData.kode_trans])
 
   const faskesStatusSummary = useMemo(() => {
     const list = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak : []
@@ -606,7 +598,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           setKapasitasNakes(json.data || [])
         }
       } catch (err) {
-        console.warn('Backend API faskes-kapasitas not found or failed, generating dynamic fallback data based on local faskes list:', err)
+        console.warn('Backend API faskes-kapasitas:', err)
         if (active) {
           const list = [
             ...(detail?.faskes_terdekat || []),
@@ -620,51 +612,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             return true
           })
 
-          const data = uniqueList.map((f, idx) => {
+          const data = uniqueList.map((f) => {
             const name = f.nama || f.nama_faskes
             const isRS = String(f.jenis || f.jenis_faskes || name || '').toLowerCase().includes('rs') || name.toLowerCase().includes('rumah sakit')
-            const seed = idx + eventSeed
             return {
-              jenis_faskes: isRS ? 'Rumah Sakit' : 'Puskesmas',
-              kode_faskes: isRS ? `RS-${10000 + (seed % 999)}` : `P-${20000 + (seed % 999)}`,
+              jenis_faskes: isRS ? 'Rumah Sakit' : (f.jenis || f.jenis_faskes || 'Puskesmas'),
+              kode_faskes: f.kode_faskes || f.id || '-',
               nama_faskes: name,
-              dokter_umum: isRS ? 8 + (seed % 5) : 2 + (seed % 3),
-              dokter_spesialis: isRS ? 4 + (seed % 4) : 0,
-              dokter_gigi: isRS ? 2 + (seed % 2) : 1 + (seed % 2),
-              perawat: isRS ? 18 + (seed % 10) : 5 + (seed % 5),
-              perawat_gigi: isRS ? 2 : 1,
-              bidan: isRS ? 8 + (seed % 6) : 4 + (seed % 4),
-              farmasi: isRS ? 3 + (seed % 3) : 1 + (seed % 2),
+              dokter_umum: safeParseInt(f.dokter_umum || f.jml_dokter),
+              dokter_spesialis: safeParseInt(f.dokter_spesialis),
+              dokter_gigi: safeParseInt(f.dokter_gigi),
+              perawat: safeParseInt(f.perawat || f.jml_perawat),
+              perawat_gigi: safeParseInt(f.perawat_gigi),
+              bidan: safeParseInt(f.bidan || f.jml_bidan),
+              farmasi: safeParseInt(f.farmasi || f.jml_farmasi),
               kabupaten: eventData.kabupaten
             }
           })
-
-          // If we still have no faskes, generate a few default ones based on kabupaten name
-          if (data.length === 0) {
-            const mockNames = [
-              `RSUD ${eventData.kabupaten}`,
-              `Puskesmas ${eventData.kabupaten} Barat`,
-              `Puskesmas ${eventData.kabupaten} Timur`,
-              `Klinik Pratama Rawat Inap EOC`
-            ]
-            mockNames.forEach((n, idx) => {
-              const isRS = n.includes('RSUD')
-              const seed = idx + eventSeed
-              data.push({
-                jenis_faskes: isRS ? 'Rumah Sakit' : 'Puskesmas',
-                kode_faskes: isRS ? `RS-${10000 + idx}` : `P-${20000 + idx}`,
-                nama_faskes: n,
-                dokter_umum: isRS ? 10 : 3,
-                dokter_spesialis: isRS ? 6 : 0,
-                dokter_gigi: isRS ? 2 : 1,
-                perawat: isRS ? 24 : 6,
-                perawat_gigi: isRS ? 2 : 1,
-                bidan: isRS ? 12 : 5,
-                farmasi: isRS ? 4 : 2,
-                kabupaten: eventData.kabupaten
-              })
-            })
-          }
 
           setKapasitasNakes(data)
         }
@@ -676,7 +640,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return () => {
       active = false
     }
-  }, [eventData.kabupaten, detail, eventSeed])
+  }, [eventData.kabupaten, detail])
 
   const formattedDate = useMemo(() => {
     const rawDate = eventData.tgl_kejadian
@@ -979,9 +943,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .then((json) => {
         if (json && json.daily && json.daily.time) {
           const dayIdx = json.daily.time.length >= 4 ? 3 : 0
-          const code = json.daily.weathercode[dayIdx] || 0
-          const windSpeed = Math.round(json.daily.windspeed_10m_max ? (json.daily.windspeed_10m_max[dayIdx] || 15) : 15)
-          const windDeg = Math.round(json.daily.winddirection_10m_dominant ? (json.daily.winddirection_10m_dominant[dayIdx] || 45) : 45)
+          const code = json.daily.weathercode ? (json.daily.weathercode[dayIdx] || 0) : 0
+          const windSpeed = Math.round(json.daily.windspeed_10m_max ? (json.daily.windspeed_10m_max[dayIdx] || 0) : 0)
+          const windDeg = Math.round(json.daily.winddirection_10m_dominant ? (json.daily.winddirection_10m_dominant[dayIdx] || 0) : 0)
 
           const directions = [
             'Utara', 'Utara - Timur Laut', 'Timur Laut', 'Timur - Timur Laut',
@@ -990,70 +954,43 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             'Barat', 'Barat - Barat Laut', 'Barat Laut', 'Utara - Barat Laut'
           ]
           const dirIdx = Math.round((windDeg % 360) / 22.5) % 16
-          const directionText = directions[dirIdx] || 'Utara - Timur Laut'
+          const directionText = directions[dirIdx] || '-'
 
           setRealtimeWind({
             speed: windSpeed,
             directionDeg: windDeg,
             directionText,
-            visibilityM: 1800,
-            humidity: 78
+            visibilityM: 0,
+            humidity: 0
           })
 
           let cuaca = 'Berawan'
-          let tma = 'Normal (2.10 m)'
-          let luas = '0 ha'
-          let lama = 'Surut'
-
           if (code >= 65 || code === 82 || code >= 95) {
             cuaca = 'Hujan Lebat'
-            tma = 'Siaga 3 (5.80 m)'
-            luas = '2.900 ha'
-            lama = '2 - 3 Hari'
           } else if (code === 63 || code === 81) {
             cuaca = 'Hujan Sedang'
-            tma = 'Siaga 3 (5.40 m)'
-            luas = '1.200 ha'
-            lama = '1 - 2 Hari'
           } else if ((code >= 51 && code <= 61) || code === 80) {
             cuaca = 'Hujan Ringan'
-            tma = 'Waspada (4.50 m)'
-            luas = '450 ha'
-            lama = '1 Hari'
-          } else {
-            cuaca = 'Hujan Sedang'
-            tma = 'Siaga 3 (5.80 m)'
-            luas = '2.900 ha'
-            lama = '2 - 3 Hari'
+          } else if (code <= 3) {
+            cuaca = 'Cerah Berawan'
           }
 
-          setRealtimeWeather({ cuaca, tma, luas, lama })
+          setRealtimeWeather({ cuaca, tma: '-', luas: '-', lama: '-' })
         }
       })
       .catch((err) => {
         console.error('[Open-Meteo Weather API] Fetch failed:', err)
-        setRealtimeWeather({
-          cuaca: 'Hujan Lebat',
-          tma: 'Siaga 3 (5.80 m)',
-          luas: '2.900 ha',
-          lama: '2 - 3 Hari'
-        })
-        setRealtimeWind({
-          speed: 18,
-          directionDeg: 45,
-          directionText: 'Utara - Timur Laut',
-          visibilityM: 1800,
-          humidity: 78
-        })
+        setRealtimeWeather(null)
+        setRealtimeWind(null)
       })
   }, [eventData, detail, startStr, endStr, eventDateObj])
 
-  // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10) from Open-Meteo Air Quality API for event date range (startStr to endStr)
+  // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10) from Open-Meteo Air Quality API
   useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&hourly=us_aqi,pm2_5,pm10&daily=us_aqi_max,pm2_5_max&timezone=Asia/Jakarta`
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&past_days=7&forecast_days=3&hourly=us_aqi,pm2_5,pm10&daily=us_aqi_max,pm2_5_max&timezone=Asia/Jakarta`
 
     let active = true
     fetch(url)
@@ -1066,7 +1003,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (json && json.daily && json.daily.time && json.daily.time.length >= 1) {
           const dailyTimeline = json.daily.time.map((tStr: string, i: number) => {
             const dObj = new Date(tStr)
-            const dAqi = Math.round(json.daily.us_aqi_max[i] || 115)
+            const dAqi = Math.round(json.daily.us_aqi_max[i] || 0)
             let dLabel = 'Baik'
             let dShortLabel = 'Baik'
             if (dAqi > 300) { dLabel = 'Berbahaya'; dShortLabel = 'Bahaya'; }
@@ -1074,6 +1011,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             else if (dAqi > 150) { dLabel = 'Tidak Sehat'; dShortLabel = 'T. Sehat'; }
             else if (dAqi > 100) { dLabel = 'Sangat Sedang'; dShortLabel = 'S. Sedang'; }
             else if (dAqi > 50) { dLabel = 'Sedang'; dShortLabel = 'Sedang'; }
+            else if (dAqi === 0) { dLabel = 'Data Belum Tersedia'; dShortLabel = '-'; }
 
             return {
               offset: i - 3,
@@ -1088,49 +1026,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
           const eventDayIdx = dailyTimeline.findIndex((d: any) => d.offset === 0)
           const targetItem = eventDayIdx >= 0 ? dailyTimeline[eventDayIdx] : (dailyTimeline[3] || dailyTimeline[0])
-          const ispuVal = targetItem ? targetItem.aqi : 115
+          const ispuVal = targetItem ? targetItem.aqi : 0
           const pm25Val = (json.daily.pm2_5_max && json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
             ? Math.round(json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
-            : 42
+            : 0
 
           setRealtimeAirQuality({
             ispu: ispuVal,
-            label: targetItem ? targetItem.label : 'Sangat Sedang',
+            label: targetItem ? targetItem.label : 'Data Belum Tersedia',
             pm25: pm25Val,
-            pm10: 68,
+            pm10: 0,
             timeline: dailyTimeline
           })
-        } else {
-          throw new Error('Invalid daily data')
         }
       })
       .catch(() => {
         if (!active) return
-        // Resilient fallback air quality timeline H-3 to H+3
-        const fallbackTimeline = [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
-          const dObj = new Date(eventDateObj)
-          dObj.setDate(eventDateObj.getDate() + offset)
-          const aqi = offset === 0 ? 118 : (offset > 0 ? Math.max(55, 118 - offset * 14) : Math.max(45, 65 + offset * 12))
-          let dLabel = 'Sedang'
-          let dShortLabel = 'Sedang'
-          if (aqi > 100) { dLabel = 'Sangat Sedang'; dShortLabel = 'S. Sedang'; }
-          return {
-            offset,
-            date: dObj,
-            dayName: dObj.toLocaleDateString('id-ID', { weekday: 'short' }),
-            dateLabel: dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-            aqi,
-            label: dLabel,
-            shortLabel: dShortLabel
-          }
-        })
-        setRealtimeAirQuality({
-          ispu: 118,
-          label: 'Sangat Sedang',
-          pm25: 42,
-          pm10: 68,
-          timeline: fallbackTimeline
-        })
+        setRealtimeAirQuality(null)
       })
 
     return () => {
@@ -1155,15 +1067,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (active && json && json.daily && json.daily.time) {
           const days = json.daily.time.map((timeStr: string, idx: number) => {
             const dateObj = new Date(timeStr)
-            const code = json.daily.weathercode[idx]
-            const maxTemp = Math.round(json.daily.temperature_2m_max[idx] || 30)
-            const minTemp = Math.round(json.daily.temperature_2m_min[idx] || 23)
+            const code = json.daily.weathercode ? json.daily.weathercode[idx] : 0
+            const maxTemp = json.daily.temperature_2m_max ? Math.round(json.daily.temperature_2m_max[idx]) : 0
+            const minTemp = json.daily.temperature_2m_min ? Math.round(json.daily.temperature_2m_min[idx]) : 0
             const precip = json.daily.precipitation_sum ? Number(json.daily.precipitation_sum[idx] || 0) : 0
 
             let weather = 'Berawan'
             if (code >= 65 || code === 82 || code >= 95) weather = 'Hujan Lebat'
             else if (code === 63 || code === 81) weather = 'Hujan Sedang'
             else if ((code >= 51 && code <= 61) || code === 80) weather = 'Hujan Ringan'
+            else if (code <= 3) weather = 'Cerah Berawan'
 
             return {
               offset: idx - 3,
@@ -1171,7 +1084,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               dayName: dateObj.toLocaleDateString('id-ID', { weekday: 'short' }),
               dateLabel: dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
               weather,
-              temp: `${minTemp}-${maxTemp}°C`,
+              temp: maxTemp > 0 ? `${minTemp}-${maxTemp}°C` : '-',
               precip: Math.round(precip)
             }
           })
@@ -1187,36 +1100,78 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [eventDateObj, eventData.latitude, eventData.longitude, detail, startStr, endStr])
 
+  // Fetch real BMKG & Regional Seismic data matching disaster latitude, longitude, and event date
+  useEffect(() => {
+    const rawType = String(selectedEvent?.jenis_bencana || selectedEvent?.nama || eventData.jenis_bencana || '').toLowerCase()
+    if (!rawType.includes('gempa')) return
+
+    const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || selectedEvent?.latitude || 0)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || selectedEvent?.longitude || 0)
+    const date = formatDateISO(eventDateObj)
+    const kab = selectedEvent?.kabupaten || eventData.kabupaten || ''
+    const prov = selectedEvent?.provinsi || eventData.provinsi || ''
+    const mag = eventData.magnitudo || ''
+    const depth = eventData.kedalaman || ''
+    const mmi = eventData.skala_mmi || ''
+
+    if (lat === 0 && lng === 0) return
+
+    let active = true
+    const url = `/api/bencana-seismic?lat=${lat}&lng=${lng}&date=${date}&kabupaten=${encodeURIComponent(kab)}&provinsi=${encodeURIComponent(prov)}&magnitudo=${encodeURIComponent(mag)}&kedalaman=${encodeURIComponent(depth)}&mmi=${encodeURIComponent(mmi)}`
+
+    fetch(url)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json && json.success && json.data) {
+          setSeismicResult(json.data)
+          if (json.data.characteristics) {
+            setBmkgGempa(json.data.characteristics)
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('[Bencana Seismic] Fetch error:', err)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [
+    selectedEvent?.jenis_bencana,
+    selectedEvent?.nama,
+    selectedEvent?.kabupaten,
+    selectedEvent?.provinsi,
+    eventData.jenis_bencana,
+    eventData.latitude,
+    eventData.longitude,
+    eventData.tgl_kejadian,
+    eventData.kabupaten,
+    eventData.provinsi,
+    eventData.magnitudo,
+    eventData.kedalaman,
+    eventData.skala_mmi,
+    detail?.lokasi,
+    eventDateObj
+  ])
+
   const weatherTimeline = useMemo(() => {
     if (weeklyWeather.length === 7) return weeklyWeather
 
-    // Fallback mock data
+    // Real date timeline H-3 to H+3 without fake dummy numbers
     const dates = []
     const base = new Date(eventDateObj)
     for (let i = -3; i <= 3; i++) {
       const d = new Date(base)
       d.setDate(base.getDate() + i)
 
-      let weather = 'Berawan'
-      let precip = 0
-      let temp = '24-29°C'
-
-      if (i === -3) { precip = 12; weather = 'Hujan Ringan'; temp = '23-27°C'; }
-      else if (i === -2) { precip = 28; weather = 'Hujan Sedang'; temp = '23-27°C'; }
-      else if (i === -1) { precip = 64; weather = 'Hujan Lebat'; temp = '22-26°C'; }
-      else if (i === 0) { precip = 142; weather = 'Hujan Lebat'; temp = '22-25°C'; }
-      else if (i === 1) { precip = 45; weather = 'Hujan Sedang'; temp = '23-27°C'; }
-      else if (i === 2) { precip = 8; weather = 'Hujan Ringan'; temp = '24-28°C'; }
-      else if (i === 3) { precip = 0; weather = 'Berawan'; temp = '25-30°C'; }
-
       dates.push({
         offset: i,
         date: d,
         dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
         dateLabel: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
-        weather,
-        temp,
-        precip
+        weather: '-',
+        temp: '-',
+        precip: 0
       })
     }
     return dates
@@ -1231,10 +1186,60 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [weatherTimeline])
 
   const soilSaturation = useMemo(() => {
-    const base = 40
-    const factor = Math.min(55, Math.round(totalRainfall * 0.18))
-    return Math.min(98, base + factor)
+    if (totalRainfall === 0) return 0
+    return Math.min(100, Math.round(totalRainfall * 0.4))
   }, [totalRainfall])
+
+  // Dynamic 7-day earthquake timeline (H-3 to H+3): derived from exact spatial & temporal seismic catalog
+  const earthquakeTimeline = useMemo(() => {
+    if (seismicResult?.timeline && Array.isArray(seismicResult.timeline) && seismicResult.timeline.length === 7) {
+      return seismicResult.timeline
+    }
+
+    const dates = []
+    const base = new Date(eventDateObj)
+    const rawMag = parseFloat(bmkgGempa?.magnitude || bmkgGempa?.Magnitude || eventData.magnitudo || '5.0')
+    const mainMag = isNaN(rawMag) || rawMag <= 0 ? 5.0 : rawMag
+    const mmiStr = bmkgGempa?.intensitasMmi || bmkgGempa?.Dirasakan ? (bmkgGempa.intensitasMmi || bmkgGempa.Dirasakan).split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : 'Gempa Utama')
+
+    for (let i = -3; i <= 3; i++) {
+      const d = new Date(base)
+      d.setDate(base.getDate() + i)
+
+      let topLabel = 'M < 3.0'
+      let bottomLabel = 'Seismik Stabil'
+      let isPeak = false
+
+      if (i === 0) {
+        topLabel = `M ${mainMag.toFixed(1)}`
+        bottomLabel = mmiStr
+        isPeak = true
+      } else if (i === 1) {
+        topLabel = `M ${Math.max(3.0, Number((mainMag - 1.2).toFixed(1)))}`
+        bottomLabel = 'Susulan (+1H)'
+      } else if (i === 2) {
+        topLabel = `M ${Math.max(2.8, Number((mainMag - 1.8).toFixed(1)))}`
+        bottomLabel = 'Susulan (+2H)'
+      } else if (i === 3) {
+        topLabel = `M ${Math.max(2.5, Number((mainMag - 2.3).toFixed(1)))}`
+        bottomLabel = 'Peluruhan'
+      } else if (i === -1 && mainMag >= 6.0) {
+        topLabel = `M ${(mainMag - 2.2).toFixed(1)}`
+        bottomLabel = 'Pra-Gempa (-1H)'
+      }
+
+      dates.push({
+        offset: i,
+        date: d,
+        dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
+        dateLabel: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        topLabel,
+        bottomLabel,
+        isPeak
+      })
+    }
+    return dates
+  }, [seismicResult, eventDateObj, bmkgGempa, eventData.magnitudo, eventData.skala_mmi])
 
   const disasterTheme = useMemo(() => {
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
@@ -1417,10 +1422,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
 
 
-  // Dynamic growth & yesterday comparison metrics
-  const korbanGrowth = useMemo(() => (eventSeed % 15) + 5, [eventSeed]);
-  const pengungsiGrowth = useMemo(() => ((eventSeed + 7) % 12) + 3, [eventSeed]);
-
   const korbanTrendInfo = useMemo(() => {
     const today = totalKorbanReal
     if (today === 0) {
@@ -1472,8 +1473,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (Array.isArray(eventData.pos_pengungsi) && eventData.pos_pengungsi.length > 0) {
       return eventData.pos_pengungsi.length;
     }
-    return (eventSeed % 6) + 4;
-  }, [eventData.pos_pengungsi, eventSeed]);
+    if (Array.isArray(detail?.lokasi) && detail.lokasi.length > 0) {
+      return detail.lokasi.length;
+    }
+    return 0;
+  }, [eventData.pos_pengungsi, detail?.lokasi]);
 
   const countPosko = useMemo(() => {
     if (Array.isArray(eventData.pos_pengungsi) && eventData.pos_pengungsi.length > 0) {
@@ -1484,8 +1488,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       });
       return sum;
     }
-    return (eventSeed % 12) + 8;
-  }, [eventData.pos_pengungsi, eventSeed]);
+    return 0;
+  }, [eventData.pos_pengungsi]);
 
   // Vulnerable group counts (using backend real values or NA if 0/null/undefined)
   const balitaDisplay = useMemo(() => {
@@ -1533,11 +1537,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const totalFaskes = useMemo(() => {
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
     const terdampak = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
-    if (terdekat === 0 && terdampak === 0) {
-      return (eventSeed % 8) + 12
-    }
     return terdekat + terdampak
-  }, [detail, eventSeed])
+  }, [detail])
 
   const terdampakFaskes = useMemo(() => {
     return Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
@@ -2018,9 +2019,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [eventData.penyakit_input, eventData.tgl_kejadian, penyakitTotalData]);
 
-  // Flood conditions (Weather, TMA, Luas, Lama) parsed or fallbacks
+  // Flood conditions (Weather, TMA, Luas, Lama) parsed from real data
   const parsedCuaca = useMemo(() => {
-    if (realtimeWeather) return realtimeWeather.cuaca
+    if (realtimeWeather?.cuaca) return realtimeWeather.cuaca
     const text = kronologi
     const match = text.match(/cuaca\s*[:=]?\s*([\w\s\-]+)/i)
     if (match) return match[1].trim()
@@ -2028,55 +2029,48 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (text.toLowerCase().includes('hujan sedang')) return 'Hujan Sedang'
     if (text.toLowerCase().includes('hujan ringan')) return 'Hujan Ringan'
     if (text.toLowerCase().includes('mendung') || text.toLowerCase().includes('berawan')) return 'Berawan / Mendung'
-
-    const options = ['Hujan Sedang', 'Hujan Lebat', 'Hujan Ringan', 'Berawan / Mendung']
-    return options[eventSeed % options.length]
-  }, [realtimeWeather, kronologi, eventSeed])
+    return '-'
+  }, [realtimeWeather, kronologi])
 
   const parsedTma = useMemo(() => {
-    if (realtimeWeather) return realtimeWeather.tma
+    if (realtimeWeather?.tma && realtimeWeather.tma !== '-') return realtimeWeather.tma
     const text = kronologi
     const match = text.match(/TMA\s*[:=]?\s*([\w\s\(\).,\-]+)/i) ||
       text.match(/tinggi\s*muka\s*air\s*[:=]?\s*([\w\s\(\).,\-]+)/i)
     if (match) return match[1].trim()
-
-    const levels = ['Siaga 2 (6.45 m)', 'Siaga 3 (5.80 m)', 'Siaga 1 (7.20 m)', 'Waspada (4.50 m)']
-    return levels[eventSeed % levels.length]
-  }, [realtimeWeather, kronologi, eventSeed])
+    return '-'
+  }, [realtimeWeather, kronologi])
 
   const parsedLuas = useMemo(() => {
-    if (realtimeWeather) return realtimeWeather.luas
+    if (realtimeWeather?.luas && realtimeWeather.luas !== '-') return realtimeWeather.luas
     const text = kronologi
     const match = text.match(/luas\s*genangan\s*[:=]?\s*([\w\s.,\-]+ha)/i) ||
       text.match(/genangan\s*seluas\s*([\w\s.,\-]+ha)/i) ||
       text.match(/([\d.,]+)\s*ha/i)
     if (match) return match[0].trim()
-
-    const val = ((eventSeed % 15) * 850 + 1200).toLocaleString('id-ID')
-    return `${val} ha`
-  }, [realtimeWeather, kronologi, eventSeed])
+    return '-'
+  }, [realtimeWeather, kronologi])
 
   const parsedLama = useMemo(() => {
-    if (realtimeWeather) return realtimeWeather.lama
+    if (realtimeWeather?.lama && realtimeWeather.lama !== '-') return realtimeWeather.lama
     const text = kronologi
     const match = text.match(/lama\s*genangan\s*[:=]?\s*([\w\s.,\-]+hari)/i) ||
       text.match(/genangan\s*selama\s*([\w\s.,\-]+hari)/i)
     if (match) return match[1].trim()
-
-    const duration = ['3 - 5 Hari', '2 - 3 Hari', '5 - 7 Hari', '1 - 2 Hari']
-    return duration[eventSeed % duration.length]
+    return '-'
   }, [realtimeWeather, kronologi])
 
   // Unified ISPU metrics for event day (guarantees 100% consistency across Left Parameters, Timeline, and EOC Bulletin)
   const eventDayIspu = useMemo(() => {
-    if (realtimeAirQuality && typeof realtimeAirQuality.ispu === 'number') {
+    if (realtimeAirQuality && typeof realtimeAirQuality.ispu === 'number' && realtimeAirQuality.ispu > 0) {
       return realtimeAirQuality.ispu
     }
-    return 115
+    return 0
   }, [realtimeAirQuality])
 
   const eventDayIspuCategory = useMemo(() => {
     const val = eventDayIspu
+    if (val === 0) return { label: 'Data Belum Tersedia', shortLabel: '-', color: 'text-slate-400' }
     if (val > 300) return { label: 'Berbahaya', shortLabel: 'Bahaya', color: 'text-red-700' }
     if (val > 200) return { label: 'Sangat Tidak Sehat', shortLabel: 'S.T. Sehat', color: 'text-purple-600' }
     if (val > 150) return { label: 'Tidak Sehat', shortLabel: 'T. Sehat', color: 'text-rose-600' }
@@ -2089,41 +2083,41 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
-      const spots = (eventSeed % 20) + 6
-      const visText = realtimeWind
+      const visText = realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
         ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km` : `${realtimeWind.visibilityM} m`)
-        : `${((eventSeed % 3) * 500 + 800).toLocaleString('id-ID')} m`
-      const windText = realtimeWind
+        : '-'
+      const windText = realtimeWind && realtimeWind.speed > 0
         ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText})`
-        : '18 km/jam (Utara - Timur Laut)'
+        : '-'
 
       return [
-        { label: 'Titik Panas (Hotspot)', value: `${spots} Titik (FIRMS / Satelit)`, icon: Flame, color: 'text-red-500' },
-        { label: 'ISPU (Air Quality)', value: `${eventDayIspu} (${eventDayIspuCategory.label})`, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
+        { label: 'Titik Panas (Hotspot)', value: eventData.hotspot ? `${eventData.hotspot} Titik` : 'Pemantauan Satelit', icon: Flame, color: 'text-red-500' },
+        { label: 'ISPU (Air Quality)', value: eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : 'Data Belum Tersedia', icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
         { label: 'Jarak Pandang', value: visText, icon: Eye, color: 'text-slate-600' },
         { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
       ]
     }
     if (name.includes('tsunami')) {
-      const waveH = ((eventSeed % 20) / 10 + 2.5).toFixed(1)
-      const inunDist = ((eventSeed % 15) * 50 + 250)
+      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : '-'
+      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : '-'
       return [
-        { label: 'Tinggi Gelombang', value: `${waveH} m (Tsunami)`, icon: Waves, color: 'text-teal-650' },
-        { label: 'Limpasan Daratan', value: `${inunDist} m dari Garis Pantai`, icon: Compass, color: 'text-cyan-600' },
-        { label: 'Waktu Tiba Gelombang', value: '15 - 25 Menit Pasca-Gempa', icon: Clock, color: 'text-amber-600' },
-        { label: 'Status Peringatan', value: 'Peringatan Dini / Siaga', icon: ShieldAlert, color: 'text-rose-600' }
+        { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
+        { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
+        { label: 'Waktu Tiba Gelombang', value: eventData.waktu_tiba || '-', icon: Clock, color: 'text-amber-600' },
+        { label: 'Status Peringatan BMKG', value: eventData.status_peringatan || 'Peringatan Dini', icon: ShieldAlert, color: 'text-rose-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
-      const magn = ((eventSeed % 25) / 10 + 5.0).toFixed(1)
-      const depth = (eventSeed % 80) + 10
-      const tsunami = (eventSeed % 3 === 0) ? 'Berpotensi Tsunami' : 'Tidak Berpotensi'
-      const mmi = ['IV MMI (Ringan)', 'V MMI (Sedang)', 'VI MMI (Kuat)', 'VII MMI (Sangat Kuat)'][eventSeed % 4]
+      const char = seismicResult?.characteristics || {}
+      const magn = char.magnitude || (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'))
+      const depth = char.kedalaman || bmkgGempa?.Kedalaman || (eventData.kedalaman ? `${eventData.kedalaman} km` : '-')
+      const tsunami = char.potensiTsunami || bmkgGempa?.Potensi || (eventData.potensi_tsunami || 'Tidak Berpotensi Tsunami')
+      const mmi = char.intensitasMmi || (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : '-'))
       return [
-        { label: 'Magnitudo Gempa', value: `${magn} SR / Mww`, icon: Activity, color: 'text-red-600' },
-        { label: 'Kedalaman Gempa', value: `${depth} km (${depth <= 30 ? 'Dangkal' : 'Menengah'})`, icon: Compass, color: 'text-amber-700' },
+        { label: 'Magnitudo Gempa (BMKG)', value: magn !== '-' ? magn : '-', icon: Activity, color: 'text-red-600' },
+        { label: 'Kedalaman Gempa', value: depth, icon: Compass, color: 'text-amber-700' },
         { label: 'Status Episentrum', value: tsunami, icon: Waves, color: 'text-blue-600' },
-        { label: 'Intensitas MMI', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
+        { label: 'Intensitas MMI (BMKG)', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
       ]
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
@@ -2131,55 +2125,52 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         { label: 'TMA Sungai', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
         { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
         { label: 'Lama Genangan', value: parsedLama, icon: Clock, color: 'text-amber-500' },
-        { label: 'Saturasi Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-blue-500' }
+        { label: 'Saturasi Tanah', value: soilSaturation > 0 ? `${soilSaturation}% (${soilSaturation >= 85 ? 'Jenuh Air' : 'Normal'})` : '-', icon: Droplets, color: 'text-blue-500' }
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {
       return [
-        { label: 'Kerentanan Tanah', value: 'Tinggi (Zona Merah InaRISK)', icon: AlertTriangle, color: 'text-amber-700' },
-        { label: 'Hujan Pemicu (3H)', value: `${totalRainfall} mm`, icon: CloudRain, color: 'text-blue-600' },
-        { label: 'Kemiringan Lereng', value: '>35° (Sangat Curam)', icon: Compass, color: 'text-amber-900' },
-        { label: 'Kelembaban Tanah', value: `${soilSaturation}% (${soilSaturation >= 85 ? 'Kritis / Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-teal-650' }
+        { label: 'Kerentanan Wilayah', value: eventData.kerentanan_tanah || 'Zona Rawan Longsor', icon: AlertTriangle, color: 'text-amber-700' },
+        { label: 'Hujan Pemicu (BMKG)', value: totalRainfall > 0 ? `${totalRainfall} mm` : '0 mm', icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Topografi Lokasi', value: eventData.topografi || detail?.lokasi?.[0]?.topografi || '-', icon: Compass, color: 'text-amber-900' },
+        { label: 'Kelembaban Tanah', value: soilSaturation > 0 ? `${soilSaturation}%` : '-', icon: Droplets, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
-      const level = ['Level II (Waspada)', 'Level III (Siaga)', 'Level IV (Awas)'][eventSeed % 3]
-      const height = (eventSeed % 4) * 1000 + 1500
-      const dir = realtimeWind ? realtimeWind.directionText : ['Barat Daya', 'Selatan', 'Tenggara', 'Utara'][eventSeed % 4]
-      const zone = (eventSeed % 3) + 4
+      const level = eventData.status_gunung || 'Level II (Waspada)'
+      const height = eventData.tinggi_kolom_abu ? `${eventData.tinggi_kolom_abu} m` : '-'
+      const dir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_abu || '-')
       return [
-        { label: 'Status Gunung', value: level, icon: ShieldAlert, color: 'text-red-600' },
-        { label: 'Tinggi Abu', value: `${height.toLocaleString('id-ID')} m`, icon: CloudRain, color: 'text-slate-600' },
-        { label: 'Arah Awan Panas', value: dir, icon: Wind, color: 'text-amber-600' },
-        { label: 'Zona Bahaya', value: `Sektoral ${zone} km (KRB III)`, icon: AlertTriangle, color: 'text-orange-500' }
+        { label: 'Status Gunung (PVMBG)', value: level, icon: ShieldAlert, color: 'text-red-600' },
+        { label: 'Tinggi Kolom Abu', value: height, icon: CloudRain, color: 'text-slate-600' },
+        { label: 'Arah Sebaran Abu', value: dir, icon: Wind, color: 'text-amber-600' },
+        { label: 'Radius Bahaya', value: eventData.radius_bahaya ? `${eventData.radius_bahaya} km` : '-', icon: AlertTriangle, color: 'text-orange-500' }
       ]
     }
     if (name.includes('kekeringan') || name.includes('drought')) {
-      const hth = (eventSeed % 30) + 45
-      const lahan = ((eventSeed % 12) * 80 + 350).toLocaleString('id-ID')
       return [
-        { label: 'Hari Tanpa Hujan', value: `${hth} Hari (Kering Ekstrem)`, icon: Clock, color: 'text-amber-600' },
-        { label: 'Defisit Pasokan Air', value: '-45% Kebutuhan Baku', icon: Droplets, color: 'text-red-500' },
-        { label: 'Lahan Terancam', value: `${lahan} ha Pertanian`, icon: Compass, color: 'text-orange-600' },
-        { label: 'Pasokan Air Bersih', value: 'Mobilisasi Tangki Darurat', icon: Activity, color: 'text-blue-500' }
+        { label: 'Hari Tanpa Hujan', value: eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari` : '-', icon: Clock, color: 'text-amber-600' },
+        { label: 'Defisit Air Bersih', value: eventData.defisit_air || '-', icon: Droplets, color: 'text-red-500' },
+        { label: 'Lahan Terdampak', value: eventData.luas_lahan ? `${eventData.luas_lahan} ha` : '-', icon: Compass, color: 'text-orange-600' },
+        { label: 'Pasokan Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia', icon: Activity, color: 'text-blue-500' }
       ]
     }
     if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
       return [
-        { label: 'Attack Rate Transmisi', value: 'Tinggi (Klaster Wilayah)', icon: ShieldAlert, color: 'text-purple-600' },
-        { label: 'Status Investigasi PE', value: 'Aktif Lapangan (RHA)', icon: Activity, color: 'text-rose-600' },
-        { label: 'Stok Logistik & Obat', value: 'Buffer Stock Terpenuhi', icon: BriefcaseMedical, color: 'text-teal-600' },
-        { label: 'Cakupan Tracing', value: 'Puskesmas & Posko Siaga', icon: Users, color: 'text-indigo-600' }
+        { label: 'Status Penyakit', value: 'Surveilans Aktif (SKDR)', icon: ShieldAlert, color: 'text-purple-600' },
+        { label: 'Investigasi PE', value: 'Puskesmas / Dinkes', icon: Activity, color: 'text-rose-600' },
+        { label: 'Kesiapan Logistik Obat', value: 'Buffer Stock Terpenuhi', icon: BriefcaseMedical, color: 'text-teal-600' },
+        { label: 'Pemantauan Kontak', value: 'Tracing Terpadu', icon: Users, color: 'text-indigo-600' }
       ]
     }
     if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
-      const windSpeed = (eventSeed % 15) * 3 + 45
-      const rain = Math.max(peakRainfall, 65)
+      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : '-'
+      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : '0 mm/hari'
       return [
-        { label: 'Kecepatan Angin Maks', value: `${windSpeed} km/jam`, icon: Wind, color: 'text-indigo-600' },
-        { label: 'Curah Hujan Ekstrem', value: `${rain} mm/hari`, icon: CloudLightning, color: 'text-blue-600' },
-        { label: 'Tinggi Gelombang', value: '2.5 - 4.0 m (Waspada)', icon: Waves, color: 'text-cyan-600' },
-        { label: 'Dampak Kerusakan', value: 'Struktur Bangunan & Pohon', icon: AlertTriangle, color: 'text-amber-600' }
+        { label: 'Kecepatan Angin Maks', value: windSpeed, icon: Wind, color: 'text-indigo-600' },
+        { label: 'Curah Hujan (BMKG)', value: rain, icon: CloudLightning, color: 'text-blue-600' },
+        { label: 'Arah Angin Dominan', value: realtimeWind?.directionText || '-', icon: Waves, color: 'text-cyan-600' },
+        { label: 'Kondisi Cuaca (BMKG)', value: realtimeWeather?.cuaca || '-', icon: AlertTriangle, color: 'text-amber-600' }
       ]
     }
     return [
@@ -2188,7 +2179,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       { label: 'Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis' : 'Layak', icon: Droplets, color: 'text-blue-500' },
       { label: 'Fasum Berfungsi', value: 'Sebagian Berfungsi', icon: Activity, color: 'text-cyan-600' }
     ]
-  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventSeed, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall])
+  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, detail?.lokasi])
 
   const eocNarrative = useMemo(() => {
     if (detail?.buletin_eoc) return detail.buletin_eoc;
@@ -2553,7 +2544,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung'
                     ? 'TREN KUALITAS UDARA (ISPU / PM2.5) & ANGIN (H-3 S.D. H+3)'
                     : disasterTheme.type === 'gempa'
-                      ? 'INTENSITAS MMI & SEJARAH GEMPA (H-3 S.D. H+3)'
+                      ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG (H-3 S.D. H+3)'
                       : disasterTheme.type === 'tsunami'
                         ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3)'
                         : disasterTheme.type === 'longsor'
@@ -2562,11 +2553,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3)'
                             : disasterTheme.type === 'wabah'
                               ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3)'
-                              : 'HISTORI CUACA & CURAH HUJAN (H-3 S.D. H+3)'}
+                              : 'HISTORI CUACA & CURAH HUJAN BMKG (H-3 S.D. H+3)'}
                 </span>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
-                  {weatherTimeline.map((day, idx) => {
+                  {(disasterTheme.type === 'gempa' ? earthquakeTimeline : weatherTimeline).map((day: any, idx: number) => {
                     const isEventDay = day.offset === 0
                     const aqItem = (realtimeAirQuality && realtimeAirQuality.timeline && realtimeAirQuality.timeline[idx])
                       ? realtimeAirQuality.timeline[idx]
@@ -2596,14 +2587,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           ) : disasterTheme.type === 'tsunami' ? (
                             <Waves className={`h-5 w-5 ${isEventDay ? 'text-teal-600 animate-bounce' : 'text-cyan-600'}`} />
                           ) : disasterTheme.type === 'gempa' ? (
-                            <Activity className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-bounce' : 'text-amber-600'}`} />
+                            <Activity className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-bounce' : day.topLabel?.includes('M <') ? 'text-slate-400' : 'text-amber-600'}`} />
                           ) : disasterTheme.type === 'kekeringan' ? (
                             <Thermometer className={`h-5 w-5 ${isEventDay ? 'text-rose-600' : 'text-amber-600'}`} />
                           ) : disasterTheme.type === 'wabah' ? (
                             <ShieldAlert className={`h-5 w-5 ${isEventDay ? 'text-purple-600 animate-pulse' : 'text-indigo-500'}`} />
-                          ) : day.weather.includes('Lebat') ? (
+                          ) : day.weather?.includes('Lebat') ? (
                             <CloudLightning className={`h-5 w-5 ${isEventDay ? 'text-rose-500 animate-bounce' : 'text-blue-600'}`} />
-                          ) : day.weather.includes('Sedang') || day.weather.includes('Ringan') ? (
+                          ) : day.weather?.includes('Sedang') || day.weather?.includes('Ringan') ? (
                             <CloudRain className="h-5 w-5 text-blue-500" />
                           ) : (
                             <Cloud className="h-5 w-5 text-slate-400" />
@@ -2611,10 +2602,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </div>
 
                         <div className="flex flex-col items-center leading-none mt-0.5 w-full">
-                          {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
+                          {disasterTheme.type === 'gempa' ? (
+                            <>
+                              <span className="text-[11px] font-black text-slate-900 block text-center whitespace-nowrap leading-tight">
+                                {day.topLabel}
+                              </span>
+                              <span className={`text-[10px] font-extrabold mt-0.5 block text-center whitespace-nowrap leading-tight ${isEventDay ? 'text-red-700 font-black' : day.topLabel?.includes('M <') ? 'text-slate-500' : 'text-orange-600'}`}>
+                                {day.bottomLabel}
+                              </span>
+                            </>
+                          ) : disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
                             <>
                               <span className="text-[11px] sm:text-xs font-black text-slate-900 block text-center whitespace-nowrap leading-tight">
-                                ISPU {dayIspuVal}
+                                ISPU {dayIspuVal > 0 ? dayIspuVal : '-'}
                               </span>
                               <span className={`text-[10px] font-black mt-0.5 block text-center whitespace-nowrap leading-tight ${isEventDay ? 'text-red-700 font-black' : (dayIspuVal > 150) ? 'text-rose-600' : 'text-orange-600'}`}>
                                 {dayIspuLabel}
@@ -2623,46 +2623,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           ) : disasterTheme.type === 'tsunami' ? (
                             <>
                               <span className="text-[11px] font-black text-teal-900 block text-center whitespace-nowrap">
-                                {isEventDay ? '3.8 m' : `${['1.2', '1.5', '0.8'][idx % 3]} m`}
+                                {isEventDay ? '3.2 m' : '0.4 m'}
                               </span>
                               <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
                                 {isEventDay ? 'Tsunami' : 'Normal'}
                               </span>
                             </>
-                          ) : disasterTheme.type === 'gempa' ? (
-                            <>
-                              <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
-                                {isEventDay ? 'VI MMI' : `${['IV', 'V', 'III'][idx % 3]} MMI`}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
-                                {isEventDay ? 'Kuat' : 'Ringan'}
-                              </span>
-                            </>
                           ) : disasterTheme.type === 'kekeringan' ? (
                             <>
                               <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
-                                {isEventDay ? '34°C' : `${30 + (idx % 4)}°C`}
+                                {day.temp !== '-' ? day.temp : '33°C'}
                               </span>
                               <span className="text-[10px] font-bold text-red-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
                                 0 mm (HTH)
                               </span>
                             </>
-                          ) : disasterTheme.type === 'wabah' ? (
-                            <>
-                              <span className="text-[11px] font-black text-purple-900 block text-center whitespace-nowrap">
-                                {isEventDay ? '15 Kasus' : `${4 + (idx * 2)} Kasus`}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
-                                {isEventDay ? 'Klaster' : 'Tracing'}
-                              </span>
-                            </>
                           ) : (
                             <>
                               <span className="text-[11px] font-black text-slate-700 block text-center whitespace-nowrap">
-                                {day.temp}
+                                {day.temp !== '-' ? day.temp : '-'}
                               </span>
                               <span className="text-[10px] font-extrabold text-blue-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
-                                {day.precip}mm
+                                {day.precip > 0 ? `${day.precip}mm` : (day.weather !== '-' ? day.weather : '0mm')}
                               </span>
                             </>
                           )}
