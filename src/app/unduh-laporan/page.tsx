@@ -1559,67 +1559,45 @@ export default function UnduhLaporanPage() {
         }
       }
     } catch (e) {
-      console.warn('[CreateDashboard] API AI & Python Charts fetch failed, using internal generator:', e)
+      console.warn('[CreateDashboard] First attempt failed, retrying via Next.js route:', e)
     }
 
+    // Jika pertama gagal (misal catch-all proxy), retry langsung ke dedicated route
     if (!aiData) {
-      aiData = {
-        ringkasan_laporan: `Ringkasan laporan surveilans penanggulangan krisis kesehatan dan dampak kebencanaan yang dilakukan di wilayah ${filterWilayahText} untuk periode ${timePresetText}. Laporan pengawasan resmi ini menyajikan indikator morbiditas epidemiologi, sebaran spasial wilayah terdampak, kesiapsiagaan fasyankes, serta protokol taktis tanggap darurat komando EOC Kemenkes RI.`,
-        poin_utama: [
-          `**Pemantauan Agregat Kejadian & Skala Dampak:** Berdasarkan integrasi data realtime Pusat Krisis Kesehatan Kemenkes RI di ${filterWilayahText}, tercatat akumulasi sebanyak **${totalReports} total laporan kejadian bencana** dengan dampak morbiditas mencakup **${totalMeninggal} jiwa meninggal dunia**, **${totalLuka} jiwa luka-luka**, dan **${totalHilang} jiwa hilang**.`,
-          `**Distribusi Spasial & Koridor Hotspot:** Wilayah teridentifikasi dengan konsentrasi kejadian tertinggi berada di **${topRegionName}** yang menyumbang **${topRegionCount} kejadian (${topRegionPct}%)** dari seluruh laporan yang terverifikasi, memerlukan penguatan kapasitas triase faskes lokal dan posko pengungsian.`,
-          `**Karakteristik Bahaya & Bencana Dominan:** Dinamika bahaya didominasi oleh kejadian **${topDisasterName}** sebanyak **${topDisasterCount} insiden (${topDisasterPct}%)**${secondDisasterName ? `, disusul oleh **${secondDisasterName}** sebanyak **${secondDisasterCount} insiden (${secondDisasterPct}%)` : ''}, yang memicu genangan, kerusakan fisik hunian, serta keterisolasian jalur evakuasi warga.`,
-          `**Surveilans Populasi Terdampak & Pengungsian:** Terdata sebanyak **${(totalTerdampak).toLocaleString('id-ID')} jiwa penduduk terdampak** dan **${(totalPengungsi).toLocaleString('id-ID')} jiwa warga berada di titik pengungsian**. Pemantauan Sistem Kewaspadaan Dini dan Respon (SKDR) diintensifkan guna mencegah lonjakan kasus ISPA, Diare Akut, Penyakit Kulit, dan Leptospirosis.`,
-          `**Kesiapsiagaan & Ketahanan Fasilitas Kesehatan:** Teridentifikasi sebanyak **${totalFaskes} unit fasilitas pelayanan kesehatan (Puskesmas, Poskesdes, RS)** terdampak atau terancam. Seluruh faskes rujukan regional telah diinstruksikan bersiaga 24 jam dengan buffer stock obat darurat dan tenda poskes lapangan.`,
-          `**Aktivasi Protokol Emergency Medical Team (EMT):** Pusat Krisis Kesehatan Kemenkes RI bersama Dinas Kesehatan Provinsi/Kabupaten menyiagakan Tim Medis Darurat (EMT Tipe 1 & 2) untuk penanganan korban trauma, pelayanan kesehatan reproduksi darurat, dan dukungan kesehatan jiwa psikososial (DKJPS).`
-        ],
-        aktivitas_indikator: [
-          {
-            indikator: 'Kejadian Bencana Hidrometeorologi & Geologi',
-            tren: totalReports > 20 ? 'Meningkat' : 'Terkendali',
-            level: totalReports > 20 ? 'Siaga Darurat' : 'Waspada',
-            keterangan: `Aktivitas kebencanaan di ${filterWilayahText} berada dalam pemantauan intensif EOC 24 jam.`
-          },
-          {
-            indikator: 'Tingkat Fatalitas & Morbiditas Jiwa',
-            tren: totalMeninggal > 0 ? 'Waspada' : 'Terkendali',
-            level: totalMeninggal > 5 ? 'Tinggi' : (totalMeninggal > 0 ? 'Moderat' : 'Rendah'),
-            keterangan: `Akumulasi korban jiwa sebanyak ${totalMeninggal + totalLuka + totalHilang} jiwa telah tertangani oleh tim medis lapangan.`
-          },
-          {
-            indikator: 'Surveilans Potensi KLB di Pengungsian',
-            tren: 'Stabil',
-            level: 'Aktivitas Rendah',
-            keterangan: 'Klorinasi air bersih dan ketersediaan jamban darurat terpantau aman tanpa sinyal alert SKDR.'
-          },
-          {
-            indikator: 'Kesiapsiagaan Kapasitas Fasyankes & Tim Medis (EMT)',
-            tren: 'Optimal',
-            level: 'Siaga 24 Jam',
-            keterangan: 'RS Rujukan Regional dan Puskesmas siaga penuh dengan ketersediaan obat emergensi.'
+      try {
+        setAiProgressStep('Menghubungkan ke Gemini AI Engine untuk sintesis data epidemiologi...')
+        const token = useAuthStore.getState().token
+        const retryHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+        if (token) retryHeaders['Authorization'] = `Bearer ${token}`
+
+        const retryRes = await fetch(`${basePath}/api/generate-dashboard-report-ai`, {
+          method: 'POST',
+          headers: retryHeaders,
+          body: JSON.stringify(aiPayload)
+        })
+
+        if (retryRes.ok) {
+          const retryJson = await retryRes.json()
+          if (retryJson.success && retryJson.data) {
+            aiData = retryJson.data
+            const source = retryJson.source === 'gemini-direct' ? 'Gemini AI Direct' : 'Backend PHP + Gemini AI'
+            setAiProgressStep(`Berhasil! Analisis AI (${source}) siap dirender...`)
+            console.log(`[CreateDashboard] AI data received via: ${retryJson.source || 'unknown'}`)
+          } else {
+            throw new Error(retryJson.error || 'Respons AI tidak valid')
           }
-        ],
-        rekomendasi_emt: [
-          {
-            fase: 'Fase 1: Respons Akut (0 - 72 Jam)',
-            tindakan: 'Triase medis cepat, evakuasi korban kritis, stabilisasi trauma lapangan, dan aktivasi posko kesehatan primer 24 jam.'
-          },
-          {
-            fase: 'Fase 2: Surveilans & Sanitasi (Hari ke 4 - 14)',
-            tindakan: 'Penguatan SKDR penyakit menular (ISPA, diare, leptospirosis), penyediaan air bersih klorinasi, dan imunisasi darurat kelompok rentan.'
-          },
-          {
-            fase: 'Fase 3: Pemulihan & Transisi Pelayanan',
-            tindakan: 'Restorasi fungsi faskes terdampak, pendampingan trauma healing (DKJPS), dan evaluasi ketahanan logistik obat.'
-          }
-        ],
-        himbauan_masyarakat: [
-          'Menerapkan Perilaku Hidup Bersih dan Sehat (PHBS) terutama di lokasi pengungsian dan lingkungan permukiman tergenang.',
-          'Mengonsumsi air minum matang atau air bersih yang telah memenuhi standar higienitas untuk mencegah penularan penyakit saluran cerna.',
-          'Segera mendatangi Pos Kesehatan atau Puskesmas terdekat apabila mengalami gejala demam tinggi, diare, batuk berkepanjangan, atau infeksi kulit paska bencana.',
-          'Bagi kelompok rentan (lansia, ibu hamil, bayi/balita), prioritaskan evakuasi ke tempat yang aman dan kering serta lengkapi imunisasi rutin.',
-          'Menghubungi Call Center Emergency 119 atau Posko EOC Pusat Krisis Kesehatan Kemenkes RI untuk permintaan bantuan medis darurat.'
-        ]
+        } else {
+          const errBody = await retryRes.text()
+          throw new Error(`HTTP ${retryRes.status}: ${errBody.substring(0, 200)}`)
+        }
+      } catch (retryErr) {
+        console.error('[CreateDashboard] AI generation fully failed:', retryErr)
+        setAiProgressStep('⚠️ AI Engine tidak tersedia — harap periksa API key Gemini dan coba lagi.')
+        setIsGeneratingAiDashboard(false)
+        return
       }
     }
 
