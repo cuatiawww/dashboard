@@ -84,14 +84,15 @@ export async function GET(request: Request) {
     // 3. Fetch API Indonesia (use.apiindonesia.id) for direct clean JSON
     const fetchApiIndonesia = async () => {
       try {
+        const apiKey = process.env.API_INDONESIA_KEY || 'aip_live_JoPepl4CUFWgDIZMqJ6VPWmsabaRyEeA'
         const [terkiniRes, dirasakanRes] = await Promise.all([
           fetch('https://use.apiindonesia.id/api/v1/gempa/terkini', {
             next: { revalidate: 60 },
-            headers: { 'x-api-key': 'aip_live_JoPepl4CUFWgDIZMqJ6VPWmsabaRyEeA', Accept: 'application/json' },
+            headers: { 'x-api-key': apiKey, Accept: 'application/json' },
           }),
           fetch('https://use.apiindonesia.id/api/v1/gempa/dirasakan', {
             next: { revalidate: 60 },
-            headers: { 'x-api-key': 'aip_live_JoPepl4CUFWgDIZMqJ6VPWmsabaRyEeA', Accept: 'application/json' },
+            headers: { 'x-api-key': apiKey, Accept: 'application/json' },
           }),
         ])
         const [tJson, dJson] = await Promise.all([
@@ -106,13 +107,47 @@ export async function GET(request: Request) {
       }
     }
 
-    const [autogempa, gempaterkini, gempadirasakan, usgsFeatures, apiIndoList] = await Promise.all([
+    // 4. Fetch PetaBencana.id Verified Field Archive
+    const fetchPetaBencana = async () => {
+      try {
+        const pbUrl = `https://data.petabencana.id/reports/archive?start=${startStr}T00:00:00Z&end=${endStr}T23:59:59Z`
+        const res = await fetch(pbUrl, {
+          next: { revalidate: 3600 },
+          headers: { Accept: 'application/json' },
+        })
+        if (!res.ok) return []
+        const json = await res.json()
+        return json?.result?.objects?.output?.geometries || []
+      } catch {
+        return []
+      }
+    }
+
+    const [autogempa, gempaterkini, gempadirasakan, usgsFeatures, apiIndoList, petaBencanaList] = await Promise.all([
       fetchBmkg('autogempa.json'),
       fetchBmkg('gempaterkini.json'),
       fetchBmkg('gempadirasakan.json'),
       fetchUsgs(),
       fetchApiIndonesia(),
+      fetchPetaBencana(),
     ])
+
+    // Match PetaBencana field reports by spatial distance
+    let petaBencanaMatch: any = null
+    for (const geom of petaBencanaList) {
+      const coords = geom.coordinates || []
+      if (coords.length >= 2) {
+        const dist = haversineDist(lat, lng, coords[1], coords[0])
+        if (dist <= 350) {
+          petaBencanaMatch = {
+            ...geom.properties,
+            distanceKm: Math.round(dist),
+            coordinates: coords,
+          }
+          break
+        }
+      }
+    }
 
     // Match API Indonesia or BMKG earthquake by spatial distance (<= 350km) and region name
     let apiIndoMatch: any = null
@@ -308,11 +343,22 @@ export async function GET(request: Request) {
           shakemapUrl,
           wilayah: bmkgMatch?.Wilayah || apiIndoMatch?.region || mainDayEq?.place || `${kabParam}, ${provParam}`,
         },
+        petaBencana: petaBencanaMatch ? {
+          disasterType: petaBencanaMatch.disaster_type,
+          city: petaBencanaMatch.tags?.city || petaBencanaMatch.title || '',
+          text: petaBencanaMatch.text || '',
+          imageUrl: petaBencanaMatch.image_url || '',
+          distanceKm: petaBencanaMatch.distanceKm,
+          status: petaBencanaMatch.status,
+          reportData: petaBencanaMatch.report_data,
+        } : null,
         timeline,
         sumber: bmkgMatch
           ? 'BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)'
           : apiIndoMatch
           ? 'API Indonesia & BMKG (use.apiindonesia.id)'
+          : petaBencanaMatch
+          ? 'PetaBencana.id & BMKG'
           : 'Katalog Seismik Global & Regional BMKG/USGS',
       },
     })

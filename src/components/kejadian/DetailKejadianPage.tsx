@@ -288,6 +288,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [weeklyWeather, setWeeklyWeather] = useState<any[]>([])
   const [bmkgGempa, setBmkgGempa] = useState<any>(null)
   const [seismicResult, setSeismicResult] = useState<any>(null)
+  const [petaBencanaData, setPetaBencanaData] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -1103,7 +1104,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   // Fetch real BMKG & Regional Seismic data matching disaster latitude, longitude, and event date
   useEffect(() => {
     const rawType = String(selectedEvent?.jenis_bencana || selectedEvent?.nama || eventData.jenis_bencana || '').toLowerCase()
-    if (!rawType.includes('gempa')) return
+    if (!rawType.includes('gempa') && !rawType.includes('tsunami') && !rawType.includes('seismic')) return
 
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || selectedEvent?.latitude || 0)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || selectedEvent?.longitude || 0)
@@ -1126,6 +1127,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           setSeismicResult(json.data)
           if (json.data.characteristics) {
             setBmkgGempa(json.data.characteristics)
+          }
+          if (json.data.petaBencana) {
+            setPetaBencanaData(json.data.petaBencana)
           }
         }
       })
@@ -1258,20 +1262,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         cardHeaderIcon: Flame,
       }
     }
-    if (name.includes('tsunami')) {
-      return {
-        type: 'tsunami',
-        bg: 'bg-gradient-to-br from-cyan-900/10 via-teal-700/10 to-blue-600/15 border-cyan-300/80',
-        text: 'text-cyan-950',
-        accentBg: 'bg-cyan-100 text-cyan-900',
-        iconColor: 'text-teal-700 bg-teal-50 border-teal-200',
-        bulletinBg: 'bg-gradient-to-r from-cyan-50 via-teal-50/60 to-blue-50 border-cyan-200/80',
-        bulletinText: 'text-cyan-955',
-        bulletinTag: 'bg-teal-700 text-white',
-        titleColor: 'text-teal-800',
-        cardHeaderIcon: Waves,
-      }
-    }
     if (name.includes('gempa') || name.includes('earthquake')) {
       return {
         type: 'gempa',
@@ -1284,6 +1274,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         bulletinTag: 'bg-amber-700 text-white',
         titleColor: 'text-amber-800',
         cardHeaderIcon: Activity,
+      }
+    }
+    if (name.includes('tsunami')) {
+      return {
+        type: 'tsunami',
+        bg: 'bg-gradient-to-br from-cyan-900/10 via-teal-700/10 to-blue-600/15 border-cyan-300/80',
+        text: 'text-cyan-950',
+        accentBg: 'bg-cyan-100 text-cyan-900',
+        iconColor: 'text-teal-700 bg-teal-50 border-teal-200',
+        bulletinBg: 'bg-gradient-to-r from-cyan-50 via-teal-50/60 to-blue-50 border-cyan-200/80',
+        bulletinText: 'text-cyan-955',
+        bulletinTag: 'bg-teal-700 text-white',
+        titleColor: 'text-teal-800',
+        cardHeaderIcon: Waves,
       }
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
@@ -2033,6 +2037,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [realtimeWeather, kronologi])
 
   const parsedTma = useMemo(() => {
+    if (petaBencanaData?.reportData?.flood_depth) {
+      return `${petaBencanaData.reportData.flood_depth} cm (PetaBencana.id)`
+    }
     if (realtimeWeather?.tma && realtimeWeather.tma !== '-') return realtimeWeather.tma
     const text = kronologi
     const match = text.match(/TMA\s*[:=]?\s*([\w\s\(\).,\-]+)/i) ||
@@ -2044,7 +2051,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (peakRainfall >= 30 || totalRainfall >= 60) return 'Siaga 2 (80 - 150 cm)'
     if (peakRainfall >= 10 || totalRainfall >= 20) return 'Waspada (30 - 80 cm)'
     return 'Genangan (20 - 50 cm)'
-  }, [realtimeWeather, kronologi, peakRainfall, totalRainfall])
+  }, [petaBencanaData, realtimeWeather, kronologi, peakRainfall, totalRainfall])
 
   const parsedLuas = useMemo(() => {
     if (realtimeWeather?.luas && realtimeWeather.luas !== '-') return realtimeWeather.luas
@@ -2110,27 +2117,27 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
       ]
     }
-    if (name.includes('tsunami')) {
-      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : '0.5 - 1.5 m'
-      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : '50 - 150 m'
-      return [
-        { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
-        { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
-        { label: 'Waktu Tiba Gelombang', value: eventData.waktu_tiba || '< 30 Menit', icon: Clock, color: 'text-amber-600' },
-        { label: 'Status Peringatan BMKG', value: eventData.status_peringatan || 'Waspada / Siaga', icon: ShieldAlert, color: 'text-rose-600' }
-      ]
-    }
     if (name.includes('gempa') || name.includes('earthquake')) {
       const char = seismicResult?.characteristics || {}
-      const magn = char.magnitude || (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '5.0 SR'))
-      const depth = char.kedalaman || bmkgGempa?.Kedalaman || (eventData.kedalaman ? `${eventData.kedalaman} km` : '10 km')
+      const magn = char.magnitude || (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'))
+      const depth = char.kedalaman || bmkgGempa?.Kedalaman || (eventData.kedalaman ? `${eventData.kedalaman} km` : '-')
       const tsunami = char.potensiTsunami || bmkgGempa?.Potensi || (eventData.potensi_tsunami || 'Tidak Berpotensi Tsunami')
-      const mmi = char.intensitasMmi || (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : 'III - IV MMI'))
+      const mmi = char.intensitasMmi || (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : '-'))
       return [
-        { label: 'Magnitudo Gempa (BMKG)', value: magn, icon: Activity, color: 'text-red-600' },
+        { label: 'Magnitudo Gempa (BMKG)', value: magn !== '-' ? magn : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'), icon: Activity, color: 'text-red-600' },
         { label: 'Kedalaman Gempa', value: depth, icon: Compass, color: 'text-amber-700' },
         { label: 'Status Episentrum', value: tsunami, icon: Waves, color: 'text-blue-600' },
         { label: 'Intensitas MMI (BMKG)', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
+      ]
+    }
+    if (name.includes('tsunami')) {
+      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : '-'
+      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : '-'
+      return [
+        { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
+        { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
+        { label: 'Waktu Tiba Gelombang', value: eventData.waktu_tiba || '-', icon: Clock, color: 'text-amber-600' },
+        { label: 'Status Peringatan BMKG', value: eventData.status_peringatan || 'Peringatan Dini', icon: ShieldAlert, color: 'text-rose-600' }
       ]
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
@@ -2193,7 +2200,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       { label: 'Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis' : 'Layak', icon: Droplets, color: 'text-blue-500' },
       { label: 'Fasum Berfungsi', value: 'Sebagian Berfungsi', icon: Activity, color: 'text-cyan-600' }
     ]
-  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, detail?.lokasi])
+  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, seismicResult, petaBencanaData, detail?.lokasi])
 
   const eocNarrative = useMemo(() => {
     if (detail?.buletin_eoc) return detail.buletin_eoc;
