@@ -1211,25 +1211,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       d.setDate(base.getDate() + i)
 
       let topLabel = 'M < 3.0'
-      let bottomLabel = 'Seismik Stabil'
+      let bottomLabel = 'Stabil'
       let isPeak = false
 
       if (i === 0) {
         topLabel = `M ${mainMag.toFixed(1)}`
-        bottomLabel = mmiStr
+        const mmiMatch = mmiStr.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
+        bottomLabel = mmiMatch ? `${mmiMatch[1]} MMI` : 'Gempa Utama'
         isPeak = true
       } else if (i === 1) {
         topLabel = `M ${Math.max(3.0, Number((mainMag - 1.2).toFixed(1)))}`
-        bottomLabel = 'Susulan (+1H)'
+        bottomLabel = 'Susulan'
       } else if (i === 2) {
         topLabel = `M ${Math.max(2.8, Number((mainMag - 1.8).toFixed(1)))}`
-        bottomLabel = 'Susulan (+2H)'
+        bottomLabel = 'Susulan'
       } else if (i === 3) {
         topLabel = `M ${Math.max(2.5, Number((mainMag - 2.3).toFixed(1)))}`
         bottomLabel = 'Peluruhan'
       } else if (i === -1 && mainMag >= 6.0) {
         topLabel = `M ${(mainMag - 2.2).toFixed(1)}`
-        bottomLabel = 'Pra-Gempa (-1H)'
+        bottomLabel = 'Pra-Gempa'
       }
 
       dates.push({
@@ -2040,44 +2041,37 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (petaBencanaData?.reportData?.flood_depth) {
       return `${petaBencanaData.reportData.flood_depth} cm (PetaBencana.id)`
     }
+    if (eventData.tma && eventData.tma !== '-') return eventData.tma
+    if (eventData.tinggi_muka_air && eventData.tinggi_muka_air !== '-') return eventData.tinggi_muka_air
     if (realtimeWeather?.tma && realtimeWeather.tma !== '-') return realtimeWeather.tma
     const text = kronologi
     const match = text.match(/TMA\s*[:=]?\s*([\w\s\(\).,\-]+)/i) ||
       text.match(/tinggi\s*muka\s*air\s*[:=]?\s*([\w\s\(\).,\-]+)/i)
     if (match) return match[1].trim()
-
-    // Scientific derivation from peak & cumulative rainfall
-    if (peakRainfall >= 50 || totalRainfall >= 100) return 'Siaga 1 (> 150 cm)'
-    if (peakRainfall >= 30 || totalRainfall >= 60) return 'Siaga 2 (80 - 150 cm)'
-    if (peakRainfall >= 10 || totalRainfall >= 20) return 'Waspada (30 - 80 cm)'
-    return 'Genangan (20 - 50 cm)'
-  }, [petaBencanaData, realtimeWeather, kronologi, peakRainfall, totalRainfall])
+    return '-'
+  }, [petaBencanaData, eventData, realtimeWeather, kronologi])
 
   const parsedLuas = useMemo(() => {
+    if (eventData.luas_genangan && eventData.luas_genangan !== '-') return eventData.luas_genangan
+    if (eventData.luas_lahan && eventData.luas_lahan !== '-') return `${eventData.luas_lahan} ha`
     if (realtimeWeather?.luas && realtimeWeather.luas !== '-') return realtimeWeather.luas
     const text = kronologi
     const match = text.match(/luas\s*genangan\s*[:=]?\s*([\w\s.,\-]+ha)/i) ||
       text.match(/genangan\s*seluas\s*([\w\s.,\-]+ha)/i) ||
       text.match(/([\d.,]+)\s*ha/i)
     if (match) return match[0].trim()
-
-    const korban = eventData.total_korban || eventData.jml_pdk_terdampak || detail?.penduduk_terdampak || 0
-    if (korban > 500) return `${Math.round(korban * 0.08)} ha (Area Luas)`
-    if (korban > 50) return `${Math.max(5, Math.round(korban * 0.1))} ha (Area Sedang)`
-    const desaCnt = detail?.lokasi?.length || 1
-    return `${desaCnt * 5} ha (Area Terdampak)`
-  }, [realtimeWeather, kronologi, eventData, detail])
+    return '-'
+  }, [eventData, realtimeWeather, kronologi])
 
   const parsedLama = useMemo(() => {
+    if (eventData.lama_genangan && eventData.lama_genangan !== '-') return eventData.lama_genangan
     if (realtimeWeather?.lama && realtimeWeather.lama !== '-') return realtimeWeather.lama
     const text = kronologi
     const match = text.match(/lama\s*genangan\s*[:=]?\s*([\w\s.,\-]+hari)/i) ||
       text.match(/genangan\s*selama\s*([\w\s.,\-]+hari)/i)
     if (match) return match[1].trim()
-
-    const rainDays = weatherTimeline.filter(w => (w.precip || 0) >= 5).length
-    return `${Math.max(1, rainDays || 1)} Hari`
-  }, [realtimeWeather, kronologi, weatherTimeline])
+    return '-'
+  }, [eventData, realtimeWeather, kronologi])
 
   // Unified ISPU metrics for event day (guarantees 100% consistency across Left Parameters, Timeline, and EOC Bulletin)
   const eventDayIspu = useMemo(() => {
@@ -2104,27 +2098,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
       const visText = realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
         ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km` : `${realtimeWind.visibilityM} m`)
-        : (eventDayIspu >= 150 ? '< 2.5 km (Berkabut)' : '6.0 km (Sedang)')
+        : (eventData.jarak_pandang || '-')
       const windText = realtimeWind && realtimeWind.speed > 0
-        ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText})`
-        : '14 km/jam (Timur Laut)'
+        ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText || ''})`
+        : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : '-')
 
-      const hotspotText = eventData.hotspot ? `${eventData.hotspot} Titik` : (eventData.total_korban > 0 ? 'Terdeteksi Satelit LAPAN' : 'Pemantauan Satelit')
+      const hotspotText = eventData.hotspot ? `${eventData.hotspot} Titik` : (eventData.titik_panas ? `${eventData.titik_panas} Titik` : '-')
+      const ispuText = eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : '-'
+
       return [
         { label: 'Titik Panas (Hotspot)', value: hotspotText, icon: Flame, color: 'text-red-500' },
-        { label: 'ISPU (Air Quality)', value: eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : '65 (Sedang)', icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
+        { label: 'ISPU (Air Quality)', value: ispuText, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
         { label: 'Jarak Pandang', value: visText, icon: Eye, color: 'text-slate-600' },
         { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
       const char = seismicResult?.characteristics || {}
-      const magn = char.magnitude || (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'))
-      const depth = char.kedalaman || bmkgGempa?.Kedalaman || (eventData.kedalaman ? `${eventData.kedalaman} km` : '-')
-      const tsunami = char.potensiTsunami || bmkgGempa?.Potensi || (eventData.potensi_tsunami || 'Tidak Berpotensi Tsunami')
-      const mmi = char.intensitasMmi || (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : '-'))
+      const magn = char.magnitude && char.magnitude !== '-' ? char.magnitude : (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'))
+      const depth = char.kedalaman && char.kedalaman !== '-' ? char.kedalaman : (bmkgGempa?.Kedalaman ? bmkgGempa.Kedalaman : (eventData.kedalaman ? `${eventData.kedalaman} km` : '-'))
+      const tsunami = char.potensiTsunami && char.potensiTsunami !== '-' ? char.potensiTsunami : (bmkgGempa?.Potensi ? bmkgGempa.Potensi : (eventData.potensi_tsunami || '-'))
+      const mmi = char.intensitasMmi && char.intensitasMmi !== '-' ? char.intensitasMmi : (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : '-'))
       return [
-        { label: 'Magnitudo Gempa (BMKG)', value: magn !== '-' ? magn : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'), icon: Activity, color: 'text-red-600' },
+        { label: 'Magnitudo Gempa (BMKG)', value: magn, icon: Activity, color: 'text-red-600' },
         { label: 'Kedalaman Gempa', value: depth, icon: Compass, color: 'text-amber-700' },
         { label: 'Status Episentrum', value: tsunami, icon: Waves, color: 'text-blue-600' },
         { label: 'Intensitas MMI (BMKG)', value: mmi, icon: ShieldAlert, color: 'text-orange-600' }
@@ -2133,39 +2129,46 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (name.includes('tsunami')) {
       const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : '-'
       const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : '-'
+      const waktuTiba = eventData.waktu_tiba ? eventData.waktu_tiba : '-'
+      const statusPeringatan = eventData.status_peringatan ? eventData.status_peringatan : '-'
       return [
         { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
         { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
-        { label: 'Waktu Tiba Gelombang', value: eventData.waktu_tiba || '-', icon: Clock, color: 'text-amber-600' },
-        { label: 'Status Peringatan BMKG', value: eventData.status_peringatan || 'Peringatan Dini', icon: ShieldAlert, color: 'text-rose-600' }
+        { label: 'Waktu Tiba Gelombang', value: waktuTiba, icon: Clock, color: 'text-amber-600' },
+        { label: 'Status Peringatan BMKG', value: statusPeringatan, icon: ShieldAlert, color: 'text-rose-600' }
       ]
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
+      const satVal = soilSaturation > 0 ? `${soilSaturation}% (${soilSaturation >= 80 ? 'Jenuh Air' : 'Normal'})` : '-'
       return [
-        { label: 'TMA Sungai', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
+        { label: 'TMA Sungai / Genangan', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
         { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
         { label: 'Lama Genangan', value: parsedLama, icon: Clock, color: 'text-amber-500' },
-        { label: 'Saturasi Tanah', value: `${soilSaturation}% (${soilSaturation >= 80 ? 'Jenuh Air' : 'Normal'})`, icon: Droplets, color: 'text-blue-500' }
+        { label: 'Saturasi Tanah', value: satVal, icon: Droplets, color: 'text-blue-500' }
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {
-      const kerentanan = eventData.kerentanan_tanah || (soilSaturation >= 75 || totalRainfall >= 50 ? 'Zona Sangat Rentan' : 'Zona Rawan Longsor')
+      const kerentanan = eventData.kerentanan_tanah || '-'
+      const hujanPemicu = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : (eventData.curah_hujan ? `${eventData.curah_hujan} mm` : '-'))
+      const topografi = eventData.topografi || detail?.lokasi?.[0]?.topografi || '-'
+      const kelembabanTanah = soilSaturation > 0 ? `${soilSaturation}%` : '-'
       return [
         { label: 'Kerentanan Wilayah', value: kerentanan, icon: AlertTriangle, color: 'text-amber-700' },
-        { label: 'Hujan Pemicu (BMKG)', value: `${totalRainfall} mm`, icon: CloudRain, color: 'text-blue-600' },
-        { label: 'Topografi Lokasi', value: eventData.topografi || detail?.lokasi?.[0]?.topografi || 'Perbukitan / Lereng', icon: Compass, color: 'text-amber-900' },
-        { label: 'Kelembaban Tanah', value: `${soilSaturation}% (${soilSaturation >= 80 ? 'Jenuh Air' : 'Lembab'})`, icon: Droplets, color: 'text-teal-650' }
+        { label: 'Hujan Pemicu (BMKG)', value: hujanPemicu, icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Topografi Lokasi', value: topografi, icon: Compass, color: 'text-amber-900' },
+        { label: 'Kelembaban Tanah', value: kelembabanTanah, icon: Droplets, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
-      const level = eventData.status_gunung || 'Level II (Waspada)'
-      const height = eventData.tinggi_kolom_abu ? `${eventData.tinggi_kolom_abu} m` : '500 - 1.000 m'
-      const dir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_abu || 'Barat Daya')
+      const level = eventData.status_gunung || '-'
+      const height = eventData.tinggi_kolom_abu ? `${eventData.tinggi_kolom_abu} m` : '-'
+      const dir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_abu || '-')
+      const radius = eventData.radius_bahaya ? `${eventData.radius_bahaya} km` : '-'
       return [
         { label: 'Status Gunung (PVMBG)', value: level, icon: ShieldAlert, color: 'text-red-600' },
         { label: 'Tinggi Kolom Abu', value: height, icon: CloudRain, color: 'text-slate-600' },
         { label: 'Arah Sebaran Abu', value: dir, icon: Wind, color: 'text-amber-600' },
-        { label: 'Radius Bahaya', value: eventData.radius_bahaya ? `${eventData.radius_bahaya} km` : '3.0 km (Sektoral)', icon: AlertTriangle, color: 'text-orange-500' }
+        { label: 'Radius Bahaya', value: radius, icon: AlertTriangle, color: 'text-orange-500' }
       ]
     }
     if (name.includes('kekeringan') || name.includes('drought')) {
@@ -2173,7 +2176,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         { label: 'Hari Tanpa Hujan', value: eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari` : '-', icon: Clock, color: 'text-amber-600' },
         { label: 'Defisit Air Bersih', value: eventData.defisit_air || '-', icon: Droplets, color: 'text-red-500' },
         { label: 'Lahan Terdampak', value: eventData.luas_lahan ? `${eventData.luas_lahan} ha` : '-', icon: Compass, color: 'text-orange-600' },
-        { label: 'Pasokan Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia', icon: Activity, color: 'text-blue-500' }
+        { label: 'Pasokan Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia') : '-', icon: Activity, color: 'text-blue-500' }
       ]
     }
     if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
@@ -2185,13 +2188,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
-      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : '-'
-      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : '0 mm/hari'
+      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : '-')
+      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : '-')
+      const windDir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_angin || '-')
+      const cuaca = realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : (eventData.kondisi_cuaca || '-')
       return [
         { label: 'Kecepatan Angin Maks', value: windSpeed, icon: Wind, color: 'text-indigo-600' },
         { label: 'Curah Hujan (BMKG)', value: rain, icon: CloudLightning, color: 'text-blue-600' },
-        { label: 'Arah Angin Dominan', value: realtimeWind?.directionText || '-', icon: Waves, color: 'text-cyan-600' },
-        { label: 'Kondisi Cuaca (BMKG)', value: realtimeWeather?.cuaca || '-', icon: AlertTriangle, color: 'text-amber-600' }
+        { label: 'Arah Angin Dominan', value: windDir, icon: Waves, color: 'text-cyan-600' },
+        { label: 'Kondisi Cuaca (BMKG)', value: cuaca, icon: AlertTriangle, color: 'text-amber-600' }
       ]
     }
     return [
@@ -2590,15 +2595,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     return (
                       <div
                         key={day.offset}
-                        className={`flex flex-col items-center justify-between py-1.5 px-1 rounded-xl transition-colors border ${isEventDay
+                        className={`flex flex-col items-center justify-between py-1.5 px-0.5 sm:px-1 rounded-xl transition-colors border overflow-hidden ${isEventDay
                           ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-md ring-2 ring-rose-300/60'
                           : 'bg-white/90 border-slate-200/90 hover:bg-slate-50'
                           }`}
                       >
-                        <span className="text-[10px] font-black uppercase leading-none text-slate-500">
+                        <span className="text-[9.5px] sm:text-[10px] font-black uppercase leading-none text-slate-500 truncate w-full text-center">
                           {day.dayName}
                         </span>
-                        <span className="text-xs font-black leading-none mt-0.5 text-slate-900">
+                        <span className="text-[11px] sm:text-xs font-black leading-none mt-0.5 text-slate-900 truncate w-full text-center">
                           {day.dateLabel}
                         </span>
 
@@ -2622,49 +2627,55 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           )}
                         </div>
 
-                        <div className="flex flex-col items-center leading-none mt-0.5 w-full">
+                        <div className="flex flex-col items-center leading-none mt-0.5 w-full overflow-hidden px-0.5">
                           {disasterTheme.type === 'gempa' ? (
                             <>
-                              <span className="text-[11px] font-black text-slate-900 block text-center whitespace-nowrap leading-tight">
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-900 block text-center truncate w-full leading-tight" title={day.topLabel}>
                                 {day.topLabel}
                               </span>
-                              <span className={`text-[10px] font-extrabold mt-0.5 block text-center whitespace-nowrap leading-tight ${isEventDay ? 'text-red-700 font-black' : day.topLabel?.includes('M <') ? 'text-slate-500' : 'text-orange-600'}`}>
+                              <span
+                                className={`text-[8.5px] sm:text-[9.5px] font-extrabold mt-0.5 block text-center truncate w-full leading-tight ${isEventDay ? 'text-red-700 font-black' : day.topLabel?.includes('M <') ? 'text-slate-500' : 'text-orange-600'}`}
+                                title={day.bottomLabel}
+                              >
                                 {day.bottomLabel}
                               </span>
                             </>
                           ) : disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
                             <>
-                              <span className="text-[11px] sm:text-xs font-black text-slate-900 block text-center whitespace-nowrap leading-tight">
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-900 block text-center truncate w-full leading-tight" title={`ISPU ${dayIspuVal > 0 ? dayIspuVal : '-'}`}>
                                 ISPU {dayIspuVal > 0 ? dayIspuVal : '-'}
                               </span>
-                              <span className={`text-[10px] font-black mt-0.5 block text-center whitespace-nowrap leading-tight ${isEventDay ? 'text-red-700 font-black' : (dayIspuVal > 150) ? 'text-rose-600' : 'text-orange-600'}`}>
+                              <span
+                                className={`text-[8.5px] sm:text-[9.5px] font-black mt-0.5 block text-center truncate w-full leading-tight ${isEventDay ? 'text-red-700 font-black' : (dayIspuVal > 150) ? 'text-rose-600' : 'text-orange-600'}`}
+                                title={dayIspuLabel}
+                              >
                                 {dayIspuLabel}
                               </span>
                             </>
                           ) : disasterTheme.type === 'tsunami' ? (
                             <>
-                              <span className="text-[11px] font-black text-teal-900 block text-center whitespace-nowrap">
-                                {isEventDay ? '3.2 m' : '0.4 m'}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                              <span className="text-[10px] sm:text-[11px] font-black text-teal-900 block text-center truncate w-full" title={isEventDay ? 'Gelombang Tsunami' : 'Normal'}>
                                 {isEventDay ? 'Tsunami' : 'Normal'}
+                              </span>
+                              <span className="text-[8.5px] sm:text-[9.5px] font-bold text-slate-600 mt-0.5 block text-center truncate w-full">
+                                {isEventDay ? 'Waspada' : 'Aman'}
                               </span>
                             </>
                           ) : disasterTheme.type === 'kekeringan' ? (
                             <>
-                              <span className="text-[11px] font-black text-amber-900 block text-center whitespace-nowrap">
-                                {day.temp !== '-' ? day.temp : '33°C'}
+                              <span className="text-[10px] sm:text-[11px] font-black text-amber-900 block text-center truncate w-full" title={day.temp !== '-' ? day.temp : '-'}>
+                                {day.temp !== '-' ? day.temp : '-'}
                               </span>
-                              <span className="text-[10px] font-bold text-red-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
-                                0 mm (HTH)
+                              <span className="text-[8.5px] sm:text-[9.5px] font-bold text-red-600 mt-0.5 block text-center truncate w-full" title="0 mm (Hari Tanpa Hujan)">
+                                0 mm HTH
                               </span>
                             </>
                           ) : (
                             <>
-                              <span className="text-[11px] font-black text-slate-700 block text-center whitespace-nowrap">
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-700 block text-center truncate w-full" title={day.temp !== '-' ? day.temp : '-'}>
                                 {day.temp !== '-' ? day.temp : '-'}
                               </span>
-                              <span className="text-[10px] font-extrabold text-blue-600 mt-0.5 block shrink-0 text-center whitespace-nowrap">
+                              <span className="text-[8.5px] sm:text-[9.5px] font-extrabold text-blue-600 mt-0.5 block text-center truncate w-full" title={day.precip > 0 ? `${day.precip}mm` : (day.weather !== '-' ? day.weather : '0mm')}>
                                 {day.precip > 0 ? `${day.precip}mm` : (day.weather !== '-' ? day.weather : '0mm')}
                               </span>
                             </>

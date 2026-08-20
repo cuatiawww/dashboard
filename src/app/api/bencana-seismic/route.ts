@@ -229,11 +229,16 @@ export async function GET(request: Request) {
 
       if (byDate[dStr]) {
         const eq = byDate[dStr]
-        const role = isEventDay
-          ? 'Gempa Utama'
-          : i > 0
-          ? `Susulan (+${i}H)`
-          : `Pra-Gempa (${i}H)`
+        let bottomLabel = 'Stabil'
+        if (isEventDay) {
+          const rawMmi = bmkgMatch?.Dirasakan ? bmkgMatch.Dirasakan.split(',')[0].trim() : (dbMmi ? `${dbMmi} MMI` : 'Gempa Utama')
+          const mmiMatch = rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
+          bottomLabel = mmiMatch ? `${mmiMatch[1]} MMI` : 'Gempa Utama'
+        } else if (i > 0) {
+          bottomLabel = 'Susulan'
+        } else if (i < 0) {
+          bottomLabel = 'Pra-Gempa'
+        }
 
         timeline.push({
           offset: i,
@@ -241,7 +246,7 @@ export async function GET(request: Request) {
           dayName,
           dateLabel,
           topLabel: `M ${Number(eq.mag).toFixed(1)}`,
-          bottomLabel: isEventDay && (bmkgMatch?.Dirasakan || dbMmi) ? (bmkgMatch?.Dirasakan ? bmkgMatch.Dirasakan.split(',')[0].trim() : `${dbMmi} MMI`) : role,
+          bottomLabel,
           magnitude: eq.mag,
           depth: `${eq.depth} km`,
           place: eq.place,
@@ -251,7 +256,9 @@ export async function GET(request: Request) {
       } else if (isEventDay && (bmkgMatch || dbMag)) {
         const magVal = parseFloat(bmkgMatch?.Magnitude || dbMag || '5.0')
         const depthVal = bmkgMatch?.Kedalaman || (dbDepth ? `${dbDepth} km` : '10 km')
-        const mmiVal = bmkgMatch?.Dirasakan ? bmkgMatch.Dirasakan.split(',')[0].trim() : (dbMmi ? `${dbMmi} MMI` : 'Gempa Utama')
+        const rawMmi = bmkgMatch?.Dirasakan ? bmkgMatch.Dirasakan.split(',')[0].trim() : (dbMmi ? `${dbMmi} MMI` : 'Gempa Utama')
+        const mmiMatch = rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
+        const mmiVal = mmiMatch ? `${mmiMatch[1]} MMI` : 'Gempa Utama'
 
         timeline.push({
           offset: i,
@@ -273,7 +280,7 @@ export async function GET(request: Request) {
           dayName,
           dateLabel,
           topLabel: 'M < 3.0',
-          bottomLabel: 'Seismik Stabil',
+          bottomLabel: 'Stabil',
           magnitude: 0,
           depth: '-',
           place: 'Nihil Gempa Signifikan',
