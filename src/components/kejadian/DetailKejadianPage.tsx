@@ -1156,14 +1156,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     eventDateObj
   ])
 
-  // Fetch real flood hydrology data (River Discharge, Soil Moisture) from Open-Meteo GloFAS
+  // Fetch live environmental, hydrology, air quality, marine, and weather data from Open-Meteo
   useEffect(() => {
-    const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
-    const isBanjir = name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')
-    const isLongsor = name.includes('longsor') || name.includes('landslide')
-    const isCuaca = name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')
-    if (!isBanjir && !isLongsor && !isCuaca) return
-
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 0)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 0)
     if (lat === 0 && lng === 0) return
@@ -1179,13 +1173,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         }
       })
       .catch((err) => {
-        console.error('[Bencana Flood Hydrology] Fetch error:', err)
+        console.error('[Bencana Environment API] Fetch error:', err)
       })
 
     return () => { active = false }
   }, [
-    eventData.jenis_bencana,
-    eventData.nama_bencana,
     eventData.latitude,
     eventData.longitude,
     detail?.lokasi,
@@ -2146,21 +2138,37 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
-      const visText = realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
-        ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km` : `${realtimeWind.visibilityM} m`)
+      const hotspotVal = eventData.hotspot
+        ? `${eventData.hotspot} Titik`
+        : eventData.titik_panas
+        ? `${eventData.titik_panas} Titik`
+        : floodHydrology?.weather?.fireWeatherCategory
+        ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
+        : 'Menunggu data API...'
+
+      const ispuVal = floodHydrology?.airQuality?.aqi
+        ? `${floodHydrology.airQuality.aqi} (${floodHydrology.airQuality.aqiLabel})`
+        : eventDayIspu > 0
+        ? `${eventDayIspu} (${eventDayIspuCategory.label})`
+        : 'Menunggu data API...'
+
+      const pm25Val = floodHydrology?.airQuality?.pm25
+        ? `${floodHydrology.airQuality.pm25} µg/m³ (PM2.5)`
+        : realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
+        ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km (Jarak Pandang)` : `${realtimeWind.visibilityM} m`)
         : (eventData.jarak_pandang || 'Menunggu data API...')
-      const windText = realtimeWind && realtimeWind.speed > 0
+
+      const windVal = floodHydrology?.weather?.windSpeed
+        ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j, ${floodHydrology.weather.windDirectionText})`
+        : realtimeWind && realtimeWind.speed > 0
         ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText || ''})`
         : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
 
-      const hotspotText = eventData.hotspot ? `${eventData.hotspot} Titik` : (eventData.titik_panas ? `${eventData.titik_panas} Titik` : 'Data belum tersedia')
-      const ispuText = eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : 'Menunggu data API...'
-
       return [
-        { label: 'Titik Panas (Hotspot)', value: hotspotText, icon: Flame, color: 'text-red-500' },
-        { label: 'ISPU (Open-Meteo Air Quality)', value: ispuText, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
-        { label: 'Jarak Pandang', value: visText, icon: Eye, color: 'text-slate-600' },
-        { label: 'Arah & Kecepatan Angin (Open-Meteo)', value: windText, icon: Wind, color: 'text-amber-600' }
+        { label: 'Indeks Titik Panas (FWI / Open-Meteo)', value: hotspotVal, icon: Flame, color: 'text-red-500' },
+        { label: 'ISPU (Open-Meteo Air Quality)', value: ispuVal, icon: ShieldAlert, color: (floodHydrology?.airQuality?.aqi >= 150 || eventDayIspu >= 150) ? 'text-red-650' : 'text-orange-500' },
+        { label: 'Konsentrasi Partikulat Asap', value: pm25Val, icon: Eye, color: 'text-slate-600' },
+        { label: 'Arah & Hembusan Angin (Open-Meteo)', value: windVal, icon: Wind, color: 'text-amber-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -2177,28 +2185,42 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('tsunami')) {
-      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : 'Data belum tersedia'
-      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : 'Data belum tersedia'
-      const waktuTiba = eventData.waktu_tiba ? eventData.waktu_tiba : 'Data belum tersedia'
-      const statusPeringatan = eventData.status_peringatan ? eventData.status_peringatan : 'Data belum tersedia'
+      const waveH = eventData.tinggi_gelombang
+        ? `${eventData.tinggi_gelombang} m`
+        : floodHydrology?.marine?.waveHeight != null
+        ? `${floodHydrology.marine.waveHeight} m (Periode ${floodHydrology.marine.wavePeriod}s)`
+        : 'Menunggu data API...'
+
+      const inunDist = eventData.jarak_inundasi
+        ? `${eventData.jarak_inundasi} m`
+        : floodHydrology?.marine?.waveDirectionText
+        ? `Arah ${floodHydrology.marine.waveDirectionText} (${floodHydrology.marine.waveDirection}°)`
+        : 'Menunggu data API...'
+
+      const pressVal = floodHydrology?.weather?.pressure
+        ? `${floodHydrology.weather.pressure} hPa (Permukaan Laut)`
+        : (eventData.waktu_tiba || 'Menunggu data API...')
+
+      const statusPeringatan = eventData.status_peringatan
+        ? eventData.status_peringatan
+        : (floodHydrology?.marine?.waveHeight > 2.0 ? 'Waspada Gelombang Tinggi' : 'Kondusif / Normal')
+
       return [
-        { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
-        { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
-        { label: 'Waktu Tiba Gelombang', value: waktuTiba, icon: Clock, color: 'text-amber-600' },
-        { label: 'Status Peringatan BMKG', value: statusPeringatan, icon: ShieldAlert, color: 'text-rose-600' }
+        { label: 'Tinggi Gelombang (Marine API)', value: waveH, icon: Waves, color: 'text-teal-650' },
+        { label: 'Dinamika Gelombang & Arah', value: inunDist, icon: Compass, color: 'text-cyan-600' },
+        { label: 'Tekanan Barometrik Maritim', value: pressVal, icon: Clock, color: 'text-amber-600' },
+        { label: 'Status Peringatan Laut', value: statusPeringatan, icon: ShieldAlert, color: 'text-rose-600' }
       ]
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
       const eventDayWeather = weatherTimeline.find(w => w.offset === 0)
 
-      // Curah Hujan: ONLY from real API (Open-Meteo flood or weekly)
       const floodRainPeak = floodHydrology?.rainfall?.peak || 0
       const effectivePeak = floodRainPeak > 0 ? floodRainPeak : peakRainfall
       const rainVal = effectivePeak > 0
         ? `${effectivePeak} mm/hari (${effectivePeak >= 100 ? 'Sangat Lebat' : effectivePeak >= 50 ? 'Lebat' : effectivePeak >= 20 ? 'Sedang' : 'Ringan'})`
         : (eventData.curah_hujan ? `${eventData.curah_hujan} mm/hari` : 'Menunggu data API...')
 
-      // Debit Sungai / TMA: ONLY real API data, no fabrication
       let tmaVal = 'Menunggu data API...'
       if (floodHydrology?.riverDischarge?.current > 0) {
         const q = floodHydrology.riverDischarge.current
@@ -2213,18 +2235,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       } else if (eventData.tinggi_muka_air && eventData.tinggi_muka_air !== '-') {
         tmaVal = eventData.tinggi_muka_air
       } else if (floodHydrology !== null) {
-        // API sudah di-fetch tapi memang tidak ada data debit di lokasi ini
         tmaVal = 'Data debit tidak tersedia di lokasi ini'
       }
 
-      // Akumulasi Hujan: ONLY real API totals
       const floodRainTotal = floodHydrology?.rainfall?.total || 0
       const effectiveTotal = floodRainTotal > 0 ? floodRainTotal : totalRainfall
       const kumulatifVal = effectiveTotal > 0
         ? `${effectiveTotal} mm (7 Hari Terakhir)`
         : 'Menunggu data API...'
 
-      // Cuaca: from real Open-Meteo weathercode
       const cuacaVal = (eventDayWeather?.weather && eventDayWeather.weather !== '-')
         ? `${eventDayWeather.weather} (${eventDayWeather.temp !== '-' ? eventDayWeather.temp : ''})`.trim()
         : (realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : 'Menunggu data API...')
@@ -2237,11 +2256,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {
-      const kerentanan = eventData.kerentanan_tanah || 'Data belum tersedia'
-      const hujanPemicu = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : (eventData.curah_hujan ? `${eventData.curah_hujan} mm` : 'Menunggu data API...'))
-      const topografi = eventData.topografi || detail?.lokasi?.[0]?.topografi || 'Data belum tersedia'
+      const hujanPemicu = peakRainfall > 0
+        ? `${peakRainfall} mm/hari`
+        : (floodHydrology?.weather?.precipitationPeak ? `${floodHydrology.weather.precipitationPeak} mm/hari` : 'Menunggu data API...')
 
-      // Kelembaban Tanah: ONLY from real Open-Meteo soil moisture API — NO dummy formula
       let kelembabanTanah = 'Menunggu data API...'
       if (floodHydrology?.soilMoisture?.current > 0) {
         const sm = floodHydrology.soilMoisture
@@ -2250,58 +2268,140 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         kelembabanTanah = 'Data tidak tersedia di lokasi ini'
       }
 
+      const kumulatifLongsor = floodHydrology?.weather?.precipitationTotal7d
+        ? `${floodHydrology.weather.precipitationTotal7d} mm (7 Hari Terakhir)`
+        : (totalRainfall > 0 ? `${totalRainfall} mm` : 'Menunggu data API...')
+
+      const pressVal = floodHydrology?.weather?.pressure
+        ? `${floodHydrology.weather.pressure} hPa (${floodHydrology.weather.humidity}% RH)`
+        : (eventData.topografi || 'Menunggu data API...')
+
       return [
-        { label: 'Kerentanan Wilayah', value: kerentanan, icon: AlertTriangle, color: 'text-amber-700' },
         { label: 'Hujan Pemicu (Open-Meteo)', value: hujanPemicu, icon: CloudRain, color: 'text-blue-600' },
-        { label: 'Topografi Lokasi', value: topografi, icon: Compass, color: 'text-amber-900' },
-        { label: 'Kelembaban Tanah (Open-Meteo)', value: kelembabanTanah, icon: Droplets, color: 'text-teal-650' }
+        { label: 'Kelembaban Tanah (Open-Meteo)', value: kelembabanTanah, icon: Droplets, color: 'text-teal-650' },
+        { label: 'Akumulasi Hujan Presipitasi', value: kumulatifLongsor, icon: CloudLightning, color: 'text-amber-700' },
+        { label: 'Tekanan Udara & Kelembaban', value: pressVal, icon: Compass, color: 'text-amber-900' }
       ]
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
-      const level = eventData.status_gunung || '-'
-      const height = eventData.tinggi_kolom_abu ? `${eventData.tinggi_kolom_abu} m` : '-'
-      const dir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_abu || '-')
-      const radius = eventData.radius_bahaya ? `${eventData.radius_bahaya} km` : '-'
+      const so2Val = floodHydrology?.airQuality?.so2 != null
+        ? `${floodHydrology.airQuality.so2} µg/m³ (SO2 Vulkanik)`
+        : (eventData.status_gunung || 'Menunggu data API...')
+
+      const pm10Val = floodHydrology?.airQuality?.pm10 != null
+        ? `${floodHydrology.airQuality.pm10} µg/m³ (Debu PM10)`
+        : (eventData.tinggi_kolom_abu ? `${eventData.tinggi_kolom_abu} m` : 'Menunggu data API...')
+
+      const abuDir = floodHydrology?.weather?.windDirectionText
+        ? `${floodHydrology.weather.windSpeed} km/j (${floodHydrology.weather.windDirectionText})`
+        : (realtimeWind?.directionText || eventData.arah_abu || 'Menunggu data API...')
+
+      const aqiVolcano = floodHydrology?.airQuality?.aqi
+        ? `AQI ${floodHydrology.airQuality.aqi} (${floodHydrology.airQuality.aqiLabel})`
+        : (eventData.radius_bahaya ? `Radius ${eventData.radius_bahaya} km` : 'Menunggu data API...')
+
       return [
-        { label: 'Status Gunung (PVMBG)', value: level, icon: ShieldAlert, color: 'text-red-600' },
-        { label: 'Tinggi Kolom Abu', value: height, icon: CloudRain, color: 'text-slate-600' },
-        { label: 'Arah Sebaran Abu', value: dir, icon: Wind, color: 'text-amber-600' },
-        { label: 'Radius Bahaya', value: radius, icon: AlertTriangle, color: 'text-orange-500' }
+        { label: 'Emisi Gas Vulkanik (SO2 Air Quality)', value: so2Val, icon: ShieldAlert, color: 'text-red-600' },
+        { label: 'Partikulat Debu Vulkanik (PM10)', value: pm10Val, icon: CloudRain, color: 'text-slate-600' },
+        { label: 'Arah Dispersi Abu (Angin)', value: abuDir, icon: Wind, color: 'text-amber-600' },
+        { label: 'Kualitas Udara Kawasan (ISPU)', value: aqiVolcano, icon: AlertTriangle, color: 'text-orange-500' }
       ]
     }
     if (name.includes('kekeringan') || name.includes('drought')) {
+      const tempMaxVal = floodHydrology?.weather?.maxTemp
+        ? `${floodHydrology.weather.maxTemp} °C (Suhu Terik)`
+        : (eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari Tanpa Hujan` : 'Menunggu data API...')
+
+      const et0Val = floodHydrology?.weather?.evapotranspiration
+        ? `${floodHydrology.weather.evapotranspiration} mm/hari (FAO-56 ET0)`
+        : (eventData.defisit_air || 'Menunggu data API...')
+
+      const rhVal = floodHydrology?.weather?.humidity
+        ? `${floodHydrology.weather.humidity}% (Kelembaban Relatif)`
+        : (eventData.luas_lahan ? `${eventData.luas_lahan} ha` : 'Menunggu data API...')
+
+      const uvVal = floodHydrology?.airQuality?.uvIndex != null
+        ? `Indeks UV ${floodHydrology.airQuality.uvIndex}`
+        : (typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia') : 'Menunggu data API...')
+
       return [
-        { label: 'Hari Tanpa Hujan', value: eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari` : 'Data belum tersedia', icon: Clock, color: 'text-amber-600' },
-        { label: 'Defisit Air Bersih', value: eventData.defisit_air || 'Data belum tersedia', icon: Droplets, color: 'text-red-500' },
-        { label: 'Lahan Terdampak', value: eventData.luas_lahan ? `${eventData.luas_lahan} ha` : 'Data belum tersedia', icon: Compass, color: 'text-orange-600' },
-        { label: 'Pasokan Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia') : 'Data belum tersedia', icon: Activity, color: 'text-blue-500' }
+        { label: 'Suhu Udara Maksimum', value: tempMaxVal, icon: Clock, color: 'text-amber-600' },
+        { label: 'Laju Evapotranspirasi (ET0)', value: et0Val, icon: Droplets, color: 'text-red-500' },
+        { label: 'Kelembaban Udara Relatif', value: rhVal, icon: Compass, color: 'text-orange-600' },
+        { label: 'Indeks Paparan UV Sinar Matahari', value: uvVal, icon: Activity, color: 'text-blue-500' }
       ]
     }
     if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
+      const vectorEnv = floodHydrology?.weather?.currentTemp
+        ? `${floodHydrology.weather.currentTemp} °C (Kelembaban ${floodHydrology.weather.humidity}%)`
+        : (eventData.status_penyakit || 'Surveilans SKDR')
+
+      const ispuWabah = floodHydrology?.airQuality?.aqi
+        ? `AQI ${floodHydrology.airQuality.aqi} (${floodHydrology.airQuality.aqiLabel})`
+        : (eventData.investigasi_pe || 'Menunggu data API...')
+
+      const rainWabah = floodHydrology?.weather?.precipitationTotal7d
+        ? `${floodHydrology.weather.precipitationTotal7d} mm/7 hari (Genangan Air)`
+        : (eventData.kesiapan_logistik || 'Menunggu data API...')
+
+      const pm25Wabah = floodHydrology?.airQuality?.pm25
+        ? `${floodHydrology.airQuality.pm25} µg/m³ (PM2.5)`
+        : (eventData.pemantauan_kontak || 'Menunggu data API...')
+
       return [
-        { label: 'Status Penyakit', value: eventData.status_penyakit || 'Data belum tersedia', icon: ShieldAlert, color: 'text-purple-600' },
-        { label: 'Investigasi PE', value: eventData.investigasi_pe || 'Data belum tersedia', icon: Activity, color: 'text-rose-600' },
-        { label: 'Kesiapan Logistik Obat', value: eventData.kesiapan_logistik || 'Data belum tersedia', icon: BriefcaseMedical, color: 'text-teal-600' },
-        { label: 'Pemantauan Kontak', value: eventData.pemantauan_kontak || 'Data belum tersedia', icon: Users, color: 'text-indigo-600' }
+        { label: 'Suhu & Kelembaban Lingkungan Vektor', value: vectorEnv, icon: ShieldAlert, color: 'text-purple-600' },
+        { label: 'Kualitas Udara Pernapasan (ISPU)', value: ispuWabah, icon: Activity, color: 'text-rose-600' },
+        { label: 'Curah Hujan & Genangan Perindukan', value: rainWabah, icon: BriefcaseMedical, color: 'text-teal-600' },
+        { label: 'Pajanan Partikulat Halus PM2.5', value: pm25Wabah, icon: Users, color: 'text-indigo-600' }
       ]
     }
     if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
-      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
-      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : 'Menunggu data API...')
-      const windDir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_angin || 'Menunggu data API...')
-      const cuaca = realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : (eventData.kondisi_cuaca || 'Menunggu data API...')
+      const windSpeedVal = floodHydrology?.weather?.windSpeed
+        ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j)`
+        : (realtimeWind?.speed ? `${realtimeWind.speed} km/j` : 'Menunggu data API...')
+
+      const pressVal = floodHydrology?.weather?.pressure
+        ? `${floodHydrology.weather.pressure} hPa (Barometrik)`
+        : 'Menunggu data API...'
+
+      const windDirVal = floodHydrology?.weather?.windDirectionText
+        ? `${floodHydrology.weather.windDirectionText} (${floodHydrology.weather.windDirectionDeg}°)`
+        : (realtimeWind?.directionText || 'Menunggu data API...')
+
+      const rainVal = floodHydrology?.weather?.precipitationEvent
+        ? `${floodHydrology.weather.precipitationEvent} mm/hari`
+        : (peakRainfall > 0 ? `${peakRainfall} mm/hari` : 'Menunggu data API...')
+
       return [
-        { label: 'Kecepatan Angin Maks (Open-Meteo)', value: windSpeed, icon: Wind, color: 'text-indigo-600' },
-        { label: 'Curah Hujan (Open-Meteo)', value: rain, icon: CloudLightning, color: 'text-blue-600' },
-        { label: 'Arah Angin Dominan (Open-Meteo)', value: windDir, icon: Waves, color: 'text-cyan-600' },
-        { label: 'Kondisi Cuaca (Open-Meteo)', value: cuaca, icon: AlertTriangle, color: 'text-amber-600' }
+        { label: 'Kecepatan & Hembusan Angin (Open-Meteo)', value: windSpeedVal, icon: Wind, color: 'text-indigo-600' },
+        { label: 'Tekanan Udara Permukaan (Barometrik)', value: pressVal, icon: AlertTriangle, color: 'text-amber-600' },
+        { label: 'Arah Angin Dominan (Open-Meteo)', value: windDirVal, icon: Waves, color: 'text-cyan-600' },
+        { label: 'Curah Hujan & Presipitasi (Open-Meteo)', value: rainVal, icon: CloudLightning, color: 'text-blue-600' }
       ]
     }
+
+    // Default Fallback for generic disaster types
+    const tempVal = floodHydrology?.weather?.currentTemp
+      ? `${floodHydrology.weather.currentTemp} °C (${floodHydrology.weather.humidity}% RH)`
+      : (typeof eventData.akses_lokasi === 'number' ? (eventData.akses_lokasi === 0 ? 'Terputus' : 'Lancar') : 'Menunggu data API...')
+
+    const windDef = floodHydrology?.weather?.windSpeed
+      ? `${floodHydrology.weather.windSpeed} km/j (${floodHydrology.weather.windDirectionText})`
+      : (typeof eventData.jaringan_listrik === 'number' ? (eventData.jaringan_listrik === 0 ? 'Padam' : 'Normal') : 'Menunggu data API...')
+
+    const ispuDef = floodHydrology?.airQuality?.aqi
+      ? `AQI ${floodHydrology.airQuality.aqi} (${floodHydrology.airQuality.aqiLabel})`
+      : (typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis' : 'Layak') : 'Menunggu data API...')
+
+    const pressDef = floodHydrology?.weather?.pressure
+      ? `${floodHydrology.weather.pressure} hPa (Tekanan Barometrik)`
+      : (typeof eventData.fasum === 'number' ? (eventData.fasum === 0 ? 'Tidak Berfungsi' : 'Berfungsi') : 'Menunggu data API...')
+
     return [
-      { label: 'Akses Jalan', value: typeof eventData.akses_lokasi === 'number' ? (eventData.akses_lokasi === 0 ? 'Terputus' : 'Lancar') : 'Data belum tersedia', icon: Compass, color: 'text-teal-650' },
-      { label: 'Jaringan Listrik', value: typeof eventData.jaringan_listrik === 'number' ? (eventData.jaringan_listrik === 0 ? 'Padam' : 'Normal') : 'Data belum tersedia', icon: Zap, color: 'text-amber-500' },
-      { label: 'Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis' : 'Layak') : 'Data belum tersedia', icon: Droplets, color: 'text-blue-500' },
-      { label: 'Fasilitas Umum', value: typeof eventData.fasum === 'number' ? (eventData.fasum === 0 ? 'Tidak Berfungsi' : 'Berfungsi') : 'Data belum tersedia', icon: Activity, color: 'text-cyan-600' }
+      { label: 'Suhu Udara & Kelembaban (Open-Meteo)', value: tempVal, icon: Compass, color: 'text-teal-650' },
+      { label: 'Arah & Kecepatan Angin (Open-Meteo)', value: windDef, icon: Zap, color: 'text-amber-500' },
+      { label: 'Kualitas Udara ISPU (Open-Meteo AQ)', value: ispuDef, icon: Droplets, color: 'text-blue-500' },
+      { label: 'Tekanan Udara Barometrik', value: pressDef, icon: Activity, color: 'text-cyan-600' }
     ]
   }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, seismicResult, petaBencanaData, floodHydrology, detail?.lokasi])
 
