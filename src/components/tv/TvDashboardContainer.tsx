@@ -65,6 +65,7 @@ export default function TvDashboardContainer() {
   const [refreshCountdown, setRefreshCountdown] = useState(REFRESH_INTERVAL_SECONDS)
   const [autoProvinceTour, setAutoProvinceTour] = useState(true)
   const [currentTourProvince, setCurrentTourProvince] = useState<string | null>(null)
+  const [isKpiCollapsed, setIsKpiCollapsed] = useState(false)
   const tourIndexRef = useRef(0)
 
   // Data States
@@ -303,7 +304,12 @@ export default function TvDashboardContainer() {
       />
 
       {/* ── 3. TOP FLOATING KPI STAT CARDS ── */}
-      <TvKpiCards summary={summary} isLoading={isLoading} />
+      <TvKpiCards
+        summary={summary}
+        isLoading={isLoading}
+        isCollapsed={isKpiCollapsed}
+        onToggleCollapse={() => setIsKpiCollapsed(!isKpiCollapsed)}
+      />
 
       {/* ── 4. LEFT FLOATING THREAT & INCIDENT DECK ── */}
       <TvLiveFeedDeck
@@ -311,6 +317,7 @@ export default function TvDashboardContainer() {
         bmkgData={bmkgData}
         peringatanDiniList={peringatanDiniList}
         activeSpotlightId={spotlightEvent?.kode_trans}
+        isKpiCollapsed={isKpiCollapsed}
         onSelectEvent={handleSelectEvent}
         onSelectGempa={handleSelectGempa}
       />
@@ -323,10 +330,11 @@ export default function TvDashboardContainer() {
         recentMarkers={mapPinMarkers}
         penyakitList={penyakitList}
         summary={summary}
+        isKpiCollapsed={isKpiCollapsed}
         onSelectProvince={handleSelectProvince}
       />
 
-      {/* ── 6. INARISK & EOC LAYER SERVICES DRAWER ── */}
+      {/* ── 6. LAYER SERVICES DRAWER ── */}
       <TvLayerServicesDrawer
         isOpen={layersOpen}
         onClose={() => setLayersOpen(false)}

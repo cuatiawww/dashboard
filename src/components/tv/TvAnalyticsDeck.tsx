@@ -40,6 +40,7 @@ interface TvAnalyticsDeckProps {
   recentMarkers?: any[]
   penyakitList?: any[]
   summary?: SummaryData
+  isKpiCollapsed?: boolean
   onSelectProvince?: (prov: string) => void
 }
 
@@ -81,6 +82,7 @@ export default function TvAnalyticsDeck({
     total_pengungsi: 0,
     total_terdampak: 0,
   },
+  isKpiCollapsed = false,
   onSelectProvince,
 }: TvAnalyticsDeckProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -201,35 +203,35 @@ export default function TvAnalyticsDeck({
 
   return (
     <div
-      className={`fixed right-3 top-48 bottom-14 z-30 transition-all duration-300 pointer-events-none ${
-        isCollapsed ? 'w-12' : 'w-80 sm:w-96'
-      }`}
+      className={`fixed right-2 sm:right-3 bottom-12 z-25 transition-all duration-300 pointer-events-none ${
+        isCollapsed ? 'w-10 sm:w-11' : 'w-72 sm:w-80 xl:w-84 2xl:w-92 max-w-[calc(50vw-16px)]'
+      } ${isKpiCollapsed ? 'top-[68px] sm:top-[74px]' : 'top-[160px] sm:top-[166px] 2xl:top-[174px]'}`}
     >
-      <div className="relative h-full flex flex-col pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl shadow-[0_10px_30px_rgba(4,125,120,0.12)] overflow-hidden text-slate-800">
+      <div className="relative h-full flex flex-col pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(4,125,120,0.1)] overflow-hidden text-slate-800">
         {/* ── Deck Header ── */}
-        <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
+        <div className="p-2 sm:p-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
           {/* Collapse/Expand button */}
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center justify-center h-7 w-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-teal-800 transition-all shadow-xs cursor-pointer"
+            className="flex items-center justify-center h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-teal-800 transition-all shadow-xs cursor-pointer"
             title={isCollapsed ? 'Buka Panel Analitik' : 'Ciutkan Panel'}
           >
-            {isCollapsed ? <ChevronLeft className="h-4 w-4 text-[#047D78]" /> : <ChevronRight className="h-4 w-4 text-[#047D78]" />}
+            {isCollapsed ? <ChevronLeft className="h-3.5 w-3.5 text-[#047D78]" /> : <ChevronRight className="h-3.5 w-3.5 text-[#047D78]" />}
           </button>
 
           {!isCollapsed && (
             <div className="flex items-center gap-2 min-w-0 text-right">
               <div className="min-w-0">
-                <h3 className="text-xs font-black tracking-wider text-[#047D78] uppercase truncate">
+                <h3 className="text-[11px] sm:text-xs font-black tracking-wider text-[#047D78] uppercase truncate">
                   FASKES & SURVEILANS KESEHATAN
                 </h3>
-                <p className="text-[10px] text-slate-500 font-bold truncate">
+                <p className="text-[9.5px] sm:text-[10px] text-slate-500 font-bold truncate">
                   Kesiapsiagaan Medis & Tren Penyakit
                 </p>
               </div>
-              <div className="p-1.5 rounded-xl bg-teal-50 text-[#047D78] border border-teal-200 shadow-xs">
-                <Hospital className="h-4 w-4 text-[#047D78]" />
+              <div className="p-1 rounded-lg bg-teal-50 text-[#047D78] border border-teal-200 shadow-xs">
+                <Hospital className="h-3.5 w-3.5 text-[#047D78]" />
               </div>
             </div>
           )}

@@ -53,6 +53,7 @@ interface TvLiveFeedDeckProps {
   } | null
   peringatanDiniList?: any[]
   activeSpotlightId?: string | null
+  isKpiCollapsed?: boolean
   onSelectEvent: (item: MarkerItem) => void
   onSelectGempa: (gempa: BmkgGempa) => void
 }
@@ -62,6 +63,7 @@ export default function TvLiveFeedDeck({
   bmkgData,
   peringatanDiniList = [],
   activeSpotlightId,
+  isKpiCollapsed = false,
   onSelectEvent,
   onSelectGempa,
 }: TvLiveFeedDeckProps) {
@@ -105,23 +107,23 @@ export default function TvLiveFeedDeck({
 
   return (
     <div
-      className={`fixed left-3 top-48 bottom-14 z-30 transition-all duration-300 pointer-events-none ${
-        isCollapsed ? 'w-12' : 'w-80 sm:w-96'
-      }`}
+      className={`fixed left-2 sm:left-3 bottom-12 z-25 transition-all duration-300 pointer-events-none ${
+        isCollapsed ? 'w-10 sm:w-11' : 'w-72 sm:w-80 xl:w-84 2xl:w-92 max-w-[calc(50vw-16px)]'
+      } ${isKpiCollapsed ? 'top-[68px] sm:top-[74px]' : 'top-[160px] sm:top-[166px] 2xl:top-[174px]'}`}
     >
-      <div className="relative h-full flex flex-col pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl shadow-[0_10px_30px_rgba(4,125,120,0.12)] overflow-hidden text-slate-800">
+      <div className="relative h-full flex flex-col pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(4,125,120,0.1)] overflow-hidden text-slate-800">
         {/* ── Deck Header ── */}
-        <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
+        <div className="p-2 sm:p-2.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2">
           {!isCollapsed && (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-xl bg-teal-50 text-[#047D78] border border-teal-200 shadow-xs">
-                <Radio className="h-4 w-4 animate-pulse text-[#047D78]" />
+              <div className="p-1 rounded-lg bg-teal-50 text-[#047D78] border border-teal-200 shadow-xs">
+                <Radio className="h-3.5 w-3.5 animate-pulse text-[#047D78]" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs font-black tracking-wider text-[#047D78] uppercase truncate">
-                  PANTAUAN BENCANA & BMKG
+                <h3 className="text-[11px] sm:text-xs font-black tracking-wider text-[#047D78] uppercase truncate">
+                  PANTAUAN KEJADIAN
                 </h3>
-                <p className="text-[10px] text-slate-500 font-bold truncate">
+                <p className="text-[9.5px] sm:text-[10px] text-slate-500 font-bold truncate">
                   {filteredMarkers.length} Kejadian Terpantau
                 </p>
               </div>
@@ -132,10 +134,10 @@ export default function TvLiveFeedDeck({
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex items-center justify-center h-7 w-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-teal-800 transition-all shadow-xs cursor-pointer"
+            className="flex items-center justify-center h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-teal-800 transition-all shadow-xs cursor-pointer"
             title={isCollapsed ? 'Buka Panel' : 'Ciutkan Panel'}
           >
-            {isCollapsed ? <ChevronRight className="h-4 w-4 text-[#047D78]" /> : <ChevronLeft className="h-4 w-4 text-[#047D78]" />}
+            {isCollapsed ? <ChevronRight className="h-3.5 w-3.5 text-[#047D78]" /> : <ChevronLeft className="h-3.5 w-3.5 text-[#047D78]" />}
           </button>
         </div>
 

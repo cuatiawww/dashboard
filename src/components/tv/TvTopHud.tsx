@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Activity,
   Layers,
@@ -13,6 +14,8 @@ import {
   ArrowLeft,
   Radio,
 } from 'lucide-react'
+
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 interface TvTopHudProps {
   onToggleLayers: () => void
@@ -94,9 +97,9 @@ export default function TvTopHud({
   const refreshPercent = Math.max(0, Math.min(100, ((refreshInterval - refreshCountdown) / refreshInterval) * 100))
 
   return (
-    <header className="fixed top-3 left-3 right-3 z-40 flex items-center justify-between gap-4 pointer-events-none">
+    <header className="fixed top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 z-40 flex items-center justify-between gap-2 sm:gap-4 pointer-events-none">
       {/* ── Left Branding Section ── */}
-      <div className="pointer-events-auto flex items-center gap-3 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl px-4 py-2.5 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
+      <div className="pointer-events-auto flex items-center gap-2.5 sm:gap-3 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-xl sm:rounded-2xl px-3 py-1.5 sm:px-4 sm:py-2 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
         <Link
           href="/"
           className="group flex items-center justify-center h-9 w-9 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-[#047D78] transition-all shadow-xs"
@@ -106,6 +109,15 @@ export default function TvTopHud({
         </Link>
 
         <div className="flex items-center gap-3">
+          <Image
+            src={`${basePath}/Logo-Kemenkes.png`}
+            alt="Kementerian Kesehatan RI"
+            width={120}
+            height={38}
+            className="h-8 w-auto object-contain shrink-0"
+            priority
+          />
+          <div className="h-7 w-px bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">
             <span className="font-extrabold tracking-wider text-sm text-[#047D78]">
               PEMANTAUAN EOC
@@ -197,19 +209,19 @@ export default function TvTopHud({
           {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
         </button>
 
-        {/* InaRISK / EOC Layers Drawer Toggle */}
+        {/* Layer Drawer Toggle */}
         <button
           type="button"
           onClick={onToggleLayers}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold border transition-all shadow-xs ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold border transition-all shadow-xs cursor-pointer ${
             isLayersOpen
               ? 'bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-600/20'
               : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border-orange-200'
           }`}
-          title="Buka / Tutup Layar InaRISK & Services"
+          title="Buka / Tutup Pengaturan Layer"
         >
           <Layers className={`h-3.5 w-3.5 ${isLayersOpen ? 'text-white' : 'text-orange-600'}`} />
-          <span className="hidden lg:inline">Layer InaRISK</span>
+          <span className="hidden lg:inline">Layer</span>
         </button>
 
         {/* Fullscreen Button */}

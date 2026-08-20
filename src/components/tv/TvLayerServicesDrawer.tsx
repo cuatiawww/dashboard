@@ -46,21 +46,21 @@ export default function TvLayerServicesDrawer({
   if (!isOpen) return null
 
   return (
-    <div className="fixed right-3 top-20 bottom-14 z-50 w-80 sm:w-96 max-w-[calc(100vw-24px)] flex flex-col bg-white/95 backdrop-blur-2xl border border-[#bedbda] rounded-2xl shadow-[0_15px_45px_rgba(4,125,120,0.18)] overflow-hidden text-slate-800 animate-in slide-in-from-right-4 duration-300">
-      {/* ── Header InaRISK Style ── */}
-      <div className="p-3.5 bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-between shadow-md">
+    <div className="fixed right-2 sm:right-3 top-[56px] sm:top-[60px] 2xl:top-[64px] bottom-12 z-50 w-72 sm:w-80 xl:w-88 max-w-[calc(100vw-20px)] flex flex-col bg-white/95 backdrop-blur-2xl border border-[#bedbda] rounded-xl sm:rounded-2xl shadow-[0_15px_45px_rgba(4,125,120,0.18)] overflow-hidden text-slate-800 animate-in slide-in-from-right-4 duration-300">
+      {/* ── Header Layer Services ── */}
+      <div className="p-2.5 sm:p-3 bg-gradient-to-r from-[#047D78] to-[#00B0AA] flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-white" />
-          <h3 className="font-extrabold text-sm tracking-wider uppercase text-white">
-            Layer Services (InaRISK & EOC)
+          <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <h3 className="font-extrabold text-xs sm:text-sm tracking-wider uppercase text-white">
+            Layer Services
           </h3>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="h-7 w-7 rounded-lg bg-black/15 hover:bg-black/30 flex items-center justify-center text-white transition-all cursor-pointer"
+          className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-black/15 hover:bg-black/30 flex items-center justify-center text-white transition-all cursor-pointer"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -96,11 +96,11 @@ export default function TvLayerServicesDrawer({
           </div>
         </div>
 
-        {/* 2. InaRISK Hazard Overlays (BNPB) */}
+        {/* 2. Hazard Overlays (BNPB) */}
         <div>
           <h4 className="font-extrabold text-orange-700 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
             <Flame className="h-3.5 w-3.5 text-orange-600" />
-            Lapisan Bahaya (InaRISK BNPB)
+            Lapisan Bahaya Kebencanaan (BNPB)
           </h4>
           <div className="space-y-1 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs">
             {[
@@ -110,7 +110,7 @@ export default function TvLayerServicesDrawer({
               { key: 'bnpbKarhutla', label: 'Bahaya Kebakaran Hutan & Lahan' },
               { key: 'bnpbHillshade', label: 'Indo Hillshade (Ketinggian)' },
               { key: 'bnpbKepadatan', label: 'Kepadatan Penduduk 2020' },
-              { key: 'bnpbAdmin', label: 'Batas Administrasi InaRISK' },
+              { key: 'bnpbAdmin', label: 'Batas Administrasi Wilayah (BNPB)' },
             ].map((item) => {
               const isChecked = Boolean(layers[item.key as keyof TvLayerState])
               return (

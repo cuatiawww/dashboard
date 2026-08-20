@@ -289,6 +289,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [bmkgGempa, setBmkgGempa] = useState<any>(null)
   const [seismicResult, setSeismicResult] = useState<any>(null)
   const [petaBencanaData, setPetaBencanaData] = useState<any>(null)
+  const [floodHydrology, setFloodHydrology] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -1155,6 +1156,42 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     eventDateObj
   ])
 
+  // Fetch real flood hydrology data (River Discharge, Soil Moisture) from Open-Meteo GloFAS
+  useEffect(() => {
+    const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
+    const isBanjir = name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')
+    const isLongsor = name.includes('longsor') || name.includes('landslide')
+    const isCuaca = name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')
+    if (!isBanjir && !isLongsor && !isCuaca) return
+
+    const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 0)
+    const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 0)
+    if (lat === 0 && lng === 0) return
+
+    const dateStr = formatDateISO(eventDateObj)
+    let active = true
+
+    fetch(`/api/bencana-flood?lat=${lat}&lng=${lng}&date=${dateStr}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (active && json?.success && json.data) {
+          setFloodHydrology(json.data)
+        }
+      })
+      .catch((err) => {
+        console.error('[Bencana Flood Hydrology] Fetch error:', err)
+      })
+
+    return () => { active = false }
+  }, [
+    eventData.jenis_bencana,
+    eventData.nama_bencana,
+    eventData.latitude,
+    eventData.longitude,
+    detail?.lokasi,
+    eventDateObj
+  ])
+
   const weatherTimeline = useMemo(() => {
     if (weeklyWeather.length === 7) return weeklyWeather
 
@@ -1187,9 +1224,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [weatherTimeline])
 
   const soilSaturation = useMemo(() => {
-    if (totalRainfall === 0) return 0
-    return Math.min(100, Math.round(totalRainfall * 0.4))
-  }, [totalRainfall])
+    // Only use real soil moisture from Open-Meteo — NO dummy formula
+    if (floodHydrology?.soilMoisture?.saturationPercent > 0) {
+      return floodHydrology.soilMoisture.saturationPercent
+    }
+    return 0 // 0 = no real data available, will show 'Data API belum tersedia'
+  }, [floodHydrology])
 
   // Dynamic 7-day earthquake timeline (H-3 to H+3): derived from exact spatial & temporal seismic catalog
   const earthquakeTimeline = useMemo(() => {
@@ -2035,18 +2075,31 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [realtimeWeather, kronologi])
 
   const parsedTma = useMemo(() => {
+    // Priority 1: Real river discharge from GloFAS (Open-Meteo Flood API)
+    if (floodHydrology?.riverDischarge?.current > 0) {
+      const q = floodHydrology.riverDischarge.current
+      const peak = floodHydrology.riverDischarge.peak
+      const peakText = peak > q ? ` (Puncak: ${peak.toFixed(1)} m³/s)` : ''
+      return `${q.toFixed(1)} m³/s${peakText} — Debit Sungai GloFAS`
+    }
+    // Priority 2: PetaBencana.id crowd-sourced flood depth
+    if (floodHydrology?.petaBencana?.floodDepth) {
+      return `${floodHydrology.petaBencana.floodDepth} cm (PetaBencana.id)`
+    }
     if (petaBencanaData?.reportData?.flood_depth) {
       return `${petaBencanaData.reportData.flood_depth} cm (PetaBencana.id)`
     }
+    // Priority 3: Event data from SIPKK database
     if (eventData.tma && eventData.tma !== '-') return eventData.tma
     if (eventData.tinggi_muka_air && eventData.tinggi_muka_air !== '-') return eventData.tinggi_muka_air
     if (realtimeWeather?.tma && realtimeWeather.tma !== '-') return realtimeWeather.tma
+    // Priority 4: Parse from kronologi text
     const text = kronologi
     const match = text.match(/TMA\s*[:=]?\s*([\w\s\(\).,\-]+)/i) ||
       text.match(/tinggi\s*muka\s*air\s*[:=]?\s*([\w\s\(\).,\-]+)/i)
     if (match) return match[1].trim()
     return '-'
-  }, [petaBencanaData, eventData, realtimeWeather, kronologi])
+  }, [floodHydrology, petaBencanaData, eventData, realtimeWeather, kronologi])
 
   const parsedLuas = useMemo(() => {
     if (eventData.luas_genangan && eventData.luas_genangan !== '-') return eventData.luas_genangan
@@ -2095,27 +2148,27 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
       const visText = realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
         ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km` : `${realtimeWind.visibilityM} m`)
-        : (eventData.jarak_pandang || '-')
+        : (eventData.jarak_pandang || 'Menunggu data API...')
       const windText = realtimeWind && realtimeWind.speed > 0
         ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText || ''})`
-        : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : '-')
+        : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
 
-      const hotspotText = eventData.hotspot ? `${eventData.hotspot} Titik` : (eventData.titik_panas ? `${eventData.titik_panas} Titik` : '-')
-      const ispuText = eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : '-'
+      const hotspotText = eventData.hotspot ? `${eventData.hotspot} Titik` : (eventData.titik_panas ? `${eventData.titik_panas} Titik` : 'Data belum tersedia')
+      const ispuText = eventDayIspu > 0 ? `${eventDayIspu} (${eventDayIspuCategory.label})` : 'Menunggu data API...'
 
       return [
         { label: 'Titik Panas (Hotspot)', value: hotspotText, icon: Flame, color: 'text-red-500' },
-        { label: 'ISPU (Air Quality)', value: ispuText, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
+        { label: 'ISPU (Open-Meteo Air Quality)', value: ispuText, icon: ShieldAlert, color: eventDayIspu >= 150 ? 'text-red-650' : 'text-orange-500' },
         { label: 'Jarak Pandang', value: visText, icon: Eye, color: 'text-slate-600' },
-        { label: 'Arah & Kecepatan Angin', value: windText, icon: Wind, color: 'text-amber-600' }
+        { label: 'Arah & Kecepatan Angin (Open-Meteo)', value: windText, icon: Wind, color: 'text-amber-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
       const char = seismicResult?.characteristics || {}
-      const magn = char.magnitude && char.magnitude !== '-' ? char.magnitude : (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : '-'))
-      const depth = char.kedalaman && char.kedalaman !== '-' ? char.kedalaman : (bmkgGempa?.Kedalaman ? bmkgGempa.Kedalaman : (eventData.kedalaman ? `${eventData.kedalaman} km` : '-'))
-      const tsunami = char.potensiTsunami && char.potensiTsunami !== '-' ? char.potensiTsunami : (bmkgGempa?.Potensi ? bmkgGempa.Potensi : (eventData.potensi_tsunami || '-'))
-      const mmi = char.intensitasMmi && char.intensitasMmi !== '-' ? char.intensitasMmi : (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : '-'))
+      const magn = char.magnitude && char.magnitude !== '-' ? char.magnitude : (bmkgGempa?.Magnitude ? `${bmkgGempa.Magnitude} SR` : (eventData.magnitudo ? `${eventData.magnitudo} SR` : 'Menunggu data API...'))
+      const depth = char.kedalaman && char.kedalaman !== '-' ? char.kedalaman : (bmkgGempa?.Kedalaman ? bmkgGempa.Kedalaman : (eventData.kedalaman ? `${eventData.kedalaman} km` : 'Menunggu data API...'))
+      const tsunami = char.potensiTsunami && char.potensiTsunami !== '-' ? char.potensiTsunami : (bmkgGempa?.Potensi ? bmkgGempa.Potensi : (eventData.potensi_tsunami || 'Menunggu data API...'))
+      const mmi = char.intensitasMmi && char.intensitasMmi !== '-' ? char.intensitasMmi : (bmkgGempa?.Dirasakan ? bmkgGempa.Dirasakan.split(',')[0]?.trim() : (eventData.skala_mmi ? `${eventData.skala_mmi} MMI` : 'Menunggu data API...'))
       return [
         { label: 'Magnitudo Gempa (BMKG)', value: magn, icon: Activity, color: 'text-red-600' },
         { label: 'Kedalaman Gempa', value: depth, icon: Compass, color: 'text-amber-700' },
@@ -2124,10 +2177,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('tsunami')) {
-      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : '-'
-      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : '-'
-      const waktuTiba = eventData.waktu_tiba ? eventData.waktu_tiba : '-'
-      const statusPeringatan = eventData.status_peringatan ? eventData.status_peringatan : '-'
+      const waveH = eventData.tinggi_gelombang ? `${eventData.tinggi_gelombang} m` : 'Data belum tersedia'
+      const inunDist = eventData.jarak_inundasi ? `${eventData.jarak_inundasi} m` : 'Data belum tersedia'
+      const waktuTiba = eventData.waktu_tiba ? eventData.waktu_tiba : 'Data belum tersedia'
+      const statusPeringatan = eventData.status_peringatan ? eventData.status_peringatan : 'Data belum tersedia'
       return [
         { label: 'Tinggi Gelombang (BMKG)', value: waveH, icon: Waves, color: 'text-teal-650' },
         { label: 'Limpasan Daratan', value: inunDist, icon: Compass, color: 'text-cyan-600' },
@@ -2137,39 +2190,71 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
       const eventDayWeather = weatherTimeline.find(w => w.offset === 0)
-      const rainVal = peakRainfall > 0
-        ? `${peakRainfall} mm/hari (${peakRainfall >= 100 ? 'Sangat Lebat' : peakRainfall >= 50 ? 'Lebat' : peakRainfall >= 20 ? 'Sedang' : 'Ringan'})`
-        : (eventData.curah_hujan ? `${eventData.curah_hujan} mm/hari` : '-')
 
-      const tmaVal = (petaBencanaData?.reportData?.flood_depth)
-        ? `${petaBencanaData.reportData.flood_depth} cm (PetaBencana)`
-        : (parsedTma !== '-' ? parsedTma : (eventData.tma || eventData.tinggi_muka_air || '-'))
+      // Curah Hujan: ONLY from real API (Open-Meteo flood or weekly)
+      const floodRainPeak = floodHydrology?.rainfall?.peak || 0
+      const effectivePeak = floodRainPeak > 0 ? floodRainPeak : peakRainfall
+      const rainVal = effectivePeak > 0
+        ? `${effectivePeak} mm/hari (${effectivePeak >= 100 ? 'Sangat Lebat' : effectivePeak >= 50 ? 'Lebat' : effectivePeak >= 20 ? 'Sedang' : 'Ringan'})`
+        : (eventData.curah_hujan ? `${eventData.curah_hujan} mm/hari` : 'Menunggu data API...')
 
-      const kumulatifVal = totalRainfall > 0
-        ? `${totalRainfall} mm (7 Hari Terakhir)`
-        : '-'
+      // Debit Sungai / TMA: ONLY real API data, no fabrication
+      let tmaVal = 'Menunggu data API...'
+      if (floodHydrology?.riverDischarge?.current > 0) {
+        const q = floodHydrology.riverDischarge.current
+        const label = q >= 100 ? 'Debit Tinggi' : q >= 30 ? 'Debit Sedang' : 'Debit Normal'
+        tmaVal = `${q.toFixed(1)} m³/s (${label}) — GloFAS`
+      } else if (floodHydrology?.petaBencana?.floodDepth) {
+        tmaVal = `${floodHydrology.petaBencana.floodDepth} cm (PetaBencana.id)`
+      } else if (petaBencanaData?.reportData?.flood_depth) {
+        tmaVal = `${petaBencanaData.reportData.flood_depth} cm (PetaBencana)`
+      } else if (eventData.tma && eventData.tma !== '-') {
+        tmaVal = eventData.tma
+      } else if (eventData.tinggi_muka_air && eventData.tinggi_muka_air !== '-') {
+        tmaVal = eventData.tinggi_muka_air
+      } else if (floodHydrology !== null) {
+        // API sudah di-fetch tapi memang tidak ada data debit di lokasi ini
+        tmaVal = 'Data debit tidak tersedia di lokasi ini'
+      }
 
+      // Akumulasi Hujan: ONLY real API totals
+      const floodRainTotal = floodHydrology?.rainfall?.total || 0
+      const effectiveTotal = floodRainTotal > 0 ? floodRainTotal : totalRainfall
+      const kumulatifVal = effectiveTotal > 0
+        ? `${effectiveTotal} mm (7 Hari Terakhir)`
+        : 'Menunggu data API...'
+
+      // Cuaca: from real Open-Meteo weathercode
       const cuacaVal = (eventDayWeather?.weather && eventDayWeather.weather !== '-')
         ? `${eventDayWeather.weather} (${eventDayWeather.temp !== '-' ? eventDayWeather.temp : ''})`.trim()
-        : (realtimeWeather?.cuaca || eventData.kondisi_cuaca || '-')
+        : (realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : 'Menunggu data API...')
 
       return [
-        { label: 'Curah Hujan Pemicu (BMKG)', value: rainVal, icon: CloudRain, color: 'text-blue-600' },
-        { label: 'Tinggi Genangan / TMA', value: tmaVal, icon: Activity, color: 'text-cyan-600' },
+        { label: 'Curah Hujan Pemicu (Open-Meteo)', value: rainVal, icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Debit Sungai / TMA', value: tmaVal, icon: Activity, color: 'text-cyan-600' },
         { label: 'Akumulasi Hujan 7 Hari', value: kumulatifVal, icon: CloudLightning, color: 'text-teal-650' },
         { label: 'Kondisi Cuaca & Suhu', value: cuacaVal, icon: Droplets, color: 'text-amber-500' }
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {
-      const kerentanan = eventData.kerentanan_tanah || '-'
-      const hujanPemicu = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : (eventData.curah_hujan ? `${eventData.curah_hujan} mm` : '-'))
-      const topografi = eventData.topografi || detail?.lokasi?.[0]?.topografi || '-'
-      const kelembabanTanah = soilSaturation > 0 ? `${soilSaturation}%` : '-'
+      const kerentanan = eventData.kerentanan_tanah || 'Data belum tersedia'
+      const hujanPemicu = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : (eventData.curah_hujan ? `${eventData.curah_hujan} mm` : 'Menunggu data API...'))
+      const topografi = eventData.topografi || detail?.lokasi?.[0]?.topografi || 'Data belum tersedia'
+
+      // Kelembaban Tanah: ONLY from real Open-Meteo soil moisture API — NO dummy formula
+      let kelembabanTanah = 'Menunggu data API...'
+      if (floodHydrology?.soilMoisture?.current > 0) {
+        const sm = floodHydrology.soilMoisture
+        kelembabanTanah = `${sm.saturationPercent}% (${sm.current.toFixed(3)} ${sm.unit}) — Open-Meteo`
+      } else if (floodHydrology !== null) {
+        kelembabanTanah = 'Data tidak tersedia di lokasi ini'
+      }
+
       return [
         { label: 'Kerentanan Wilayah', value: kerentanan, icon: AlertTriangle, color: 'text-amber-700' },
-        { label: 'Hujan Pemicu (BMKG)', value: hujanPemicu, icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Hujan Pemicu (Open-Meteo)', value: hujanPemicu, icon: CloudRain, color: 'text-blue-600' },
         { label: 'Topografi Lokasi', value: topografi, icon: Compass, color: 'text-amber-900' },
-        { label: 'Kelembaban Tanah', value: kelembabanTanah, icon: Droplets, color: 'text-teal-650' }
+        { label: 'Kelembaban Tanah (Open-Meteo)', value: kelembabanTanah, icon: Droplets, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gunung') || name.includes('letusan') || name.includes('erupsi')) {
@@ -2186,39 +2271,39 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
     if (name.includes('kekeringan') || name.includes('drought')) {
       return [
-        { label: 'Hari Tanpa Hujan', value: eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari` : '-', icon: Clock, color: 'text-amber-600' },
-        { label: 'Defisit Air Bersih', value: eventData.defisit_air || '-', icon: Droplets, color: 'text-red-500' },
-        { label: 'Lahan Terdampak', value: eventData.luas_lahan ? `${eventData.luas_lahan} ha` : '-', icon: Compass, color: 'text-orange-600' },
-        { label: 'Pasokan Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia') : '-', icon: Activity, color: 'text-blue-500' }
+        { label: 'Hari Tanpa Hujan', value: eventData.hari_tanpa_hujan ? `${eventData.hari_tanpa_hujan} Hari` : 'Data belum tersedia', icon: Clock, color: 'text-amber-600' },
+        { label: 'Defisit Air Bersih', value: eventData.defisit_air || 'Data belum tersedia', icon: Droplets, color: 'text-red-500' },
+        { label: 'Lahan Terdampak', value: eventData.luas_lahan ? `${eventData.luas_lahan} ha` : 'Data belum tersedia', icon: Compass, color: 'text-orange-600' },
+        { label: 'Pasokan Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis Air' : 'Tersedia') : 'Data belum tersedia', icon: Activity, color: 'text-blue-500' }
       ]
     }
     if (name.includes('wabah') || name.includes('klb') || name.includes('penyakit')) {
       return [
-        { label: 'Status Penyakit', value: 'Surveilans Aktif (SKDR)', icon: ShieldAlert, color: 'text-purple-600' },
-        { label: 'Investigasi PE', value: 'Puskesmas / Dinkes', icon: Activity, color: 'text-rose-600' },
-        { label: 'Kesiapan Logistik Obat', value: 'Buffer Stock Terpenuhi', icon: BriefcaseMedical, color: 'text-teal-600' },
-        { label: 'Pemantauan Kontak', value: 'Tracing Terpadu', icon: Users, color: 'text-indigo-600' }
+        { label: 'Status Penyakit', value: eventData.status_penyakit || 'Data belum tersedia', icon: ShieldAlert, color: 'text-purple-600' },
+        { label: 'Investigasi PE', value: eventData.investigasi_pe || 'Data belum tersedia', icon: Activity, color: 'text-rose-600' },
+        { label: 'Kesiapan Logistik Obat', value: eventData.kesiapan_logistik || 'Data belum tersedia', icon: BriefcaseMedical, color: 'text-teal-600' },
+        { label: 'Pemantauan Kontak', value: eventData.pemantauan_kontak || 'Data belum tersedia', icon: Users, color: 'text-indigo-600' }
       ]
     }
     if (name.includes('cuaca') || name.includes('angin') || name.includes('puting') || name.includes('badai')) {
-      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : '-')
-      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : '-')
-      const windDir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_angin || '-')
-      const cuaca = realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : (eventData.kondisi_cuaca || '-')
+      const windSpeed = realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
+      const rain = peakRainfall > 0 ? `${peakRainfall} mm/hari` : (totalRainfall > 0 ? `${totalRainfall} mm` : 'Menunggu data API...')
+      const windDir = realtimeWind?.directionText && realtimeWind.directionText !== '-' ? realtimeWind.directionText : (eventData.arah_angin || 'Menunggu data API...')
+      const cuaca = realtimeWeather?.cuaca && realtimeWeather.cuaca !== '-' ? realtimeWeather.cuaca : (eventData.kondisi_cuaca || 'Menunggu data API...')
       return [
-        { label: 'Kecepatan Angin Maks', value: windSpeed, icon: Wind, color: 'text-indigo-600' },
-        { label: 'Curah Hujan (BMKG)', value: rain, icon: CloudLightning, color: 'text-blue-600' },
-        { label: 'Arah Angin Dominan', value: windDir, icon: Waves, color: 'text-cyan-600' },
-        { label: 'Kondisi Cuaca (BMKG)', value: cuaca, icon: AlertTriangle, color: 'text-amber-600' }
+        { label: 'Kecepatan Angin Maks (Open-Meteo)', value: windSpeed, icon: Wind, color: 'text-indigo-600' },
+        { label: 'Curah Hujan (Open-Meteo)', value: rain, icon: CloudLightning, color: 'text-blue-600' },
+        { label: 'Arah Angin Dominan (Open-Meteo)', value: windDir, icon: Waves, color: 'text-cyan-600' },
+        { label: 'Kondisi Cuaca (Open-Meteo)', value: cuaca, icon: AlertTriangle, color: 'text-amber-600' }
       ]
     }
     return [
-      { label: 'Akses Jalan', value: eventData.akses_lokasi === 0 ? 'Terputus' : 'Lancar', icon: Compass, color: 'text-teal-650' },
-      { label: 'Jaringan Listrik', value: eventData.jaringan_listrik === 0 ? 'Padam' : 'Normal', icon: Zap, color: 'text-amber-500' },
-      { label: 'Air Bersih', value: eventData.air_bersih === 0 ? 'Krisis' : 'Layak', icon: Droplets, color: 'text-blue-500' },
-      { label: 'Fasum Berfungsi', value: 'Sebagian Berfungsi', icon: Activity, color: 'text-cyan-600' }
+      { label: 'Akses Jalan', value: typeof eventData.akses_lokasi === 'number' ? (eventData.akses_lokasi === 0 ? 'Terputus' : 'Lancar') : 'Data belum tersedia', icon: Compass, color: 'text-teal-650' },
+      { label: 'Jaringan Listrik', value: typeof eventData.jaringan_listrik === 'number' ? (eventData.jaringan_listrik === 0 ? 'Padam' : 'Normal') : 'Data belum tersedia', icon: Zap, color: 'text-amber-500' },
+      { label: 'Air Bersih', value: typeof eventData.air_bersih === 'number' ? (eventData.air_bersih === 0 ? 'Krisis' : 'Layak') : 'Data belum tersedia', icon: Droplets, color: 'text-blue-500' },
+      { label: 'Fasilitas Umum', value: typeof eventData.fasum === 'number' ? (eventData.fasum === 0 ? 'Tidak Berfungsi' : 'Berfungsi') : 'Data belum tersedia', icon: Activity, color: 'text-cyan-600' }
     ]
-  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, seismicResult, petaBencanaData, detail?.lokasi])
+  }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, seismicResult, petaBencanaData, floodHydrology, detail?.lokasi])
 
   const eocNarrative = useMemo(() => {
     if (detail?.buletin_eoc) return detail.buletin_eoc;
@@ -2234,7 +2319,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       return `Analisis Pajanan Karhutla (${formattedDate}): Pemantauan krisis di wilayah ${locationFull} pada tanggal kejadian mencatat Indeks Standar Pencemar Udara (ISPU) mencapai ${ispuText} dengan konsentrasi partikulat halus PM2.5. Tiupan angin berkecepatan ${windSpeedText} ke arah ${windDirText} berpotensi meningkatkan sebaran asap. EOC Kemenkes merekomendasikan pembatasan aktivitas luar ruangan, evakuasi kelompok rentan, distribusi masker N95, serta penguatan kesiapsiagaan faskes.`
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
-      return `Analisis Hidrometeorologi (${formattedDate}): Limpasan permukaan dipicu oleh akumulasi curah hujan ${totalRainfall} mm (puncak ${peakRainfall} mm pada hari kejadian) menjenuhkan kapasitas infiltrasi tanah hingga ${soilSaturation}%. Peningkatan TMA ke ${parsedTma} di ${locationFull} meningkatkan risiko kontaminasi patogen diare dan Leptospirosis, serta transmisi penyakit tular vektor (DBD, malaria).`
+      const dischargeText = floodHydrology?.riverDischarge?.current > 0
+        ? `Debit sungai tercatat ${floodHydrology.riverDischarge.current.toFixed(1)} m³/s (puncak ${floodHydrology.riverDischarge.peak.toFixed(1)} m³/s, sumber: GloFAS/Open-Meteo).`
+        : (parsedTma && !parsedTma.includes('Menunggu') && !parsedTma.includes('tidak tersedia') ? `Peningkatan TMA ke ${parsedTma}.` : '')
+      const soilText = floodHydrology?.soilMoisture?.saturationPercent > 0
+        ? `Kelembaban tanah terukur ${floodHydrology.soilMoisture.saturationPercent}% (${floodHydrology.soilMoisture.current.toFixed(3)} m³/m³, sumber: Open-Meteo).`
+        : ''
+      const totalR = totalRainfall > 0 ? totalRainfall : (floodHydrology?.rainfall?.total || 0)
+      const peakR = peakRainfall > 0 ? peakRainfall : (floodHydrology?.rainfall?.peak || 0)
+      const rainIntro = totalR > 0
+        ? `Limpasan permukaan dipicu oleh akumulasi curah hujan ${totalR} mm (puncak ${peakR} mm pada hari kejadian).`
+        : `Limpasan permukaan terdeteksi di lokasi kejadian.`
+      return `Analisis Hidrometeorologi (${formattedDate}): ${rainIntro} ${dischargeText} ${soilText} Kondisi hidrologis di ${locationFull} meningkatkan risiko kontaminasi patogen diare dan Leptospirosis, serta transmisi penyakit tular vektor (DBD, malaria).`.replace(/\s+/g, ' ').trim()
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
       return `Asesmen Epidemiologi Gempa (${formattedDate}): Dampak guncangan di ${locationFull} memicu kerusakan infrastruktur sanitasi dan faskes serta meningkatkan kerentanan pengungsi terhadap ISPA dan diare. Runtuhan material memicu trauma fisik akut yang memerlukan penanganan medis sekunder darurat. EOC merekomendasikan surveilans aktif harian di pengungsian.`
@@ -2261,7 +2357,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     // Default EOC Bulletin Narrative Fallback
     const jenisText = eventData.jenis_bencana || eventData.nama_bencana || 'Kejadian Bencana'
     return `Buletin Krisis EOC (${formattedDate}): Dilaporkan kejadian ${jenisText} di wilayah ${locationFull}. EOC Kemenkes RI terus melakukan pemantauan real-time dan mengkoordinasikan kesiapsiagaan faskes setempat, penyiapan logistik kesehatan darurat, serta penanganan medis bagi warga terdampak.`
-  }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma, detail?.buletin_eoc, eventData.buletin_eoc])
+  }, [eventData, formattedDate, locationFull, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, soilSaturation, parsedTma, floodHydrology, detail?.buletin_eoc, eventData.buletin_eoc])
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 

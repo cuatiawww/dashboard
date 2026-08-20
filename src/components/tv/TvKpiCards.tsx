@@ -28,14 +28,20 @@ interface TvKpiCardsProps {
   summary: SummaryData
   isLoading?: boolean
   selectedPeriodLabel?: string
+  isCollapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
 export default function TvKpiCards({
   summary,
   isLoading = false,
   selectedPeriodLabel = 'Tahun Ini (Nasional)',
+  isCollapsed: controlledCollapsed,
+  onToggleCollapse,
 }: TvKpiCardsProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [internalCollapsed, setInternalCollapsed] = useState(false)
+  const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed
+  const handleToggle = onToggleCollapse || (() => setInternalCollapsed(!internalCollapsed))
 
   const formatNum = (n?: number) => (n ?? 0).toLocaleString('id-ID')
 
@@ -94,18 +100,18 @@ export default function TvKpiCards({
       color: 'text-sky-600',
       iconBg: 'bg-sky-50 text-sky-600 border-sky-200',
       badgeBg: 'bg-sky-50 text-sky-700 border-sky-200',
-      tag: 'Di Titik Pengungsian',
+      tag: 'Titik Pengungsi',
     },
     {
       id: 'terdampak',
-      label: 'TOTAL TERDAMPAK',
+      label: 'POPULASI TERDAMPAK',
       value: summary.total_terdampak,
       unit: 'Jiwa',
       icon: ShieldAlert,
       color: 'text-teal-800',
       iconBg: 'bg-teal-50 text-teal-800 border-teal-200',
       badgeBg: 'bg-teal-50 text-teal-800 border-teal-200',
-      tag: 'Populasi Terdampak',
+      tag: 'Populasi Krisis',
     },
     {
       id: 'krisis',
@@ -121,34 +127,34 @@ export default function TvKpiCards({
   ]
 
   return (
-    <div className="fixed top-20 left-3 right-3 z-30 pointer-events-none transition-all duration-300">
-      <div className="flex flex-col items-center">
+    <div className="fixed top-[56px] sm:top-[60px] 2xl:top-[64px] left-2 right-2 sm:left-3 sm:right-3 z-35 pointer-events-none transition-all duration-300">
+      <div className="max-w-[1680px] mx-auto flex flex-col items-center">
         {/* Toggle Collapse Button */}
         <button
           type="button"
-          onClick={() => setCollapsed(!collapsed)}
-          className="pointer-events-auto mb-1.5 flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/95 hover:bg-slate-50 border border-[#bedbda] text-[10px] font-extrabold text-slate-700 hover:text-teal-800 shadow-md transition-all cursor-pointer"
+          onClick={handleToggle}
+          className="pointer-events-auto mb-1 flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/95 hover:bg-slate-50 border border-[#bedbda] text-[9.5px] font-extrabold text-slate-700 hover:text-teal-800 shadow-sm transition-all cursor-pointer"
         >
-          <span>{collapsed ? 'TAMPILKAN RINGKASAN KPI' : 'SEMBUNYIKAN KPI'}</span>
-          {collapsed ? <ChevronDown className="h-3 w-3 text-teal-600" /> : <ChevronUp className="h-3 w-3 text-teal-600" />}
+          <span>{isCollapsed ? 'TAMPILKAN RINGKASAN KPI' : 'SEMBUNYIKAN KPI'}</span>
+          {isCollapsed ? <ChevronDown className="h-3 w-3 text-teal-600" /> : <ChevronUp className="h-3 w-3 text-teal-600" />}
         </button>
 
-        {!collapsed && (
-          <div className="pointer-events-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 w-full">
+        {!isCollapsed && (
+          <div className="pointer-events-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 w-full animate-in fade-in slide-in-from-top-2 duration-200">
             {cards.map((card) => {
               const IconComponent = card.icon
               return (
                 <div
                   key={card.id}
-                  className="relative overflow-hidden rounded-2xl bg-white/95 backdrop-blur-xl border border-[#bedbda] p-3 shadow-[0_6px_18px_rgba(20,120,116,0.06)] hover:shadow-[0_8px_24px_rgba(20,120,116,0.12)] hover:border-teal-400 transition-all duration-300 hover:scale-[1.02] text-slate-800"
+                  className="relative overflow-hidden rounded-xl bg-white/95 backdrop-blur-xl border border-[#bedbda] p-2 sm:p-2.5 shadow-[0_4px_14px_rgba(20,120,116,0.06)] hover:shadow-[0_6px_20px_rgba(20,120,116,0.12)] hover:border-teal-400 transition-all duration-200 hover:scale-[1.01] text-slate-800"
                 >
-                  <div className="relative z-10 flex flex-col justify-between h-full gap-2">
+                  <div className="relative z-10 flex flex-col justify-between h-full gap-1 sm:gap-1.5">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <div className={`p-1.5 rounded-xl border ${card.iconBg}`}>
-                          <IconComponent className="h-4 w-4" />
+                        <div className={`p-1 rounded-lg border ${card.iconBg}`}>
+                          <IconComponent className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         </div>
-                        <span className="text-[10px] font-black tracking-wider text-slate-600 uppercase truncate">
+                        <span className="text-[9px] sm:text-[9.5px] 2xl:text-[10px] font-black tracking-wider text-slate-600 uppercase truncate">
                           {card.label}
                         </span>
                       </div>
@@ -162,20 +168,20 @@ export default function TvKpiCards({
                     </div>
 
                     <div className="flex items-baseline justify-between gap-1">
-                      <span className={`font-mono text-xl sm:text-2xl font-black tracking-tight ${card.color}`}>
+                      <span className={`font-mono text-base sm:text-lg 2xl:text-xl font-black tracking-tight ${card.color}`}>
                         {isLoading ? (
                           <span className="animate-pulse opacity-50">...</span>
                         ) : (
                           formatNum(card.value)
                         )}
                       </span>
-                      <span className="text-[10px] font-bold text-slate-500">
+                      <span className="text-[9px] font-bold text-slate-500">
                         {card.unit}
                       </span>
                     </div>
 
-                    <div className="pt-1.5 border-t border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-500 truncate block">
+                    <div className="pt-1 border-t border-slate-100">
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 truncate block">
                         {card.tag}
                       </span>
                     </div>

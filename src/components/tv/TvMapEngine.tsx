@@ -16,8 +16,27 @@ import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
 import Overlay from 'ol/Overlay'
 import { defaults as defaultControls } from 'ol/control'
+import { WindLayer } from 'ol-wind'
 import 'ol/ol.css'
 import { TvLayerState } from './TvLayerServicesDrawer'
+
+function destroyWindLayerSafely(wl: any) {
+  if (!wl) return
+  try { wl.setVisible?.(false) } catch {}
+  const obj = wl as unknown as Record<string, unknown>
+  const tryCall = (k: string, arg?: unknown) => {
+    const fn = obj[k]
+    if (typeof fn === 'function') {
+      try { (fn as (a?: unknown) => void)(arg) } catch {}
+    }
+  }
+  tryCall('stop')
+  tryCall('destroy')
+  tryCall('dispose')
+  tryCall('remove')
+  tryCall('setMap', null)
+  tryCall('setTarget', null)
+}
 
 export interface TvMapEngineRef {
   flyTo: (lng: number, lat: number, zoom?: number) => void
@@ -202,6 +221,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
   const provinceLayerRef = useRef<VectorLayer<any> | null>(null)
   const markerLayerRef = useRef<VectorLayer<any> | null>(null)
   const gempaLayerRef = useRef<VectorLayer<any> | null>(null)
+  const windLayerRef = useRef<any>(null)
   const pulseOverlaysRef = useRef<Overlay[]>([])
 
   // Expose flyTo, resetView & focusProvince methods to parent
@@ -476,11 +496,91 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       })
     })
 
+    // 6. Setup Windy Layer via npm ol-wind (async fetch GFS data)
+    async function initWindy() {
+      try {
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+        const res = await fetch(`${basePath}/api/gfs`)
+        if (!res.ok) return
+        const windData = await res.json()
+        const baseVelocity = 0.01
+        const windLayer = new WindLayer(windData as any, {
+          windOptions: {
+            velocityScale: baseVelocity,
+            paths: 1200,
+            colorScale: [
+              'rgb(15,60,140)',
+              'rgb(30,100,155)',
+              'rgb(70,150,145)',
+              'rgb(85,160,115)',
+              'rgb(130,180,110)',
+              'rgb(175,200,140)',
+              'rgb(215,195,60)',
+              'rgb(205,160,45)',
+              'rgb(210,125,35)',
+              'rgb(200,95,20)',
+              'rgb(195,70,15)',
+              'rgb(185,35,10)',
+              'rgb(170,18,8)',
+              'rgb(155,8,12)',
+              'rgb(115,0,18)',
+            ],
+            lineWidth: 2,
+            generateParticleOption: true,
+          },
+          fieldOptions: { wrapX: true },
+        } as any)
+
+        const isVisible = layers.showWindy
+        ;(windLayer as any).setVisible?.(isVisible)
+        try {
+          if (isVisible && typeof (windLayer as any).start === 'function') {
+            ;(windLayer as any).start()
+          }
+        } catch {}
+
+        map.addLayer(windLayer as any)
+        windLayerRef.current = windLayer as any
+      } catch (err) {
+        console.warn('[TvMapEngine] Windy Layer load error (optional):', err)
+      }
+    }
+    void initWindy()
+
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
+      pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
+      pulseOverlaysRef.current = []
+
+      if (windLayerRef.current) {
+        destroyWindLayerSafely(windLayerRef.current)
+        windLayerRef.current = null
+      }
     }
   }, [])
+
+  // ── Sync Windy Layer state ──
+  useEffect(() => {
+    const wl = windLayerRef.current
+    if (wl) {
+      wl.setVisible(layers.showWindy)
+      try {
+        if (layers.showWindy) {
+          if (typeof wl.start === 'function') {
+            wl.start()
+          }
+        } else {
+          if (typeof wl.stop === 'function') {
+            wl.stop()
+          }
+        }
+      } catch (e) {}
+      try {
+        mapInstanceRef.current?.renderSync?.()
+      } catch {}
+    }
+  }, [layers.showWindy])
 
   // ── Sync Basemap ──
   useEffect(() => {
