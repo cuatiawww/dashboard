@@ -31,6 +31,7 @@ type InfographicItem = {
 }
 
 const INFOGRAPHIC_CATEGORIES = [
+  'Laporan Harian EOC',
   'Infografis Bulanan EOC',
   'Infografis Peringatan Dini',
   'Tata Kelola Peta Respon & Renkon',
@@ -95,6 +96,26 @@ function getCoverSrc(item: InfographicItem): string {
 }
 
 const fallbackInfographics: InfographicItem[] = [
+  {
+    id: 101,
+    title: 'Laporan Harian EOC Kemenkes RI: Eksekutif Krisis Kesehatan Kebencanaan',
+    category: 'Laporan Harian EOC',
+    description: 'Evaluasi harian intelijen krisis kesehatan kebencanaan, pemetaan spasial hotspot 38 provinsi, kesiapsiagaan fasyankes, dan rekomendasi taktis mobilisasi Tim Medis Darurat (EMT).',
+    date: '15 Agustus 2026',
+    fileSize: '3.0 MB',
+    pages: 3,
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
+  },
+  {
+    id: 102,
+    title: 'Laporan Harian EOC Kemenkes RI: Intelijen Situasi Krisis Kesehatan',
+    category: 'Laporan Harian EOC',
+    description: 'Laporan harian evaluasi kejadian bencana alam nasional, surveilans penyakit potensial KLB di pengungsian, dan kapasitas tempat tidur RS Siaga.',
+    date: '11 Agustus 2026',
+    fileSize: '2.8 MB',
+    pages: 3,
+    pdfUrl: '/laporan_eoc_kemenkes.pdf',
+  },
   {
     id: 1,
     title: 'Laporan Bulanan EOC - Juni 2026',
@@ -420,16 +441,28 @@ export default function InfografisPage() {
               key={item.id}
               className="flex flex-col bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 group"
             >
-              {/* Real Image Cover (4:5 Aspect Ratio, Guaranteed Monthly Fallback) */}
+              {/* Real Image Cover or Executive PDF Document Placeholder */}
               <div className="relative aspect-[4/5] w-full bg-slate-100 border-b border-slate-200 overflow-hidden select-none group">
-                <img
-                  src={getCoverSrc(item)}
-                  alt={item.title}
-                  onError={(e) => {
-                    e.currentTarget.src = `${basePath}/jun.png`
-                  }}
-                  className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
-                />
+                {item.imageCover && item.imageCover.trim() !== '' && !item.imageCover.includes('jun.png') && item.category !== 'Laporan Harian EOC' ? (
+                  <img
+                    src={getCoverSrc(item)}
+                    alt={item.title}
+                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-all duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-3.5 bg-gradient-to-b from-slate-50 to-slate-100 text-center select-none">
+                    <div className="w-12 h-14 bg-white border border-red-200 rounded-lg shadow-xs flex flex-col items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                      <FileDown className="h-6 w-6 text-red-600" />
+                      <span className="text-[7.5px] font-black text-red-600 tracking-wider">PDF</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-800 line-clamp-2 px-1 leading-snug">
+                      {item.title}
+                    </span>
+                    <span className="text-[8.5px] font-medium text-slate-400 mt-1">
+                      {item.date || 'Laporan Resmi EOC'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Top Category Badge */}
                 <div className="absolute top-2 left-2 z-10">

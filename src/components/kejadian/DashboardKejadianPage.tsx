@@ -37,6 +37,7 @@ import {
   Clock,
   Filter,
   Check,
+  Tv,
 } from 'lucide-react'
 import {
   PieChart,
@@ -405,7 +406,6 @@ export default function DashboardKejadianPage() {
   const [tahun, setTahun] = useState('2026')
   const [filterStartDate, setFilterStartDate] = useState<string | undefined>(undefined)
   const [filterEndDate, setFilterEndDate] = useState<string | undefined>(undefined)
-  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false)
   const [ewsAlertQueue, setEwsAlertQueue] = useState<any[]>([])
   const activeEwsProximityAlert = ewsAlertQueue[0] || null
 
@@ -1124,69 +1124,6 @@ export default function DashboardKejadianPage() {
     link.click()
     document.body.removeChild(link)
   }
-
-  const warningsList = useMemo(() => {
-    if (!effectiveMarkers || effectiveMarkers.length === 0) {
-      return earlyWarnings.map(w => ({
-        ...w,
-        iconUrl: null
-      }))
-    }
-
-    return effectiveMarkers.slice(0, 10).map((m, idx) => {
-      let status = 'Waspada'
-      let statusColor = 'text-[#1e293b] bg-[#f1c40f] border-[#d4ac0d]' // Yellow/Gold
-
-      if (m.is_krisis === 1 || m.total_korban > 50) {
-        status = 'Awas'
-        statusColor = 'text-white bg-[#e74c3c] border-[#c0392b] animate-pulse'
-      } else if (m.total_korban > 10) {
-        status = 'Siaga'
-        statusColor = 'text-[#1e293b] bg-[#f1c40f] border-[#d4ac0d]'
-      }
-
-      const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || ''
-      const iconUrl = m.icon_file
-        ? m.icon_file.startsWith('http')
-          ? m.icon_file
-          : `${backendUrl}/app_asset/icon/data_bencana/${m.icon_file}`
-        : null
-
-      // Set fallback Lucide icons based on disaster name or default
-      let icon = AlertTriangle
-      const jenis = (m.jenis_bencana || '').toLowerCase()
-      let iconColor = 'text-orange-650 bg-orange-55 border-orange-150'
-
-      if (jenis.includes('hujan') || jenis.includes('cuaca') || jenis.includes('angin') || jenis.includes('puting')) {
-        icon = CloudRain
-        iconColor = 'text-blue-600 bg-blue-50 border-blue-150'
-      } else if (jenis.includes('banjir')) {
-        icon = Waves
-        iconColor = 'text-rose-600 bg-rose-50 border-rose-150'
-      } else if (jenis.includes('gempa') || jenis.includes('tsunami')) {
-        icon = Activity
-        iconColor = 'text-red-650 bg-red-55 border-red-150'
-      } else if (jenis.includes('dbd') || jenis.includes('demam') || jenis.includes('nyamuk')) {
-        icon = Bug
-        iconColor = 'text-emerald-600 bg-emerald-50 border-emerald-150'
-      } else if (jenis.includes('diare') || jenis.includes('keracunan') || jenis.includes('muntah')) {
-        icon = Skull
-        iconColor = 'text-purple-600 bg-purple-50 border-purple-150'
-      }
-
-      return {
-        id: m.kode_trans || `dyn-${idx}`,
-        jenis_bencana: m.jenis_bencana || 'Bencana / Krisis',
-        daerah: m.kabupaten || m.provinsi || 'Nasional',
-        status,
-        statusColor,
-        iconUrl,
-        icon,
-        iconColor,
-        keterangan: `Dilaporkan pada ${m.tgl_kejadian || '-'}. Korban terdampak: ${m.total_korban || 0} jiwa.`,
-      }
-    })
-  }, [data?.markers])
 
   // State untuk pencarian wilayah pintar
   const [searchQuery, setSearchQuery] = useState('')
@@ -2606,17 +2543,20 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 self-start md:self-center">
-                <button
-                  type="button"
-                  onClick={() => setIsWarningModalOpen(true)}
-                  className="shrink-0 inline-flex items-center gap-2 px-2.5 py-2 sm:px-4 sm:py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-sm relative overflow-hidden transform hover:-translate-y-0.5 active:translate-y-0"
+                <Link
+                  href="/tv"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2.5 bg-teal-50 hover:bg-teal-100 text-[#047D78] border border-teal-200/90 rounded-2xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all duration-300 shadow-xs relative overflow-hidden transform hover:-translate-y-0.5 active:translate-y-0 group"
+                  title="Buka Pantauan EOC (Command Center Video Wall / TV)"
                 >
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#047D78]"></span>
                   </span>
-                  Peringatan Dini Aktif
-                </button>
+                  <Tv className="h-3.5 w-3.5 text-[#047D78] transition-transform duration-300 group-hover:scale-110" />
+                  <span>Pantauan EOC</span>
+                </Link>
               </div>
             </div>
             <div className="mt-4 flex-1 min-h-[300px] w-full">
@@ -3242,112 +3182,6 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
         </div>
       )}
 
-      {/* Warning Alert Modal */}
-      {isWarningModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-3xl rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Modal Header Banner with matching Dashboard background image and gradient overlay */}
-            <div className="relative text-white px-5 py-4 flex items-center justify-between overflow-hidden border-b-2 border-teal-500/20">
-              <div
-                className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-                style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/bg header.png')` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#047D78]/95 via-[#076176]/90 to-[#0f8f96]/95" />
-              <div className="relative flex items-center gap-3">
-                <h3 className="text-base font-extrabold uppercase tracking-wider">Peringatan Dini Aktif</h3>
-              </div>
-              <button
-                onClick={() => setIsWarningModalOpen(false)}
-                className="relative z-10 rounded-lg p-1 text-teal-100 hover:bg-white/10 hover:text-white transition"
-                aria-label="Tutup"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Matriks sebaran Peringatan Dini Aktif (Early Warning System) Nasional yang sedang dipantau oleh EOC Krisis Kesehatan saat ini.
-              </p>
-
-              {/* Matrix Table */}
-              <div className="overflow-hidden border border-slate-100 rounded-xl shadow-xs">
-                <table className="w-full text-left border-collapse bg-white">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold uppercase text-slate-500 tracking-wider">
-                      <th className="py-3 px-4">Bencana / Krisis</th>
-                      <th className="py-3 px-4">Provinsi / Kabupaten</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {warningsList.map((warning) => {
-                      const WarningIcon = warning.icon
-                      const showImg = warning.iconUrl && !imageErrors[warning.id]
-                      return (
-                        <tr
-                          key={warning.id}
-                          className="hover:bg-slate-55/40 transition-colors"
-                        >
-                          {/* Disaster Info */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${warning.iconColor} shadow-xs overflow-hidden`}>
-                                {showImg ? (
-                                  <img
-                                    src={warning.iconUrl!}
-                                    alt={warning.jenis_bencana}
-                                    onError={() => {
-                                      setImageErrors((prev) => ({ ...prev, [warning.id]: true }))
-                                    }}
-                                    className="h-6 w-6 object-contain"
-                                  />
-                                ) : (
-                                  <WarningIcon className="h-4.5 w-4.5" />
-                                )}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-slate-800 leading-tight">{warning.jenis_bencana}</span>
-                                <span className="text-[9px] text-slate-400 leading-normal hidden sm:inline-block mt-0.5">{warning.keterangan}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Region Info */}
-                          <td className="py-3 px-4">
-                            <span className="text-xs font-semibold text-slate-650">{warning.daerah}</span>
-                          </td>
-
-                          {/* Status Badge */}
-                          <td className="py-3 px-4 text-center">
-                            <span className={`inline-block min-w-[76px] px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider border shadow-xs ${warning.statusColor}`}>
-                              {warning.status}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-slate-50 px-5 py-3.5 border-t border-slate-150 flex justify-between items-center">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                EOC KRISIS KESEHATAN
-              </span>
-              <button
-                onClick={() => setIsWarningModalOpen(false)}
-                className="px-4 py-2 bg-[#047D78] hover:bg-[#03605c] text-white rounded-xl text-xs font-bold uppercase tracking-wider transition shadow-sm"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Detail Card Modal */}
       {activeDetailCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200">
