@@ -1101,11 +1101,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [eventDateObj, eventData.latitude, eventData.longitude, detail, startStr, endStr])
 
-  // Fetch real BMKG & Regional Seismic data matching disaster latitude, longitude, and event date
+  // Fetch real BMKG, PetaBencana, & Regional Disaster data matching disaster latitude, longitude, and event date
   useEffect(() => {
-    const rawType = String(selectedEvent?.jenis_bencana || selectedEvent?.nama || eventData.jenis_bencana || '').toLowerCase()
-    if (!rawType.includes('gempa') && !rawType.includes('tsunami') && !rawType.includes('seismic')) return
-
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || selectedEvent?.latitude || 0)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || selectedEvent?.longitude || 0)
     const date = formatDateISO(eventDateObj)
@@ -2139,12 +2136,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
-      const satVal = soilSaturation > 0 ? `${soilSaturation}% (${soilSaturation >= 80 ? 'Jenuh Air' : 'Normal'})` : '-'
+      const eventDayWeather = weatherTimeline.find(w => w.offset === 0)
+      const rainVal = peakRainfall > 0
+        ? `${peakRainfall} mm/hari (${peakRainfall >= 100 ? 'Sangat Lebat' : peakRainfall >= 50 ? 'Lebat' : peakRainfall >= 20 ? 'Sedang' : 'Ringan'})`
+        : (eventData.curah_hujan ? `${eventData.curah_hujan} mm/hari` : '-')
+
+      const tmaVal = (petaBencanaData?.reportData?.flood_depth)
+        ? `${petaBencanaData.reportData.flood_depth} cm (PetaBencana)`
+        : (parsedTma !== '-' ? parsedTma : (eventData.tma || eventData.tinggi_muka_air || '-'))
+
+      const kumulatifVal = totalRainfall > 0
+        ? `${totalRainfall} mm (7 Hari Terakhir)`
+        : '-'
+
+      const cuacaVal = (eventDayWeather?.weather && eventDayWeather.weather !== '-')
+        ? `${eventDayWeather.weather} (${eventDayWeather.temp !== '-' ? eventDayWeather.temp : ''})`.trim()
+        : (realtimeWeather?.cuaca || eventData.kondisi_cuaca || '-')
+
       return [
-        { label: 'TMA Sungai / Genangan', value: parsedTma, icon: Activity, color: 'text-cyan-600' },
-        { label: 'Luas Genangan', value: parsedLuas, icon: Compass, color: 'text-teal-650' },
-        { label: 'Lama Genangan', value: parsedLama, icon: Clock, color: 'text-amber-500' },
-        { label: 'Saturasi Tanah', value: satVal, icon: Droplets, color: 'text-blue-500' }
+        { label: 'Curah Hujan Pemicu (BMKG)', value: rainVal, icon: CloudRain, color: 'text-blue-600' },
+        { label: 'Tinggi Genangan / TMA', value: tmaVal, icon: Activity, color: 'text-cyan-600' },
+        { label: 'Akumulasi Hujan 7 Hari', value: kumulatifVal, icon: CloudLightning, color: 'text-teal-650' },
+        { label: 'Kondisi Cuaca & Suhu', value: cuacaVal, icon: Droplets, color: 'text-amber-500' }
       ]
     }
     if (name.includes('longsor') || name.includes('landslide')) {

@@ -44,8 +44,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  const [bgSrc, setBgSrc] = useState<string>(localAsset('pkk.webp'))
-  const [logoSrc, setLogoSrc] = useState<string>(localAsset('Logo-Kemenkes.png'))
+  const [bgSrc, setBgSrc] = useState<string>(localAsset('BACKGROUND-SIPKK NEW.png'))
+  const [logoSrc, setLogoSrc] = useState<string>(localAsset('logo_putih.png'))
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,8 +63,8 @@ export default function LoginPage() {
     frontend_login_card_subtitle: 'Silakan masuk untuk mengakses data fasilitas kesehatan.',
     frontend_login_note: 'Akses terbatas untuk pengguna yang berwenang.\nHubungi admin jika mengalami kendala masuk.',
     frontend_footer_text: '© 2026 Kementerian Kesehatan Republik Indonesia',
-    login_logo: localAsset('Logo-Kemenkes.png'),
-    login_background: localAsset('pkk.webp'),
+    login_logo: localAsset('logo.png'),
+    login_background: localAsset('BACKGROUND-SIPKK NEW.png'),
   })
 
   useEffect(() => {
@@ -77,11 +77,13 @@ export default function LoginPage() {
             ...prev,
             ...payload.settings
           }))
-          if (payload.settings.login_background) {
-            setBgSrc(getAssetUrl(payload.settings.login_background))
+          const bg = payload.settings.frontend_login_background || payload.settings.login_background
+          if (bg) {
+            setBgSrc(getAssetUrl(bg))
           }
-          if (payload.settings.login_logo) {
-            setLogoSrc(getAssetUrl(payload.settings.login_logo))
+          const logo = payload.settings.frontend_login_logo || payload.settings.login_logo
+          if (logo) {
+            setLogoSrc(getAssetUrl(logo))
           }
         }
       } catch (err) {
@@ -186,13 +188,13 @@ export default function LoginPage() {
       <div className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col">
         {/* Background image */}
         <Image
-          src={bgSrc || localAsset('pkk.webp')}
-          alt="Dashboard fasilitas kesehatan"
+          src={bgSrc || localAsset('BACKGROUND-SIPKK NEW.png')}
+          alt="Background SIPKK"
           fill
           priority
           sizes="60vw"
           className="object-cover object-center"
-          onError={() => setBgSrc(localAsset('pkk.webp'))}
+          onError={() => setBgSrc(localAsset('BACKGROUND-SIPKK NEW.png'))}
         />
 
         {/* Overlay gradient — matches dashboard's teal palette */}
@@ -212,13 +214,13 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <Image
-              src={logoSrc || localAsset('Logo-Kemenkes.png')}
-              alt="Logo Kementerian Kesehatan"
-              width={160}
-              height={58}
-              className="h-auto w-[160px] brightness-0 invert"
+              src={logoSrc || localAsset('logo_putih.png')}
+              alt="Logo SIPKK"
+              width={180}
+              height={50}
+              className="h-auto w-[180px] object-contain"
               priority
-              onError={() => setLogoSrc(localAsset('Logo-Kemenkes.png'))}
+              onError={() => setLogoSrc(localAsset('logo_putih.png'))}
             />
           </div>
 
@@ -248,13 +250,13 @@ export default function LoginPage() {
           {/* Mobile-only logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <Image
-              src={logoSrc || localAsset('Logo-Kemenkes.png')}
-              alt="Logo Kementerian Kesehatan"
-              width={140}
-              height={50}
-              className="h-auto w-[140px]"
+              src={localAsset('logo.png')}
+              alt="Logo SIPKK"
+              width={150}
+              height={45}
+              className="h-auto w-[150px] object-contain"
               priority
-              onError={() => setLogoSrc(localAsset('Logo-Kemenkes.png'))}
+              onError={() => setLogoSrc(localAsset('logo.png'))}
             />
           </div>
 

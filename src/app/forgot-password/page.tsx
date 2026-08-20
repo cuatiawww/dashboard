@@ -145,7 +145,7 @@ export default function ForgotPasswordPage() {
     <div className="relative min-h-screen overflow-hidden py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       {/* Background image */}
       <Image
-        src={`${basePath}/pkk.webp`}
+        src={`${basePath}/BACKGROUND-SIPKK NEW.png`}
         alt="Background"
         fill
         priority
