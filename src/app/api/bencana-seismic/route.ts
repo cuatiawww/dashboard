@@ -81,14 +81,58 @@ export async function GET(request: Request) {
       }
     }
 
-    const [autogempa, gempaterkini, gempadirasakan, usgsFeatures] = await Promise.all([
+    // 3. Fetch API Indonesia (use.apiindonesia.id) for direct clean JSON
+    const fetchApiIndonesia = async () => {
+      try {
+        const [terkiniRes, dirasakanRes] = await Promise.all([
+          fetch('https://use.apiindonesia.id/api/v1/gempa/terkini', {
+            next: { revalidate: 60 },
+            headers: { 'x-api-key': 'aip_live_JoPepl4CUFWgDIZMqJ6VPWmsabaRyEeA', Accept: 'application/json' },
+          }),
+          fetch('https://use.apiindonesia.id/api/v1/gempa/dirasakan', {
+            next: { revalidate: 60 },
+            headers: { 'x-api-key': 'aip_live_JoPepl4CUFWgDIZMqJ6VPWmsabaRyEeA', Accept: 'application/json' },
+          }),
+        ])
+        const [tJson, dJson] = await Promise.all([
+          terkiniRes.ok ? terkiniRes.json() : null,
+          dirasakanRes.ok ? dirasakanRes.json() : null,
+        ])
+        const tList = Array.isArray(tJson?.data) ? tJson.data : []
+        const dList = Array.isArray(dJson?.data) ? dJson.data : []
+        return [...tList, ...dList]
+      } catch {
+        return []
+      }
+    }
+
+    const [autogempa, gempaterkini, gempadirasakan, usgsFeatures, apiIndoList] = await Promise.all([
       fetchBmkg('autogempa.json'),
       fetchBmkg('gempaterkini.json'),
       fetchBmkg('gempadirasakan.json'),
       fetchUsgs(),
+      fetchApiIndonesia(),
     ])
 
-    // Match BMKG earthquake by spatial distance (<= 350km) and region name
+    // Match API Indonesia or BMKG earthquake by spatial distance (<= 350km) and region name
+    let apiIndoMatch: any = null
+    const locKeywords = `${kabParam} ${provParam}`.toLowerCase()
+
+    for (const item of apiIndoList) {
+      if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+        const dist = haversineDist(lat, lng, item.lat, item.lng)
+        if (dist <= 350) {
+          apiIndoMatch = { ...item, distanceKm: Math.round(dist) }
+          break
+        }
+      }
+      const reg = (item.region || '').toLowerCase()
+      if (locKeywords.trim() && kabParam && reg.includes(kabParam.toLowerCase())) {
+        apiIndoMatch = item
+        break
+      }
+    }
+
     const allBmkg = [
       ...(Array.isArray(gempadirasakan) ? gempadirasakan : (gempadirasakan ? [gempadirasakan] : [])),
       ...(Array.isArray(gempaterkini) ? gempaterkini : (gempaterkini ? [gempaterkini] : [])),
@@ -96,7 +140,6 @@ export async function GET(request: Request) {
     ].filter(Boolean)
 
     let bmkgMatch: any = null
-    const locKeywords = `${kabParam} ${provParam}`.toLowerCase()
 
     for (const bg of allBmkg) {
       if (bg.Coordinates) {
@@ -209,6 +252,8 @@ export async function GET(request: Request) {
     const mainDayEq = byDate[eventDateStr]
     const magnitude = bmkgMatch?.Magnitude
       ? `${bmkgMatch.Magnitude} SR`
+      : apiIndoMatch?.magnitude
+      ? `${apiIndoMatch.magnitude} SR`
       : mainDayEq
       ? `${Number(mainDayEq.mag).toFixed(1)} SR`
       : dbMag
@@ -217,6 +262,8 @@ export async function GET(request: Request) {
 
     const kedalaman = bmkgMatch?.Kedalaman
       ? bmkgMatch.Kedalaman
+      : apiIndoMatch?.depth_km || apiIndoMatch?.depth
+      ? `${apiIndoMatch.depth_km || apiIndoMatch.depth} km`
       : mainDayEq
       ? `${mainDayEq.depth} km`
       : dbDepth
@@ -225,6 +272,8 @@ export async function GET(request: Request) {
 
     const potensiTsunami = bmkgMatch?.Potensi
       ? bmkgMatch.Potensi
+      : apiIndoMatch?.potential
+      ? apiIndoMatch.potential
       : dbTsunami
       ? dbTsunami
       : mainDayEq && mainDayEq.mag >= 7.0 && mainDayEq.depth < 50
@@ -233,6 +282,8 @@ export async function GET(request: Request) {
 
     const intensitasMmi = bmkgMatch?.Dirasakan
       ? bmkgMatch.Dirasakan
+      : apiIndoMatch?.felt_areas
+      ? apiIndoMatch.felt_areas
       : dbMmi
       ? `${dbMmi} MMI`
       : mainDayEq?.mmi
@@ -248,18 +299,20 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        matched: Boolean(bmkgMatch || mainDayEq || dbMag),
+        matched: Boolean(bmkgMatch || apiIndoMatch || mainDayEq || dbMag),
         characteristics: {
           magnitude,
           kedalaman,
           potensiTsunami,
           intensitasMmi,
           shakemapUrl,
-          wilayah: bmkgMatch?.Wilayah || mainDayEq?.place || `${kabParam}, ${provParam}`,
+          wilayah: bmkgMatch?.Wilayah || apiIndoMatch?.region || mainDayEq?.place || `${kabParam}, ${provParam}`,
         },
         timeline,
         sumber: bmkgMatch
           ? 'BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)'
+          : apiIndoMatch
+          ? 'API Indonesia & BMKG (use.apiindonesia.id)'
           : 'Katalog Seismik Global & Regional BMKG/USGS',
       },
     })
