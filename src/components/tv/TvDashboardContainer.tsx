@@ -96,6 +96,8 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [jenisBencanaList, setJenisBencanaList] = useState<any[]>([])
   const [wilayahList, setWilayahList] = useState<any[]>([])
   const [penyakitList, setPenyakitList] = useState<any[]>([])
+  const [faskesList, setFaskesList] = useState<any[]>([])
+  const [kabupatenDetailList, setKabupatenDetailList] = useState<any[]>([])
   const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[] } | null>(null)
   const [peringatanDiniList, setPeringatanDiniList] = useState<any[]>([])
 
@@ -230,10 +232,81 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
           { jenis_bencana: 'Gempa Bumi', count: 1, total_korban: totalKorban }
         ])
 
+        // Faskes Data
+        const defaultFaskesNtt = [
+          { nama_rs: 'RSUD Borong', kabupaten: 'Manggarai Timur', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total: 38, lat: -8.8033, lng: 120.5982, status: 'Operasional Penuh', igd: 'Trauma Center' },
+          { nama_rs: 'RSUD dr. TC Hillers Maumere', kabupaten: 'Sikka', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total: 4, lat: -8.6214, lng: 122.2155, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD Ruteng', kabupaten: 'Manggarai', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total: 11, lat: -8.6148, lng: 120.4632, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD Ende', kabupaten: 'Ende', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total: 8, lat: -8.8415, lng: 121.6582, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD Aeramo', kabupaten: 'Nagekeo', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total: 5, lat: -8.6752, lng: 121.2891, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD Bajawa', kabupaten: 'Ngada', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total: 3, lat: -8.7891, lng: 120.9664, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD Komodo', kabupaten: 'Manggarai Barat', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total: 9, lat: -8.5142, lng: 119.8924, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+          { nama_rs: 'RSUD dr. Hendrikus Fernandez', kabupaten: 'Flores Timur', triase_merah: 0, triase_kuning: 4, triase_hijau: 2, triase_hitam: 0, total: 6, lat: -8.3411, lng: 122.9814, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
+        ]
+
         const rawPasienRs = Array.isArray(nttData?.pasien_rs) ? nttData.pasien_rs : []
-        const totalTriaseMerah = rawPasienRs.reduce((s: number, r: any) => s + (r.triase_merah || 0), 0)
-        const totalTriaseKuning = rawPasienRs.reduce((s: number, r: any) => s + (r.triase_kuning || 0), 0)
-        const totalTriaseHijau = rawPasienRs.reduce((s: number, r: any) => s + (r.triase_hijau || 0), 0)
+        const parsedFaskes = rawPasienRs.length > 0
+          ? rawPasienRs.map((r: any) => {
+              const def = defaultFaskesNtt.find(
+                (d) =>
+                  d.kabupaten.toLowerCase() === (r.kabupaten || '').toLowerCase() ||
+                  d.nama_rs.toLowerCase().includes((r.nama_rs || '').toLowerCase())
+              )
+              return {
+                nama_rs: r.nama_rs || def?.nama_rs || 'RSUD Rujukan',
+                kabupaten: r.kabupaten || def?.kabupaten || 'NTT',
+                triase_merah: r.triase_merah ?? def?.triase_merah ?? 0,
+                triase_kuning: r.triase_kuning ?? def?.triase_kuning ?? 0,
+                triase_hijau: r.triase_hijau ?? def?.triase_hijau ?? 0,
+                triase_hitam: r.triase_hitam ?? def?.triase_hitam ?? 0,
+                total: r.total ?? (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0)),
+                lat: def?.lat || -8.6,
+                lng: def?.lng || 121.5,
+                status: def?.status || 'Siaga 24 Jam',
+                igd: def?.igd || 'Buka Normal',
+              }
+            })
+          : defaultFaskesNtt
+
+        setFaskesList(parsedFaskes)
+
+        // Kabupaten Detail Data
+        const defaultKabDetail = [
+          { nama: 'Manggarai Timur', meninggal: 26, luka_berat: 239, luka_ringan: 404, total_luka: 643, pengungsi: 19330, terdampak: 313876, titik_posko: 246, lat: -8.8033, lng: 120.5982 },
+          { nama: 'Manggarai', meninggal: 27, luka_berat: 32, luka_ringan: 104, total_luka: 136, pengungsi: 10083, terdampak: 340153, titik_posko: 14, lat: -8.6148, lng: 120.4632 },
+          { nama: 'Ende', meninggal: 2, luka_berat: 5, luka_ringan: 67, total_luka: 72, pengungsi: 3144, terdampak: 284165, titik_posko: 25, lat: -8.8415, lng: 121.6582 },
+          { nama: 'Sikka', meninggal: 6, luka_berat: 23, luka_ringan: 32, total_luka: 55, pengungsi: 1972, terdampak: 350715, titik_posko: 9, lat: -8.6214, lng: 122.2155 },
+          { nama: 'Ngada', meninggal: 2, luka_berat: 17, luka_ringan: 19, total_luka: 36, pengungsi: 1333, terdampak: 176462, titik_posko: 27, lat: -8.7891, lng: 120.9664 },
+          { nama: 'Nagekeo', meninggal: 13, luka_berat: 13, luka_ringan: 9, total_luka: 22, pengungsi: 6221, terdampak: 170669, titik_posko: 70, lat: -8.6752, lng: 121.2891 },
+          { nama: 'Manggarai Barat', meninggal: 2, luka_berat: 2, luka_ringan: 4, total_luka: 6, pengungsi: 1603, terdampak: 281692, titik_posko: 9, lat: -8.5142, lng: 119.8924 },
+          { nama: 'Flores Timur', meninggal: 0, luka_berat: 0, luka_ringan: 0, total_luka: 44, pengungsi: 0, terdampak: 0, titik_posko: 0, lat: -8.3421, lng: 122.9814 },
+        ]
+
+        const parsedKabDetail = situasiList.length > 0
+          ? situasiList.map((s: any) => {
+              const def = defaultKabDetail.find((d) => d.nama.toLowerCase() === (s.kabupaten || '').toLowerCase())
+              const lb = Number(s.luka_berat || 0)
+              const lr = Number(s.luka_ringan || 0)
+              return {
+                nama: s.kabupaten,
+                meninggal: Number(s.meninggal || 0),
+                luka_berat: lb,
+                luka_ringan: lr,
+                total_luka: lb + lr || def?.total_luka || 0,
+                pengungsi: Number(s.pengungsi || 0),
+                terdampak: Number(s.populasi_terdampak || 0),
+                titik_posko: Number(s.titik_pengungsian || 0),
+                lat: def?.lat || -8.6,
+                lng: def?.lng || 121.5,
+              }
+            })
+          : defaultKabDetail
+
+        setKabupatenDetailList(parsedKabDetail)
+
+        const totalTriaseMerah = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_merah || 0), 0)
+        const totalTriaseKuning = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_kuning || 0), 0)
+        const totalTriaseHijau = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_hijau || 0), 0)
 
         setPenyakitList([
           { nama_penyakit: 'Triase Merah (Gawat Darurat)', count: totalTriaseMerah || 24 },
@@ -374,6 +447,21 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
     }
   }
 
+  // ── Select Hospital / Faskes ──
+  const handleSelectFaskes = (faskes: any) => {
+    if (!faskes) return
+    const lat = faskes.lat
+    const lng = faskes.lng
+    if (lat && lng) {
+      mapEngineRef.current?.flyTo(lng, lat, 11)
+    }
+  }
+
+  // ── Select Location (Coordinates) ──
+  const handleSelectLocation = (lng: number, lat: number, zoom: number = 10.5) => {
+    mapEngineRef.current?.flyTo(lng, lat, zoom)
+  }
+
   // ── Select Province Manually ──
   const handleSelectProvince = (provName: string) => {
     setCurrentTourProvince(provName)
@@ -453,22 +541,26 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         markers={markers}
         bmkgData={bmkgData}
         peringatanDiniList={peringatanDiniList}
+        faskesList={faskesList}
         activeSpotlightId={spotlightEvent?.kode_trans}
         isKpiCollapsed={isKpiCollapsed}
         onSelectEvent={handleSelectEvent}
         onSelectGempa={handleSelectGempa}
+        onSelectFaskes={handleSelectFaskes}
       />
 
       {/* ── 5. RIGHT FLOATING ANALYTICS & HOTSPOT DECK ── */}
       <TvAnalyticsDeck
         jenisBencanaList={jenisBencanaList}
         wilayahList={wilayahList}
+        kabupatenDetailList={kabupatenDetailList}
         markers={markers}
         recentMarkers={mapPinMarkers}
         penyakitList={penyakitList}
         summary={summary}
         isKpiCollapsed={isKpiCollapsed}
         onSelectProvince={handleSelectProvince}
+        onSelectLocation={handleSelectLocation}
       />
 
       {/* ── 6. LAYER SERVICES DRAWER ── */}
