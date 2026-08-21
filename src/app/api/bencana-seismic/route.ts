@@ -43,9 +43,9 @@ export async function GET(request: Request) {
     }
 
     const startObj = new Date(baseDate)
-    startObj.setDate(baseDate.getDate() - 3)
+    startObj.setDate(baseDate.getDate() - 5)
     const endObj = new Date(baseDate)
-    endObj.setDate(baseDate.getDate() + 3)
+    endObj.setDate(baseDate.getDate() + 5)
 
     const startStr = startObj.toISOString().split('T')[0]
     const endStr = endObj.toISOString().split('T')[0]
@@ -214,11 +214,33 @@ export async function GET(request: Request) {
       }
     }
 
+    // Build earthquakeFeatures array with ALL USGS seismic points for map rendering
+    const earthquakeFeatures = usgsFeatures.map((f: any) => {
+      const p = f.properties
+      const geom = f.geometry?.coordinates || []
+      const eDate = new Date(p.time).toISOString().split('T')[0]
+      return {
+        lat: geom[1],
+        lng: geom[0],
+        magnitude: Number(p.mag) || 0,
+        depth: Math.round(geom[2] || 10),
+        place: p.place || '',
+        time: new Date(p.time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        dateStr: eDate,
+        dateLabel: new Date(p.time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+        distKm: Math.round(haversineDist(lat, lng, geom[1], geom[0])),
+        isMainshock: eDate === baseDate.toISOString().split('T')[0] && p.mag >= 5.0,
+        mmi: p.mmi || null,
+        tsunami: p.tsunami || 0,
+        url: p.url || '',
+      }
+    }).sort((a: any, b: any) => b.magnitude - a.magnitude)
+
     // Build 7-day timeline (H-3 to H+3)
     const timeline = []
     const eventDateStr = baseDate.toISOString().split('T')[0]
 
-    for (let i = -3; i <= 3; i++) {
+    for (let i = -5; i <= 5; i++) {
       const curr = new Date(baseDate)
       curr.setDate(baseDate.getDate() + i)
       const dStr = curr.toISOString().split('T')[0]
@@ -235,9 +257,9 @@ export async function GET(request: Request) {
           const mmiMatch = rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
           bottomLabel = mmiMatch ? `${mmiMatch[1]} MMI` : 'Gempa Utama'
         } else if (i > 0) {
-          bottomLabel = 'Susulan'
+          bottomLabel = eq.mag >= 4.0 ? 'Susulan' : 'Peluruhan'
         } else if (i < 0) {
-          bottomLabel = 'Pra-Gempa'
+          bottomLabel = eq.mag >= 5.0 ? 'Pra-Gempa' : 'Normal'
         }
 
         timeline.push({
@@ -360,6 +382,7 @@ export async function GET(request: Request) {
           reportData: petaBencanaMatch.report_data,
         } : null,
         timeline,
+        earthquakeFeatures,
         sumber: bmkgMatch
           ? 'BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)'
           : apiIndoMatch

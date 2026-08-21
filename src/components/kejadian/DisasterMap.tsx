@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDisasterName } from '@/lib/utils/disasterUtils'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
+import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
 
 
@@ -44,6 +45,76 @@ function destroyWindLayerSafely(wl: any) {
   tryCall('remove')
   tryCall('setMap', null)
   tryCall('setTarget', null)
+}
+
+function getFaskesTriageData(rawItem?: any, name?: string) {
+  // 1. Direct fields if present on rawItem
+  if (rawItem) {
+    const merah = rawItem.triase_merah !== undefined ? Number(rawItem.triase_merah) : (rawItem.merah !== undefined ? Number(rawItem.merah) : -1)
+    const kuning = rawItem.triase_kuning !== undefined ? Number(rawItem.triase_kuning) : (rawItem.kuning !== undefined ? Number(rawItem.kuning) : -1)
+    const hijau = rawItem.triase_hijau !== undefined ? Number(rawItem.triase_hijau) : (rawItem.hijau !== undefined ? Number(rawItem.hijau) : -1)
+    const hitam = rawItem.triase_hitam !== undefined ? Number(rawItem.triase_hitam) : (rawItem.hitam !== undefined ? Number(rawItem.hitam) : -1)
+
+    if (merah >= 0 || kuning >= 0 || hijau >= 0 || hitam >= 0) {
+      const m = Math.max(0, merah)
+      const k = Math.max(0, kuning)
+      const h = Math.max(0, hijau)
+      const ht = Math.max(0, hitam)
+      const total = Number(rawItem.total_pasien ?? rawItem.total ?? (m + k + h + ht))
+      const catatan = rawItem.catatan || rawItem.diagnosis || rawItem.catatan_triase || rawItem.catatan_pasien || ''
+      return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
+    }
+  }
+
+  // 2. Fuzzy / normalize lookup in gempaNttData.pasien_rs and gempaNttData.pasien_puskesmas
+  const cleanTarget = String(name || rawItem?.nama || rawItem?.nama_faskes || rawItem?.nama_lengkap || '')
+    .toLowerCase()
+    .replace(/^(rsud|rs|puskesmas|klinik|pustu)\s+/i, '')
+    .trim()
+
+  if (!cleanTarget) return null
+
+  // Search in pasien_rs
+  const rsList = (gempaNttData as any)?.pasien_rs || []
+  const foundRs = rsList.find((rs: any) => {
+    const cleanRs = String(rs.nama_rs || '')
+      .toLowerCase()
+      .replace(/^(rsud|rs)\s+/i, '')
+      .trim()
+    return cleanRs.includes(cleanTarget) || cleanTarget.includes(cleanRs)
+  })
+
+  if (foundRs) {
+    const m = Number(foundRs.triase_merah || 0)
+    const k = Number(foundRs.triase_kuning || 0)
+    const h = Number(foundRs.triase_hijau || 0)
+    const ht = Number(foundRs.triase_hitam || 0)
+    const total = Number(foundRs.total || (m + k + h + ht))
+    const catatan = foundRs.catatan || ''
+    return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
+  }
+
+  // Search in pasien_puskesmas
+  const pkmList = (gempaNttData as any)?.pasien_puskesmas || []
+  const foundPkm = pkmList.find((pkm: any) => {
+    const cleanPkm = String(pkm.nama_puskesmas || '')
+      .toLowerCase()
+      .replace(/^puskesmas\s+/i, '')
+      .trim()
+    return cleanPkm.includes(cleanTarget) || cleanTarget.includes(cleanPkm)
+  })
+
+  if (foundPkm) {
+    const m = Number(foundPkm.triase_merah || 0)
+    const k = Number(foundPkm.triase_kuning || 0)
+    const h = Number(foundPkm.triase_hijau || 0)
+    const ht = Number(foundPkm.triase_hitam || 0)
+    const total = Number(foundPkm.total || (m + k + h + ht))
+    const catatan = foundPkm.catatan || ''
+    return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
+  }
+
+  return null
 }
 
 // ─────────────────────────────────────────────
@@ -98,6 +169,8 @@ interface DisasterMapProps {
   selectedRouteSource?: any
   onSelectRouteSource?: (source: any) => void
   lokasiList?: any[]
+  /** Real earthquake epicenter points from USGS/BMKG API */
+  earthquakePoints?: Array<{ lat: number; lng: number; magnitude: number; depth: number; place: string; time: string; dateStr: string; dateLabel: string; distKm: number; isMainshock: boolean; mmi?: number; tsunami?: number }>
 }
 
 interface MarkerPopupState {
@@ -108,7 +181,7 @@ interface MarkerPopupState {
 
 interface EocPopupState {
   rawItem: any
-  type: 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck'
+  type: 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck' | 'earthquake'
   name: string
   address?: string
   lat: number
@@ -141,6 +214,19 @@ interface EocPopupState {
     nama_tim_emt?: string
     pekerjaan?: string
     nomor_telp?: string
+  }
+  earthquakeInfo?: {
+    magnitude: number
+    depth: number
+    place: string
+    time: string
+    dateStr?: string
+    dateLabel?: string
+    isMainshock: boolean
+    mmi?: number | string
+    tsunami?: number
+    distKm?: number
+    source?: string
   }
   x: number
   y: number
@@ -290,12 +376,14 @@ export default function DisasterMap({
   disasterType,
   selectedRouteSource = null,
   onSelectRouteSource,
-  lokasiList = []
+  lokasiList = [],
+  earthquakePoints = []
 }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
 
   const [showTckLayer, setShowTckLayer] = useState(true) // Toggle layer TCK Kemkes
+  const [showSeismicLayer, setShowSeismicLayer] = useState(true) // Toggle layer Titik Gempa USGS/BMKG
 
   // Infer normalized disaster category ONLY when disasterType is explicitly provided (Detail Page)
   const disasterCategory = useMemo(() => {
@@ -763,6 +851,13 @@ export default function DisasterMap({
     const eocLayer = new VectorLayer({ source: new VectorSource(), zIndex: 12 })
     eocLayerRef.current = eocLayer
 
+    const firstM = markers && markers[0]
+    const hasInitialCoord = firstM && Number(firstM.lng) !== 0 && Number(firstM.lat) !== 0
+    const initialCenter = isFloodEocMode && hasInitialCoord
+      ? fromLonLat([Number(firstM.lng), Number(firstM.lat)])
+      : fromLonLat([118, -2.5])
+    const initialZoom = isFloodEocMode ? 8.2 : 4.8
+
     const map = new OlMap({
       target: mapRef.current,
       layers: [
@@ -781,8 +876,8 @@ export default function DisasterMap({
       ],
       controls: defaultControls({ attribution: false }),
       view: new View({
-        center: fromLonLat([118, -2.5]),
-        zoom: 4.8,
+        center: initialCenter,
+        zoom: initialZoom,
         minZoom: 4,
         maxZoom: 15,
       }),
@@ -820,14 +915,18 @@ export default function DisasterMap({
             const distKm = getDistanceInKm(originLat, originLng, lat, lng)
 
             const isTerdampak = !!rawItem._isTerdampak
+            const isEarthquake = itemType === 'earthquake'
+
             setEocPopup({
               rawItem,
-              type: itemType || 'clinic',
-              name,
-              address: rawItem.alamat || rawItem.kecamatan || (rawItem.kab_kota ? `Kab. ${rawItem.kab_kota}` : '') || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : ''),
+              type: (itemType as any) || 'clinic',
+              name: isEarthquake ? (rawItem.name || name) : name,
+              address: isEarthquake 
+                ? (rawItem.place || 'Wilayah Episentrum Gempa NTT')
+                : (rawItem.alamat || rawItem.kecamatan || (rawItem.kab_kota ? `Kab. ${rawItem.kab_kota}` : '') || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : '')),
               lat,
               lng,
-              distance: distKm > 0.05 ? Number(distKm.toFixed(1)) : 0,
+              distance: isEarthquake ? (rawItem.distKm || (distKm > 0.05 ? Number(distKm.toFixed(1)) : 0)) : (distKm > 0.05 ? Number(distKm.toFixed(1)) : 0),
               isTerdampak,
               dampakInfo: isTerdampak ? {
                 rusak_berat: Number(rawItem.rusak_berat || 0),
@@ -838,7 +937,7 @@ export default function DisasterMap({
                 jenis_faskes: rawItem.jenis_faskes || rawItem.jenis || '',
                 status: rawItem.status || ''
               } : undefined,
-              details: {
+              details: !isEarthquake ? {
                 jenis: rawItem.jenis || rawItem.jenis_faskes || rawItem.jenis_pos || (itemType === 'tck' ? 'Relawan TCK Kemkes RI' : undefined),
                 operasional: rawItem.operasional || rawItem.status_operasional || 'Operasional Normal',
                 dokter: rawItem.dokter,
@@ -853,7 +952,20 @@ export default function DisasterMap({
                 nama_tim_emt: rawItem.nama_tim_emt,
                 pekerjaan: rawItem.pekerjaan,
                 nomor_telp: rawItem.nomor_telp
-              },
+              } : undefined,
+              earthquakeInfo: isEarthquake ? {
+                magnitude: Number(rawItem.magnitude || 0),
+                depth: Number(rawItem.depth || 10),
+                place: rawItem.place || 'Wilayah Episentrum NTT',
+                time: rawItem.time || '',
+                dateStr: rawItem.dateStr || '',
+                dateLabel: rawItem.dateLabel || '',
+                isMainshock: !!rawItem.isMainshock,
+                mmi: rawItem.mmi,
+                tsunami: rawItem.tsunami,
+                distKm: rawItem.distKm,
+                source: 'Katalog Seismik Global USGS & BMKG TEWS'
+              } : undefined,
               x,
               y
             })
@@ -1131,14 +1243,18 @@ export default function DisasterMap({
       }
 
       if ((isProvMode || isKabMode) && targetProvKey) {
-        // Selected province → transparent jika kabupaten layer tampil
+        // Selected province → outline tegas transparan agar layer kabupaten di dalamnya terlihat
         if (provKey === targetProvKey) {
-          return new Style({ fill: new Fill({ color: 'rgba(0,0,0,0)' }), stroke: new Stroke({ color: 'rgba(0,0,0,0)', width: 0 }) })
+          return new Style({
+            fill: new Fill({ color: 'rgba(0,0,0,0)' }),
+            stroke: new Stroke({ color: '#9333ea', width: 3.0 })
+          })
         }
-        // Provinsi lain tetap tampilkan warna choropleth dengan opacity redup
-        const provWarnings = warningsByProvince.get(provKey)
-        const hasWarning = !!(provWarnings && provWarnings.length > 0)
-        return choroplethStyle(count, hasWarning)
+        // Provinsi lain di-hide / diarsir disabled halus agar peta terfokus
+        return new Style({
+          fill: new Fill({ color: 'rgba(241, 245, 249, 0.4)' }),
+          stroke: new Stroke({ color: 'rgba(148, 163, 184, 0.35)', width: 0.8 })
+        })
       }
 
       // National choropleth style
@@ -1149,6 +1265,8 @@ export default function DisasterMap({
 
     kabupatenLayer.setStyle((feature: any) => {
       const kabKey = cleanKey(getFeatureName(feature, 'kabupaten'))
+      const rawName = getFeatureName(feature, 'kabupaten')
+      const formattedName = rawName.replace(/^(KABUPATEN|KAB|KOTA)\s+/i, '').trim()
 
       if (selectedRegions && selectedRegions.length > 0 && selectedKabKeys.length > 0) {
         const isSelectedKab = selectedKabKeys.some(
@@ -1156,19 +1274,36 @@ export default function DisasterMap({
         )
         if (isSelectedKab) {
           return new Style({
-            fill: new Fill({ color: 'rgba(37, 99, 235, 0.5)' }),
-            stroke: new Stroke({ color: '#1d4ed8', width: 2.5 }),
+            fill: new Fill({ color: 'rgba(37, 99, 235, 0.45)' }),
+            stroke: new Stroke({ color: '#1d4ed8', width: 2.8 }),
+            text: new OlText({
+              text: formattedName,
+              font: 'bold 11px Inter, sans-serif',
+              fill: new Fill({ color: '#0f172a' }),
+              stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
+              overflow: true
+            })
           })
         }
       }
 
-      const count = kabupatenCounts.get(kabKey) || 0
-      if (isKabMode && targetKabKey && kabKey !== targetKabKey) {
+      // Mode Provinsi atau Kabupaten → Batas ungu tegas & Label nama setiap daerah
+      if ((isProvMode || isKabMode) && targetProvKey) {
+        const isTargetKab = isKabMode && targetKabKey && kabKey === targetKabKey
         return new Style({
-          fill: new Fill({ color: 'rgba(226, 232, 240, 0.5)' }),
-          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.8)', width: 1.1 }),
+          fill: new Fill({ color: isTargetKab ? 'rgba(254, 240, 138, 0.35)' : 'rgba(254, 240, 138, 0.18)' }),
+          stroke: new Stroke({ color: isTargetKab ? '#9333ea' : '#a855f7', width: isTargetKab ? 3.2 : 2.6 }),
+          text: new OlText({
+            text: formattedName,
+            font: 'bold 11.5px Inter, sans-serif',
+            fill: new Fill({ color: '#1e293b' }),
+            stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
+            overflow: true
+          })
         })
       }
+
+      const count = kabupatenCounts.get(kabKey) || 0
       return choroplethStyle(count)
     })
 
@@ -1216,10 +1351,24 @@ export default function DisasterMap({
             geojsonCache[cacheKey] = data.geojson
             load(data.geojson)
           } else {
-            console.warn('[GeoJSON Provinsi] Respons tidak valid:', data)
+            // fallback lokal
+            fetch(`${NEXT_BASE_PATH}/indonesia-provinces.geojson`)
+              .then((fr) => fr.json())
+              .then((fgeo) => {
+                geojsonCache[cacheKey] = fgeo
+                load(fgeo)
+              })
           }
         })
-        .catch((e) => console.error('GeoJSON provinsi gagal:', e))
+        .catch(() => {
+          fetch(`${NEXT_BASE_PATH}/indonesia-provinces.geojson`)
+            .then((fr) => fr.json())
+            .then((fgeo) => {
+              geojsonCache[cacheKey] = fgeo
+              load(fgeo)
+            })
+            .catch((e) => console.error('GeoJSON provinsi gagal:', e))
+        })
         .finally(() => setIsLoading(false))
     }
   }, [mapInstance, updateChoroplethStyles])
@@ -1242,13 +1391,6 @@ export default function DisasterMap({
 
     if ((isProvMode || isKabMode) && provinceName) {
       const focusMap = (features: any[]) => {
-        if (isKabMode && kabupatenName) {
-          const target = features.find((f) => cleanKey(getFeatureName(f, 'kabupaten')) === cleanKey(kabupatenName))
-          if (target) {
-            map.getView().fit(target.getGeometry().getExtent(), { padding: [100, 100, 100, 100], duration: 500 })
-            return
-          }
-        }
         const extent = kabSource.getExtent()
         if (extent && features.length > 0) {
           map.getView().fit(extent, { padding: [40, 40, 40, 40], duration: 500 })
@@ -1276,15 +1418,37 @@ export default function DisasterMap({
           load(geojsonCache[cacheKey])
         } else {
           setIsLoading(true)
-          fetch(`${NEXT_BASE_PATH}/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
+          const provUpper = provinceName.toUpperCase()
+          const isNtt = provUpper.includes('NUSA TENGGARA TIMUR') || provUpper.includes('NTT')
+          const nttFallbackUrl = `${NEXT_BASE_PATH}/data/ntt-kabupaten.geojson`
+
+          const loadNttDirect = () => {
+            fetch('/data/ntt-kabupaten.geojson')
+              .then((fr) => fr.json())
+              .then((fgeo) => {
+                geojsonCache[cacheKey] = fgeo
+                load(fgeo)
+              })
+              .catch((err) => console.error('GeoJSON fallback gagal:', err))
+          }
+
+          fetch(`/api/wilayah-geojson?level=kabupaten&province=${encodeURIComponent(provinceName)}`)
             .then((r) => r.json())
             .then((data) => {
               if (data?.success && data.geojson) {
                 geojsonCache[cacheKey] = data.geojson
                 load(data.geojson)
+              } else if (isNtt) {
+                loadNttDirect()
               }
             })
-            .catch((e) => console.error('GeoJSON kabupaten gagal:', e))
+            .catch((e) => {
+              if (isNtt) {
+                loadNttDirect()
+              } else {
+                console.error('GeoJSON kabupaten gagal:', e)
+              }
+            })
             .finally(() => setIsLoading(false))
         }
       } else {
@@ -1656,7 +1820,7 @@ export default function DisasterMap({
     const startLat = firstMarker ? firstMarker.lat : 1.6833
     const startLng = firstMarker ? firstMarker.lng : 98.8472
 
-    const getSvgPin = (color: string, iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck') => {
+    const getSvgPin = (color: string, iconType: 'flood' | 'gempa' | 'hospital' | 'clinic' | 'pustu' | 'shelter' | 'disaster' | 'tck' | 'earthquake') => {
       let inner = '<circle cx="12" cy="10" r="3" fill="' + color + '"/>'
       if (iconType === 'hospital') {
         inner = '<path d="M12 6v8M8 10h8" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/><path d="M9 18h6" stroke="#ffffff" stroke-width="1.8"/>'
@@ -1670,8 +1834,21 @@ export default function DisasterMap({
         inner = '<path d="M12 7.2c-1.1-1.8-3.4-2-4.5-.7-1.3 1.4-1 3.5.3 4.9L12 15.5l4.2-4.1c1.3-1.4 1.6-3.5.3-4.9-1.1-1.3-3.4-1.1-4.5.7z" stroke="#ffffff" stroke-width="1.6" fill="#ffffff"/>'
       } else if (iconType === 'flood' || iconType === 'gempa' || iconType === 'disaster') {
         inner = '<circle cx="12" cy="10" r="3.5" fill="#ffffff"/><circle cx="12" cy="10" r="1.5" fill="' + color + '"/>'
+      } else if (iconType === 'earthquake') {
+        inner = '<circle cx="12" cy="10" r="4.5" fill="#ffffff"/><path d="M12 6.5l-2 3.5h2l-1.5 3.5 3.5-4h-2l1.5-3z" fill="' + color + '"/>'
       }
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="34" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z" fill="${color}" opacity="0.95"/>${inner}</svg>`
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+    }
+
+    const getSvgEarthquakePin = (mag: number, isMainshock: boolean) => {
+      const magText = mag > 0 ? (mag >= 10 ? mag.toFixed(0) : mag.toFixed(1)) : 'M'
+      const bg = isMainshock ? '#dc2626' : (mag >= 5.0 ? '#ea580c' : '#d97706')
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42" viewBox="0 0 36 42" fill="none">
+        <path d="M18 2C10.82 2 5 7.82 5 15C5 24 18 39 18 39S31 24 31 15C31 7.82 25.18 2 18 2Z" fill="${bg}" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="18" cy="15" r="9" fill="#ffffff"/>
+        <text x="18" y="18.5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="900" fill="${bg}">${magText}</text>
+      </svg>`
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
     }
 
@@ -1722,6 +1899,60 @@ export default function DisasterMap({
         createPulseOverlay(lng, lat, 'danger')
       }
     })
+
+    // 1.5. Add Real Earthquake Points & Epicenters (from USGS/BMKG API)
+    if (showSeismicLayer && Array.isArray(earthquakePoints) && earthquakePoints.length > 0) {
+      earthquakePoints.forEach((eq: any, idx: number) => {
+        const eqLat = Number(eq.lat || 0)
+        const eqLng = Number(eq.lng || 0)
+        if (eqLat !== 0 && eqLng !== 0) {
+          const mag = Number(eq.magnitude || 0)
+          const isMain = !!eq.isMainshock || (idx === 0 && mag >= 5.5)
+
+          // Shaking impact buffer circle based on magnitude
+          const radiusKm = isMain ? Math.max(30, (mag - 3) * 18) : Math.max(10, (mag - 2.5) * 8)
+          const shockCircle = new Feature({
+            geometry: new CircleGeom(fromLonLat([eqLng, eqLat]), radiusKm * 1000),
+            id: `eq-circle-${idx}`
+          })
+          shockCircle.setStyle(new Style({
+            fill: new Fill({ color: isMain ? 'rgba(220, 38, 38, 0.09)' : 'rgba(234, 88, 12, 0.05)' }),
+            stroke: new Stroke({
+              color: isMain ? 'rgba(220, 38, 38, 0.65)' : 'rgba(234, 88, 12, 0.4)',
+              width: isMain ? 2 : 1.2,
+              lineDash: isMain ? [6, 6] : [3, 4]
+            })
+          }))
+          source.addFeature(shockCircle)
+
+          // Epicenter marker feature
+          const eqFeat = new Feature({
+            geometry: new Point(fromLonLat([eqLng, eqLat])),
+            id: `eq-point-${idx}`,
+            name: `${isMain ? '⚡ Episentrum Utama' : '⚡ Titik Gempa'} M ${mag.toFixed(1)} - ${eq.place || 'NTT'}`,
+            rawItem: {
+              ...eq,
+              latitude: eqLat,
+              longitude: eqLng
+            },
+            itemType: 'earthquake'
+          })
+          eqFeat.setStyle(new Style({
+            image: new Icon({
+              src: getSvgEarthquakePin(mag, isMain),
+              scale: isMain ? 1.08 : 0.9,
+              anchor: [0.5, 0.95]
+            })
+          }))
+          source.addFeature(eqFeat)
+
+          // Pulse overlay on mainshock
+          if (isMain) {
+            createPulseOverlay(eqLng, eqLat, 'danger')
+          }
+        }
+      })
+    }
 
     // 2. Add Faskes List
     const fList = Array.isArray(faskesList) ? faskesList : []
@@ -1937,8 +2168,20 @@ export default function DisasterMap({
       })
     } else if (!selectedRouteTarget) {
       prevTargetIdRef.current = null
+      // Auto-fit directly to NTT / Flores disaster area extent when in EOC detail mode
+      if (map && isFloodEocMode && source.getFeatures().length > 0) {
+        const ext = source.getExtent()
+        if (ext && ext.length === 4 && isFinite(ext[0]) && isFinite(ext[1]) && isFinite(ext[2]) && isFinite(ext[3])) {
+          map.getView().fit(ext, { padding: [50, 50, 50, 50], maxZoom: 9.5, duration: 600 })
+        } else {
+          const firstM = markers && markers[0]
+          const cLng = firstM?.lng ? Number(firstM.lng) : 121.5
+          const cLat = firstM?.lat ? Number(firstM.lat) : -8.6
+          map.getView().animate({ center: fromLonLat([cLng, cLat]), zoom: 8.2, duration: 500 })
+        }
+      }
     }
-  }, [showEocRoute, isFloodEocMode, showTckLayer, tckList, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -2482,6 +2725,32 @@ export default function DisasterMap({
                   SUMBER DAYA & EWS TERPADU
                 </p>
                 
+                {/* Toggle Real USGS/BMKG Seismic Epicenters */}
+                <div
+                  onClick={() => setShowSeismicLayer((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-red-100 bg-red-50/50 px-3 py-2 hover:bg-red-100/50 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-red-900 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-red-600 animate-ping" />
+                      Titik Episentrum Gempa (USGS/BMKG)
+                      {earthquakePoints && earthquakePoints.length > 0 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-red-700 text-white rounded-full">
+                          {earthquakePoints.length}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-red-700 font-medium">Plot koordinat riil episentrum & radius guncangan gempa</p>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showSeismicLayer ? 'bg-red-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showSeismicLayer ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
                 {/* Toggle TCK Kemkes Layer */}
                 <div
                   onClick={() => setShowTckLayer((v) => !v)}
@@ -2949,6 +3218,8 @@ export default function DisasterMap({
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
                 eocPopup.isTerdampak
                   ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                  : eocPopup.type === 'earthquake'
+                  ? 'bg-red-100 text-red-800 border border-red-300 font-black'
                   : eocPopup.type === 'tck'
                   ? 'bg-teal-50 text-teal-800 border border-teal-200'
                   : eocPopup.type === 'hospital'
@@ -2964,6 +3235,8 @@ export default function DisasterMap({
                 <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
                 {eocPopup.isTerdampak
                   ? '⚠ Faskes Terdampak Bencana'
+                  : eocPopup.type === 'earthquake'
+                  ? (eocPopup.earthquakeInfo?.isMainshock ? '⚡ Episentrum Gempa Utama' : '⚡ Titik Gempa Susulan')
                   : eocPopup.type === 'tck'
                   ? 'Relawan TCK Kemkes RI'
                   : eocPopup.type === 'hospital'
@@ -3105,8 +3378,64 @@ export default function DisasterMap({
               )
             })()}
 
+            {eocPopup.type === 'earthquake' && eocPopup.earthquakeInfo && (
+              <div className="space-y-2.5">
+                {/* Seismic Key Cards */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-2.5 text-center">
+                    <span className="text-[9px] font-black uppercase text-red-600 block">Magnitudo</span>
+                    <span className="text-xl font-black text-red-700 block mt-0.5">
+                      M {eocPopup.earthquakeInfo.magnitude.toFixed(1)}
+                    </span>
+                    <span className="text-[8.5px] font-bold text-red-500 block">Skala Richter</span>
+                  </div>
+                  <div className="rounded-xl bg-orange-50 border border-orange-200 p-2.5 text-center">
+                    <span className="text-[9px] font-black uppercase text-orange-600 block">Kedalaman</span>
+                    <span className="text-xl font-black text-orange-800 block mt-0.5">
+                      {eocPopup.earthquakeInfo.depth} km
+                    </span>
+                    <span className="text-[8.5px] font-bold text-orange-500 block">
+                      {eocPopup.earthquakeInfo.depth <= 70 ? 'Dangkal (< 70km)' : 'Menengah'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Details List */}
+                <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 text-[11px]">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
+                    <span className="text-slate-500 font-medium">Waktu Kejadian:</span>
+                    <span className="font-bold text-slate-800">
+                      {eocPopup.earthquakeInfo.time} {eocPopup.earthquakeInfo.dateLabel && `(${eocPopup.earthquakeInfo.dateLabel})`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
+                    <span className="text-slate-500 font-medium">Tipe Guncangan:</span>
+                    <span className={`px-2 py-0.2 rounded-full font-black text-[9px] border ${
+                      eocPopup.earthquakeInfo.isMainshock 
+                        ? 'bg-red-100 text-red-800 border-red-200' 
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}>
+                      {eocPopup.earthquakeInfo.isMainshock ? 'Gempa Utama (Mainshock)' : 'Gempa Susulan'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
+                    <span className="text-slate-500 font-medium">Koordinat:</span>
+                    <span className="font-mono font-bold text-slate-700 text-[10px]">
+                      {eocPopup.lat.toFixed(4)}°, {eocPopup.lng.toFixed(4)}°
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between pt-0.5">
+                    <span className="text-slate-500 font-medium">Sumber Data:</span>
+                    <span className="font-bold text-teal-800 text-[10px]">
+                      {eocPopup.earthquakeInfo.source || 'USGS & BMKG'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quick Metrics Grid (for Faskes/Shelter) */}
-            {eocPopup.type !== 'tck' && (
+            {eocPopup.type !== 'tck' && eocPopup.type !== 'earthquake' && (
               <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
                 {eocPopup.details?.kapasitas ? (
                   <div className="rounded-lg bg-slate-50 border border-slate-100 p-2">
@@ -3149,6 +3478,65 @@ export default function DisasterMap({
                 )}
               </div>
             )}
+
+            {/* ─── Identifikasi Kondisi Pasien (Triase IGD & Rawat) ─── */}
+            {(eocPopup.type === 'hospital' || eocPopup.type === 'clinic' || eocPopup.type === 'pustu' || eocPopup.isTerdampak) && (() => {
+              const triage = getFaskesTriageData(eocPopup.rawItem, eocPopup.name)
+              if (!triage) return null
+
+              const totalPatients = triage.total || (triage.merah + triage.kuning + triage.hijau + triage.hitam)
+              const hasPatients = totalPatients > 0
+
+              return (
+                <div className="mt-2.5 pt-2.5 border-t border-slate-150 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase text-slate-800 flex items-center gap-1">
+                      <Activity className="h-3.5 w-3.5 text-rose-600" />
+                      Kondisi Pasien (Triase)
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${
+                      triage.merah > 0
+                        ? 'bg-rose-100 text-rose-800 border-rose-300'
+                        : hasPatients
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    }`}>
+                      {hasPatients ? `Total: ${totalPatients} Pasien` : '0 Pasien'}
+                    </span>
+                  </div>
+
+                  {/* 4 Kolom Triase Mini Badge Grid */}
+                  <div className="grid grid-cols-4 gap-1 text-center">
+                    <div className="rounded-lg bg-rose-50 border border-rose-200/90 p-1.5 flex flex-col items-center justify-center">
+                      <span className="block text-[8px] font-black text-rose-600 uppercase leading-none">Merah</span>
+                      <span className="text-[13px] font-black text-rose-700 mt-0.5 block leading-tight">{triage.merah}</span>
+                      <span className="text-[7.5px] text-rose-500 font-bold block leading-none mt-0.5">Kritis</span>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 border border-amber-200/90 p-1.5 flex flex-col items-center justify-center">
+                      <span className="block text-[8px] font-black text-amber-700 uppercase leading-none">Kuning</span>
+                      <span className="text-[13px] font-black text-amber-800 mt-0.5 block leading-tight">{triage.kuning}</span>
+                      <span className="text-[7.5px] text-amber-600 font-bold block leading-none mt-0.5">Mendesak</span>
+                    </div>
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-200/90 p-1.5 flex flex-col items-center justify-center">
+                      <span className="block text-[8px] font-black text-emerald-700 uppercase leading-none">Hijau</span>
+                      <span className="text-[13px] font-black text-emerald-800 mt-0.5 block leading-tight">{triage.hijau}</span>
+                      <span className="text-[7.5px] text-emerald-600 font-bold block leading-none mt-0.5">Ringan</span>
+                    </div>
+                    <div className="rounded-lg bg-slate-100 border border-slate-300 p-1.5 flex flex-col items-center justify-center">
+                      <span className="block text-[8px] font-black text-slate-700 uppercase leading-none">Hitam</span>
+                      <span className="text-[13px] font-black text-slate-900 mt-0.5 block leading-tight">{triage.hitam}</span>
+                      <span className="text-[7.5px] text-slate-500 font-bold block leading-none mt-0.5">Meninggal</span>
+                    </div>
+                  </div>
+
+                  {triage.catatan ? (
+                    <div className="mt-1 px-2.5 py-1.5 rounded-lg bg-amber-50/80 border border-amber-200 text-[10px] text-amber-900 leading-tight">
+                      <strong className="font-bold text-amber-950">Catatan:</strong> {triage.catatan}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })()}
 
             {/* List Relawan TCK yang siaga di Faskes Ini (Cross-Reference) */}
             {(eocPopup.type === 'hospital' || eocPopup.type === 'clinic' || eocPopup.type === 'pustu') && (() => {
@@ -3218,7 +3606,19 @@ export default function DisasterMap({
 
           {/* Footer Actions */}
           <div className="border-t border-slate-100 p-2.5 bg-slate-50/50 flex gap-2">
-            {eocPopup.isTerdampak ? (
+            {eocPopup.type === 'earthquake' ? (
+              <div className="w-full flex gap-2">
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${eocPopup.lat},${eocPopup.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white py-2 text-[11px] font-bold shadow-xs transition"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  Buka Titik Koordinat di Google Maps
+                </a>
+              </div>
+            ) : eocPopup.isTerdampak ? (
               /* Faskes Terdampak: tidak bisa dijadikan rute, tampilkan peringatan + link lokasi */
               <>
                 <div className="flex-1 flex items-center gap-1.5 rounded-xl bg-rose-50 border border-rose-200 px-2.5 py-2 text-[10px] font-bold text-rose-700">
