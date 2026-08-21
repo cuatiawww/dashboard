@@ -44,6 +44,9 @@ function destroyWindLayerSafely(wl: any) {
   tryCall('dispose')
   tryCall('remove')
   tryCall('setMap', null)
+  tryCall('setTarget', null)
+}
+
 function getLargestPolygonInteriorPoint(feature: any) {
   const geom = feature?.getGeometry?.()
   if (!geom) return null
