@@ -864,7 +864,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .finally(() => { if (active) setTckLoading(false) })
 
     return () => { active = false }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventData.provinsi])
 
   // Fetch real route from OSRM Routing API (real road network routing)
@@ -1846,7 +1846,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const d = new Date(baseDate);
       d.setDate(baseDate.getDate() + offset);
       const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      
+
       let factor = 1.0;
       if (offset === -2) factor = 0.0;
       else if (offset === -1) factor = 0.35;
@@ -1996,7 +1996,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         d.setDate(baseDate.getDate() + (i - 2));
         const formattedLabel = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         const factor = i === 0 ? 0.2 : (i === 1 ? 0.6 : (i === 2 ? 0.9 : 1.0));
-        
+
         const pt: any = { date: formattedLabel };
         defaults.forEach(item => {
           pt[item.name] = Math.round(item.total * factor);
@@ -2156,28 +2156,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const hotspotVal = eventData.hotspot
         ? `${eventData.hotspot} Titik`
         : eventData.titik_panas
-        ? `${eventData.titik_panas} Titik`
-        : floodHydrology?.weather?.fireWeatherCategory
-        ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
-        : 'Menunggu data API...'
+          ? `${eventData.titik_panas} Titik`
+          : floodHydrology?.weather?.fireWeatherCategory
+            ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
+            : 'Menunggu data API...'
 
       const suhuVal = floodHydrology?.weather?.maxTemp
         ? `${floodHydrology.weather.maxTemp} °C (Suhu Terik)`
         : floodHydrology?.weather?.currentTemp
-        ? `${floodHydrology.weather.currentTemp} °C`
-        : 'Menunggu data API...'
+          ? `${floodHydrology.weather.currentTemp} °C`
+          : 'Menunggu data API...'
 
       const arahAnginVal = floodHydrology?.weather?.windDirectionText
         ? `${floodHydrology.weather.windDirectionText} (${floodHydrology.weather.windDirectionDeg}°)`
         : realtimeWind?.directionText
-        ? `${realtimeWind.directionText} (${realtimeWind.directionDeg}°)`
-        : (eventData.arah_angin || 'Menunggu data API...')
+          ? `${realtimeWind.directionText} (${realtimeWind.directionDeg}°)`
+          : (eventData.arah_angin || 'Menunggu data API...')
 
       const windVal = floodHydrology?.weather?.windSpeed
         ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j)`
         : realtimeWind && realtimeWind.speed > 0
-        ? `${realtimeWind.speed} km/jam`
-        : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
+          ? `${realtimeWind.speed} km/jam`
+          : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
 
       return [
         { label: 'Indeks Titik Panas (FWI / Open-Meteo)', value: hotspotVal, icon: Flame, color: 'text-red-500' },
@@ -2203,14 +2203,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const waveH = eventData.tinggi_gelombang
         ? `${eventData.tinggi_gelombang} m`
         : floodHydrology?.marine?.waveHeight != null
-        ? `${floodHydrology.marine.waveHeight} m (Periode ${floodHydrology.marine.wavePeriod}s)`
-        : 'Menunggu data API...'
+          ? `${floodHydrology.marine.waveHeight} m (Periode ${floodHydrology.marine.wavePeriod}s)`
+          : 'Menunggu data API...'
 
       const inunDist = eventData.jarak_inundasi
         ? `${eventData.jarak_inundasi} m`
         : floodHydrology?.marine?.waveDirectionText
-        ? `Arah ${floodHydrology.marine.waveDirectionText} (${floodHydrology.marine.waveDirection}°)`
-        : 'Menunggu data API...'
+          ? `Arah ${floodHydrology.marine.waveDirectionText} (${floodHydrology.marine.waveDirection}°)`
+          : 'Menunggu data API...'
 
       const pressVal = floodHydrology?.weather?.pressure
         ? `${floodHydrology.weather.pressure} hPa (Permukaan Laut)`
@@ -3195,27 +3195,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('dual')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
-                            trendMetricMode === 'dual' ? 'bg-[#047d78] text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
-                          }`}
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'dual' ? 'bg-[#047d78] text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                            }`}
                         >
                           Dual Skala
                         </button>
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('korban')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
-                            trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
-                          }`}
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                            }`}
                         >
                           Fokus Korban
                         </button>
                         <button
                           type="button"
                           onClick={() => setTrendMetricMode('penduduk')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${
-                            trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
-                          }`}
+                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                            }`}
                         >
                           Fokus Penduduk
                         </button>
@@ -3229,7 +3226,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           <LineChart data={victimTrendData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                             <XAxis dataKey="date" stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
-                            
+
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
                               <YAxis
                                 yAxisId="left"
@@ -3355,9 +3352,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 <IconComp className={`h-4 w-4 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
                                 <span className="truncate">{cat.title}</span>
                               </span>
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${
-                                cat.terdampak > 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              }`}>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${cat.terdampak > 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}>
                                 {cat.pct}%
                               </span>
                             </div>
@@ -3797,7 +3793,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           const jenisPosVal = pos.jenis_pos || 'Pos Pengungsian';
                           const isKesehatan = String(jenisPosVal).toLowerCase().includes('kesehatan') && !String(jenisPosVal).toLowerCase().includes('pengungsian');
                           const isCombined = String(jenisPosVal).toLowerCase().includes('kesehatan') && String(jenisPosVal).toLowerCase().includes('pengungsian');
-                          
+
                           let badgeClass = "bg-blue-50 text-blue-700 border-blue-200"; // Pos Pengungsian
                           if (isCombined) {
                             badgeClass = "bg-amber-50 text-amber-700 border-amber-200"; // Pos Kesehatan & Pengungsian
@@ -4314,13 +4310,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   <td className="py-2.5 px-3 font-semibold text-slate-800">{row.label}</td>
                                   <td className="py-2.5 px-3 text-center">
                                     {label ? (
-                                      <span className={`px-2 py-1 rounded-full text-[10px] font-extrabold border ${
-                                        isMemadai
+                                      <span className={`px-2 py-1 rounded-full text-[10px] font-extrabold border ${isMemadai
                                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                           : isTidak
-                                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                          : 'bg-slate-50 text-slate-500 border-slate-200'
-                                      }`}>
+                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                                        }`}>
                                         {label}
                                       </span>
                                     ) : (
@@ -4413,7 +4408,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <tr className="bg-slate-50 border-b border-slate-200">
                               <th className="py-1.5 px-3"></th>
                               {['Dokter', 'Perawat', 'Bidan', 'Farmasi', 'Gizi', 'Kesling', 'Lainnya'].map(h => (
-                                <th key={h+'_grp'} colSpan={2} className="py-1 px-1 text-center">
+                                <th key={h + '_grp'} colSpan={2} className="py-1 px-1 text-center">
                                   <div className="grid grid-cols-2 gap-1 text-[10px] font-black uppercase">
                                     <span className="text-emerald-700">Ada</span>
                                     <span className="text-rose-700">Butuh</span>
@@ -4439,7 +4434,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   {pairs.map(([ada, butuh, key]) => {
                                     const gap = butuh - ada
                                     return (
-                                      <td key={key+'_cell'} colSpan={2} className="py-3 px-1 text-center">
+                                      <td key={key + '_cell'} colSpan={2} className="py-3 px-1 text-center">
                                         <div className="grid grid-cols-2 gap-1 items-center">
                                           <span className="font-bold text-emerald-800">{ada}</span>
                                           <span className={`font-bold ${gap > 0 ? 'text-rose-600' : 'text-slate-600'}`}>
@@ -4490,9 +4485,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     const label = map[val] || val
                     const ok = val === '1'
                     return (
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-black border ${
-                        ok ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'
-                      }`}>{label}</span>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black border ${ok ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-rose-50 text-rose-800 border-rose-300'
+                        }`}>{label}</span>
                     )
                   }
 
@@ -4553,8 +4547,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   (r.kab_kota || '').toLowerCase().includes(q)
                 const matchTckTab =
                   tckTab === 'semua' ? true
-                  : tckTab === 'nakes' ? (r.kategori || '').toLowerCase() === 'nakes'
-                  : (r.organisasi || r.nama_tim_emt || '').toLowerCase().includes('emt')
+                    : tckTab === 'nakes' ? (r.kategori || '').toLowerCase() === 'nakes'
+                      : (r.organisasi || r.nama_tim_emt || '').toLowerCase().includes('emt')
                 return matchSearch && matchTckTab
               })
 
@@ -5123,9 +5117,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             {/* Modal Header */}
             <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-sky-50/80 via-white to-teal-50/80">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-md shadow-sky-500/20">
-                  <Globe className="h-6 w-6" />
-                </div>
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
                     Sumber Data & Integrasi API Real-Time
