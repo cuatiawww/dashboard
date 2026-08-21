@@ -10,12 +10,15 @@ import {
 } from 'lucide-react'
 
 interface MarkerItem {
-  kode_trans: string
-  tgl_kejadian: string
-  jenis_bencana: string
+  id?: string
+  kode_trans?: string
+  tgl_kejadian?: string
+  jenis_bencana?: string
   provinsi?: string
   kabupaten?: string
   total_korban?: number
+  meninggal?: number
+  luka?: number
 }
 
 interface BmkgGempa {

@@ -14,6 +14,8 @@ import { Fill, Stroke, Style, Circle as CircleStyle, Icon, Text as OlText } from
 import { fromLonLat } from 'ol/proj'
 import Feature from 'ol/Feature'
 import Point from 'ol/geom/Point'
+import LineString from 'ol/geom/LineString'
+import CircleGeom from 'ol/geom/Circle'
 import Overlay from 'ol/Overlay'
 import { defaults as defaultControls } from 'ol/control'
 import { WindLayer } from 'ol-wind'
@@ -44,11 +46,13 @@ export interface TvMapEngineRef {
   focusProvince: (provName: string | null) => void
 }
 
-interface MarkerData {
-  kode_trans: string
-  tgl_kejadian: string
-  jenis_bencana: string
+export interface MarkerData {
+  id?: string
+  kode_trans?: string
+  tgl_kejadian?: string
+  jenis_bencana?: string
   kategori_bencana?: string
+  nama?: string
   lat: number
   lng: number
   provinsi?: string
@@ -56,18 +60,64 @@ interface MarkerData {
   nama_desa?: string
   kecamatan?: string
   total_korban?: number
+  meninggal?: number
+  luka?: number
+  luka_berat?: number
+  luka_ringan?: number
+  pengungsi?: number
+  terdampak?: number
+  titik_posko?: number
   icon_file?: string
   is_krisis?: number
 }
 
-interface BmkgGempa {
-  Wilayah: string
-  Magnitude: string
-  Kedalaman: string
-  Coordinates: string
-  Potensi: string
-  Tanggal: string
-  Jam: string
+export interface FaskesItem {
+  id?: string
+  nama_rs?: string
+  nama_faskes?: string
+  nama?: string
+  kabupaten: string
+  kecamatan?: string
+  lat: number
+  lng: number
+  triase_merah?: number
+  triase_kuning?: number
+  triase_hijau?: number
+  triase_hitam?: number
+  total?: number
+  total_pasien?: number
+  status?: string
+  igd?: string
+}
+
+export interface PoskoItem {
+  id?: string
+  nama?: string
+  nama_pos?: string
+  kabupaten: string
+  kecamatan?: string
+  latitude?: number
+  longitude?: number
+  lat?: number
+  lng?: number
+  pengungsi?: number
+  jiwa?: number
+  kapasitas?: number
+  pj_kontak?: string
+}
+
+export interface EarthquakePoint {
+  lat: number
+  lng: number
+  magnitude: number
+  depth: number
+  place: string
+  time?: string
+  dateStr?: string
+  dateLabel?: string
+  distKm?: number
+  isMainshock?: boolean
+  mmi?: string | number
 }
 
 interface WilayahItem {
@@ -78,17 +128,17 @@ interface WilayahItem {
 
 interface TvMapEngineProps {
   markers: MarkerData[]
+  faskesList?: FaskesItem[]
+  poskoList?: PoskoItem[]
+  earthquakePoints?: EarthquakePoint[]
+  routeCoords?: number[][]
   wilayahList?: WilayahItem[]
-  bmkgGempas?: BmkgGempa[]
+  bmkgGempas?: any[]
   layers: TvLayerState
   initialCenter?: [number, number]
   initialZoom?: number
-  onSelectMarker: (marker: MarkerData) => void
+  onSelectMarker: (marker: any, type?: 'disaster' | 'faskes' | 'posko' | 'earthquake') => void
 }
-
-// ─────────────────────────────────────────────
-// Helpers & Styling Identical to EOC Dashboard
-// ─────────────────────────────────────────────
 
 const cleanKey = (name?: string | null) => {
   if (!name) return ''
@@ -102,11 +152,8 @@ const cleanKey = (name?: string | null) => {
   if (cleaned.includes('YOGYAKARTA')) return 'YOGYAKARTA'
   if (cleaned.includes('BANGKA')) return 'BANGKABELITUNG'
   if (cleaned.includes('KEPULAUAN RIAU') || cleaned === 'KEPRI') return 'KEPULAUANRIAU'
-  if (cleaned === 'NTB' || cleaned.includes('NUSA TENGGARA BARAT') || cleaned.includes('NUSATENGGARA BARAT')) return 'NUSATENGGARABARAT'
-  if (cleaned === 'NTT' || cleaned.includes('NUSA TENGGARA TIMUR') || cleaned.includes('NUSATENGGARA TIMUR')) return 'NUSATENGGARATIMUR'
-  if (cleaned.includes('BANTEN')) return 'BANTEN'
-  if (cleaned.includes('IRIAN JAYA BARAT') || cleaned.includes('PAPUA BARAT')) return 'PAPUABARAT'
-  if (cleaned.includes('IRIAN JAYA') || cleaned.includes('PAPUA')) return 'PAPUA'
+  if (cleaned === 'NTB' || cleaned.includes('NUSA TENGGARA BARAT')) return 'NUSATENGGARABARAT'
+  if (cleaned === 'NTT' || cleaned.includes('NUSA TENGGARA TIMUR')) return 'NUSATENGGARATIMUR'
 
   return cleaned.replace(/[^A-Z0-9]/g, '')
 }
@@ -114,7 +161,7 @@ const cleanKey = (name?: string | null) => {
 const getFeatureName = (feature: any) => {
   if (!feature) return ''
   const props = feature.getProperties() || {}
-  const keys = ['provinsi', 'PROVINSI', 'nama_prov', 'prov_single', 'prov_multi', 'WADMPR', 'NAME_1', 'NAMOBJ', 'Propinsi', 'propinsi', 'PROPINSI']
+  const keys = ['nama_kab', 'NAMA_KAB', 'kabupaten', 'KABUPATEN', 'provinsi', 'PROVINSI', 'nama_prov', 'WADMPR', 'NAME_1', 'NAMOBJ', 'Propinsi', 'nama']
   for (const key of keys) {
     if (props[key] !== undefined && props[key] !== null && String(props[key]).trim() !== '') {
       return String(props[key]).trim()
@@ -123,60 +170,12 @@ const getFeatureName = (feature: any) => {
   return ''
 }
 
-const choroplethColor = (count: number, opacity: number = 0.88) => {
-  if (count === 0) return `rgba(241, 245, 249, ${opacity * 0.6})`
-  if (count <= 10) return `rgba(234, 179, 8, ${opacity})`        // Kuning (1 - 10)
-  if (count <= 30) return `rgba(249, 115, 22, ${opacity})`       // Oranye (11 - 30)
-  if (count <= 50) return `rgba(239, 68, 68, ${opacity})`        // Coral Red (31 - 50)
-  return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson Red (> 50)
-}
-
-const choroplethStyle = (count: number, labelText?: string) => {
-  const baseColor = choroplethColor(count, 0.88)
-  return new Style({
-    fill: new Fill({ color: baseColor }),
-    stroke: new Stroke({
-      color: count === 0 ? 'rgba(148, 163, 184, 0.6)' : '#ffffff',
-      width: count === 0 ? 0.8 : 1.5,
-    }),
-    text: count > 0 ? new OlText({
-      text: labelText || String(count),
-      font: 'bold 12px Inter, sans-serif',
-      fill: new Fill({ color: '#ffffff' }),
-      stroke: new Stroke({ color: 'rgba(15, 23, 42, 0.8)', width: 2.5 }),
-      textAlign: 'center',
-      textBaseline: 'middle',
-    }) : undefined,
-  })
-}
-
-const pinColor = (totalKorban: number = 0) => {
-  if (totalKorban === 0) return '#047D78'
-  if (totalKorban <= 5) return '#facc15'
-  if (totalKorban <= 20) return '#f97316'
-  return '#dc2626'
-}
-
-const getMarkerStyle = (iconFile?: string, totalKorban: number = 0) => {
-  if (iconFile) {
-    const backendUrl = process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL || ''
-    const src = iconFile.startsWith('http')
-      ? iconFile
-      : `${backendUrl}/app_asset/icon/data_bencana/${iconFile}`
-    return new Style({
-      image: new Icon({
-        src: src,
-        scale: 0.8,
-      }),
-    })
-  }
-  return new Style({
-    image: new CircleStyle({
-      radius: 7.5,
-      fill: new Fill({ color: pinColor(totalKorban) }),
-      stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
-    }),
-  })
+const choroplethColor = (count: number, opacity: number = 0.82) => {
+  if (count === 0) return `rgba(241, 245, 249, ${opacity * 0.5})`
+  if (count <= 25) return `rgba(234, 179, 8, ${opacity})`        // Kuning (1 - 25)
+  if (count <= 75) return `rgba(249, 115, 22, ${opacity})`       // Oranye (26 - 75)
+  if (count <= 200) return `rgba(239, 68, 68, ${opacity})`       // Coral Red (76 - 200)
+  return `rgba(185, 28, 28, ${opacity})`                         // Deep Crimson Red (> 200)
 }
 
 const BASEMAP_SOURCES = {
@@ -200,7 +199,19 @@ const BASEMAP_SOURCES = {
 }
 
 const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapEngine(
-  { markers, wilayahList = [], bmkgGempas = [], layers, initialCenter, initialZoom, onSelectMarker },
+  {
+    markers,
+    faskesList = [],
+    poskoList = [],
+    earthquakePoints = [],
+    routeCoords = [],
+    wilayahList = [],
+    bmkgGempas = [],
+    layers,
+    initialCenter,
+    initialZoom,
+    onSelectMarker,
+  },
   ref
 ) {
   const mapRef = useRef<HTMLDivElement | null>(null)
@@ -221,31 +232,32 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
   const bnpbLongsorRef = useRef<TileLayer<any> | null>(null)
   const bnpbKarhutlaRef = useRef<TileLayer<any> | null>(null)
   const provinceLayerRef = useRef<VectorLayer<any> | null>(null)
+  const shakingZoneLayerRef = useRef<VectorLayer<any> | null>(null)
   const markerLayerRef = useRef<VectorLayer<any> | null>(null)
-  const gempaLayerRef = useRef<VectorLayer<any> | null>(null)
+  const faskesLayerRef = useRef<VectorLayer<any> | null>(null)
+  const poskoLayerRef = useRef<VectorLayer<any> | null>(null)
+  const earthquakeLayerRef = useRef<VectorLayer<any> | null>(null)
+  const routeLayerRef = useRef<VectorLayer<any> | null>(null)
   const windLayerRef = useRef<any>(null)
-  const pulseOverlaysRef = useRef<Overlay[]>([])
 
   // Expose flyTo, resetView & focusProvince methods to parent
   useImperativeHandle(ref, () => ({
-    flyTo: (lng: number, lat: number, zoom: number = 8.5) => {
+    flyTo: (lng: number, lat: number, zoom: number = 9) => {
       const map = mapInstanceRef.current
       if (!map) return
-      const view = map.getView()
-      view.animate({
+      map.getView().animate({
         center: fromLonLat([lng, lat]),
         zoom: zoom,
-        duration: 1500,
+        duration: 1200,
       })
     },
     resetView: () => {
       const map = mapInstanceRef.current
       if (!map) return
-      const view = map.getView()
-      view.animate({
+      map.getView().animate({
         center: fromLonLat(initialCenter || [118.0149, -2.5489]),
         zoom: initialZoom || 5.1,
-        duration: 1500,
+        duration: 1200,
       })
     },
     focusProvince: (provName: string | null) => {
@@ -255,7 +267,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         map.getView().animate({
           center: fromLonLat([118.0149, -2.5489]),
           zoom: 5.1,
-          duration: 1800,
+          duration: 1500,
         })
         return
       }
@@ -268,26 +280,25 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         if (geom) {
           map.getView().fit(geom.getExtent(), {
             padding: [140, 360, 80, 360],
-            duration: 1800,
+            duration: 1500,
             maxZoom: 8.5,
           })
           return
         }
       }
 
-      // Fallback: search markers in that province
       const provMarker = markers.find((m) => cleanKey(m.provinsi) === pKey && m.lat && m.lng)
       if (provMarker) {
         map.getView().animate({
           center: fromLonLat([provMarker.lng, provMarker.lat]),
           zoom: 7.5,
-          duration: 1800,
+          duration: 1500,
         })
       }
     },
   }))
 
-  // ── Sync Province Choropleth Styles ──
+  // ── Sync Province / Kabupaten Choropleth Styles ──
   const updateProvinceStyles = useCallback(() => {
     const layer = provinceLayerRef.current
     if (!layer) return
@@ -296,20 +307,37 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     if (Array.isArray(wilayahList) && wilayahList.length > 0) {
       wilayahList.forEach((w) => {
         const k = cleanKey(w.provinsi)
-        if (k) provCountMap.set(k, Number(w.count) || 0)
+        if (k) provCountMap.set(k, Number(w.count) || Number(w.total_korban) || 0)
       })
     } else if (Array.isArray(markers)) {
       markers.forEach((m) => {
-        const k = cleanKey(m.provinsi)
-        if (k) provCountMap.set(k, (provCountMap.get(k) || 0) + 1)
+        const k = cleanKey(m.kabupaten || m.provinsi)
+        if (k) provCountMap.set(k, (provCountMap.get(k) || 0) + (m.total_korban || 1))
       })
     }
 
     layer.setStyle((feature: any) => {
-      const provName = getFeatureName(feature)
-      const provKey = cleanKey(provName)
-      const count = provCountMap.get(provKey) || 0
-      return choroplethStyle(count, count > 0 ? String(count) : undefined)
+      const name = getFeatureName(feature)
+      const key = cleanKey(name)
+      const count = provCountMap.get(key) || 0
+      const baseColor = choroplethColor(count, 0.75)
+
+      return new Style({
+        fill: new Fill({ color: baseColor }),
+        stroke: new Stroke({
+          color: count > 0 ? '#047D78' : 'rgba(148, 163, 184, 0.4)',
+          width: count > 0 ? 1.8 : 0.8,
+        }),
+        text: count > 0 ? new OlText({
+          text: `${name}\n(${count})`,
+          font: 'bold 11px Roboto, sans-serif',
+          fill: new Fill({ color: '#ffffff' }),
+          stroke: new Stroke({ color: 'rgba(15, 23, 42, 0.85)', width: 3 }),
+          textAlign: 'center',
+          textBaseline: 'middle',
+          offsetY: 0,
+        }) : undefined,
+      })
     })
     layer.changed()
   }, [wilayahList, markers])
@@ -395,7 +423,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     })
     bnpbKarhutlaRef.current = bnpbKarhutla
 
-    // 3. Province Choropleth Layer
+    // 3. Province / Kabupaten Boundary Layer
     const provinceLayer = new VectorLayer({
       source: new VectorSource(),
       visible: layers.showChoropleth,
@@ -403,22 +431,52 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     })
     provinceLayerRef.current = provinceLayer
 
-    // 4. Disaster Marker Pins Layer
+    // 4. Isoseismal Shaking Rings Layer (Laut Flores M 7.4)
+    const shakingZoneLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 12,
+    })
+    shakingZoneLayerRef.current = shakingZoneLayer
+
+    // 5. Tactical Routing Line Layer
+    const routeLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 15,
+    })
+    routeLayerRef.current = routeLayer
+
+    // 6. Earthquake / Aftershock Bubble Layer
+    const earthquakeLayer = new VectorLayer({
+      source: new VectorSource(),
+      zIndex: 18,
+    })
+    earthquakeLayerRef.current = earthquakeLayer
+
+    // 7. Disaster Marker Pins Layer
     const markerLayer = new VectorLayer({
       source: new VectorSource(),
       visible: layers.showMarkers,
-      zIndex: 20,
+      zIndex: 22,
     })
     markerLayerRef.current = markerLayer
 
-    // 5. BMKG Earthquake Layer
-    const gempaLayer = new VectorLayer({
+    // 8. Faskes Markers Layer
+    const faskesLayer = new VectorLayer({
       source: new VectorSource(),
-      zIndex: 25,
+      visible: layers.showFaskes,
+      zIndex: 24,
     })
-    gempaLayerRef.current = gempaLayer
+    faskesLayerRef.current = faskesLayer
 
-    // Create Map
+    // 9. Posko Markers Layer
+    const poskoLayer = new VectorLayer({
+      source: new VectorSource(),
+      visible: layers.showPosko,
+      zIndex: 26,
+    })
+    poskoLayerRef.current = poskoLayer
+
+    // Create OpenLayers Map Instance
     const map = new OlMap({
       target: mapRef.current,
       layers: [
@@ -431,12 +489,16 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         bnpbLongsor,
         bnpbKarhutla,
         provinceLayer,
+        shakingZoneLayer,
+        routeLayer,
+        earthquakeLayer,
         markerLayer,
-        gempaLayer,
+        faskesLayer,
+        poskoLayer,
       ],
       view: new View({
-        center: fromLonLat(initialCenter || [118.0149, -2.5489]), // Indonesia Center or Scoped Location
-        zoom: initialZoom || 5.1,
+        center: fromLonLat(initialCenter || [121.8, -8.55]),
+        zoom: initialZoom || 8.5,
         minZoom: 4,
         maxZoom: 18,
       }),
@@ -449,7 +511,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
 
     mapInstanceRef.current = map
 
-    // Load GeoJSON boundaries (prioritize available static indonesia-provinces.geojson)
+    // Load GeoJSON Boundaries (prioritize NTT kabupaten, fallback to Indonesia)
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
     const loadGeoJsonFeatures = (geoData: any) => {
       if (!geoData || !provinceLayerRef.current) return
@@ -465,67 +527,57 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         source?.addFeatures(features)
         updateProvinceStyles()
       } catch (err) {
-        console.error('[TV Map] Error parsing GeoJSON features:', err)
+        console.error('[TV Map] Error parsing GeoJSON:', err)
       }
     }
 
-    // 1. Try local available static GeoJSON
-    fetch(`${basePath}/indonesia-provinces.geojson`)
+    fetch(`${basePath}/data/geojson/ntt-kabupaten.geojson`)
       .then((res) => {
-        if (!res.ok) throw new Error('Static GeoJSON not found, fallback to API')
+        if (!res.ok) throw new Error('NTT GeoJSON not found')
         return res.json()
       })
-      .then((data) => {
-        loadGeoJsonFeatures(data)
-      })
+      .then(loadGeoJsonFeatures)
       .catch(() => {
-        // 2. Fallback to API route
-        fetch(`${basePath}/api/wilayah-geojson?level=provinsi`)
-          .then((res) => res.json())
-          .then((data) => {
-            loadGeoJsonFeatures(data?.geojson || data)
-          })
-          .catch((e) => console.error('[TV Map] GeoJSON load error:', e))
+        fetch(`${basePath}/indonesia-provinces.geojson`)
+          .then((r) => r.json())
+          .then(loadGeoJsonFeatures)
+          .catch((e) => console.warn('[TV Map] Boundary fallback:', e))
       })
 
-    // Handle Map Click
+    // Map Click Interaction: Select feature and trigger bottom card
     map.on('click', (evt) => {
+      let found = false
       map.forEachFeatureAtPixel(evt.pixel, (feature) => {
+        if (found) return
+
         const markerData = feature.get('markerData')
+        const itemType = feature.get('itemType') || 'disaster'
+
         if (markerData) {
-          onSelectMarkerRef.current?.(markerData)
+          found = true
+          onSelectMarkerRef.current?.(markerData, itemType)
         }
       })
     })
 
-    // 6. Setup Windy Layer via npm ol-wind (async fetch GFS data)
+    // Setup Windy Layer (GFS)
     async function initWindy() {
       try {
-        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
         const res = await fetch(`${basePath}/api/gfs`)
         if (!res.ok) return
         const windData = await res.json()
-        const baseVelocity = 0.01
         const windLayer = new WindLayer(windData as any, {
           windOptions: {
-            velocityScale: baseVelocity,
-            paths: 1200,
+            velocityScale: 0.012,
+            paths: 1400,
             colorScale: [
               'rgb(15,60,140)',
-              'rgb(30,100,155)',
               'rgb(70,150,145)',
               'rgb(85,160,115)',
-              'rgb(130,180,110)',
-              'rgb(175,200,140)',
               'rgb(215,195,60)',
-              'rgb(205,160,45)',
               'rgb(210,125,35)',
-              'rgb(200,95,20)',
-              'rgb(195,70,15)',
               'rgb(185,35,10)',
-              'rgb(170,18,8)',
               'rgb(155,8,12)',
-              'rgb(115,0,18)',
             ],
             lineWidth: 2,
             generateParticleOption: true,
@@ -544,7 +596,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         map.addLayer(windLayer as any)
         windLayerRef.current = windLayer as any
       } catch (err) {
-        console.warn('[TvMapEngine] Windy Layer load error (optional):', err)
+        console.warn('[TvMapEngine] Windy load error:', err)
       }
     }
     void initWindy()
@@ -552,9 +604,6 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     return () => {
       map.setTarget(undefined)
       mapInstanceRef.current = null
-      pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
-      pulseOverlaysRef.current = []
-
       if (windLayerRef.current) {
         destroyWindLayerSafely(windLayerRef.current)
         windLayerRef.current = null
@@ -562,36 +611,13 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     }
   }, [])
 
-  // ── Sync Windy Layer state ──
-  useEffect(() => {
-    const wl = windLayerRef.current
-    if (wl) {
-      wl.setVisible(layers.showWindy)
-      try {
-        if (layers.showWindy) {
-          if (typeof wl.start === 'function') {
-            wl.start()
-          }
-        } else {
-          if (typeof wl.stop === 'function') {
-            wl.stop()
-          }
-        }
-      } catch (e) {}
-      try {
-        mapInstanceRef.current?.renderSync?.()
-      } catch {}
-    }
-  }, [layers.showWindy])
-
-  // ── Sync Basemap ──
+  // ── Sync Basemap & BNPB Layers ──
   useEffect(() => {
     if (baseMapLayerRef.current) {
       baseMapLayerRef.current.setSource(BASEMAP_SOURCES[layers.baseMap] || BASEMAP_SOURCES.osm)
     }
   }, [layers.baseMap])
 
-  // ── Sync BNPB Layers ──
   useEffect(() => {
     bnpbAdminRef.current?.setVisible(layers.bnpbAdmin)
     bnpbHillshadeRef.current?.setVisible(layers.bnpbHillshade)
@@ -602,20 +628,36 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     bnpbKarhutlaRef.current?.setVisible(layers.bnpbKarhutla)
     provinceLayerRef.current?.setVisible(layers.showChoropleth)
     markerLayerRef.current?.setVisible(layers.showMarkers)
+    faskesLayerRef.current?.setVisible(layers.showFaskes)
+    poskoLayerRef.current?.setVisible(layers.showPosko)
   }, [layers])
 
-  // ── Re-apply Choropleth when wilayahList or markers change ──
+  // ── Sync Windy Layer ──
+  useEffect(() => {
+    const wl = windLayerRef.current
+    if (wl) {
+      wl.setVisible(layers.showWindy)
+      try {
+        if (layers.showWindy) {
+          if (typeof wl.start === 'function') wl.start()
+        } else {
+          if (typeof wl.stop === 'function') wl.stop()
+        }
+      } catch {}
+      try { mapInstanceRef.current?.renderSync?.() } catch {}
+    }
+  }, [layers.showWindy])
+
+  // ── Re-apply Choropleth ──
   useEffect(() => {
     updateProvinceStyles()
   }, [updateProvinceStyles])
 
-  // ── Sync Disaster Markers (Using EOC API marker styles & icon_file) ──
+  // ── 1. Disaster Markers (All 8 affected kabupaten in NTT) ──
   useEffect(() => {
     const layer = markerLayerRef.current
-    if (!layer) return
-    const source = layer.getSource()
+    const source = layer?.getSource()
     if (!source) return
-
     source.clear()
 
     const features: Feature[] = []
@@ -624,65 +666,265 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
 
       const feat = new Feature({
         geometry: new Point(fromLonLat([m.lng, m.lat])),
-        markerData: m,
+        markerData: { ...m, type: 'disaster' },
+        itemType: 'disaster',
       })
 
-      feat.setStyle(getMarkerStyle(m.icon_file, m.total_korban || 0))
+      const totalK = m.total_korban || (m.meninggal || 0) + (m.luka || 0) || 0
+      const pinFill = totalK > 50 ? '#dc2626' : totalK > 10 ? '#ea580c' : '#047D78'
+
+      feat.setStyle(
+        new Style({
+          image: new CircleStyle({
+            radius: 9,
+            fill: new Fill({ color: pinFill }),
+            stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
+          }),
+          text: new OlText({
+            text: m.kabupaten || m.nama || 'Bencana',
+            font: 'bold 11px Roboto, sans-serif',
+            fill: new Fill({ color: '#0f172a' }),
+            stroke: new Stroke({ color: '#ffffff', width: 3 }),
+            offsetY: -16,
+          }),
+        })
+      )
       features.push(feat)
     })
 
     source.addFeatures(features)
   }, [markers])
 
-  // ── Sync BMKG Earthquakes with Pulse Rings ──
+  // ── 2. Isoseismal Shaking Rings & Pulse on M 7.4 Epicenter ──
   useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map) return
+    const layer = shakingZoneLayerRef.current
+    const source = layer?.getSource()
+    if (!source) return
+    source.clear()
 
-    // Clear old overlays
-    pulseOverlaysRef.current.forEach((o) => map.removeOverlay(o))
-    pulseOverlaysRef.current = []
+    // Epicenter of Laut Flores Gempa (lat: -8.3421, lng: 122.9814)
+    const epicCenter = fromLonLat([122.9814, -8.3421])
 
-    const gempaLayer = gempaLayerRef.current
-    const source = gempaLayer?.getSource()
-    source?.clear()
+    // Outer Shaking Zone Circle (~65 km)
+    const outerCircle = new Feature({
+      geometry: new CircleGeom(epicCenter, 65000),
+    })
+    outerCircle.setStyle(
+      new Style({
+        fill: new Fill({ color: 'rgba(220, 38, 38, 0.06)' }),
+        stroke: new Stroke({
+          color: 'rgba(220, 38, 38, 0.75)',
+          width: 2,
+          lineDash: [6, 6],
+        }),
+      })
+    )
 
-    bmkgGempas.slice(0, 5).forEach((gempa) => {
-      if (!gempa.Coordinates) return
-      const [latStr, lngStr] = gempa.Coordinates.split(',')
-      const lat = parseFloat(latStr)
-      const lng = parseFloat(lngStr)
-      if (isNaN(lat) || isNaN(lng)) return
+    // Inner Severe Zone Circle (~28 km)
+    const innerCircle = new Feature({
+      geometry: new CircleGeom(epicCenter, 28000),
+    })
+    innerCircle.setStyle(
+      new Style({
+        fill: new Fill({ color: 'rgba(220, 38, 38, 0.12)' }),
+        stroke: new Stroke({
+          color: '#dc2626',
+          width: 2,
+        }),
+      })
+    )
 
-      const mag = parseFloat(gempa.Magnitude) || 5.0
+    // Epicenter Marker Point
+    const epicPoint = new Feature({
+      geometry: new Point(epicCenter),
+      markerData: {
+        type: 'earthquake',
+        nama: 'Episentrum Gempa Utama M 7.4 Laut Flores',
+        magnitude: 7.4,
+        depth: 12,
+        place: 'Laut Flores - 112 km Barat Laut Larantuka',
+        time: '09:18 WIB (15 Ags 2026)',
+        mmi: 'VII-VIII MMI',
+        lat: -8.3421,
+        lng: 122.9814,
+      },
+      itemType: 'earthquake',
+    })
+    epicPoint.setStyle(
+      new Style({
+        image: new CircleStyle({
+          radius: 11,
+          fill: new Fill({ color: '#dc2626' }),
+          stroke: new Stroke({ color: '#ffffff', width: 3 }),
+        }),
+        text: new OlText({
+          text: '★ EPISENTRUM M 7.4',
+          font: 'bold 12px Roboto, sans-serif',
+          fill: new Fill({ color: '#991b1b' }),
+          stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
+          offsetY: -18,
+        }),
+      })
+    )
 
-      // Create DOM Pulse element
-      const pulseEl = document.createElement('div')
-      pulseEl.className = 'pointer-events-none'
-      pulseEl.innerHTML = `
-        <div class="relative flex h-16 w-16 items-center justify-center -translate-x-1/2 -translate-y-1/2">
-          <div class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-60"></div>
-          <div class="relative inline-flex items-center justify-center rounded-full h-7 w-7 bg-orange-600 border border-white text-white font-mono font-black text-[9px] shadow-lg">
-            ${mag.toFixed(1)}
-          </div>
-        </div>
-      `
+    source.addFeatures([outerCircle, innerCircle, epicPoint])
+  }, [])
 
-      const overlay = new Overlay({
-        element: pulseEl,
-        position: fromLonLat([lng, lat]),
-        positioning: 'center-center',
-        stopEvent: false,
+  // ── 3. Earthquake Aftershocks Bubble Dots ──
+  useEffect(() => {
+    const layer = earthquakeLayerRef.current
+    const source = layer?.getSource()
+    if (!source) return
+    source.clear()
+
+    const features: Feature[] = []
+    earthquakePoints.forEach((eq, idx) => {
+      if (eq.isMainshock) return // handled by shakingZoneLayer
+      const pt = fromLonLat([eq.lng, eq.lat])
+      const feat = new Feature({
+        geometry: new Point(pt),
+        markerData: { ...eq, type: 'earthquake' },
+        itemType: 'earthquake',
       })
 
-      map.addOverlay(overlay)
-      pulseOverlaysRef.current.push(overlay)
+      const mag = Number(eq.magnitude || 4.5)
+      const radius = Math.max(6, (mag - 3) * 3)
+
+      feat.setStyle(
+        new Style({
+          image: new CircleStyle({
+            radius: radius,
+            fill: new Fill({ color: mag >= 5.5 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(245, 158, 11, 0.85)' }),
+            stroke: new Stroke({ color: '#ffffff', width: 1.5 }),
+          }),
+          text: new OlText({
+            text: `M ${mag.toFixed(1)}`,
+            font: 'bold 9.5px Roboto, sans-serif',
+            fill: new Fill({ color: '#7c2d12' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
+            offsetY: -12,
+          }),
+        })
+      )
+      features.push(feat)
     })
-  }, [bmkgGempas])
+
+    source.addFeatures(features)
+  }, [earthquakePoints])
+
+  // ── 4. Faskes Markers (RSUD & Puskesmas NTT with Triage) ──
+  useEffect(() => {
+    const layer = faskesLayerRef.current
+    const source = layer?.getSource()
+    if (!source) return
+    source.clear()
+
+    const features: Feature[] = []
+    faskesList.forEach((f) => {
+      if (!f.lat || !f.lng) return
+
+      const feat = new Feature({
+        geometry: new Point(fromLonLat([f.lng, f.lat])),
+        markerData: { ...f, type: 'faskes' },
+        itemType: 'faskes',
+      })
+
+      const hasMerah = Number(f.triase_merah || 0) > 0
+      const pFill = hasMerah ? '#e11d48' : '#059669'
+
+      feat.setStyle(
+        new Style({
+          image: new CircleStyle({
+            radius: 8,
+            fill: new Fill({ color: pFill }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 }),
+          }),
+          text: new OlText({
+            text: `🏥 ${f.nama_rs || f.nama || 'RSUD'}`,
+            font: 'bold 10.5px Roboto, sans-serif',
+            fill: new Fill({ color: '#065f46' }),
+            stroke: new Stroke({ color: '#ffffff', width: 3 }),
+            offsetY: 14,
+          }),
+        })
+      )
+      features.push(feat)
+    })
+
+    source.addFeatures(features)
+  }, [faskesList])
+
+  // ── 5. Posko Markers ──
+  useEffect(() => {
+    const layer = poskoLayerRef.current
+    const source = layer?.getSource()
+    if (!source) return
+    source.clear()
+
+    const features: Feature[] = []
+    poskoList.forEach((p) => {
+      const lat = p.latitude || p.lat
+      const lng = p.longitude || p.lng
+      if (!lat || !lng) return
+
+      const feat = new Feature({
+        geometry: new Point(fromLonLat([lng, lat])),
+        markerData: { ...p, type: 'posko', lat, lng },
+        itemType: 'posko',
+      })
+
+      feat.setStyle(
+        new Style({
+          image: new CircleStyle({
+            radius: 7,
+            fill: new Fill({ color: '#0284c7' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 }),
+          }),
+          text: new OlText({
+            text: `⛺ ${p.nama_pos || p.nama || 'Posko'}`,
+            font: 'bold 10px Roboto, sans-serif',
+            fill: new Fill({ color: '#0369a1' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
+            offsetY: 13,
+          }),
+        })
+      )
+      features.push(feat)
+    })
+
+    source.addFeatures(features)
+  }, [poskoList])
+
+  // ── 6. Tactical Route Polyline ──
+  useEffect(() => {
+    const layer = routeLayerRef.current
+    const source = layer?.getSource()
+    if (!source) return
+    source.clear()
+
+    if (!Array.isArray(routeCoords) || routeCoords.length < 2) return
+
+    const transformedCoords = routeCoords.map((c) => fromLonLat([c[0], c[1]]))
+    const routeLine = new Feature({
+      geometry: new LineString(transformedCoords),
+    })
+
+    // Glowing cyan/emerald tactical route stroke
+    routeLine.setStyle(
+      new Style({
+        stroke: new Stroke({
+          color: '#10b981',
+          width: 4.5,
+        }),
+      })
+    )
+
+    source.addFeature(routeLine)
+  }, [routeCoords])
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#a5def3] overflow-hidden">
-      <div ref={mapRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+    <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#fbffff]">
+      <div ref={mapRef} className="w-full h-full" />
     </div>
   )
 })

@@ -13,13 +13,18 @@ import {
 } from 'lucide-react'
 
 export interface FaskesItem {
-  nama_rs: string
+  id?: string
+  nama_rs?: string
+  nama_faskes?: string
+  nama?: string
   kabupaten: string
+  kecamatan?: string
   triase_merah?: number
   triase_kuning?: number
   triase_hijau?: number
   triase_hitam?: number
   total?: number
+  total_pasien?: number
   lat?: number
   lng?: number
   status?: string
@@ -51,7 +56,7 @@ export default function TvLiveFeedDeck({
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
     return (
-      String(f.nama_rs || '').toLowerCase().includes(q) ||
+      String(f.nama_rs || f.nama_faskes || f.nama || '').toLowerCase().includes(q) ||
       String(f.kabupaten || '').toLowerCase().includes(q)
     )
   })
@@ -148,7 +153,7 @@ export default function TvLiveFeedDeck({
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-slate-900 group-hover:text-emerald-800 truncate">
-                            {faskes.nama_rs}
+                            {faskes.nama_rs || faskes.nama_faskes || faskes.nama || 'RSUD Rujukan'}
                           </h4>
                           <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5 font-medium">
                             <MapPin className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
