@@ -26,15 +26,15 @@ services:
       API_INDONESIA_KEY: ${API_INDONESIA_KEY:?API_INDONESIA_KEY is required}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
       GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:?GOOGLE_AI_API_KEY is required}
-    expose:
-      - "3000"
+    # expose:
+    #   - "3000"
     ports:
       - "3004:3000"  
     volumes:
       - dashboard-eoc-ai-node-modules-v2:/app/node_modules
       - ./data/ntt:/app/public/data/ntt:ro
-    networks:
-      - proxy
+    # networks:
+    #   - proxy
     restart: unless-stopped
 
   ntt-collector:
@@ -52,10 +52,10 @@ services:
       - ./data/ntt:/data
     restart: unless-stopped
 
-networks:
-  proxy:
-    name: ${PROXY_NETWORK:-proxynet}
-    external: true
+# networks:
+#   proxy:
+#     name: ${PROXY_NETWORK:-proxynet}
+#     external: true
 
 volumes:
   dashboard-eoc-ai-node-modules-v2:
