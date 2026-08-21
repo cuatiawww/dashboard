@@ -14,10 +14,10 @@ stages:
   - docker compose -f docker-compose.yml up -d --build
   - docker image prune -f
 
-deploy-staging:
+deploy-live:
   stage: deploy
   tags:
-    - deploy
+    - build
   only:
     - main
   variables:
