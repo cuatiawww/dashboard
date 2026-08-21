@@ -26,7 +26,9 @@ export default function AppShell({ children }: AppShellProps) {
     pathname === '/tv' ||
     pathname?.startsWith('/tv/') ||
     pathname === '/dashboard-eoc/tv' ||
-    pathname?.startsWith('/dashboard-eoc/tv')
+    pathname?.startsWith('/dashboard-eoc/tv') ||
+    pathname?.endsWith('/tv') ||
+    pathname?.includes('/tv/')
 
   useEffect(() => {
     initialize()

@@ -50,7 +50,8 @@ import {
   Search,
   Filter,
   ArrowUpDown,
-  X
+  X,
+  Tv
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
@@ -3593,9 +3594,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       {/* Map & Chronology Card (Full Width) */}
       <article id="peta-detail" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)] space-y-5">
         <div>
-          <h4 className="text-xl sm:text-2xl font-black text-slate-900 border-b border-slate-100 pb-2 mb-1">
-            Pemetaan Spasial Kejadian Bencana - {displayRegion}
-          </h4>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-2 mb-1">
+            <h4 className="text-xl sm:text-2xl font-black text-slate-900">
+              Pemetaan Spasial Kejadian Bencana - {displayRegion}
+            </h4>
+            <a
+              href="/dashboard-eoc/gempa-ntt/tv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white hover:from-teal-900 hover:to-emerald-900 text-xs sm:text-sm font-black shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 border border-teal-500/30 self-start sm:self-auto shrink-0"
+              title="Buka Mode Layar TV / Video Wall Command Center Pemantauan Khusus Bencana NTT"
+            >
+              <Tv className="h-4 w-4 text-emerald-400 animate-pulse" />
+              <span>Pemantauan TV EOC</span>
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 uppercase tracking-wider border border-emerald-400/30">
+                PROV. NTT
+              </span>
+            </a>
+          </div>
           <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
             Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
           </p>

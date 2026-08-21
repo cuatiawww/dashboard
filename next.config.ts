@@ -24,8 +24,20 @@ const nextConfig: NextConfig = {
           destination: '/dashboard-eoc/gempa-ntt',
         },
         {
+          source: '/dashboard-eoc/gempa_ntt/tv',
+          destination: '/dashboard-eoc/gempa-ntt/tv',
+        },
+        {
           source: '/gempa_ntt',
           destination: '/gempa-ntt',
+        },
+        {
+          source: '/gempa_ntt/tv',
+          destination: '/dashboard-eoc/gempa-ntt/tv',
+        },
+        {
+          source: '/gempa-ntt/tv',
+          destination: '/dashboard-eoc/gempa-ntt/tv',
         },
         {
           source: '/detail-kejadian/:jenis/:id',
