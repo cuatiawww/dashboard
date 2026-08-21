@@ -44,7 +44,7 @@ next-env.d.ts
 
 # docker
 docker-compose.yml
-Dockerfile
+# Dockerfile
 
 # NTT collector runtime data
 /data/ntt/*.csv
