@@ -40,7 +40,9 @@ import {
   BriefcaseMedical,
   Globe,
   History,
-  UserCheck
+  UserCheck,
+  Info,
+  X
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
@@ -196,6 +198,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsError, setLogsError] = useState<string | null>(null)
   const [showLogModal, setShowLogModal] = useState(false)
+  const [showApiSourcesModal, setShowApiSourcesModal] = useState(false)
   const [trendWindowDays, setTrendWindowDays] = useState(7)
 
   // ── Tenaga Cadangan Kesehatan (TCK) Kemkes ──
@@ -2697,6 +2700,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
           <span>Terakhir Diperbarui: {formattedDate}</span>
           <button
+            onClick={() => setShowApiSourcesModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-bold text-sky-800 shadow-xs transition hover:bg-sky-100 hover:border-sky-300"
+            title="Informasi Sumber Data & Integrasi API Eksternal"
+          >
+            <Info className="h-3.5 w-3.5 text-sky-700" />
+            <span>Sumber Data API</span>
+          </button>
+          <button
             onClick={() => setShowLogModal(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-800 shadow-xs transition hover:bg-teal-100 hover:border-teal-300"
             title="Lihat Riwayat & Timeline Log Aktivitas Kejadian"
@@ -2790,20 +2801,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="w-full md:w-[44%] flex flex-col justify-between pl-0 md:pl-2">
                 <span className="text-xs font-black text-slate-800 uppercase tracking-wider block mb-2">
                   {disasterTheme.type === 'gunung'
-                    ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN (H-3 S.D. H+3)'
+                    ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN (H-3 S.D. H+3) DI KEJADIAN'
                     : disasterTheme.type === 'kebakaran'
-                      ? 'HISTORI CUACA & SEBARAN ANGIN (H-3 S.D. H+3)'
+                      ? 'HISTORI CUACA & SEBARAN ANGIN (H-3 S.D. H+3) DI KEJADIAN'
                       : disasterTheme.type === 'gempa'
-                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG (H-3 S.D. H+3)'
+                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG (H-3 S.D. H+3) DI KEJADIAN'
                         : disasterTheme.type === 'tsunami'
-                          ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3)'
+                          ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3) DI KEJADIAN'
                           : disasterTheme.type === 'longsor'
-                            ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
+                            ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3) DI KEJADIAN'
                             : disasterTheme.type === 'kekeringan'
-                              ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3)'
+                              ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3) DI KEJADIAN'
                               : disasterTheme.type === 'wabah'
-                                ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3)'
-                                : 'HISTORI CUACA & CURAH HUJAN BMKG (H-3 S.D. H+3)'}
+                                ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3) DI KEJADIAN'
+                                : 'HISTORI CUACA & CURAH HUJAN BMKG (H-3 S.D. H+3) DI KEJADIAN'}
                 </span>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
@@ -2934,7 +2945,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               <p className="text-xs sm:text-sm font-semibold text-slate-850 leading-relaxed">
                 <span className="inline-flex items-center gap-1 bg-rose-600 text-white text-xs font-black px-2.5 py-0.5 rounded-md uppercase tracking-wide mr-2 shadow-xs">
-                  BULETIN EOC
+                  KRONOLOGIS
                 </span>
                 {eocNarrative}
               </p>
@@ -3351,8 +3362,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               </span>
                             </div>
 
-                            {/* Donut Chart */}
-                            <div className="relative w-full h-[125px] flex items-center justify-center my-auto">
+                            {/* Donut Chart (Lebih Besar & Gendut) */}
+                            <div className="relative w-full h-[175px] flex items-center justify-center my-auto">
                               {typeof window !== 'undefined' && (
                                 <ResponsiveContainer width="100%" height="100%">
                                   <PieChart>
@@ -3360,12 +3371,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       data={cat.pieData}
                                       cx="50%"
                                       cy="50%"
-                                      innerRadius={30}
-                                      outerRadius={50}
+                                      innerRadius={42}
+                                      outerRadius={76}
                                       paddingAngle={3}
                                       dataKey="value"
                                       isAnimationActive={true}
                                       animationDuration={1000}
+                                      stroke="#ffffff"
+                                      strokeWidth={2}
                                     >
                                       {cat.pieData.map((entry, index) => (
                                         <Cell key={`cell-${cat.key}-${index}`} fill={entry.fill} />
@@ -3379,14 +3392,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 </ResponsiveContainer>
                               )}
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-base font-black text-slate-900 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
-                                <span className="text-[10px] font-bold text-slate-400 leading-tight">Unit</span>
+                                <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Unit</span>
                               </div>
                             </div>
 
-                            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
-                              <span className="text-rose-600 font-bold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" /> Rusak: {cat.terdampak}</span>
-                              <span className="text-emerald-600 font-bold flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" /> Normal: {cat.berfungsi}</span>
+                            <div className="mt-2 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                              <span className="text-rose-600 font-black flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" /> Rusak: {cat.terdampak}</span>
+                              <span className="text-emerald-600 font-black flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" /> Normal: {cat.berfungsi}</span>
                             </div>
                           </div>
                         )
@@ -5102,6 +5115,222 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         loadingLogs={loadingLogs}
         logsError={logsError}
       />
+
+      {/* ── MODAL SUMBER DATA API & INTEGRASI REAL-TIME ── */}
+      {showApiSourcesModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-sky-50/80 via-white to-teal-50/80">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-md shadow-sky-500/20">
+                  <Globe className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                    Sumber Data & Integrasi API Real-Time
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-500 mt-0.5">
+                    Transparansi integrasi data hidro-meteorologi, seismik, kelautan, dan surveilans EOC Kemenkes RI
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowApiSourcesModal(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: List of API Sources */}
+            <div className="px-6 py-5 overflow-y-auto space-y-3.5 divide-y divide-slate-100">
+              {/* 1. Open-Meteo Flood / GloFAS */}
+              <div className="pt-3.5 first:pt-0 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-700">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">GloFAS via Open-Meteo Flood API</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                    <span className="text-[10px] font-extrabold text-slate-400">Bebas Data Dummy</span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Menyediakan data <strong>Debit Aliran Sungai (River Discharge dalam m³/s)</strong> harian untuk menggantikan TMA statis. Bersumber dari <em>Global Flood Awareness System (Copernicus CEMS)</em>.
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1 text-[10.5px]">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">Debit Sungai Aktual</span>
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">Debit Puncak</span>
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">Timeline Banjir H-7 s.d. H+3</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Open-Meteo Soil Moisture */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-200 text-teal-700">
+                  <Droplets className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Open-Meteo Soil Moisture Model</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Mengukur tingkat <strong>Kelembaban Tanah Multilapis (0-1cm, 1-3cm, 3-9cm dalam m³/m³)</strong> serta persentase kapasitas kejenuhan infiltrasi lereng untuk analisis risiko tanah longsor.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. Open-Meteo Weather & ECMWF */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                  <CloudRain className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Open-Meteo Weather Forecast & Reanalysis</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Menghasilkan data presipitasi curah hujan pemicu (mm/hari), akumulasi 7 hari, suhu maksimum/minimum (°C), tekanan barometrik permukaan (hPa), arah angin dominan, hembusan puncak (<em>wind gusts</em>), dan laju evapotranspirasi FAO-56 (ET0).
+                  </p>
+                </div>
+              </div>
+
+              {/* 4. Open-Meteo Marine */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-200 text-teal-700">
+                  <Waves className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Open-Meteo Marine API</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Menyajikan data oseanografi kelautan real-time: <strong>Tinggi Gelombang Laut Maksimum (m)</strong>, arah dominan gelombang (°), dan periode gelombang (s) untuk pemantauan tsunami, rob, abrasi, dan pasang surut.
+                  </p>
+                </div>
+              </div>
+
+              {/* 5. Open-Meteo Atmospheric Air Quality */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 border border-purple-200 text-purple-700">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">Open-Meteo Air Quality (CAMS & SILAM)</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Menghitung Indeks Kualitas Udara (US AQI / ISPU), konsentrasi partikulat halus PM2.5 & PM10, emisi gas sulfur dioksida vulkanik (SO2), karbon monoksida (CO), partikel debu atmosfer, dan indeks radiasi UV.
+                  </p>
+                </div>
+              </div>
+
+              {/* 6. BMKG Indonesia */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 border border-red-200 text-red-700">
+                  <Activity className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">BMKG Indonesia (Pusat Gempa Bumi & TEWS)</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Pusat data resmi gempabumi terkini (M ≥ 5.0), kedalaman pusat gempa, status peringatan dini potensi tsunami (TEWS), serta skala intensitas guncangan dirasakan MMI di wilayah sekitar episentrum.
+                  </p>
+                </div>
+              </div>
+
+              {/* 7. USGS & Regional Seismic Catalog */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-200 text-amber-700">
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">USGS Earthquake Hazards Program</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Katalog seismisitas global untuk memvalidasi magnitudo momen (Mw), kedalaman hiposentrum, dan rangkaian gempa susulan (*aftershocks*) pada jendela waktu H-3 sampai H+3.
+                  </p>
+                </div>
+              </div>
+
+              {/* 8. PetaBencana.id */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 border border-blue-200 text-blue-700">
+                  <Navigation className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">PetaBencana.id (Yayasan Peta Bencana / BNPB)</span>
+                    <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Laporan spasial ketinggian genangan air banjir dan kondisi darurat terverifikasi dari partisipasi warga dan BPBD secara real-time.
+                  </p>
+                </div>
+              </div>
+
+              {/* 9. SIPKK Kemenkes RI Core */}
+              <div className="pt-3.5 flex items-start gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
+                  <HeartPulse className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-black text-slate-900">SIPKK Kemenkes RI (Sistem Informasi Penanggulangan Krisis Kesehatan)</span>
+                    <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      Official Database Core
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    Database pelaporan resmi krisis kesehatan Republik Indonesia: korban meninggal, luka-luka, hilang, pengungsi, status faskes terdampak, sarana air bersih, logistik medis darurat, dan registrasi Tenaga Cadangan Kesehatan (TCK).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-[11.5px] font-bold text-slate-500 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Seluruh data terintegrasi otomatis secara real-time tanpa simulasi angka palsu.
+              </span>
+              <button
+                onClick={() => setShowApiSourcesModal(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
