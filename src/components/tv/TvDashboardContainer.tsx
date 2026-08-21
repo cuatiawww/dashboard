@@ -11,8 +11,9 @@ import TvLayerServicesDrawer, { TvLayerState } from './TvLayerServicesDrawer'
 import TvBottomTicker from './TvBottomTicker'
 import TvSpotlightCard from './TvSpotlightCard'
 import type { TvMapEngineRef } from './TvMapEngine'
+import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
-// Dynamically import TvMapEngine to prevent SSR issues
+// Dynamically import TvMapEngine & DisasterMap to prevent SSR issues
 const TvMapEngine = dynamic(() => import('./TvMapEngine'), {
   ssr: false,
   loading: () => (
@@ -21,6 +22,20 @@ const TvMapEngine = dynamic(() => import('./TvMapEngine'), {
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#047D78]" />
         <p className="text-sm font-black tracking-widest text-[#047D78] uppercase">
           Memuat Sistem Video Wall Command Center EOC...
+        </p>
+      </div>
+    </div>
+  ),
+})
+
+const DisasterMap = dynamic(() => import('../kejadian/DisasterMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-screen w-screen items-center justify-center bg-[#fbffff]">
+      <div className="text-center space-y-4">
+        <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#047D78]" />
+        <p className="text-sm font-black tracking-widest text-[#047D78] uppercase">
+          Memuat Peta Spasial EOC Gempa NTT...
         </p>
       </div>
     </div>
@@ -37,8 +52,8 @@ const DEFAULT_LAYERS: TvLayerState = {
   bnpbKepadatan: false,
   bnpbAdmin: false,
   showWindy: true,
-  showFaskes: false,
-  showPosko: false,
+  showFaskes: true,
+  showPosko: true,
   showTck: false,
   showChoropleth: true,
   showMarkers: true,
@@ -98,6 +113,9 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [penyakitList, setPenyakitList] = useState<any[]>([])
   const [faskesList, setFaskesList] = useState<any[]>([])
   const [kabupatenDetailList, setKabupatenDetailList] = useState<any[]>([])
+  const [earthquakePoints, setEarthquakePoints] = useState<any[]>([])
+  const [poskoList, setPoskoList] = useState<any[]>([])
+  const [tckList, setTckList] = useState<any[]>([])
   const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[] } | null>(null)
   const [peringatanDiniList, setPeringatanDiniList] = useState<any[]>([])
 
@@ -119,7 +137,33 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
     return recent.length > 0 ? recent : markers
   }, [markers])
 
-  // ── Data Fetching (Scoped strictly to 30 days back from Now) ──
+  // ── Prepare Faskes list with coordinates for DisasterMap ──
+  const faskesListForMap = useMemo(() => {
+    if (!isNttScope) return []
+    return faskesList.map((f: any) => ({
+      nama: f.nama_rs,
+      nama_faskes: f.nama_rs,
+      nama_rs: f.nama_rs,
+      jenis: 'Rumah Sakit',
+      jenis_faskes: 'Rumah Sakit',
+      kabupaten: f.kabupaten,
+      latitude: f.lat,
+      longitude: f.lng,
+      lat: f.lat,
+      lng: f.lng,
+      triase_merah: f.triase_merah || 0,
+      triase_kuning: f.triase_kuning || 0,
+      triase_hijau: f.triase_hijau || 0,
+      triase_hitam: f.triase_hitam || 0,
+      total_pasien: f.total || 0,
+      total: f.total || 0,
+      status: f.status || 'Siaga 24 Jam',
+      kondisi_bangunan: 'Normal',
+      fungsi_pelayanan: 'Beroperasi Penuh',
+    }))
+  }, [isNttScope, faskesList])
+
+  // ── Data Fetching ──
   const fetchData = useCallback(async () => {
     try {
       const now = new Date()
@@ -128,21 +172,46 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
       const endDate = formatYmd(now)
 
       if (isNttScope) {
-        // Fetch direct from official Scraped API for NTT Earthquake
+        // 1. Fetch direct from official Collector API (/dashboard-eoc/api/ntt-data & /api/ntt-data)
         let nttData: any = null
         try {
-          const nttRes = await fetch('/api/gempa-ntt-scraped')
+          const nttRes = await fetch('/dashboard-eoc/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
           if (nttRes.ok) {
             const nttJson = await nttRes.json()
-            if (nttJson.success && nttJson.data) {
-              nttData = nttJson.data
+            if (nttJson.success) {
+              nttData = nttJson.tables || nttJson.data
             }
           }
-        } catch (err) {
-          console.warn('[TV NTT] Failed to fetch /api/gempa-ntt-scraped:', err)
+        } catch {
+          try {
+            const nttRes2 = await fetch('/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
+            if (nttRes2.ok) {
+              const nttJson2 = await nttRes2.json()
+              if (nttJson2.success) {
+                nttData = nttJson2.tables || nttJson2.data
+              }
+            }
+          } catch (err2) {
+            console.warn('[TV NTT] Failed to fetch /api/ntt-data:', err2)
+          }
         }
 
-        const situasiList = Array.isArray(nttData?.situasi_kesehatan) ? nttData.situasi_kesehatan : []
+        // Fallback to scraped json if needed
+        if (!nttData) {
+          try {
+            const nttResScraped = await fetch('/api/gempa-ntt-scraped', { cache: 'no-store' })
+            if (nttResScraped.ok) {
+              const nttJsonScraped = await nttResScraped.json()
+              if (nttJsonScraped.success && nttJsonScraped.data) {
+                nttData = nttJsonScraped.data
+              }
+            }
+          } catch {
+            nttData = gempaNttData
+          }
+        }
+
+        const situasiList = Array.isArray(nttData?.situasi_kesehatan) ? nttData.situasi_kesehatan : (gempaNttData as any).situasi_kesehatan || []
         let sumMeninggal = 0
         let sumLuka = 0
         let sumPengungsi = 0
@@ -186,7 +255,8 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             { provinsi: 'Sikka', count: 55, total_korban: 61 },
             { provinsi: 'Ngada', count: 36, total_korban: 38 },
             { provinsi: 'Nagekeo', count: 22, total_korban: 35 },
-            { provinsi: 'Manggarai Barat', count: 6, total_korban: 8 }
+            { provinsi: 'Manggarai Barat', count: 6, total_korban: 8 },
+            { provinsi: 'Flores Timur', count: 44, total_korban: 44 }
           )
         }
 
@@ -212,6 +282,9 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
           hilang: 3,
           pengungsi: sumPengungsi,
           penduduk_terdampak: sumTerdampak,
+          magnitudo: '7.4',
+          kedalaman: '12 km',
+          skala_mmi: 'VII-VIII MMI',
           is_krisis: 1,
           tgl_kejadian: '2026-08-15 09:18:22 WIB',
         }
@@ -255,11 +328,11 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
               return {
                 nama_rs: r.nama_rs || def?.nama_rs || 'RSUD Rujukan',
                 kabupaten: r.kabupaten || def?.kabupaten || 'NTT',
-                triase_merah: r.triase_merah ?? def?.triase_merah ?? 0,
-                triase_kuning: r.triase_kuning ?? def?.triase_kuning ?? 0,
-                triase_hijau: r.triase_hijau ?? def?.triase_hijau ?? 0,
-                triase_hitam: r.triase_hitam ?? def?.triase_hitam ?? 0,
-                total: r.total ?? (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0)),
+                triase_merah: r.triase_merah !== undefined ? Number(r.triase_merah) : (def?.triase_merah || 0),
+                triase_kuning: r.triase_kuning !== undefined ? Number(r.triase_kuning) : (def?.triase_kuning || 0),
+                triase_hijau: r.triase_hijau !== undefined ? Number(r.triase_hijau) : (def?.triase_hijau || 0),
+                triase_hitam: r.triase_hitam !== undefined ? Number(r.triase_hitam) : (def?.triase_hitam || 0),
+                total: r.total !== undefined ? Number(r.total) : (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0)),
                 lat: def?.lat || -8.6,
                 lng: def?.lng || 121.5,
                 status: def?.status || 'Siaga 24 Jam',
@@ -312,76 +385,123 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
           { nama_penyakit: 'Triase Merah (Gawat Darurat)', count: totalTriaseMerah || 24 },
           { nama_penyakit: 'Triase Kuning (Rawat Intensif)', count: totalTriaseKuning || 82 },
           { nama_penyakit: 'Triase Hijau (Rawat Jalan)', count: totalTriaseHijau || 156 },
-          { nama_penyakit: 'ISPA & Debu Bangunan', count: 145 },
-          { nama_penyakit: 'Trauma Fisik & Luka', count: 98 },
+          { nama_penyakit: 'ISPA & Debu Reruntuhan', count: 145 },
+          { nama_penyakit: 'Trauma Fisik & Luka Robek', count: 98 },
         ])
+
+        // 2. Fetch real earthquake epicenter & aftershocks from Seismic API
+        let eqPoints: any[] = []
+        try {
+          const seismicRes = await fetch('/api/bencana-seismic?lat=-8.3421&lng=122.9814&date=2026-08-15&kabupaten=FLORES%20TIMUR&provinsi=NUSA%20TENGGARA%20TIMUR&magnitudo=7.4&kedalaman=12&mmi=VII-VIII')
+          if (seismicRes.ok) {
+            const seismicJson = await seismicRes.json()
+            if (seismicJson.success && Array.isArray(seismicJson.data?.earthquakeFeatures)) {
+              eqPoints = seismicJson.data.earthquakeFeatures
+            }
+          }
+        } catch (e) {
+          console.warn('[TV NTT] Failed to fetch /api/bencana-seismic:', e)
+        }
+
+        if (eqPoints.length === 0) {
+          eqPoints = [
+            { lat: -8.3421, lng: 122.9814, magnitude: 7.4, depth: 12, place: 'Laut Flores - 112 km Barat Laut Larantuka', time: '09:18 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 0, isMainshock: true, mmi: 'VII-VIII' },
+            { lat: -8.412, lng: 122.891, magnitude: 5.6, depth: 10, place: 'Laut Flores - 95 km Barat Laut Larantuka', time: '09:42 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 18, isMainshock: false },
+            { lat: -8.489, lng: 122.754, magnitude: 5.2, depth: 15, place: 'Laut Flores - 80 km Barat Laut Maumere', time: '10:15 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 34, isMainshock: false },
+            { lat: -8.312, lng: 122.612, magnitude: 4.8, depth: 10, place: 'Laut Flores - 72 km Utara Maumere', time: '11:04 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 42, isMainshock: false },
+            { lat: -8.541, lng: 120.781, magnitude: 5.4, depth: 14, place: 'Laut Flores - 45 km Utara Borong', time: '12:30 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 78, isMainshock: false },
+            { lat: -8.589, lng: 120.412, magnitude: 4.9, depth: 16, place: 'Laut Flores - 38 km Utara Ruteng', time: '14:22 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 92, isMainshock: false },
+            { lat: -8.621, lng: 121.312, magnitude: 4.7, depth: 10, place: 'Laut Flores - 28 km Utara Mbay', time: '16:05 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 65, isMainshock: false },
+            { lat: -8.712, lng: 120.912, magnitude: 4.5, depth: 12, place: 'Laut Flores - 32 km Utara Bajawa', time: '18:40 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 85, isMainshock: false },
+          ]
+        }
+        setEarthquakePoints(eqPoints)
+
+        // 3. Representative Posko Pengungsian NTT for Map
+        const defaultPoskoNtt = [
+          { id: 'p-1', nama: 'Posko Pengungsian Utama Aula Setda Manggarai Timur', nama_pos: 'Posko Pengungsian Utama Aula Setda', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', latitude: -8.8062, longitude: 120.6012, pengungsi: 4500, jiwa: 4500, kapasitas: 5000, pj_kontak: 'BPBD Manggarai Timur' },
+          { id: 'p-2', nama: 'Posko Lapangan Stadion Golodukal Ruteng', nama_pos: 'Posko Lapangan Stadion Golodukal', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', latitude: -8.6189, longitude: 120.4688, pengungsi: 3200, jiwa: 3200, kapasitas: 4000, pj_kontak: 'Dinas Sosial Manggarai' },
+          { id: 'p-3', nama: 'Posko Pengungsian Gedung Pemuda Maumere', nama_pos: 'Posko Pengungsian Gedung Pemuda', kabupaten: 'Sikka', kecamatan: 'Alok', latitude: -8.6231, longitude: 122.2189, pengungsi: 1200, jiwa: 1200, kapasitas: 2000, pj_kontak: 'BPBD Sikka' },
+          { id: 'p-4', nama: 'Posko Lapangan Marilonga Ende', nama_pos: 'Posko Lapangan Marilonga', kabupaten: 'Ende', kecamatan: 'Ende Tengah', latitude: -8.8432, longitude: 121.6591, pengungsi: 1800, jiwa: 1800, kapasitas: 2500, pj_kontak: 'Dinkes Ende' },
+          { id: 'p-5', nama: 'Posko Pengungsian Lapangan Berdikari Mbay', nama_pos: 'Posko Pengungsian Lapangan Berdikari', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', latitude: -8.6791, longitude: 121.2912, pengungsi: 2800, jiwa: 2800, kapasitas: 3500, pj_kontak: 'BPBD Nagekeo' },
+          { id: 'p-6', nama: 'Posko Pengungsian Lapangan Kartini Bajawa', nama_pos: 'Posko Pengungsian Lapangan Kartini', kabupaten: 'Ngada', kecamatan: 'Bajawa', latitude: -8.7912, longitude: 120.9689, pengungsi: 950, jiwa: 950, kapasitas: 1500, pj_kontak: 'Tagana Ngada' },
+          { id: 'p-7', nama: 'Posko Pengungsian Aula Paroki Larantuka', nama_pos: 'Posko Pengungsian Aula Paroki Larantuka', kabupaten: 'Flores Timur', kecamatan: 'Larantuka', latitude: -8.3445, longitude: 122.9867, pengungsi: 1450, jiwa: 1450, kapasitas: 2000, pj_kontak: 'BPBD Flores Timur' },
+        ]
+        setPoskoList(defaultPoskoNtt)
+
+        // 4. Fetch TCK Relawan
+        try {
+          const tckRes = await fetch('/api/tck-relawan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kd_prop: '53' }),
+          })
+          if (tckRes.ok) {
+            const tckJson = await tckRes.json()
+            if (tckJson.success && Array.isArray(tckJson.data)) {
+              setTckList(tckJson.data)
+            }
+          }
+        } catch (e) {
+          console.warn('[TV NTT] Failed to fetch TCK:', e)
+        }
 
         setSpotlightEvent(nttEventMarker)
       } else {
-        // 1. Fetch National Bencana Stats
-        const statsRes = await fetch(`/api/bencana-stats?start_date=${startDate}&end_date=${endDate}`)
-        if (statsRes.ok) {
-          const json = await statsRes.json()
-          const rawMarkers = Array.isArray(json.markers) ? json.markers : []
-          const rawWilayah = Array.isArray(json.wilayah) ? json.wilayah : []
-          const rawJenis = Array.isArray(json.jenis_bencana) ? json.jenis_bencana : []
-          const rawPenyakit = Array.isArray(json.penyakit) ? json.penyakit : []
+        // Mode Nasional: 30-day recent disaster feed
+        const [dashRes, bmkgRes, alertsRes] = await Promise.allSettled([
+          fetch(`/api/dashboard-utama?startDate=${startDate}&endDate=${endDate}`, { cache: 'no-store' }),
+          fetch('/api/bmkg-autogempa', { cache: 'no-store' }),
+          fetch('/api/bmkg-peringatan-dini', { cache: 'no-store' }),
+        ])
 
-          let totalBencana = json.summary?.total_bencana ?? rawMarkers.length
-          let totalKrisis = json.summary?.total_krisis ?? rawMarkers.filter((m: any) => m.is_krisis === 1).length
-          let totalMeninggal = json.summary?.total_meninggal ?? 0
-          let totalLuka = json.summary?.total_luka ?? 0
-          let totalHilang = json.summary?.total_hilang ?? 0
-          let totalPengungsi = json.summary?.total_pengungsi ?? 0
-          let totalTerdampak = json.summary?.total_terdampak ?? 0
+        if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+          const json = await dashRes.value.json()
+          if (json.success && json.data) {
+            const d = json.data
+            setSummary({
+              total_bencana: d.summary?.total_bencana || 0,
+              total_krisis: d.summary?.total_krisis || 0,
+              total_meninggal: d.summary?.total_meninggal || 0,
+              total_luka: d.summary?.total_luka || 0,
+              total_hilang: d.summary?.total_hilang || 0,
+              total_pengungsi: d.summary?.total_pengungsi || 0,
+              total_terdampak: d.summary?.total_terdampak || 0,
+            })
+            setMarkers(d.markers || [])
+            setJenisBencanaList(d.jenis_bencana || [])
+            setWilayahList(d.wilayah || [])
+            setPenyakitList(d.penyakit || [])
+          }
+        }
 
-          setSummary({
-            total_bencana: Number(totalBencana) || 0,
-            total_krisis: Number(totalKrisis) || 0,
-            total_meninggal: Number(totalMeninggal) || 0,
-            total_luka: Number(totalLuka) || 0,
-            total_hilang: Number(totalHilang) || 0,
-            total_pengungsi: Number(totalPengungsi) || 0,
-            total_terdampak: Number(totalTerdampak) || 0,
-          })
+        if (bmkgRes.status === 'fulfilled' && bmkgRes.value.ok) {
+          const json = await bmkgRes.value.json()
+          if (json.success && json.data) {
+            setBmkgData(json.data)
+          }
+        }
 
-          setMarkers(rawMarkers)
-          setJenisBencanaList(rawJenis)
-          setWilayahList(rawWilayah)
-          setPenyakitList(rawPenyakit)
+        if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
+          const json = await alertsRes.value.json()
+          if (json.success && Array.isArray(json.data)) {
+            setPeringatanDiniList(json.data)
+          }
         }
       }
-
-      // 2. Fetch BMKG Gempa
-      const bmkgRes = await fetch('/api/bmkg-gempa').catch(() => null)
-      if (bmkgRes && bmkgRes.ok) {
-        const bjson = await bmkgRes.json()
-        if (bjson?.data?.Infogempa) {
-          setBmkgData({
-            autogempa: bjson.data.Infogempa.gempa,
-            gempaterkini: bjson.data.Infogempa.gempaterkini || [],
-          })
-        }
-      }
-
-      // 3. Fetch Peringatan Dini
-      const ewsRes = await fetch('/api/peringatan-dini').catch(() => null)
-      if (ewsRes && ewsRes.ok) {
-        const ejson = await ewsRes.json()
-        if (Array.isArray(ejson?.data)) setPeringatanDiniList(ejson.data)
-      }
-    } catch (e) {
-      console.error('[TV Dashboard] Fetch error:', e)
+    } catch (err) {
+      console.error('[TV Dashboard Container] Fetch error:', err)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [isNttScope])
 
+  // Initial fetch
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // ── Auto Refresh Countdown Timer ──
+  // Auto Refresh Interval
   useEffect(() => {
     const timer = setInterval(() => {
       setRefreshCountdown((prev) => {
@@ -392,51 +512,31 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
   }, [fetchData])
 
-  // ── Auto Province Tour Engine (Every 30 Seconds) ──
+  // Auto Province Tour (National Mode Only)
   useEffect(() => {
-    if (!autoProvinceTour) return
-
-    const tourInterval = setInterval(() => {
-      const activeProvinces = wilayahList
-        .filter((w) => Number(w.count) > 0 && w.provinsi)
-        .map((w) => w.provinsi)
-
-      if (activeProvinces.length === 0) return
-
-      const idx = tourIndexRef.current % (activeProvinces.length + 1)
-      tourIndexRef.current += 1
-
-      if (idx === 0) {
-        setCurrentTourProvince(null)
-        mapEngineRef.current?.focusProvince(null)
-      } else {
-        const targetProv = activeProvinces[idx - 1]
-        setCurrentTourProvince(targetProv)
-        mapEngineRef.current?.focusProvince(targetProv)
+    if (!autoProvinceTour || wilayahList.length === 0 || isNttScope) return
+    const interval = setInterval(() => {
+      tourIndexRef.current = (tourIndexRef.current + 1) % wilayahList.length
+      const prov = wilayahList[tourIndexRef.current]
+      if (prov && prov.provinsi) {
+        setCurrentTourProvince(prov.provinsi)
+        mapEngineRef.current?.focusProvince(prov.provinsi)
       }
     }, PROVINCE_CYCLE_SECONDS * 1000)
+    return () => clearInterval(interval)
+  }, [autoProvinceTour, wilayahList, isNttScope])
 
-    return () => clearInterval(tourInterval)
-  }, [autoProvinceTour, wilayahList])
-
-  // ── Select Single Event Manually (Fly Directly to Exact Location) ──
-  const handleSelectEvent = (event: any) => {
-    if (!event) return
-    setSpotlightEvent(event)
-
-    const lng = parseFloat(String(event.lng ?? event.longitude ?? ''))
-    const lat = parseFloat(String(event.lat ?? event.latitude ?? ''))
-
-    if (!isNaN(lng) && !isNaN(lat) && lng !== 0 && lat !== 0) {
-      mapEngineRef.current?.flyTo(lng, lat, 10.5)
+  // ── Handlers ──
+  const handleSelectEvent = (item: any) => {
+    setSpotlightEvent(item)
+    if (item.longitude && item.latitude) {
+      mapEngineRef.current?.flyTo(Number(item.longitude), Number(item.latitude), 11)
     }
   }
 
-  // ── Select BMKG Gempa Manually ──
   const handleSelectGempa = (gempa: any) => {
     if (!gempa.Coordinates) return
     const [latStr, lngStr] = gempa.Coordinates.split(',')
@@ -491,17 +591,37 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#fbffff] text-slate-800 font-roboto select-none">
-      {/* ── 1. FULL-BLEED BACKGROUND MAP ENGINE (Pinned with 1-Month Recent Disasters) ── */}
-      <TvMapEngine
-        ref={mapEngineRef}
-        markers={mapPinMarkers}
-        wilayahList={wilayahList}
-        bmkgGempas={bmkgData?.gempaterkini || []}
-        layers={layers}
-        initialCenter={initialCenter}
-        initialZoom={initialZoom}
-        onSelectMarker={handleSelectEvent}
-      />
+      {/* ── 1. FULL-BLEED BACKGROUND MAP ENGINE (DisasterMap for NTT / TvMapEngine for National) ── */}
+      {isNttScope ? (
+        <div className="absolute inset-0 w-full h-full">
+          <DisasterMap
+            markers={markers}
+            userScope={{
+              mode: 'kabupaten',
+              provinsi: { label: 'NUSA TENGGARA TIMUR' },
+              kabupaten: { label: 'FLORES TIMUR' },
+            }}
+            isGuest={true}
+            isFloodEocMode={true}
+            faskesList={faskesListForMap}
+            poskoList={poskoList}
+            tckList={tckList}
+            disasterType="Gempa Bumi"
+            earthquakePoints={earthquakePoints}
+          />
+        </div>
+      ) : (
+        <TvMapEngine
+          ref={mapEngineRef}
+          markers={mapPinMarkers}
+          wilayahList={wilayahList}
+          bmkgGempas={bmkgData?.gempaterkini || []}
+          layers={layers}
+          initialCenter={initialCenter}
+          initialZoom={initialZoom}
+          onSelectMarker={handleSelectEvent}
+        />
+      )}
 
       {/* ── 2. TOP FLOATING HUD & CONTROLS ── */}
       <TvTopHud
@@ -536,7 +656,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onToggleCollapse={() => setIsKpiCollapsed(!isKpiCollapsed)}
       />
 
-      {/* ── 4. LEFT FLOATING THREAT & INCIDENT DECK ── */}
+      {/* ── 4. LEFT FLOATING THREAT & INCIDENT DECK (Situasi Faskes) ── */}
       <TvLiveFeedDeck
         markers={markers}
         bmkgData={bmkgData}
