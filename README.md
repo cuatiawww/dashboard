@@ -119,3 +119,30 @@ DEMO_LOGIN_PASSWORD=demo12345
 - Nama package sudah diarahkan ke `dashboard-puskes`.
 - Beberapa modul internal masih memakai penamaan lama `psc` karena masih terhubung ke struktur halaman dan endpoint existing.
 - Branding dan konfigurasi dasar bisa dirapikan bertahap tanpa harus langsung mengubah seluruh route/API.
+
+## Collector Data NTT
+
+Compose menjalankan service `ntt-collector` yang mengambil empat tabel publik dari
+`https://ntt.tanggap-bencana.go.id/` setiap 30 menit. Bagian Tim Pendukung Kesehatan
+tidak diproses.
+
+File hasil disimpan di `data/ntt/` sebagai backup lokal:
+
+```text
+2026-08-20_analisa_ringkasan_harian.csv
+2026-08-20_situasi_kesehatan.csv
+2026-08-20_pasien_rs.csv
+2026-08-20_pasien_puskesmas.csv
+manifest.json
+```
+
+API lokal Next.js membaca file tersebut:
+
+```text
+GET /dashboard-eoc/api/ntt-data
+GET /dashboard-eoc/api/ntt-data?tanggal=2026-08-20
+GET /dashboard-eoc/api/ntt-data?tanggal=2026-08-20&tabel=pasien_rs
+```
+
+Saat development, jalankan Next.js dengan `yarn dev` dan gunakan base path yang sama.
+Collector tetap dapat dijalankan melalui `docker compose up -d ntt-collector`.
