@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: '/dashboard-eoc/gempa_ntt',
+          destination: '/dashboard-eoc/gempa-ntt',
+        },
+        {
+          source: '/gempa_ntt',
+          destination: '/gempa-ntt',
+        },
+        {
           source: '/detail-kejadian/:jenis/:id',
           destination: '/',
         },
