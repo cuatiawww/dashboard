@@ -7,18 +7,18 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/dashboard-eoc}
-        NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL: ${NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
+        NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL: ${NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL:-http://sipkk-baru.test}
         NEXT_PUBLIC_MEDIA_MONITORING_URL: ${NEXT_PUBLIC_MEDIA_MONITORING_URL:-https://pusatkrisis.kemkes.go.id/dashboard-media}
         NEXT_PUBLIC_NLP_URL: ${NEXT_PUBLIC_NLP_URL:-https://pusatkrisis.kemkes.go.id/nlp/}
-        SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
-        SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:-}
+        SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-http://sipkk-baru.test}
+        SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:?SIPKK_DASHBOARD_TTOKEN is required}
     environment:
       NODE_ENV: production
-      SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:-}
-      SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-https://sipkk-new.mediaciptainformasi.co.id}
-      API_INDONESIA_KEY: ${API_INDONESIA_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      SIPKK_DASHBOARD_TTOKEN: ${SIPKK_DASHBOARD_TTOKEN:?SIPKK_DASHBOARD_TTOKEN is required}
+      SIPKK_BACKEND_BASE_URL: ${SIPKK_BACKEND_BASE_URL:-http://sipkk-baru.test}
+      API_INDONESIA_KEY: ${API_INDONESIA_KEY:?API_INDONESIA_KEY is required}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:?GOOGLE_AI_API_KEY is required}
       CAPTCHA_STORE: ${CAPTCHA_STORE:-memory}
       UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}

@@ -8,10 +8,10 @@ RUN npm ci
 COPY . .
 
 ARG NEXT_PUBLIC_BASE_PATH=
-ARG NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+ARG NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=http://sipkk-baru.test
 ARG NEXT_PUBLIC_MEDIA_MONITORING_URL=https://pusatkrisis.kemkes.go.id/dashboard-media
 ARG NEXT_PUBLIC_NLP_URL=https://pusatkrisis.kemkes.go.id/nlp/
-ARG SIPKK_BACKEND_BASE_URL=https://sipkk-new.mediaciptainformasi.co.id
+ARG SIPKK_BACKEND_BASE_URL=http://sipkk-baru.test
 ARG SIPKK_DASHBOARD_TTOKEN=
 RUN printf '%s\n' \
   "NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH" \
