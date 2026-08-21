@@ -1925,48 +1925,57 @@ export default function UnduhLaporanPage() {
     const barSvgHtml = renderSvgTopRegionsChart(sortedRegions, totalReports)
     const diseaseSvgHtml = renderSvgDiseaseSurveillanceChart()
 
+    // Helper: format AI paragraphs
+    const formatAiParagraphs = (raw: string) => {
+      if (!raw) return ''
+      return raw
+        .split(/\n\n+/)
+        .filter(Boolean)
+        .map(p => `<p style="margin-bottom: 12px; line-height: 1.7; text-align: justify; font-size: 13px; color: #1e293b;">${p.replace(/\n/g, '<br/>')}</p>`)
+        .join('')
+    }
+
     // Format AI Point Bullets
     const aiBulletsHtml = (aiData.poin_utama || []).map((pt: string) => {
-      // replace **title** with <b>title</b>
-      const formatted = pt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      return `<li style="margin-bottom: 12px; line-height: 1.6; text-align: justify;">${formatted}</li>`
+      const formatted = pt.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #047D78;">$1</strong>')
+      return `<li style="margin-bottom: 14px; line-height: 1.65; text-align: justify; font-size: 13px; color: #1e293b;">${formatted}</li>`
     }).join('')
 
     // Format Indikator Aktivitas Table Rows
     const indikatorRowsHtml = (aiData.aktivitas_indikator || []).map((ind: any) => {
-      let trenBadge = `<span style="background: #f0fdf4; color: #166534; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">${ind.tren}</span>`
+      let trenBadge = `<span style="background: #f0fdf4; color: #166534; padding: 3px 9px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #bbf7d0;">${ind.tren}</span>`
       if (ind.tren === 'Meningkat' || ind.tren === 'Waspada') {
-        trenBadge = `<span style="background: #fef2f2; color: #dc2626; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">${ind.tren}</span>`
+        trenBadge = `<span style="background: #fef2f2; color: #dc2626; padding: 3px 9px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #fecaca;">${ind.tren}</span>`
       } else if (ind.tren === 'Stabil' || ind.tren === 'Optimal') {
-        trenBadge = `<span style="background: #f0f9ff; color: #0284c7; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;">${ind.tren}</span>`
+        trenBadge = `<span style="background: #f0f9ff; color: #0284c7; padding: 3px 9px; border-radius: 4px; font-weight: bold; font-size: 10px; border: 1px solid #bae6fd;">${ind.tren}</span>`
       }
 
-      let levelBadge = `<span style="background: #e6f6f5; color: #047D78; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px;">${ind.level}</span>`
+      let levelBadge = `<span style="background: #e6f6f5; color: #047D78; padding: 3px 9px; border-radius: 4px; font-weight: 800; font-size: 10px; border: 1px solid #99f6e4;">${ind.level}</span>`
       if (ind.level.includes('Tinggi') || ind.level.includes('Darurat')) {
-        levelBadge = `<span style="background: #fef2f2; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-weight: 800; font-size: 10px;">${ind.level}</span>`
+        levelBadge = `<span style="background: #fef2f2; color: #b91c1c; padding: 3px 9px; border-radius: 4px; font-weight: 800; font-size: 10px; border: 1px solid #fecaca;">${ind.level}</span>`
       }
 
       return `
         <tr>
-          <td style="font-weight: 700; color: #0f172a; padding: 8px 10px; border: 1px solid #cbd5e1;">${ind.indikator}</td>
-          <td style="text-align: center; padding: 8px; border: 1px solid #cbd5e1;">${trenBadge}</td>
-          <td style="text-align: center; padding: 8px; border: 1px solid #cbd5e1;">${levelBadge}</td>
-          <td style="color: #334155; padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 11px;">${ind.keterangan}</td>
+          <td style="font-weight: 800; color: #0f172a; padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 11.5px;">${ind.indikator}</td>
+          <td style="text-align: center; padding: 9px 8px; border: 1px solid #cbd5e1;">${trenBadge}</td>
+          <td style="text-align: center; padding: 9px 8px; border: 1px solid #cbd5e1;">${levelBadge}</td>
+          <td style="color: #334155; padding: 9px 12px; border: 1px solid #cbd5e1; font-size: 11.5px; line-height: 1.5; text-align: justify;">${ind.keterangan}</td>
         </tr>
       `
     }).join('')
 
     // Format EMT Recommendations
     const emtRowsHtml = (aiData.rekomendasi_emt || []).map((emt: any) => `
-      <div style="background: #f8fafc; border-left: 4px solid #047D78; padding: 10px 14px; border-radius: 0 6px 6px 0; margin-bottom: 10px; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
-        <strong style="color: #047D78; font-size: 12px; text-transform: uppercase;">${emt.fase}</strong>
-        <p style="margin: 4px 0 0 0; font-size: 11.5px; color: #334155; line-height: 1.5;">${emt.tindakan}</p>
+      <div style="background: #f8fafc; border-left: 4px solid #047D78; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 12px; border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;">
+        <strong style="color: #047D78; font-size: 12.5px; text-transform: uppercase; display: block; margin-bottom: 4px; letter-spacing: 0.3px;">${emt.fase}</strong>
+        <p style="margin: 0; font-size: 12px; color: #334155; line-height: 1.6; text-align: justify;">${emt.tindakan}</p>
       </div>
     `).join('')
 
     // Format Public Health Advice
     const himbauanListHtml = (aiData.himbauan_masyarakat || []).map((h: string) => `
-      <li style="margin-bottom: 8px; line-height: 1.5; color: #334155;">${h}</li>
+      <li style="margin-bottom: 10px; line-height: 1.6; color: #334155; font-size: 12.5px; text-align: justify;">${h}</li>
     `).join('')
 
     const printWindow = window.open('', '_blank')
@@ -2178,6 +2187,27 @@ export default function UnduhLaporanPage() {
             color: #0f172a;
             margin: 20px 0 10px 0;
           }
+
+          .ai-analysis-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-left: 4px solid #047D78;
+            border-radius: 0 8px 8px 0;
+            padding: 14px 18px;
+            margin: 16px 0 20px 0;
+          }
+          .ai-badge {
+            display: inline-block;
+            background: #e6f6f5;
+            color: #047D78;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+          }
           
           /* KPI CARDS */
           .kpi-grid {
@@ -2253,17 +2283,6 @@ export default function UnduhLaporanPage() {
             background-color: #f8fafc;
           }
           
-          .quote-box {
-            border-left: 4px solid #047D78;
-            background: #f0fdfa;
-            padding: 10px 14px;
-            border-radius: 0 6px 6px 0;
-            font-style: italic;
-            font-size: 12px;
-            color: #0f766e;
-            margin: 14px 0;
-          }
-          
           /* Printing Media */
           @media print {
             body {
@@ -2278,7 +2297,7 @@ export default function UnduhLaporanPage() {
             }
             .main-layout {
               display: block !important;
-              min-height: auto !important;
+              max-width: 100% !important;
             }
             .content-area {
               padding: 0 !important;
@@ -2301,7 +2320,7 @@ export default function UnduhLaporanPage() {
               page-break-before: always !important;
               break-before: page !important;
             }
-            tr, .chart-box, .kpi-card, .coverage-box {
+            tr, .chart-box, .kpi-card, .coverage-box, .ai-analysis-card {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
             }
@@ -2342,7 +2361,8 @@ export default function UnduhLaporanPage() {
           <aside class="no-print sidebar-nav">
             <p class="sidebar-title">Contents</p>
             <nav class="sidebar-menu">
-              <button onclick="scrollToSection('sec-poin-utama')" class="nav-btn active" id="btn-sec-poin-utama">Poin utama</button>
+              <button onclick="scrollToSection('sec-ringkasan-eksekutif')" class="nav-btn active" id="btn-sec-ringkasan-eksekutif">Ringkasan Eksekutif</button>
+              <button onclick="scrollToSection('sec-poin-utama')" class="nav-btn" id="btn-sec-poin-utama">Poin Utama</button>
               <button onclick="scrollToSection('sec-pengawasan-kasus')" class="nav-btn" id="btn-sec-pengawasan-kasus">Laporan Pengawasan Kasus & Aktivitas</button>
               <button onclick="scrollToSection('sec-spasial-peta')" class="nav-btn" id="btn-sec-spasial-peta">Pemetaan Spasial & Peta Hotspot</button>
               <button onclick="scrollToSection('sec-surveilans-grafik')" class="nav-btn" id="btn-sec-surveilans-grafik">Surveilans Tren & Visualisasi</button>
@@ -2350,7 +2370,7 @@ export default function UnduhLaporanPage() {
               <button onclick="scrollToSection('sec-faskes-emt')" class="nav-btn" id="btn-sec-faskes-emt">Pengawasan Fasyankes & Tim Medis EMT</button>
               <button onclick="scrollToSection('sec-logistik')" class="nav-btn" id="btn-sec-logistik">Cakupan Logistik & Obat Darurat</button>
               <button onclick="scrollToSection('sec-metodologi')" class="nav-btn" id="btn-sec-metodologi">Metodologi dan Sumber Data</button>
-              <button onclick="scrollToSection('sec-latar-belakang')" class="nav-btn" id="btn-sec-latar-belakang">Informasi dan Latar Belakang</button>
+              <button onclick="scrollToSection('sec-latar-belakang')" class="nav-btn" id="btn-sec-latar-belakang">Informasi dan Landasan Kebijakan</button>
               <button onclick="scrollToSection('sec-himbauan')" class="nav-btn" id="btn-sec-himbauan">Himbauan Bagi Masyarakat Indonesia</button>
               <button onclick="scrollToSection('sec-kontak')" class="nav-btn" id="btn-sec-kontak">Kontak & Informasi Lebih Lanjut</button>
             </nav>
@@ -2362,19 +2382,14 @@ export default function UnduhLaporanPage() {
           <!-- Right Content Area (Official Executive Report) -->
           <main class="content-area">
             
-            <!-- DOCUMENT HEADER (MATCHING CONTOH-REFERENSI) -->
-            <div class="stat-resmi-badge">Statistik Resmi</div>
+            <!-- DOCUMENT HEADER -->
+            <div class="stat-resmi-badge">Statistik Resmi Kementerian Kesehatan Republik Indonesia</div>
             <h1 class="main-report-title">Laporan Pengawasan Krisis Kesehatan dan Kebencanaan : ${reportDateStr} (Minggu ke ${currentWeekNum})</h1>
-            <p class="main-report-subtitle">Diperbaharui ${reportDateStr} ${reportTimeStr} WIB</p>
+            <p class="main-report-subtitle">Diperbaharui ${reportDateStr} ${reportTimeStr} WIB | Emergency Operations Center (EOC 24 Jam)</p>
 
             <div class="coverage-box">
-              Berlaku di Indonesia — Cakupan: ${filterWilayahText}
+              Berlaku di Indonesia — Cakupan Evaluasi: ${filterWilayahText} | Filter Bahaya: ${filterBencanaText}
             </div>
-
-            <!-- RINGKASAN LAPORAN -->
-            <p style="font-size: 13px; line-height: 1.6; color: #1e293b; text-align: justify; margin-bottom: 20px;">
-              ${aiData.ringkasan_laporan}
-            </p>
 
             <!-- KPI SUMMARY CARDS -->
             <div class="kpi-grid">
@@ -2400,9 +2415,17 @@ export default function UnduhLaporanPage() {
               </div>
             </div>
 
+            <!-- SECTION: RINGKASAN EKSEKUTIF (AI PARAGRAPHS) -->
+            <section id="sec-ringkasan-eksekutif">
+              <h2 class="section-title">Ringkasan Eksekutif Analisis Situasi</h2>
+              <div style="margin-bottom: 24px;">
+                ${formatAiParagraphs(aiData.ringkasan_laporan)}
+              </div>
+            </section>
+
             <!-- SECTION 1: POIN UTAMA -->
             <section id="sec-poin-utama">
-              <h2 class="section-title">Poin Utama</h2>
+              <h2 class="section-title">Poin Utama & Sintesis Strategis</h2>
               <ul style="padding-left: 20px; margin: 0 0 24px 0;">
                 ${aiBulletsHtml}
               </ul>
@@ -2410,16 +2433,16 @@ export default function UnduhLaporanPage() {
 
             <!-- SECTION 2: LAPORAN PENGAWASAN KASUS & AKTIVITAS INDIKATOR -->
             <section id="sec-pengawasan-kasus" class="page-break">
-              <h2 class="section-title">Laporan Pengawasan Kasus dan Aktivitas Krisis</h2>
-              <p class="section-subtitle">Disaster & Crisis Health Activity Indicators</p>
+              <h2 class="section-title">Laporan Pengawasan Kasus dan Indikator Aktivitas</h2>
+              <p class="section-subtitle">Disaster & Crisis Health Activity Indicators Matrix</p>
               
               <table>
                 <thead>
                   <tr>
-                    <th style="width: 32%;">Indikator</th>
-                    <th style="width: 16%; text-align: center;">Tren</th>
-                    <th style="width: 18%; text-align: center;">Level</th>
-                    <th>Keterangan</th>
+                    <th style="width: 28%;">Indikator Krisis Kesehatan</th>
+                    <th style="width: 14%; text-align: center;">Tren</th>
+                    <th style="width: 16%; text-align: center;">Level Siaga</th>
+                    <th>Justifikasi Analitis & Keterangan</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2440,9 +2463,11 @@ export default function UnduhLaporanPage() {
                   <img src="${aiData.charts.chart_map}" alt="Peta Sebaran Spasial Indonesia EOC" style="width: 100%; max-height: 420px; object-fit: contain; border-radius: 6px; display: block; margin: 0 auto;" />
                 ` : mapSvgHtml}
               </div>
-              <p style="font-size: 11.5px; color: #334155; line-height: 1.5; text-align: justify;">
-                <b>Catatan Spasial:</b> Klaster intensitas tertinggi ditandai dengan pin titik merah pekat (>50 kejadian) dan oranye (11–30 kejadian). Wilayah dengan konsentrasi risiko bencana tertinggi berada di koridor <b>${topRegionName}</b> dan sekitarnya, menuntut penguatan logistik medis darurat dan aktivasi jejaring Rumah Sakit rujukan regional.
-              </p>
+              
+              <div class="ai-analysis-card">
+                <div class="ai-badge">ANALISIS SPASIAL & KORIDOR KERENTANAN EOC</div>
+                ${formatAiParagraphs(aiData.analisis_spasial_naratif || `Berdasarkan pemetaan geospasial intelijen kebencanaan EOC Kemenkes RI, sebaran kejadian bencana di wilayah ${filterWilayahText} memperlihatkan konsentrasi risiko tertinggi di koridor ${topRegionName} dan sekitarnya. Karakteristik geomorfologi di zona ini menuntut penyiapan pos kesehatan darurat mobile dan pemantauan jalur rujukan SPGDT 119.`)}
+              </div>
             </section>
 
             <!-- SECTION 4: SURVEILANS TREN & VISUALISASI GRAFIK -->
@@ -2464,7 +2489,7 @@ export default function UnduhLaporanPage() {
                 </div>
               </div>
 
-              <div class="chart-box" style="margin-bottom: 24px;">
+              <div class="chart-box" style="margin-bottom: 16px;">
                 <h4>Grafik 3. Pemantauan Indikator Surveilans Penyakit Sensitif Bencana (SKDR)</h4>
                 ${aiData?.charts?.chart_skdr ? `
                   <img src="${aiData.charts.chart_skdr}" alt="Grafik Surveilans SKDR" style="width: 100%; height: auto; display: block; margin: 0 auto;" />
@@ -2485,6 +2510,11 @@ export default function UnduhLaporanPage() {
                     </span>
                   </div>
                 `}
+              </div>
+
+              <div class="ai-analysis-card">
+                <div class="ai-badge">ANALISIS TREN EPIDEMIOLOGI & SURVEILANS SKDR</div>
+                ${formatAiParagraphs(aiData.analisis_tren_epidemiologi || `Evaluasi pergerakan indikator surveilans menunjukkan dominasi kejadian ${filterBencanaText} berkorelasi erat dengan risiko penyakit menular di lokasi pengungsian. Pengawasan aktif SKDR/EWARS dijalankan 24 jam untuk menjamin mitigasi dini potensi KLB.`)}
               </div>
             </section>
 
@@ -2518,11 +2548,13 @@ export default function UnduhLaporanPage() {
             <!-- SECTION 6: PENGAWASAN FASYANKES & TIM MEDIS EMT -->
             <section id="sec-faskes-emt" class="page-break">
               <h2 class="section-title">Pengawasan Kesiapsiagaan Fasilitas Pelayanan Kesehatan & Tim Medis (EMT)</h2>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6; text-align: justify; margin-bottom: 14px;">
-                Pusat Krisis Kesehatan Kemenkes RI memastikan kontinuitas pelayanan kesehatan darurat di wilayah terdampak. Apabila faskes primer mengalami penurunan fungsi, sistem otomatis memobilisasi Pos Kesehatan Lapangan dan mengaktivasi jejaring Rumah Sakit Rujukan Regional.
-              </p>
+              
+              <div class="ai-analysis-card">
+                <div class="ai-badge">PENILAIAN FASYANKES & MANAJEMEN RUJUKAN</div>
+                ${formatAiParagraphs(aiData.analisis_fasyankes_naratif || `Pusat Krisis Kesehatan Kemenkes RI memastikan kontinuitas pelayanan kesehatan darurat di wilayah terdampak. Apabila faskes primer mengalami penurunan fungsi, sistem otomatis memobilisasi Pos Kesehatan Lapangan dan mengaktivasi jejaring Rumah Sakit Rujukan Regional.`)}
+              </div>
 
-              <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 16px 0 8px 0; text-transform: uppercase;">
+              <h4 style="font-size: 13px; font-weight: 800; color: #0f172a; margin: 16px 0 10px 0; text-transform: uppercase; letter-spacing: 0.3px;">
                 Protokol Penugasan Taktis Emergency Medical Team (EMT) Kemenkes RI:
               </h4>
               ${emtRowsHtml}
@@ -2531,31 +2563,38 @@ export default function UnduhLaporanPage() {
             <!-- SECTION 7: CAKUPAN LOGISTIK & OBAT DARURAT -->
             <section id="sec-logistik">
               <h2 class="section-title">Cakupan Logistik Medis & Intervensi Farmasi</h2>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6; text-align: justify;">
-                Ketersediaan paket logistik darurat kesehatan (Obat Paket Bencana, MP-ASI Balita/Ibu Hamil, Hygiene Kit, PAC/Kaporit Sanitasi Air, dan Kantong Jenazah) dipantau secara terpusat melalui Sistem Logistik EOC Kemenkes RI. Distribusi buffer stock dilakukan dalam waktu kurang dari 24 jam ke Dinas Kesehatan Provinsi/Kabupaten terdampak.
-              </p>
+              
+              <div class="ai-analysis-card">
+                <div class="ai-badge">RANTAI PASOK LOGISTIK & BUFFER STOCK FARMASI</div>
+                ${formatAiParagraphs(aiData.analisis_logistik_naratif || `Ketersediaan paket logistik darurat kesehatan (Obat Paket Bencana, MP-ASI Balita/Ibu Hamil, Hygiene Kit, PAC/Kaporit Sanitasi Air, dan Kantong Jenazah) dipantau secara terpusat melalui Sistem Logistik EOC Kemenkes RI. Distribusi buffer stock dilakukan dalam waktu kurang dari 24 jam ke Dinas Kesehatan Provinsi/Kabupaten terdampak.`)}
+              </div>
             </section>
 
             <!-- SECTION 8: METODOLOGI DAN SUMBER DATA -->
             <section id="sec-metodologi" class="page-break">
               <h2 class="section-title">Metodologi dan Sumber Data</h2>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6; text-align: justify;">
-                Data dihimpun secara terpadu dan real-time dari <b>Sistem Informasi Penanggulangan Krisis Kesehatan (SIPKK Kemenkes RI)</b>, <b>Sistem Kewaspadaan Dini dan Respon (SKDR)</b>, laporan harian <b>Emergency Operations Center (EOC 24 Jam)</b> Kementerian Kesehatan RI, <b>Badan Nasional Penanggulangan Bencana (BNPB)</b>, serta <b>Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)</b>. Data diverifikasi bertingkat oleh Tim Verifikator Pusat Krisis Kesehatan.
-              </p>
+              <div class="ai-analysis-card">
+                <div class="ai-badge">INTEGRASI DATA MULTI-SEKTORAL RESMI</div>
+                <p style="font-size: 13px; color: #334155; line-height: 1.65; text-align: justify; margin: 0;">
+                  Data dihimpun secara terpadu dan real-time dari <b>Sistem Informasi Penanggulangan Krisis Kesehatan (SIPKK Kemenkes RI)</b>, <b>Sistem Kewaspadaan Dini dan Respon (SKDR)</b>, laporan harian <b>Emergency Operations Center (EOC 24 Jam)</b> Kementerian Kesehatan RI, <b>Badan Nasional Penanggulangan Bencana (BNPB)</b>, serta <b>Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)</b>. Seluruh data diverifikasi bertingkat oleh Tim Verifikator Pusat Krisis Kesehatan sesuai standar WHO Health Cluster.
+                </p>
+              </div>
             </section>
 
-            <!-- SECTION 9: INFORMASI DAN LATAR BELAKANG -->
+            <!-- SECTION 9: INFORMASI DAN LANDASAN KEBIJAKAN -->
             <section id="sec-latar-belakang">
-              <h2 class="section-title">Informasi dan Latar Belakang</h2>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6; text-align: justify;">
-                Penanggulangan krisis kesehatan diselenggarakan berdasarkan Keputusan Menteri Kesehatan RI Nomor HK.01.07/MENKES/1998/2022 tentang Pedoman Penanggulangan Krisis Kesehatan. Laporan surveilans ini berfungsi sebagai rujukan analitis resmi bagi pengambil kebijakan dalam menentukan status tanggap darurat, mobilisasi sumber daya manusia kesehatan, dan intervensi pemulihan pascabencana.
-              </p>
+              <h2 class="section-title">Informasi dan Landasan Kebijakan</h2>
+              
+              <div class="ai-analysis-card">
+                <div class="ai-badge">LANDASAN KEBIJAKAN & REGULASI KESEHATAN KENEGARAAN</div>
+                ${formatAiParagraphs(aiData.landasan_kebijakan_naratif || `Penanggulangan krisis kesehatan diselenggarakan berdasarkan Keputusan Menteri Kesehatan RI Nomor HK.01.07/MENKES/1998/2022 tentang Pedoman Penanggulangan Krisis Kesehatan. Laporan surveilans ini berfungsi sebagai rujukan analitis resmi bagi pengambil kebijakan dalam menentukan status tanggap darurat, mobilisasi sumber daya manusia kesehatan, dan intervensi pemulihan pascabencana.`)}
+              </div>
             </section>
 
             <!-- SECTION 10: HIMBAUAN BAGI MASYARAKAT INDONESIA -->
             <section id="sec-himbauan">
               <h2 class="section-title">Himbauan Bagi Masyarakat Indonesia</h2>
-              <p style="font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 8px;">
+              <p style="font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 12px;">
                 Meningkatkan kesiapsiagaan mandiri dan pencegahan penyakit di wilayah rawan bencana:
               </p>
               <ul style="padding-left: 20px; margin: 0 0 24px 0;">
