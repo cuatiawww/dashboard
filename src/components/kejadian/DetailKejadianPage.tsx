@@ -3589,7 +3589,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
           </p>
 
-          <div className="h-[480px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
+          <div className="h-[540px] sm:h-[580px] lg:h-[620px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
             <DisasterMap
               markers={mapMarkers}
               userScope={mapUserScope}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDisasterName } from '@/lib/utils/disasterUtils'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity, RotateCcw, Wind } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
@@ -446,8 +446,28 @@ export default function DisasterMap({
   const [showBaseMap, setShowBaseMap] = useState(true)
   const [showGeoJson, setShowGeoJson] = useState(true)
   const [showWindy, setShowWindy] = useState(true)
+  const [showWindLegend, setShowWindLegend] = useState(true)
   const [showRegionLegend, setShowRegionLegend] = useState(false)
-  const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(isFloodEocMode)
+
+  // Fungsi untuk kembali ke titik pusat utama kejadian bencana (Reset View/Zoom)
+  const handleResetCenter = useCallback(() => {
+    if (!mapInstanceRef.current) return
+    const firstM = markersRef.current && markersRef.current[0]
+    const hasCoord = firstM && Number(firstM.lng) !== 0 && Number(firstM.lat) !== 0
+    const centerCoord = hasCoord
+      ? fromLonLat([Number(firstM.lng), Number(firstM.lat)])
+      : isFloodEocMode
+        ? fromLonLat([122.9814, -8.3421])
+        : fromLonLat([118, -2.5])
+    const targetZoom = isFloodEocMode ? 8.2 : 4.8
+
+    mapInstanceRef.current.getView().animate({
+      center: centerCoord,
+      zoom: targetZoom,
+      duration: 700
+    })
+  }, [isFloodEocMode])
 
   // BNPB layer visibilities - all OFF by default on Main Dashboard (disasterType is undefined)
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
@@ -2404,15 +2424,28 @@ export default function DisasterMap({
         </div>
       )}
 
-      {/* ── Settings button ── */}
-      <button
-        onClick={() => { setShowSettings(true); setMarkerPopup(null) }}
-        className="absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-xl bg-white/95 border border-slate-300 px-3 py-2 shadow-lg text-slate-750 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all active:scale-95 animate-in fade-in duration-200"
-        title="Pengaturan Peta"
-      >
-        <Settings className="h-4 w-4 text-teal-650" />
-        <span className="text-xs font-black tracking-wide">Pengaturan Peta</span>
-      </button>
+      {/* ── Top-Right Map Controls Toolbar ── */}
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+        {/* Reset Zoom / Center to Disaster Button */}
+        <button
+          onClick={handleResetCenter}
+          className="flex items-center gap-1.5 rounded-xl bg-white/95 border border-slate-300 px-3 py-2 shadow-md text-slate-750 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all active:scale-95 animate-in fade-in duration-200"
+          title="Kembali ke Titik Pusat Kejadian Bencana (Reset Zoom)"
+        >
+          <RotateCcw className="h-3.5 w-3.5 text-teal-650" />
+          <span className="text-xs font-black tracking-wide hidden sm:inline">Pusat Kejadian</span>
+        </button>
+
+        {/* Settings button */}
+        <button
+          onClick={() => { setShowSettings(true); setMarkerPopup(null) }}
+          className="flex items-center gap-1.5 rounded-xl bg-white/95 border border-slate-300 px-3 py-2 shadow-md text-slate-750 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-300 transition-all active:scale-95 animate-in fade-in duration-200"
+          title="Pengaturan Layer & Tampilan Peta"
+        >
+          <Settings className="h-3.5 w-3.5 text-teal-650" />
+          <span className="text-xs font-black tracking-wide">Pengaturan Peta</span>
+        </button>
+      </div>
 
       {/* ── Settings panel (slide from right) ── */}
       {showSettings && (
@@ -2672,6 +2705,27 @@ export default function DisasterMap({
                     </select>
                   </div>
                 )}
+
+                {/* Toggle Wind Legend */}
+                <div
+                  onClick={() => setShowWindLegend((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 hover:bg-teal-50/50 hover:border-teal-100 transition-all mt-2.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Wind className="h-4 w-4 text-teal-600" />
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Legenda Aliran Angin</p>
+                      <p className="text-[10px] text-slate-400">Keterangan gradasi warna &amp; kecepatan angin</p>
+                    </div>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showWindLegend ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showWindLegend ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
 
                 {/* Toggle region legend visibility */}
                 <div
@@ -3837,42 +3891,100 @@ export default function DisasterMap({
       )}
 
       {/* ── Legend (bottom-left) ── */}
-      {(showRegionLegend || showCasualtyLegend) && (
-        <div className="absolute bottom-5 left-5 max-w-[260px] rounded-2xl border border-[#cbe3e2] bg-white/95 backdrop-blur-md p-4 shadow-[0_8px_30px_rgba(15,118,110,0.12)] space-y-3.5">
+      {((showWindLegend && showWindy) || showRegionLegend || showCasualtyLegend) && (
+        <div className="absolute bottom-4 left-4 max-w-[280px] sm:max-w-[320px] rounded-2xl border border-teal-200/90 bg-white/95 backdrop-blur-md p-3.5 shadow-[0_8px_30px_rgba(15,118,110,0.15)] space-y-3 z-10 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+            <div className="flex items-center gap-1.5">
+              <Info className="h-3.5 w-3.5 text-teal-700" />
+              <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">Legenda Peta Spasial</span>
+            </div>
+            <button
+              onClick={() => {
+                setShowWindLegend(false)
+                setShowRegionLegend(false)
+                setShowCasualtyLegend(false)
+              }}
+              className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition"
+              title="Tutup Legenda (Bisa diaktifkan lagi di Pengaturan Peta)"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Wind Speed & Direction Legend */}
+          {showWindLegend && showWindy && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 flex items-center gap-1">
+                  <Wind className="h-3 w-3 text-teal-650" />
+                  Aliran &amp; Kecepatan Angin (GFS)
+                </span>
+              </div>
+              
+              {/* Gradient Bar */}
+              <div className="h-2 w-full rounded-full bg-gradient-to-r from-[rgb(15,60,140)] via-[rgb(85,160,115)] via-[rgb(215,195,60)] via-[rgb(210,125,35)] to-[rgb(185,35,10)] shadow-inner" />
+              <div className="flex justify-between text-[8.5px] font-bold text-slate-500 px-0.5">
+                <span>0 km/j</span>
+                <span>20 km/j</span>
+                <span>40 km/j</span>
+                <span>&gt;60 km/j</span>
+              </div>
+
+              {/* Color Categories */}
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 text-[9.5px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#55a073] shrink-0 border border-slate-200" />
+                  <span className="text-slate-700 font-semibold">🟢 Hijau: Normal / Tenang</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#d7c33c] shrink-0 border border-slate-200" />
+                  <span className="text-slate-700 font-semibold">🟡 Kuning: Sedang</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#b9230a] shrink-0 border border-slate-200" />
+                  <span className="text-slate-700 font-semibold">🔴 Merah: Kencang / Bahaya</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#730012] shrink-0 border border-slate-200" />
+                  <span className="text-slate-700 font-semibold">🟣 Ungu: Badai Ekstrem</span>
+                </div>
+              </div>
+
+              <div className="bg-teal-50/60 rounded-lg p-1.5 border border-teal-100 text-[9px] text-teal-800 leading-tight">
+                🧭 <strong>Mata Angin:</strong> Garis partikel bergerak mengikuti arah tiupan angin (dari hulu ke hilir tujuan).
+              </div>
+            </div>
+          )}
+
           {/* Choropleth legend */}
           {showRegionLegend && (
-            <div>
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-[#0f766e]">{markerTitle}</p>
-              <div className="space-y-1.5">
+            <div className="border-t border-slate-100 pt-2">
+              <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#0f766e]">{markerTitle}</p>
+              <div className="space-y-1">
                 {choroplethLegend.map((b, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200 shadow-sm" style={{ background: b.color }} />
-                    <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
+                    <span className="h-3 w-3 shrink-0 rounded-full border border-slate-200 shadow-xs" style={{ background: b.color }} />
+                    <span className="text-[10px] font-medium text-slate-700">{b.label}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Divider */}
-          {showRegionLegend && showCasualtyLegend && (
-            <div className="h-px bg-slate-100" />
-          )}
-
           {/* Pin Marker (Korban) legend */}
           {showCasualtyLegend && (
-            <div>
-              <p className="mb-2 text-[10px] font-extrabold uppercase tracking-widest text-red-600">Skala Dampak Korban</p>
-              <div className="space-y-1.5">
+            <div className="border-t border-slate-100 pt-2">
+              <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-widest text-red-600">Skala Dampak Korban Bencana</p>
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9.5px]">
                 {[
                   { label: '0 korban', color: '#94a3b8' },
                   { label: '1 – 5 korban', color: '#facc15' },
                   { label: '6 – 20 korban', color: '#f97316' },
                   { label: '> 20 korban', color: '#dc2626' },
                 ].map((b, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200 shadow-sm animate-pulse" style={{ background: b.color }} />
-                    <span className="text-[11px] font-medium text-slate-700">{b.label}</span>
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-slate-200 shadow-xs animate-pulse" style={{ background: b.color }} />
+                    <span className="text-slate-700 font-semibold">{b.label}</span>
                   </div>
                 ))}
               </div>
