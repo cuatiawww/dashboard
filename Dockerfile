@@ -1,10 +1,18 @@
 # syntax=docker/dockerfile:1
 
 FROM node:22-alpine AS builder
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
-COPY package*.json ./
+
+RUN mkdir -p /home/node/.cache /home/node/.npm && \
+    chown -R node:node /app /home/node
+
+USER node
+
+COPY --chown=node:node package*.json ./
 RUN npm ci
-COPY . .
+
+COPY --chown=node:node . .
 ARG NEXT_PUBLIC_BASE_PATH=/dashboard-eoc
 ARG NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL=http://sipkk-baru.test
 ARG NEXT_PUBLIC_MEDIA_MONITORING_URL=https://pusatkrisis.kemkes.go.id/dashboard-media
