@@ -790,6 +790,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .join(', ') || 'Nasional'
   }, [eventData.kecamatan, eventData.kabupaten, eventData.provinsi])
 
+  const displayRegion = useMemo(() => {
+    if (eventData.provinsi) {
+      const p = String(eventData.provinsi).trim()
+      return p.toUpperCase().startsWith('PROV') ? p : `PROVINSI ${p}`
+    }
+    if (eventData.kabupaten) {
+      return eventData.kabupaten
+    }
+    return 'Wilayah Bencana'
+  }, [eventData.provinsi, eventData.kabupaten])
+
   const breakdown = useMemo(() => {
     if (hasDetail) {
       const lastPerkembangan = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
@@ -3583,7 +3594,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       <article id="peta-detail" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_12px_rgba(0,0,0,0.02)] space-y-5">
         <div>
           <h4 className="text-xl sm:text-2xl font-black text-slate-900 border-b border-slate-100 pb-2 mb-1">
-            Pemetaan Spasial Kejadian Bencana - {eventData.kabupaten || 'Wilayah Bencana'}
+            Pemetaan Spasial Kejadian Bencana - {displayRegion}
           </h4>
           <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
             Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
@@ -3645,8 +3656,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const totalPctFaskes = totalMasterFaskes > 0 ? Math.round((totalTerdampakFaskes / totalMasterFaskes) * 100) : 0;
 
           const faskesNarrative = totalTerdampakFaskes > 0
-            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total fasilitas kesehatan (${totalPctFaskes}%) di ${eventData.kabupaten || 'Kabupaten'} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
-            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${eventData.kabupaten || 'Kabupaten'} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
+            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total fasilitas kesehatan (${totalPctFaskes}%) di ${displayRegion} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
+            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${displayRegion} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
 
           const dominantDiseaseObj = penyakitTotalData.length > 0 && penyakitTotalData[0].total > 0 ? penyakitTotalData[0] : null;
           const totalPenyakitCases = penyakitTotalData.reduce((s, item) => s + (item.total || 0), 0);
@@ -3664,7 +3675,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               {/* ── Section Header ── */}
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs">
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
-                  Analisis Tren &amp; Dinamika Dampak Bencana - {eventData.kabupaten || 'Wilayah Bencana'}
+                  Analisis Tren &amp; Dinamika Dampak Bencana - {displayRegion}
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
                   Visualisasi pergerakan data dari tanggal kejadian awal hingga perkembangan terkini berdasarkan laporan terverifikasi SIPKK
@@ -3828,7 +3839,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         Proporsi &amp; Status Kesiapan Faskes
                       </h4>
                       <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal mt-2.5 mb-0">
-                        Kondisi fungsional fasilitas pelayanan kesehatan (Rumah Sakit, Puskesmas, Klinik, dan Poskesdes) di {eventData.kabupaten || 'wilayah bencana'} guna memastikan ketersediaan layanan rujukan darurat pasca bencana.
+                        Kondisi fungsional fasilitas pelayanan kesehatan (Rumah Sakit, Puskesmas, Klinik, dan Poskesdes) di {displayRegion} guna memastikan ketersediaan layanan rujukan darurat pasca bencana.
                       </p>
 
                       {/* Quick Metrics 2x2 Grid with Big Numbers */}
@@ -4099,7 +4110,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
           <div className="border-b border-slate-100 pb-3.5 mb-2">
             <h4 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
-              Peta Akses &amp; Status Sumber Daya Kesehatan - {eventData.kabupaten || 'Wilayah Bencana'}
+              Peta Akses &amp; Status Sumber Daya Kesehatan - {displayRegion}
             </h4>
             <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
               Pemantauan matriks faskes terdekat, pos pengungsian, ketersediaan SDM kesehatan, sanitasi lingkungan, logistik, dan relawan TCK
@@ -5130,7 +5141,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div>
                 <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50 p-3 rounded-xl border border-slate-150 gap-2">
                   <span className="text-[12px] font-bold text-slate-700 uppercase tracking-wider">
-                    Kapasitas Tenaga Kesehatan Kabupaten: <strong className="text-teal-850">{eventData.kabupaten || '-'}</strong>
+                    Kapasitas Tenaga Kesehatan Wilayah: <strong className="text-teal-850">{displayRegion}</strong>
                   </span>
                   <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg uppercase tracking-wider">
                     {kapasitasNakes.length} Faskes Terdata
@@ -5143,7 +5154,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <Users className="h-4 w-4 text-indigo-600" />
-                        Ringkasan Akumulasi Kapasitas Tenaga Kesehatan ({eventData.kabupaten || 'Kabupaten'})
+                        Ringkasan Akumulasi Kapasitas Tenaga Kesehatan ({displayRegion})
                       </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
@@ -5833,7 +5844,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </span>
                       </div>
                       <p className="text-xs text-slate-600 font-medium mt-0.5 mb-0">
-                        Visualisasi pelaporan terpadu posko kluster kesehatan, faskes, logistik, dan relawan di {eventData.kabupaten || 'Provinsi NTT'}
+                        Visualisasi pelaporan terpadu posko kluster kesehatan, faskes, logistik, dan relawan di {displayRegion}
                       </p>
                     </div>
                   </div>
