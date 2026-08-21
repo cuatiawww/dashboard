@@ -1060,19 +1060,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const isPast = (new Date().getTime() - eventDateObj.getTime()) > 1000 * 60 * 60 * 24 * 14
     const apiDomain = isPast ? 'archive-api.open-meteo.com' : 'api.open-meteo.com'
     const apiPath = isPast ? 'archive' : 'forecast'
-    const url = `https://${apiDomain}/v1/${apiPath}?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=Asia/Jakarta`
+    const url = `https://${apiDomain}/v1/${apiPath}?latitude=${lat}&longitude=${lng}&start_date=${startStr}&end_date=${endStr}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant&timezone=Asia/Jakarta`
 
     let active = true
     fetch(url)
       .then((res) => res.json())
       .then((json) => {
         if (active && json && json.daily && json.daily.time) {
+          const directions = [
+            'Utara', 'Utara - Timur Laut', 'Timur Laut', 'Timur - Timur Laut',
+            'Timur', 'Timur - Tenggara', 'Tenggara', 'Selatan - Tenggara',
+            'Selatan', 'Selatan - Barat Daya', 'Barat Daya', 'Barat - Barat Daya',
+            'Barat', 'Barat - Barat Laut', 'Barat Laut', 'Utara - Barat Laut'
+          ]
+
           const days = json.daily.time.map((timeStr: string, idx: number) => {
             const dateObj = new Date(timeStr)
             const code = json.daily.weathercode ? json.daily.weathercode[idx] : 0
             const maxTemp = json.daily.temperature_2m_max ? Math.round(json.daily.temperature_2m_max[idx]) : 0
             const minTemp = json.daily.temperature_2m_min ? Math.round(json.daily.temperature_2m_min[idx]) : 0
             const precip = json.daily.precipitation_sum ? Number(json.daily.precipitation_sum[idx] || 0) : 0
+            const windSpeed = json.daily.windspeed_10m_max ? Math.round(json.daily.windspeed_10m_max[idx]) : 0
+            const windDeg = json.daily.winddirection_10m_dominant ? Math.round(json.daily.winddirection_10m_dominant[idx]) : 0
+            const windDir = directions[Math.round((windDeg % 360) / 22.5) % 16] || '-'
 
             let weather = 'Berawan'
             if (code >= 65 || code === 82 || code >= 95) weather = 'Hujan Lebat'
@@ -1087,7 +1097,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               dateLabel: dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
               weather,
               temp: maxTemp > 0 ? `${minTemp}-${maxTemp}°C` : '-',
-              precip: Math.round(precip)
+              precip: Math.round(precip),
+              windSpeed,
+              windDir
             }
           })
           setWeeklyWeather(days)
@@ -2146,29 +2158,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
         : 'Menunggu data API...'
 
-      const ispuVal = floodHydrology?.airQuality?.aqi
-        ? `${floodHydrology.airQuality.aqi} (${floodHydrology.airQuality.aqiLabel})`
-        : eventDayIspu > 0
-        ? `${eventDayIspu} (${eventDayIspuCategory.label})`
+      const suhuVal = floodHydrology?.weather?.maxTemp
+        ? `${floodHydrology.weather.maxTemp} °C (Suhu Terik)`
+        : floodHydrology?.weather?.currentTemp
+        ? `${floodHydrology.weather.currentTemp} °C`
         : 'Menunggu data API...'
 
-      const pm25Val = floodHydrology?.airQuality?.pm25
-        ? `${floodHydrology.airQuality.pm25} µg/m³ (PM2.5)`
-        : realtimeWind?.visibilityM && realtimeWind.visibilityM > 0
-        ? (realtimeWind.visibilityM >= 1000 ? `${(realtimeWind.visibilityM / 1000).toFixed(1)} km (Jarak Pandang)` : `${realtimeWind.visibilityM} m`)
-        : (eventData.jarak_pandang || 'Menunggu data API...')
+      const arahAnginVal = floodHydrology?.weather?.windDirectionText
+        ? `${floodHydrology.weather.windDirectionText} (${floodHydrology.weather.windDirectionDeg}°)`
+        : realtimeWind?.directionText
+        ? `${realtimeWind.directionText} (${realtimeWind.directionDeg}°)`
+        : (eventData.arah_angin || 'Menunggu data API...')
 
       const windVal = floodHydrology?.weather?.windSpeed
-        ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j, ${floodHydrology.weather.windDirectionText})`
+        ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j)`
         : realtimeWind && realtimeWind.speed > 0
-        ? `${realtimeWind.speed} km/jam (${realtimeWind.directionText || ''})`
+        ? `${realtimeWind.speed} km/jam`
         : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
 
       return [
         { label: 'Indeks Titik Panas (FWI / Open-Meteo)', value: hotspotVal, icon: Flame, color: 'text-red-500' },
-        { label: 'ISPU (Open-Meteo Air Quality)', value: ispuVal, icon: ShieldAlert, color: (floodHydrology?.airQuality?.aqi >= 150 || eventDayIspu >= 150) ? 'text-red-650' : 'text-orange-500' },
-        { label: 'Konsentrasi Partikulat Asap', value: pm25Val, icon: Eye, color: 'text-slate-600' },
-        { label: 'Arah & Hembusan Angin (Open-Meteo)', value: windVal, icon: Wind, color: 'text-amber-600' }
+        { label: 'Suhu Udara Tanggal Kejadian', value: suhuVal, icon: Thermometer, color: 'text-rose-600' },
+        { label: 'Arah Angin Dominan (Open-Meteo)', value: arahAnginVal, icon: Compass, color: 'text-teal-650' },
+        { label: 'Kecepatan & Hembusan Angin', value: windVal, icon: Wind, color: 'text-amber-600' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -2412,11 +2424,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
-      const ispuText = `${eventDayIspu} (${eventDayIspuCategory.label})`
-      const windSpeedText = realtimeWind ? `${realtimeWind.speed} km/jam` : '18 km/jam'
-      const windDirText = realtimeWind ? realtimeWind.directionText : 'Utara - Timur Laut'
+      const windSpeedText = floodHydrology?.weather?.windSpeed ? `${floodHydrology.weather.windSpeed} km/jam` : (realtimeWind && realtimeWind.speed > 0 ? `${realtimeWind.speed} km/jam` : '9 km/jam')
+      const windDirText = floodHydrology?.weather?.windDirectionText || (realtimeWind?.directionText || 'Utara - Timur Laut')
+      const windGustText = floodHydrology?.weather?.windGust ? ` dengan hembusan angin puncak ${floodHydrology.weather.windGust} km/jam` : ''
+      const fwiText = floodHydrology?.weather?.fireWeatherCategory ? `Indeks Bahaya Kebakaran (FWI) terpantau pada tingkat ${floodHydrology.weather.fireWeatherCategory}. ` : ''
 
-      return `Analisis Pajanan Karhutla (${formattedDate}): Pemantauan krisis di wilayah ${locationFull} pada tanggal kejadian mencatat Indeks Standar Pencemar Udara (ISPU) mencapai ${ispuText} dengan konsentrasi partikulat halus PM2.5. Tiupan angin berkecepatan ${windSpeedText} ke arah ${windDirText} berpotensi meningkatkan sebaran asap. EOC Kemenkes merekomendasikan pembatasan aktivitas luar ruangan, evakuasi kelompok rentan, distribusi masker N95, serta penguatan kesiapsiagaan faskes.`
+      return `Analisis Pajanan Karhutla (${formattedDate}): Pemantauan krisis di wilayah ${locationFull} pada tanggal kejadian mencatat tiupan angin berkecepatan ${windSpeedText} ke arah ${windDirText}${windGustText}. ${fwiText}Kondisi cuaca dan dinamika angin berpotensi meningkatkan eskalasi titik api serta mempercepat sebaran asap ke pemukiman. EOC Kemenkes merekomendasikan pembatasan aktivitas luar ruangan, evakuasi kelompok rentan, distribusi masker N95, serta penguatan kesiapsiagaan faskes.`
     }
     if (name.includes('banjir') || name.includes('flood') || name.includes('genangan') || name.includes('rob')) {
       const dischargeText = floodHydrology?.riverDischarge?.current > 0
@@ -2776,19 +2789,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width ~44%) */}
               <div className="w-full md:w-[44%] flex flex-col justify-between pl-0 md:pl-2">
                 <span className="text-xs font-black text-slate-800 uppercase tracking-wider block mb-2">
-                  {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung'
-                    ? 'TREN KUALITAS UDARA (ISPU / PM2.5) & ANGIN (H-3 S.D. H+3)'
-                    : disasterTheme.type === 'gempa'
-                      ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG (H-3 S.D. H+3)'
-                      : disasterTheme.type === 'tsunami'
-                        ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3)'
-                        : disasterTheme.type === 'longsor'
-                          ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
-                          : disasterTheme.type === 'kekeringan'
-                            ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3)'
-                            : disasterTheme.type === 'wabah'
-                              ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3)'
-                              : 'HISTORI CUACA & CURAH HUJAN BMKG (H-3 S.D. H+3)'}
+                  {disasterTheme.type === 'gunung'
+                    ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN (H-3 S.D. H+3)'
+                    : disasterTheme.type === 'kebakaran'
+                      ? 'HISTORI CUACA & SEBARAN ANGIN (H-3 S.D. H+3)'
+                      : disasterTheme.type === 'gempa'
+                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG (H-3 S.D. H+3)'
+                        : disasterTheme.type === 'tsunami'
+                          ? 'TREN GELOMBANG LAUT & PASANG SURUT (H-3 S.D. H+3)'
+                          : disasterTheme.type === 'longsor'
+                            ? 'HISTORI HUJAN PEMICU & STABILITAS LERENG (H-3 S.D. H+3)'
+                            : disasterTheme.type === 'kekeringan'
+                              ? 'TREN HARI TANPA HUJAN & SUHU UDARA (H-3 S.D. H+3)'
+                              : disasterTheme.type === 'wabah'
+                                ? 'TREN KASUS HARIAN & TRACING EPIDEMIOLOGI (H-3 S.D. H+3)'
+                                : 'HISTORI CUACA & CURAH HUJAN BMKG (H-3 S.D. H+3)'}
                 </span>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center items-stretch justify-between flex-1">
@@ -2817,7 +2832,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </span>
 
                         <div className="my-1.5 shrink-0 flex items-center justify-center">
-                          {disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
+                          {disasterTheme.type === 'kebakaran' ? (
+                            <Wind className={`h-5 w-5 ${isEventDay ? 'text-amber-600 animate-bounce' : 'text-teal-600'}`} />
+                          ) : disasterTheme.type === 'gunung' ? (
                             <ShieldAlert className={`h-5 w-5 ${isEventDay ? 'text-red-600 animate-pulse' : (dayIspuVal > 150) ? 'text-orange-500' : 'text-amber-500'}`} />
                           ) : disasterTheme.type === 'tsunami' ? (
                             <Waves className={`h-5 w-5 ${isEventDay ? 'text-teal-600 animate-bounce' : 'text-cyan-600'}`} />
@@ -2849,7 +2866,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {day.bottomLabel}
                               </span>
                             </>
-                          ) : disasterTheme.type === 'kebakaran' || disasterTheme.type === 'gunung' ? (
+                          ) : disasterTheme.type === 'kebakaran' ? (
+                            <>
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-900 block text-center truncate w-full leading-tight" title={day.windSpeed > 0 ? `${day.windSpeed} km/j` : (day.temp !== '-' ? day.temp : '-')}>
+                                {day.windSpeed > 0 ? `${day.windSpeed} km/j` : (day.temp !== '-' ? day.temp : '-')}
+                              </span>
+                              <span
+                                className={`text-[8.5px] sm:text-[9.5px] font-bold mt-0.5 block text-center truncate w-full leading-tight ${isEventDay ? 'text-teal-700 font-black' : 'text-slate-500'}`}
+                                title={day.windDir || day.weather || 'Cerah'}
+                              >
+                                {day.windDir || day.weather || 'Cerah'}
+                              </span>
+                            </>
+                          ) : disasterTheme.type === 'gunung' ? (
                             <>
                               <span className="text-[10px] sm:text-[11px] font-black text-slate-900 block text-center truncate w-full leading-tight" title={`ISPU ${dayIspuVal > 0 ? dayIspuVal : '-'}`}>
                                 ISPU {dayIspuVal > 0 ? dayIspuVal : '-'}

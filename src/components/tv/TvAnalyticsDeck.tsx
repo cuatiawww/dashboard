@@ -205,7 +205,7 @@ export default function TvAnalyticsDeck({
     <div
       className={`fixed right-2 sm:right-3 bottom-12 z-25 transition-all duration-300 pointer-events-none ${
         isCollapsed ? 'w-10 sm:w-11' : 'w-72 sm:w-80 xl:w-84 2xl:w-92 max-w-[calc(50vw-16px)]'
-      } ${isKpiCollapsed ? 'top-[68px] sm:top-[74px]' : 'top-[160px] sm:top-[166px] 2xl:top-[174px]'}`}
+      } ${isKpiCollapsed ? 'top-[68px] sm:top-[74px]' : 'top-[192px] sm:top-[198px] 2xl:top-[206px]'}`}
     >
       <div className="relative h-full flex flex-col pointer-events-auto bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-xl sm:rounded-2xl shadow-[0_8px_24px_rgba(4,125,120,0.1)] overflow-hidden text-slate-800">
         {/* ── Deck Header ── */}
