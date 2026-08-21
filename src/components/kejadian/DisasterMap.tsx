@@ -44,7 +44,27 @@ function destroyWindLayerSafely(wl: any) {
   tryCall('dispose')
   tryCall('remove')
   tryCall('setMap', null)
-  tryCall('setTarget', null)
+function getLargestPolygonInteriorPoint(feature: any) {
+  const geom = feature?.getGeometry?.()
+  if (!geom) return null
+  const type = geom.getType?.()
+  if (type === 'MultiPolygon') {
+    const polygons = geom.getPolygons()
+    if (!polygons || polygons.length === 0) return null
+    let maxArea = -1
+    let largest = polygons[0]
+    for (let i = 0; i < polygons.length; i++) {
+      const a = polygons[i].getArea()
+      if (a > maxArea) {
+        maxArea = a
+        largest = polygons[i]
+      }
+    }
+    return largest.getInteriorPoint()
+  } else if (type === 'Polygon') {
+    return geom.getInteriorPoint()
+  }
+  return geom
 }
 
 function getFaskesTriageData(rawItem?: any, name?: string) {
@@ -1293,34 +1313,42 @@ export default function DisasterMap({
           (k) => k && (kabKey.includes(k) || k.includes(kabKey))
         )
         if (isSelectedKab) {
-          return new Style({
+          const polyStyle = new Style({
             fill: new Fill({ color: 'rgba(37, 99, 235, 0.45)' }),
             stroke: new Stroke({ color: '#1d4ed8', width: 2.8 }),
+          })
+          const textStyle = new Style({
+            geometry: (f: any) => getLargestPolygonInteriorPoint(f),
             text: new OlText({
               text: formattedName,
               font: 'bold 11px Inter, sans-serif',
               fill: new Fill({ color: '#0f172a' }),
               stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
-              overflow: true
+              overflow: false
             })
           })
+          return [polyStyle, textStyle]
         }
       }
 
-      // Mode Provinsi atau Kabupaten → Batas ungu tegas & Label nama setiap daerah
+      // Mode Provinsi atau Kabupaten → Batas ungu tegas & Label nama tepat 1 kali per kabupaten pada daratan utama
       if ((isProvMode || isKabMode) && targetProvKey) {
         const isTargetKab = isKabMode && targetKabKey && kabKey === targetKabKey
-        return new Style({
+        const polyStyle = new Style({
           fill: new Fill({ color: isTargetKab ? 'rgba(254, 240, 138, 0.35)' : 'rgba(254, 240, 138, 0.18)' }),
           stroke: new Stroke({ color: isTargetKab ? '#9333ea' : '#a855f7', width: isTargetKab ? 3.2 : 2.6 }),
+        })
+        const textStyle = new Style({
+          geometry: (f: any) => getLargestPolygonInteriorPoint(f),
           text: new OlText({
             text: formattedName,
-            font: 'bold 11.5px Inter, sans-serif',
+            font: 'bold 11px Inter, sans-serif',
             fill: new Fill({ color: '#1e293b' }),
             stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
-            overflow: true
+            overflow: false
           })
         })
+        return [polyStyle, textStyle]
       }
 
       const count = kabupatenCounts.get(kabKey) || 0
@@ -1861,18 +1889,45 @@ export default function DisasterMap({
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
     }
 
-    const getSvgEarthquakePin = (mag: number, isMainshock: boolean) => {
-      const magText = mag > 0 ? (mag >= 10 ? mag.toFixed(0) : mag.toFixed(1)) : 'M'
-      const bg = isMainshock ? '#dc2626' : (mag >= 5.0 ? '#ea580c' : '#d97706')
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="42" viewBox="0 0 36 42" fill="none">
-        <path d="M18 2C10.82 2 5 7.82 5 15C5 24 18 39 18 39S31 24 31 15C31 7.82 25.18 2 18 2Z" fill="${bg}" stroke="#ffffff" stroke-width="2"/>
-        <circle cx="18" cy="15" r="9" fill="#ffffff"/>
-        <text x="18" y="18.5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="8.5" font-weight="900" fill="${bg}">${magText}</text>
+    const getSvgMainshockPin = (mag: number) => {
+      const magText = mag > 0 ? (mag >= 10 ? mag.toFixed(0) : mag.toFixed(1)) : '7.4'
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="54" viewBox="0 0 46 54" fill="none">
+        <circle cx="23" cy="20" r="19" fill="rgba(220, 38, 38, 0.25)" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <path d="M23 4C14.16 4 7 11.16 7 20C7 31 23 50 23 50S39 31 39 20C39 11.16 31.84 4 23 4Z" fill="#dc2626" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="23" cy="20" r="11" fill="#ffffff"/>
+        <text x="23" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="900" fill="#991b1b">M ${magText}</text>
       </svg>`
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
     }
 
-    // 1. Add disaster location pins and pulsing radius circles for all markers
+    const getSvgAftershockNode = (mag: number) => {
+      if (mag >= 6.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="#b91c1c" stroke="#ffffff" stroke-width="2.5"/>
+          <text x="12" y="15.5" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="900" fill="#ffffff">${mag.toFixed(1)}</text>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      if (mag >= 5.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r="8" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+          <text x="10" y="13" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" font-weight="900" fill="#ffffff">${mag.toFixed(1)}</text>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      if (mag >= 4.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+          <circle cx="7" cy="7" r="5.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.8"/>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
+        <circle cx="5" cy="5" r="4" fill="#fbbf24" stroke="#ffffff" stroke-width="1.2"/>
+      </svg>`
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+    }
+
+    // 1. Add disaster location pins and pulsing radius circle ONLY on the main epicenter/target
     const validDisasterMarkers = Array.isArray(markers) ? markers : []
     
     // Clear old overlays if any
@@ -1897,59 +1952,91 @@ export default function DisasterMap({
         disasterFeat.setStyle(new Style({
           image: new Icon({
             src: getSvgPin('#dc2626', 'disaster'),
-            scale: 0.95,
+            scale: 0.92,
             anchor: [0.5, 1]
           })
         }))
         source.addFeature(disasterFeat)
 
-        // Draw pulsing radius circle
-        const radiusInMeters = pulseRadius * 1000
-        const circleFeat = new Feature({
-          geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
-          id: `pulse-circle-${idx}`
-        })
-        circleFeat.setStyle(new Style({
-          fill: new Fill({ color: 'rgba(220, 38, 38, 0.08)' }),
-          stroke: new Stroke({ color: 'rgba(220, 38, 38, 0.45)', width: 1.5, lineDash: [4, 6] })
-        }))
-        source.addFeature(circleFeat)
+        // Only draw pulsing radius circle for the primary epicenter/disaster location (idx === 0)
+        if (idx === 0 && pulseRadius > 0) {
+          const radiusInMeters = pulseRadius * 1000
+          const circleFeat = new Feature({
+            geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
+            id: `pulse-circle-${idx}`
+          })
+          circleFeat.setStyle(new Style({
+            fill: new Fill({ color: 'rgba(220, 38, 38, 0.05)' }),
+            stroke: new Stroke({ color: 'rgba(220, 38, 38, 0.55)', width: 1.8, lineDash: [5, 6] })
+          }))
+          source.addFeature(circleFeat)
 
-        // Create dynamic pulse overlay
-        createPulseOverlay(lng, lat, 'danger')
+          createPulseOverlay(lng, lat, 'danger')
+        }
       }
     })
 
     // 1.5. Add Real Earthquake Points & Epicenters (from USGS/BMKG API)
     if (showSeismicLayer && Array.isArray(earthquakePoints) && earthquakePoints.length > 0) {
+      // Identify mainshock index (highest magnitude or marked isMainshock)
+      let mainshockIdx = 0
+      let maxMag = -1
+      earthquakePoints.forEach((eq: any, i: number) => {
+        const m = Number(eq.magnitude || 0)
+        if (eq.isMainshock || m > maxMag) {
+          maxMag = m
+          mainshockIdx = i
+        }
+      })
+
       earthquakePoints.forEach((eq: any, idx: number) => {
         const eqLat = Number(eq.lat || 0)
         const eqLng = Number(eq.lng || 0)
         if (eqLat !== 0 && eqLng !== 0) {
           const mag = Number(eq.magnitude || 0)
-          const isMain = !!eq.isMainshock || (idx === 0 && mag >= 5.5)
+          const isMain = idx === mainshockIdx
 
-          // Shaking impact buffer circle based on magnitude
-          const radiusKm = isMain ? Math.max(30, (mag - 3) * 18) : Math.max(10, (mag - 2.5) * 8)
-          const shockCircle = new Feature({
-            geometry: new CircleGeom(fromLonLat([eqLng, eqLat]), radiusKm * 1000),
-            id: `eq-circle-${idx}`
-          })
-          shockCircle.setStyle(new Style({
-            fill: new Fill({ color: isMain ? 'rgba(220, 38, 38, 0.09)' : 'rgba(234, 88, 12, 0.05)' }),
-            stroke: new Stroke({
-              color: isMain ? 'rgba(220, 38, 38, 0.65)' : 'rgba(234, 88, 12, 0.4)',
-              width: isMain ? 2 : 1.2,
-              lineDash: isMain ? [6, 6] : [3, 4]
+          // Only the Mainshock gets the Primary Isoseismal / Shake Impact Circles (zona guncangan utama)
+          if (isMain) {
+            const primaryRadiusKm = Math.min(80, Math.max(35, (mag - 3) * 12))
+            const shockCircle = new Feature({
+              geometry: new CircleGeom(fromLonLat([eqLng, eqLat]), primaryRadiusKm * 1000),
+              id: `eq-circle-main`
             })
-          }))
-          source.addFeature(shockCircle)
+            shockCircle.setStyle(new Style({
+              fill: new Fill({ color: 'rgba(220, 38, 38, 0.07)' }),
+              stroke: new Stroke({
+                color: 'rgba(220, 38, 38, 0.75)',
+                width: 2.2,
+                lineDash: [6, 6]
+              })
+            }))
+            source.addFeature(shockCircle)
 
-          // Epicenter marker feature
+            // Inner Severe Shaking Zone (MMI VII-VIII)
+            const innerRadiusKm = Math.max(15, primaryRadiusKm * 0.45)
+            const innerShockCircle = new Feature({
+              geometry: new CircleGeom(fromLonLat([eqLng, eqLat]), innerRadiusKm * 1000),
+              id: `eq-circle-inner`
+            })
+            innerShockCircle.setStyle(new Style({
+              fill: new Fill({ color: 'rgba(220, 38, 38, 0.12)' }),
+              stroke: new Stroke({
+                color: '#dc2626',
+                width: 1.5
+              })
+            }))
+            source.addFeature(innerShockCircle)
+
+            // Pulse overlay on mainshock epicenter
+            createPulseOverlay(eqLng, eqLat, 'danger')
+          }
+
+          // Epicenter / Aftershock marker feature
           const eqFeat = new Feature({
             geometry: new Point(fromLonLat([eqLng, eqLat])),
             id: `eq-point-${idx}`,
-            name: `${isMain ? '⚡ Episentrum Utama' : '⚡ Titik Gempa'} M ${mag.toFixed(1)} - ${eq.place || 'NTT'}`,
+            name: `${isMain ? '★ Episentrum Gempa Utama' : '⚡ Titik Gempa Susulan'} M ${mag.toFixed(1)} - ${eq.place || 'NTT'}`,
             rawItem: {
               ...eq,
               latitude: eqLat,
@@ -1957,19 +2044,28 @@ export default function DisasterMap({
             },
             itemType: 'earthquake'
           })
-          eqFeat.setStyle(new Style({
-            image: new Icon({
-              src: getSvgEarthquakePin(mag, isMain),
-              scale: isMain ? 1.08 : 0.9,
-              anchor: [0.5, 0.95]
-            })
-          }))
-          source.addFeature(eqFeat)
 
-          // Pulse overlay on mainshock
           if (isMain) {
-            createPulseOverlay(eqLng, eqLat, 'danger')
+            eqFeat.setStyle(new Style({
+              image: new Icon({
+                src: getSvgMainshockPin(mag),
+                scale: 1.0,
+                anchor: [0.5, 0.92]
+              }),
+              zIndex: 100
+            }))
+          } else {
+            eqFeat.setStyle(new Style({
+              image: new Icon({
+                src: getSvgAftershockNode(mag),
+                scale: 1.0,
+                anchor: [0.5, 0.5]
+              }),
+              zIndex: Math.round(mag * 10)
+            }))
           }
+
+          source.addFeature(eqFeat)
         }
       })
     }
