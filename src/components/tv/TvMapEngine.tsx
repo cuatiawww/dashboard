@@ -81,6 +81,8 @@ interface TvMapEngineProps {
   wilayahList?: WilayahItem[]
   bmkgGempas?: BmkgGempa[]
   layers: TvLayerState
+  initialCenter?: [number, number]
+  initialZoom?: number
   onSelectMarker: (marker: MarkerData) => void
 }
 
@@ -198,7 +200,7 @@ const BASEMAP_SOURCES = {
 }
 
 const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapEngine(
-  { markers, wilayahList = [], bmkgGempas = [], layers, onSelectMarker },
+  { markers, wilayahList = [], bmkgGempas = [], layers, initialCenter, initialZoom, onSelectMarker },
   ref
 ) {
   const mapRef = useRef<HTMLDivElement | null>(null)
@@ -241,8 +243,8 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       if (!map) return
       const view = map.getView()
       view.animate({
-        center: fromLonLat([118.0149, -2.5489]),
-        zoom: 5.1,
+        center: fromLonLat(initialCenter || [118.0149, -2.5489]),
+        zoom: initialZoom || 5.1,
         duration: 1500,
       })
     },
@@ -433,8 +435,8 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         gempaLayer,
       ],
       view: new View({
-        center: fromLonLat([118.0149, -2.5489]), // Indonesia Center
-        zoom: 5.1,
+        center: fromLonLat(initialCenter || [118.0149, -2.5489]), // Indonesia Center or Scoped Location
+        zoom: initialZoom || 5.1,
         minZoom: 4,
         maxZoom: 18,
       }),
