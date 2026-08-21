@@ -139,6 +139,30 @@ export async function GET(request: NextRequest) {
       tables,
     })
   } catch (error) {
+    // Seamless fallback to public/data/gempa-ntt/gempa_ntt_data.json
+    try {
+      const fallbackPath = path.join(process.cwd(), 'public', 'data', 'gempa-ntt', 'gempa_ntt_data.json')
+      const raw = await fs.readFile(fallbackPath, 'utf8')
+      const json = JSON.parse(raw)
+      const date = requestedDate || json.tanggal_update || '2026-08-20'
+      const tables: Record<string, unknown[]> = {
+        analisa_ringkasan_harian: json.analisa_harian || [],
+        situasi_kesehatan: json.situasi_kesehatan || [],
+        pasien_rs: json.pasien_rs || [],
+        pasien_puskesmas: json.pasien_puskesmas || [],
+      }
+      return jsonResponse({
+        success: true,
+        tanggal: date,
+        updated_at: `${date}T10:20:14.000Z`,
+        source_url: json.sumber_url || 'https://ntt.tanggap-bencana.go.id/#linktree',
+        tables: requestedTable ? { [requestedTable]: tables[requestedTable] || [] } : tables,
+        data: json,
+      })
+    } catch (e) {
+      console.error('NTT fallback data error:', e)
+    }
+
     const code = (error as NodeJS.ErrnoException).code
     if (code === 'ENOENT') {
       return jsonResponse(
