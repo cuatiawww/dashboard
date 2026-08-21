@@ -448,7 +448,7 @@ export default function DisasterMap({
   const [showWindy, setShowWindy] = useState(true)
   const [showWindLegend, setShowWindLegend] = useState(true)
   const [showRegionLegend, setShowRegionLegend] = useState(false)
-  const [showCasualtyLegend, setShowCasualtyLegend] = useState(isFloodEocMode)
+  const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
 
   // Fungsi untuk kembali ke titik pusat utama kejadian bencana (Reset View/Zoom)
   const handleResetCenter = useCallback(() => {
