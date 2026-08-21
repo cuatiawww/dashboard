@@ -1,1 +1,7 @@
-export { GET, dynamic, runtime, revalidate } from '@/app/api/ntt-data/route'
+import { GET } from '@/app/api/ntt-data/route'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+export { GET }
