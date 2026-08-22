@@ -4282,7 +4282,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
                     <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-5 pb-3 mb-3 border-b border-slate-200/80 text-xs sm:text-sm font-bold text-slate-700">
                       {!isNttEvent && <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>}
-                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" /> Aktif Rawat Pasien (Siaga Bencana)</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" /> Aktif Rawat Pasien</span>
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Disiagakan (Normal)</span>
                     </div>
 
@@ -4634,16 +4634,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => setMatrixTab('status_faskes')}
-              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'status_faskes'
-                ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-sm font-black'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-            >
-              Status Fasilitas Kesehatan
-            </button>
+            {!isNttEvent && (
+              <button
+                type="button"
+                onClick={() => setMatrixTab('status_faskes')}
+                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'status_faskes'
+                  ? 'bg-rose-50 text-rose-800 border-rose-300 shadow-sm font-black'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+              >
+                Status Fasilitas Kesehatan
+              </button>
+            )}
 
             {/* Tab Sumber Daya Kesehatan, Sanitasi Kesling, dan Logistik Kesehatan - Hidden as requested */}
             {/* 
