@@ -2482,6 +2482,30 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.situasi_kesehatan]);
 
   const faskesTrendData = useMemo(() => {
+    // 1. Prioritas NTT: Ikuti tanggal riil laporan collector
+    if (isNttEvent && Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0) {
+      const dates = Array.from(new Set(nttApiData.situasi_kesehatan.map((s: any) => s.tanggal || s.tgl || s.tgl_laporan))).filter(Boolean).sort();
+      const totalRusak = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
+      const totalMaster = faskesPieBreakdown.reduce((sum, item) => sum + item.totalMaster, 0);
+      const totalBerfungsi = Math.max(0, totalMaster - totalRusak);
+
+      if (dates.length > 0) {
+        return dates.map(dateStr => {
+          const d = new Date(dateStr);
+          const formattedLabel = !isNaN(d.getTime())
+            ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+            : dateStr;
+          return {
+            date: formattedLabel,
+            'Rusak': totalRusak,
+            'Terdampak': totalRusak,
+            'Berfungsi': totalBerfungsi,
+            'Tidak Berfungsi': totalRusak,
+          };
+        });
+      }
+    }
+
     const list = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : [];
     const baseDateStr = eventData.tgl_kejadian || '';
 
@@ -2569,7 +2593,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       });
       return points;
     }
-  }, [eventData.faskes_terdampak, eventData.tgl_kejadian, trendWindowDays]);
+  }, [eventData.faskes_terdampak, eventData.tgl_kejadian, trendWindowDays, isNttEvent, nttApiData?.situasi_kesehatan, faskesPieBreakdown]);
 
   const penyakitTotalData = useMemo(() => {
     const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : [];
