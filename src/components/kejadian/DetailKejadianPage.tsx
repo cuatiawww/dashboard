@@ -344,6 +344,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     pasien_rs: any[]
     pasien_puskesmas: any[]
     situasi_kesehatan: any[]
+    timeline_situasi_kesehatan: any[]
     analisa_ringkasan_harian: any[]
     master_faskes: any[]
     summary_faskes?: any
@@ -353,6 +354,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     pasien_rs: [],
     pasien_puskesmas: [],
     situasi_kesehatan: [],
+    timeline_situasi_kesehatan: [],
     analisa_ringkasan_harian: [],
     master_faskes: [],
     summary_faskes: null,
@@ -417,6 +419,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           pasien_rs: normalizeRows(json.tables.pasien_rs || json.data?.pasien_rs || []),
           pasien_puskesmas: normalizeRows(json.tables.pasien_puskesmas || json.data?.pasien_puskesmas || []),
           situasi_kesehatan: normalizeRows(json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
+          timeline_situasi_kesehatan: normalizeRows(json.timeline_situasi_kesehatan || json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           analisa_ringkasan_harian: normalizeRows(json.tables.analisa_ringkasan_harian || json.data?.analisa_ringkasan_harian || []),
           master_faskes: Array.isArray(json.tables?.master_faskes) ? json.tables.master_faskes : (Array.isArray(json.data?.master_faskes) ? json.data.master_faskes : []),
           summary_faskes: json.summary_faskes || null,
@@ -2350,9 +2353,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
     // 1. Prioritas Utama untuk NTT: Ambil riwayat tanggal riil dari collector (situasi_kesehatan per tanggal)
-    if (isNttEvent && Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0) {
+    const situasiDataset = Array.isArray(nttApiData?.timeline_situasi_kesehatan) && nttApiData.timeline_situasi_kesehatan.length > 0
+      ? nttApiData.timeline_situasi_kesehatan
+      : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
+
+    if (isNttEvent && situasiDataset.length > 0) {
       const dateMap: { [date: string]: { meninggal: number; luka: number; hilang: number; pengungsi: number; terdampak: number } } = {};
-      nttApiData.situasi_kesehatan.forEach((item: any) => {
+      situasiDataset.forEach((item: any) => {
         const rawDate = item.tanggal || item.tgl || item.tgl_laporan;
         if (!rawDate) return;
         if (!dateMap[rawDate]) {
@@ -2479,12 +2486,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       });
     });
     return points;
-  }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.situasi_kesehatan]);
+  }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.timeline_situasi_kesehatan, nttApiData?.situasi_kesehatan]);
 
   const faskesTrendData = useMemo(() => {
     // 1. Prioritas NTT: Ikuti tanggal riil laporan collector
-    if (isNttEvent && Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0) {
-      const dates = Array.from(new Set(nttApiData.situasi_kesehatan.map((s: any) => s.tanggal || s.tgl || s.tgl_laporan))).filter(Boolean).sort();
+    const faskesDatesSource = Array.isArray(nttApiData?.timeline_situasi_kesehatan) && nttApiData.timeline_situasi_kesehatan.length > 0
+      ? nttApiData.timeline_situasi_kesehatan
+      : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
+
+    if (isNttEvent && faskesDatesSource.length > 0) {
+      const dates = Array.from(new Set(faskesDatesSource.map((s: any) => s.tanggal || s.tgl || s.tgl_laporan))).filter(Boolean).sort();
       const totalRusak = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
       const totalMaster = faskesPieBreakdown.reduce((sum, item) => sum + item.totalMaster, 0);
       const totalBerfungsi = Math.max(0, totalMaster - totalRusak);

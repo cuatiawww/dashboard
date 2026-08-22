@@ -237,6 +237,8 @@ export async function GET(request: NextRequest) {
 
     // Use requestedDate if provided, else use the latest date found in the CSV data
     const targetDate = requestedDate || legacyDates.at(-1) || ''
+    let allSituasiRows: Record<string, string>[] = []
+    let allAnalisaRows: Record<string, string>[] = []
 
     for (const tableName of tableNames) {
       if (tableName === 'master_faskes') continue
@@ -247,6 +249,8 @@ export async function GET(request: NextRequest) {
         const stat = await fs.stat(filePath)
         if (stat.mtime > latestMtime) latestMtime = stat.mtime
         const allRows = await parseCsv(filePath)
+        if (tableName === 'situasi_kesehatan') allSituasiRows = allRows
+        if (tableName === 'analisa_ringkasan_harian') allAnalisaRows = allRows
         // Filter rows by date then normalize headers to snake_case
         const filtered = targetDate ? filterByDate(allRows, targetDate) : allRows
         tables[tableName] = normalizeTableRows(filtered)
@@ -277,6 +281,8 @@ export async function GET(request: NextRequest) {
         source: 'legacy_csv',
         tanggal: targetDate,
         dates_available: legacyDates,
+        timeline_situasi_kesehatan: normalizeTableRows(allSituasiRows),
+        timeline_analisa_ringkasan: normalizeTableRows(allAnalisaRows),
         updated_at: latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString(),
         source_url: 'https://ntt.tanggap-bencana.go.id/',
         tables,
