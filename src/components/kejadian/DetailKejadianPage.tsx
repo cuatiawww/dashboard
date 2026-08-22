@@ -3320,24 +3320,127 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.tenaga_kesehatan])
 
   const mapMarkers = useMemo(() => {
+    if (isNttEvent) {
+      const nttKabPoints = [
+        {
+          kabupaten: 'Nagekeo',
+          nama: 'Pusat Episentrum M 7.7 - Nagekeo',
+          kecamatan: 'Aesesa',
+          nama_desa: 'Mbay (Laut Flores)',
+          lat: -8.57,
+          lng: 121.28,
+          isEpicenter: true,
+          total_korban: 13,
+          pengungsi: 28104,
+          populasi_terdampak: 170669,
+        },
+        {
+          kabupaten: 'Manggarai Timur',
+          nama: 'Titik Dampak Gempa - Manggarai Timur',
+          kecamatan: 'Borong',
+          nama_desa: 'Borong',
+          lat: -8.65,
+          lng: 120.57,
+          isEpicenter: false,
+          total_korban: 26,
+          pengungsi: 19803,
+          populasi_terdampak: 313876,
+        },
+        {
+          kabupaten: 'Manggarai',
+          nama: 'Titik Dampak Gempa - Manggarai',
+          kecamatan: 'Langke Rembong',
+          nama_desa: 'Ruteng',
+          lat: -8.62,
+          lng: 120.46,
+          isEpicenter: false,
+          total_korban: 27,
+          pengungsi: 29982,
+          populasi_terdampak: 340153,
+        },
+        {
+          kabupaten: 'Sikka',
+          nama: 'Titik Dampak Gempa - Sikka',
+          kecamatan: 'Alok',
+          nama_desa: 'Maumere',
+          lat: -8.62,
+          lng: 122.21,
+          isEpicenter: false,
+          total_korban: 6,
+          pengungsi: 7104,
+          populasi_terdampak: 350715,
+        },
+        {
+          kabupaten: 'Ende',
+          nama: 'Titik Dampak Gempa - Ende',
+          kecamatan: 'Ende Selatan',
+          nama_desa: 'Ende',
+          lat: -8.84,
+          lng: 121.65,
+          isEpicenter: false,
+          total_korban: 2,
+          pengungsi: 3298,
+          populasi_terdampak: 284165,
+        },
+        {
+          kabupaten: 'Ngada',
+          nama: 'Titik Dampak Gempa - Ngada',
+          kecamatan: 'Bajawa',
+          nama_desa: 'Bajawa',
+          lat: -8.78,
+          lng: 120.97,
+          isEpicenter: false,
+          total_korban: 2,
+          pengungsi: 2551,
+          populasi_terdampak: 176462,
+        },
+        {
+          kabupaten: 'Manggarai Barat',
+          nama: 'Titik Dampak Gempa - Manggarai Barat',
+          kecamatan: 'Komodo',
+          nama_desa: 'Labuan Bajo',
+          lat: -8.56,
+          lng: 119.98,
+          isEpicenter: false,
+          total_korban: 2,
+          pengungsi: 5029,
+          populasi_terdampak: 281692,
+        },
+      ]
+
+      return nttKabPoints.map((pt, idx) => ({
+        ...(selectedEvent || {}),
+        kode_trans: `${selectedEvent?.kode_trans || 'gempa-ntt'}-pt-${idx}`,
+        lat: pt.lat,
+        lng: pt.lng,
+        nama: pt.nama,
+        nama_desa: pt.nama_desa,
+        kecamatan: pt.kecamatan,
+        kabupaten: pt.kabupaten,
+        isEpicenter: pt.isEpicenter,
+        total_korban: pt.total_korban,
+        pengungsi: pt.pengungsi,
+        jml_terancam: pt.populasi_terdampak,
+        jml_titik_lokasi: 0,
+      }))
+    }
+
     if (detail && Array.isArray(detail.lokasi) && detail.lokasi.length > 0) {
       return detail.lokasi.map((loc: any, idx: number) => ({
         ...(selectedEvent || {}),
         kode_trans: `${selectedEvent?.kode_trans}-loc-${idx}`,
         lat: Number(loc.latitude),
         lng: Number(loc.longitude),
-        // Gunakan kecamatan dari lokasi spesifik saja - JANGAN fallback ke selectedEvent.kecamatan
-        // karena itu berisi join semua kecamatan terdampak ("Borong, Cibal, Elar...")
         nama_desa: loc.nama_desa || undefined,
         kecamatan: loc.kecamatan || undefined,
         topografi: loc.topografi || selectedEvent?.topografi,
         jml_terancam: loc.jml_terancam || selectedEvent?.jml_terancam,
         tgl_kejadian: loc.tgl_laporan || selectedEvent?.tgl_kejadian,
-        jml_titik_lokasi: 0, // sub-points do not show sub-location count
+        jml_titik_lokasi: 0,
       }))
     }
     return selectedEvent ? [selectedEvent] : []
-  }, [selectedEvent, detail])
+  }, [selectedEvent, detail, isNttEvent])
 
   const kabupatenMatrixData = useMemo(() => {
     // 1. Data breakdown kabupaten dari detail database kejadian

@@ -608,23 +608,34 @@ export default function DisasterMap({
     if (!map) return
 
     const pulseEl = document.createElement('div')
-    pulseEl.className = 'ews-pulse-overlay pointer-events-none'
+    pulseEl.className = 'ews-pulse-overlay pointer-events-none select-none'
+    pulseEl.style.position = 'relative'
+    pulseEl.style.width = '52px'
+    pulseEl.style.height = '52px'
+    pulseEl.style.display = 'flex'
+    pulseEl.style.alignItems = 'center'
+    pulseEl.style.justifyContent = 'center'
 
-    let ringColor = 'bg-red-500 bg-opacity-75'
-    let dotColor = 'bg-red-600'
-    if (type === 'warning') {
-      ringColor = 'bg-amber-500 bg-opacity-70'
-      dotColor = 'bg-amber-600'
-    } else if (type === 'gempa') {
-      ringColor = 'bg-orange-500 bg-opacity-70'
-      dotColor = 'bg-orange-600'
-    }
+    let colorHex = '#ef4444' // red
+    if (type === 'warning') colorHex = '#f97316' // orange
+    else if (type === 'gempa') colorHex = '#ea580c' // amber
 
     pulseEl.innerHTML = `
-      <div class="relative flex h-14 w-14 items-center justify-center">
-        <div class="animate-ping absolute inline-flex h-full w-full rounded-full ${ringColor}"></div>
-        <div class="relative inline-flex rounded-full h-3 w-3 ${dotColor}"></div>
-      </div>
+      <style>
+        @keyframes eocPulsePing {
+          0% { transform: scale(0.4); opacity: 0.95; }
+          60% { transform: scale(1.9); opacity: 0.15; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes eocPulseRadar {
+          0% { transform: scale(0.2); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 0.6; }
+          100% { transform: scale(2.1); opacity: 0; }
+        }
+      </style>
+      <div style="position: absolute; width: 44px; height: 44px; border-radius: 9999px; background: ${colorHex}; opacity: 0.55; animation: eocPulsePing 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;"></div>
+      <div style="position: absolute; width: 44px; height: 44px; border-radius: 9999px; border: 2.2px solid ${colorHex}; animation: eocPulseRadar 1.8s ease-out infinite; animation-delay: 0.45s;"></div>
+      <div style="position: relative; width: 10px; height: 10px; border-radius: 9999px; background: ${colorHex}; border: 2px solid #ffffff; box-shadow: 0 0 10px ${colorHex};"></div>
     `
 
     const overlay = new Overlay({
@@ -2077,38 +2088,59 @@ export default function DisasterMap({
       if (m.lat && m.lng && Number(m.lat) !== 0 && Number(m.lng) !== 0) {
         const lat = Number(m.lat)
         const lng = Number(m.lng)
+        const isEpicenter = !!m.isEpicenter || idx === 0
 
         // Draw pin marker
         const disasterFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
           id: `disaster-${idx}`,
-          name: m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : (m.nama || 'Pusat Kejadian Bencana'),
+          name: m.nama || (m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : 'Titik Dampak Bencana'),
           rawItem: m,
           itemType: 'disaster'
         })
         disasterFeat.setStyle(new Style({
           image: new Icon({
-            src: getSvgPin('#dc2626', 'disaster'),
-            scale: 0.92,
+            src: getSvgPin(isEpicenter ? '#dc2626' : '#ea580c', 'disaster'),
+            scale: isEpicenter ? 1.05 : 0.88,
             anchor: [0.5, 1]
           })
         }))
         source.addFeature(disasterFeat)
 
-        // Only draw pulsing radius circle for the primary epicenter/disaster location (idx === 0)
-        if (idx === 0 && pulseRadius > 0) {
-          const radiusInMeters = pulseRadius * 1000
+        // Draw pulsing radius circle & trigger radar overlay on all disaster markers
+        if (pulseRadius > 0) {
+          const currentRadiusKm = isEpicenter ? pulseRadius : Math.max(3, Math.min(pulseRadius * 0.5, 15))
+          const radiusInMeters = currentRadiusKm * 1000
+
           const circleFeat = new Feature({
             geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
             id: `pulse-circle-${idx}`
           })
           circleFeat.setStyle(new Style({
-            fill: new Fill({ color: 'rgba(220, 38, 38, 0.05)' }),
-            stroke: new Stroke({ color: 'rgba(220, 38, 38, 0.55)', width: 1.8, lineDash: [5, 6] })
+            fill: new Fill({ color: isEpicenter ? 'rgba(239, 68, 68, 0.16)' : 'rgba(249, 115, 22, 0.12)' }),
+            stroke: new Stroke({
+              color: isEpicenter ? 'rgba(220, 38, 38, 0.85)' : 'rgba(234, 88, 12, 0.75)',
+              width: isEpicenter ? 2.4 : 1.8,
+              lineDash: isEpicenter ? [6, 6] : [4, 4]
+            })
           }))
           source.addFeature(circleFeat)
 
-          createPulseOverlay(lng, lat, 'danger')
+          // Inner core zone for epicenter
+          if (isEpicenter && pulseRadius >= 5) {
+            const innerCircle = new Feature({
+              geometry: new CircleGeom(fromLonLat([lng, lat]), (radiusInMeters * 0.4)),
+              id: `pulse-inner-${idx}`
+            })
+            innerCircle.setStyle(new Style({
+              fill: new Fill({ color: 'rgba(220, 38, 38, 0.22)' }),
+              stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 })
+            }))
+            source.addFeature(innerCircle)
+          }
+
+          // Trigger radar overlay bip-bip denyut
+          createPulseOverlay(lng, lat, isEpicenter ? 'danger' : 'warning')
         }
       }
     })
@@ -2482,8 +2514,14 @@ export default function DisasterMap({
           const firstM = markers && markers[0]
           const cLng = firstM?.lng ? Number(firstM.lng) : 121.5
           const cLat = firstM?.lat ? Number(firstM.lat) : -8.6
-          map.getView().animate({ center: fromLonLat([cLng, cLat]), zoom: 8.2, duration: 500 })
         }
+      }
+    }
+
+    return () => {
+      if (map) {
+        pulseOverlaysRef.current.forEach(ov => map.removeOverlay(ov))
+        pulseOverlaysRef.current = []
       }
     }
   }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesRusakList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
