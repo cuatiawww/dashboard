@@ -653,15 +653,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         }
       }
 
-      summary[category].terdampak += 1
-
       const rb = safeParseInt(f.rusak_berat || (f.kondisi === 'Rusak Berat' ? 1 : 0))
       const rs = safeParseInt(f.rusak_sedang || (f.kondisi === 'Rusak Sedang' ? 1 : 0))
       const rr = safeParseInt(f.rusak_ringan || (f.kondisi === 'Rusak Ringan' ? 1 : 0))
+      const hasDamage = rb > 0 || rs > 0 || rr > 0 || String(f.kondisi || '').toLowerCase().includes('rusak')
 
-      summary[category].rusakBerat += rb
-      summary[category].rusakSedang += rs
-      summary[category].rusakRingan += rr
+      if (hasDamage) {
+        summary[category].terdampak += 1
+        summary[category].rusakBerat += rb
+        summary[category].rusakSedang += rs
+        summary[category].rusakRingan += rr
+      }
 
       const fungsi = String(f.fungsi || f.fungsi_pelayanan || '').toLowerCase()
       if (fungsi.includes('tidak') || fungsi.includes('non') || f.status === 'Tidak Operasional' || (rb > 0 && !fungsi.includes('berfungsi'))) {
@@ -676,9 +678,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const faskesPieBreakdown = useMemo(() => {
     const summary = faskesStatusSummary
-    const masterList = Array.isArray(kapasitasNakes) && kapasitasNakes.length > 0
-      ? kapasitasNakes
-      : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat : [])
+
+    // Hitung total faskes master yang riil
+    const masterList = isNttEvent && (nttApiData.pasien_rs.length > 0 || nttApiData.pasien_puskesmas.length > 0)
+      ? [...(nttApiData.pasien_rs || []), ...(nttApiData.pasien_puskesmas || [])]
+      : (Array.isArray(kapasitasNakes) && kapasitasNakes.length > 0
+        ? kapasitasNakes
+        : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat : []))
 
     const masterCounts = {
       rs: 0,
@@ -688,8 +694,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
 
     masterList.forEach((f: any) => {
-      const type = String(f.jenis || f.jenis_faskes || f.nama_faskes || f.nama || '').toLowerCase()
-      if (type.includes('rs') || type.includes('rumah sakit') || type.includes('rumkit')) {
+      const type = String(f.jenis || f.subjenis || f.jenis_faskes || f.nama_rs ? 'rs' : (f.nama_puskesmas ? 'pkm' : '') || f.nama_faskes || f.nama || '').toLowerCase()
+      if (type.includes('rs') || type.includes('rumah sakit') || type.includes('rumkit') || type.startsWith('rs ') || type.startsWith('rs.')) {
         masterCounts.rs += 1
       } else if (type.includes('pustu') || type.includes('pembantu')) {
         masterCounts.pustu += 1
@@ -700,13 +706,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     })
 
-    const baseline = {
-      rs: Math.max(summary.rs.terdampak + (summary.rs.terdampak > 0 ? 2 : 3), masterCounts.rs || 5),
-      pkm: Math.max(summary.pkm.terdampak + (summary.pkm.terdampak > 0 ? 5 : 8), masterCounts.pkm || 18),
-      pustu: Math.max(summary.pustu.terdampak + (summary.pustu.terdampak > 0 ? 3 : 5), masterCounts.pustu || 12),
-      klinik: Math.max(summary.klinik.terdampak + (summary.klinik.terdampak > 0 ? 2 : 4), masterCounts.klinik || 8)
-    }
-
     const categories = [
       {
         key: 'rs',
@@ -714,8 +713,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: Building2,
         iconColor: 'text-rose-600',
         terdampak: summary.rs.terdampak,
-        totalMaster: baseline.rs,
-        berfungsi: Math.max(0, baseline.rs - summary.rs.terdampak),
+        totalMaster: Math.max(summary.rs.terdampak, masterCounts.rs),
+        berfungsi: Math.max(0, Math.max(summary.rs.terdampak, masterCounts.rs) - summary.rs.terdampak),
         color: '#e11d48',
         normalColor: '#10b981'
       },
@@ -725,8 +724,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: Stethoscope,
         iconColor: 'text-orange-600',
         terdampak: summary.pkm.terdampak,
-        totalMaster: baseline.pkm,
-        berfungsi: Math.max(0, baseline.pkm - summary.pkm.terdampak),
+        totalMaster: Math.max(summary.pkm.terdampak, masterCounts.pkm),
+        berfungsi: Math.max(0, Math.max(summary.pkm.terdampak, masterCounts.pkm) - summary.pkm.terdampak),
         color: '#f97316',
         normalColor: '#10b981'
       },
@@ -736,8 +735,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: PlusSquare,
         iconColor: 'text-amber-600',
         terdampak: summary.pustu.terdampak,
-        totalMaster: baseline.pustu,
-        berfungsi: Math.max(0, baseline.pustu - summary.pustu.terdampak),
+        totalMaster: Math.max(summary.pustu.terdampak, masterCounts.pustu),
+        berfungsi: Math.max(0, Math.max(summary.pustu.terdampak, masterCounts.pustu) - summary.pustu.terdampak),
         color: '#eab308',
         normalColor: '#10b981'
       },
@@ -747,8 +746,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: BriefcaseMedical,
         iconColor: 'text-indigo-600',
         terdampak: summary.klinik.terdampak,
-        totalMaster: baseline.klinik,
-        berfungsi: Math.max(0, baseline.klinik - summary.klinik.terdampak),
+        totalMaster: Math.max(summary.klinik.terdampak, masterCounts.klinik),
+        berfungsi: Math.max(0, Math.max(summary.klinik.terdampak, masterCounts.klinik) - summary.klinik.terdampak),
         color: '#6366f1',
         normalColor: '#10b981'
       }
@@ -758,7 +757,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const pct = cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0
       const pieData = [
         { name: 'Terdampak / Rusak', value: cat.terdampak, fill: cat.color },
-        { name: 'Berfungsi Normal', value: cat.berfungsi, fill: cat.normalColor }
+        { name: 'Berfungsi Normal', value: cat.berfungsi > 0 ? cat.berfungsi : (cat.totalMaster === 0 ? 1 : 0), fill: cat.totalMaster === 0 ? '#e2e8f0' : cat.normalColor }
       ]
 
       return {
@@ -767,7 +766,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         pieData
       }
     })
-  }, [faskesStatusSummary, kapasitasNakes, detail])
+  }, [faskesStatusSummary, kapasitasNakes, detail, isNttEvent, nttApiData.pasien_rs, nttApiData.pasien_puskesmas])
 
   useEffect(() => {
     let active = true
@@ -1975,41 +1974,39 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam, isNttEvent]);
 
   const totalFaskes = useMemo(() => {
+    if (isNttEvent) {
+      const apiCount = (nttApiData?.pasien_rs?.length || 0) + (nttApiData?.pasien_puskesmas?.length || 0)
+      return apiCount > 0 ? apiCount : 92
+    }
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
     const terdampak = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
     const eventTerdampak = Array.isArray(eventData?.faskes_terdampak) ? eventData.faskes_terdampak.length : 0
-    const apiPkm = Array.isArray(nttApiData?.pasien_puskesmas) ? nttApiData.pasien_puskesmas.length : 0
-    const apiRs = Array.isArray(nttApiData?.pasien_rs) ? nttApiData.pasien_rs.length : 0
-    const count = Math.max(terdekat + terdampak, eventTerdampak, apiPkm + apiRs)
-    return count > 0 ? count : (isNttEvent ? 7 : 0)
+    return Math.max(terdekat, terdampak, eventTerdampak)
   }, [detail, eventData?.faskes_terdampak, nttApiData?.pasien_puskesmas, nttApiData?.pasien_rs, isNttEvent])
 
   const terdampakFaskes = useMemo(() => {
-    const fromDetail = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
-    const fromEvent = Array.isArray(eventData?.faskes_terdampak) ? eventData.faskes_terdampak.length : 0
-    return Math.max(fromDetail, fromEvent)
+    // Only count physical damage reports from RHA
+    const list = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak : (Array.isArray(eventData?.faskes_terdampak) ? eventData.faskes_terdampak : [])
+    const damaged = list.filter((f: any) => Number(f.rusak_berat || 0) > 0 || Number(f.rusak_sedang || 0) > 0 || Number(f.rusak_ringan || 0) > 0 || String(f.kondisi || '').toLowerCase().includes('rusak'))
+    return damaged.length
   }, [detail?.faskes_terdampak, eventData?.faskes_terdampak])
 
   const operasionalFaskes = useMemo(() => {
-    const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
-    if (terdekat > 0) return terdekat
-    return totalFaskes > 0 ? totalFaskes : (isNttEvent ? 7 : 0)
-  }, [detail?.faskes_terdekat, totalFaskes, isNttEvent])
+    return Math.max(0, totalFaskes - terdampakFaskes)
+  }, [totalFaskes, terdampakFaskes])
 
   const faskesTrendInfo = useMemo(() => {
     if (terdampakFaskes > 0) {
-      const yesterday = Math.max(0, terdampakFaskes - 1)
-      const diff = terdampakFaskes - yesterday
       return {
-        label: `Kemarin: ${yesterday} Terdampak | ↑ +${diff} Faskes`,
+        label: `${terdampakFaskes} Terdampak | ${operasionalFaskes} Operasional`,
         badgeClass: 'bg-rose-50 border-rose-200 text-rose-700 shadow-xs font-black'
       }
     }
     return {
-      label: 'Kemarin: 0 Terdampak | 100% Operasional',
+      label: isNttEvent ? '7 RSUD & 85 PKM Siaga Melayani' : '100% Beroperasi Siaga Bencana',
       badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs font-black'
     }
-  }, [terdampakFaskes])
+  }, [terdampakFaskes, operasionalFaskes, isNttEvent])
 
   const terdampakTrendInfo = useMemo(() => {
     const rawVal = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak)
