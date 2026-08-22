@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDisasterName } from '@/lib/utils/disasterUtils'
 import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity, RotateCcw, Wind, Building2, Tent } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
-import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
 
 
@@ -87,54 +86,6 @@ function getFaskesTriageData(rawItem?: any, name?: string) {
       const catatan = rawItem.catatan || rawItem.diagnosis || rawItem.catatan_triase || rawItem.catatan_pasien || ''
       return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
     }
-  }
-
-  // 2. Fuzzy / normalize lookup in gempaNttData.pasien_rs and gempaNttData.pasien_puskesmas
-  const cleanTarget = String(name || rawItem?.nama || rawItem?.nama_faskes || rawItem?.nama_lengkap || '')
-    .toLowerCase()
-    .replace(/^(rsud|rs|puskesmas|klinik|pustu)\s+/i, '')
-    .trim()
-
-  if (!cleanTarget) return null
-
-  // Search in pasien_rs
-  const rsList = (gempaNttData as any)?.pasien_rs || []
-  const foundRs = rsList.find((rs: any) => {
-    const cleanRs = String(rs.nama_rs || '')
-      .toLowerCase()
-      .replace(/^(rsud|rs)\s+/i, '')
-      .trim()
-    return cleanRs.includes(cleanTarget) || cleanTarget.includes(cleanRs)
-  })
-
-  if (foundRs) {
-    const m = Number(foundRs.triase_merah || 0)
-    const k = Number(foundRs.triase_kuning || 0)
-    const h = Number(foundRs.triase_hijau || 0)
-    const ht = Number(foundRs.triase_hitam || 0)
-    const total = Number(foundRs.total || (m + k + h + ht))
-    const catatan = foundRs.catatan || ''
-    return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
-  }
-
-  // Search in pasien_puskesmas
-  const pkmList = (gempaNttData as any)?.pasien_puskesmas || []
-  const foundPkm = pkmList.find((pkm: any) => {
-    const cleanPkm = String(pkm.nama_puskesmas || '')
-      .toLowerCase()
-      .replace(/^puskesmas\s+/i, '')
-      .trim()
-    return cleanPkm.includes(cleanTarget) || cleanTarget.includes(cleanPkm)
-  })
-
-  if (foundPkm) {
-    const m = Number(foundPkm.triase_merah || 0)
-    const k = Number(foundPkm.triase_kuning || 0)
-    const h = Number(foundPkm.triase_hijau || 0)
-    const ht = Number(foundPkm.triase_hitam || 0)
-    const total = Number(foundPkm.total || (m + k + h + ht))
-    const catatan = foundPkm.catatan || ''
-    return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
   }
 
   return null
