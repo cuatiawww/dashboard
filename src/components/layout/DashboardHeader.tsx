@@ -500,7 +500,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                   {headerTitle}
                 </h1>
                 <p className="mt-2 max-w-[760px] text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base hidden sm:block">
-                  {headerDesc || `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah ${activeRegion}.`}
+                  {headerDesc || `Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan di wilayah ${activeRegion}.`}
                 </p>
                 {(lastUpdated || (sourceLabel && sourceUrl)) && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 font-semibold">

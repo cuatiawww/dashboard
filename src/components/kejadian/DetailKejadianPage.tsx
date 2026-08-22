@@ -3866,28 +3866,30 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   {faskesTrendInfo.label}
                 </span>
               </div>
-              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
-                <div className="border-r border-slate-300/40 px-0.5">
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
-                    {operasionalFaskes}
-                  </span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">OPERASIONAL</span>
+              {!isNttEvent && (
+                <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
+                  <div className="border-r border-slate-300/40 px-0.5">
+                    <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
+                      {operasionalFaskes}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">OPERASIONAL</span>
+                  </div>
+                  <div className="px-0.5">
+                    <span className="text-lg sm:text-xl font-black text-rose-600 block leading-none">
+                      {terdampakFaskes}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">TERDAMPAK</span>
+                  </div>
                 </div>
-                <div className="px-0.5">
-                  <span className="text-lg sm:text-xl font-black text-rose-600 block leading-none">
-                    {terdampakFaskes}
-                  </span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">TERDAMPAK</span>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Card 4: Penduduk Terancam/Terdampak (Static Card) */}
+            {/* Card 4: Penduduk Terdampak */}
             <div
               className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition-all duration-200 ${disasterTheme.bg}`}
             >
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERANCAM (TERDAMPAK)</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
                 <div className="flex items-baseline justify-center gap-1 mt-2">
                   <span className="text-3xl sm:text-4xl font-black text-slate-900 leading-none group-hover:text-teal-800 transition-colors">
                     {pendudukTerdampakDisplay}
@@ -3898,20 +3900,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   {terdampakTrendInfo.label}
                 </span>
               </div>
-              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
-                <div className="min-w-0 px-0.5">
-                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Balita</span>
+              {!isNttEvent && (
+                <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+                  <div className="min-w-0 px-0.5">
+                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Balita</span>
+                  </div>
+                  <div className="border-x border-slate-300/40 min-w-0 px-0.5">
+                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={lansiaDisplay}>{lansiaDisplay}</span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Lansia</span>
+                  </div>
+                  <div className="min-w-0 px-0.5">
+                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={bumilDisplay}>{bumilDisplay}</span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Bumil</span>
+                  </div>
                 </div>
-                <div className="border-x border-slate-300/40 min-w-0 px-0.5">
-                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={lansiaDisplay}>{lansiaDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Lansia</span>
-                </div>
-                <div className="min-w-0 px-0.5">
-                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={bumilDisplay}>{bumilDisplay}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Bumil</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -4075,15 +4079,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </div>
 
                     {/* Insight Box di Sisi Kiri */}
-                    <div className="rounded-xl bg-teal-50/90 border border-teal-200 p-4 text-xs sm:text-sm text-teal-950 leading-relaxed font-medium">
-                      <div className="flex items-center gap-2 text-teal-900 font-black text-sm mb-1.5">
-                        <Activity className="h-4 w-4 text-[#047d78]" />
-                        <span>Insight Perkembangan Korban:</span>
+                    {!isNttEvent && (
+                      <div className="rounded-xl bg-teal-50/90 border border-teal-200 p-4 text-xs sm:text-sm text-teal-950 leading-relaxed font-medium">
+                        <div className="flex items-center gap-2 text-teal-900 font-black text-sm mb-1.5">
+                          <Activity className="h-4 w-4 text-[#047d78]" />
+                          <span>Insight Perkembangan Korban:</span>
+                        </div>
+                        <p className="text-teal-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
+                          {korbanNarrative}
+                        </p>
                       </div>
-                      <p className="text-teal-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
-                        {korbanNarrative}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   {/* Sisi Kanan (70% / 8 cols): Big Spacious LineChart */}
@@ -4220,39 +4226,43 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Total Faskes</span>
                           <span className="text-xl sm:text-2xl font-black text-slate-900">{totalMasterFaskes} <span className="text-xs sm:text-sm font-bold text-slate-500">Unit</span></span>
                         </div>
-                        <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Terdampak/Rusak</span>
-                          <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">Unit</span></span>
-                        </div>
+                        {!isNttEvent && (
+                          <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
+                            <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Terdampak/Rusak</span>
+                            <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">Unit</span></span>
+                          </div>
+                        )}
                         <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80">
                           <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block">Aktif Rawat Pasien</span>
                           <span className="text-xl sm:text-2xl font-black text-blue-950">{masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)} <span className="text-xs sm:text-sm font-bold text-blue-700">Faskes</span></span>
                         </div>
                         <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Siaga Standby</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Disiagakan</span>
                           <span className="text-xl sm:text-2xl font-black text-emerald-950">{Math.max(0, totalMasterFaskes - totalTerdampakFaskes - (masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)))} <span className="text-xs sm:text-sm font-bold text-emerald-700">Unit</span></span>
                         </div>
                       </div>
                     </div>
 
                     {/* Insight Box di Sisi Kiri */}
-                    <div className="rounded-xl bg-rose-50/90 border border-rose-200 p-4 text-xs sm:text-sm text-rose-950 leading-relaxed font-medium">
-                      <div className="flex items-center gap-2 text-rose-900 font-black text-sm mb-1.5">
-                        <Building2 className="h-4 w-4 text-rose-600" />
-                        <span>Insight Kesiapan Faskes:</span>
+                    {!isNttEvent && (
+                      <div className="rounded-xl bg-rose-50/90 border border-rose-200 p-4 text-xs sm:text-sm text-rose-950 leading-relaxed font-medium">
+                        <div className="flex items-center gap-2 text-rose-900 font-black text-sm mb-1.5">
+                          <Building2 className="h-4 w-4 text-rose-600" />
+                          <span>Insight Kesiapan Faskes:</span>
+                        </div>
+                        <p className="text-rose-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
+                          {faskesNarrative}
+                        </p>
                       </div>
-                      <p className="text-rose-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
-                        {faskesNarrative}
-                      </p>
-                    </div>
+                    )}
                   </div>
 
                   {/* Sisi Kanan (70% / 8 cols): 4 Donut Pie Charts */}
                   <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
                     <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-5 pb-3 mb-3 border-b border-slate-200/80 text-xs sm:text-sm font-bold text-slate-700">
-                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>
+                      {!isNttEvent && <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>}
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" /> Aktif Rawat Pasien (Siaga Bencana)</span>
-                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Siaga Standby (Normal)</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Disiagakan (Normal)</span>
                     </div>
 
                     {/* 4 Cards Grid */}
@@ -4273,7 +4283,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     ? 'bg-blue-50 text-blue-700 border-blue-200'
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
-                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Faskes Rawat` : '100% Standby'}
+                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Faskes Rawat` : '100% Disiagakan'}
                               </span>
                             </div>
 
@@ -4315,24 +4325,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 ) : (
                                   <>
                                     <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.standby}/{cat.totalMaster}</span>
-                                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mt-0.5">Siaga Standby</span>
+                                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mt-0.5">Disiagakan</span>
                                   </>
                                 )}
                               </div>
                             </div>
 
-                            <div className="mt-2 pt-2.5 border-t border-slate-100 grid grid-cols-3 gap-1 text-[11px] font-bold text-center">
-                              <div className="text-slate-600">
-                                <span className="block text-rose-600 font-black leading-none">{cat.terdampak}</span>
-                                <span className="text-[9.5px] font-semibold text-slate-400">Rusak</span>
-                              </div>
+                            <div className={`mt-2 pt-2.5 border-t border-slate-100 grid ${isNttEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-[11px] font-bold text-center`}>
+                              {!isNttEvent && (
+                                <div className="text-slate-600">
+                                  <span className="block text-rose-600 font-black leading-none">{cat.terdampak}</span>
+                                  <span className="text-[9.5px] font-semibold text-slate-400">Rusak</span>
+                                </div>
+                              )}
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
                                 <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
                                 <span className="text-[9.5px] font-semibold text-blue-600">Faskes Rawat</span>
                               </div>
                               <div className="text-emerald-700">
                                 <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
-                                <span className="text-[9.5px] font-semibold text-emerald-600">Standby</span>
+                                <span className="text-[9.5px] font-semibold text-emerald-600">Disiagakan</span>
                               </div>
                             </div>
                           </div>
@@ -7094,29 +7106,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </>
               ) : kabupatenMatrixTab === 'faskes' ? (
                 <>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 col-span-2 sm:col-span-4">
                     <div className="text-[10px] font-black uppercase text-slate-500">Total Faskes Terpantau</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{faskesMatrixData.length || totalFaskes} <span className="text-xs font-bold text-slate-500">Unit</span></div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">RS, Puskesmas, Klinik, Pustu</div>
+                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">RS, Puskesmas, Klinik, Pustu se-Provinsi NTT</div>
                   </div>
-                  <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200">
-                    <div className="text-[10px] font-black uppercase text-rose-700">Faskes Terdampak/Rusak</div>
-                    <div className="text-2xl font-black text-rose-700 mt-1">{faskesMatrixData.filter((f: any) => String(f.status || f.kondisi_bangunan || '').toLowerCase().includes('rusak')).length} <span className="text-xs font-bold text-rose-600">Unit</span></div>
-                    <div className="text-[11px] font-bold text-rose-600 mt-0.5">Kerusakan Fisik Bangunan</div>
-                  </div>
-                  <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200">
-                    <div className="text-[10px] font-black uppercase text-emerald-700">Faskes Operasional</div>
-                    <div className="text-2xl font-black text-emerald-700 mt-1">{faskesMatrixData.filter((f: any) => String(f.status || '').toLowerCase().includes('operasi') || String(f.status || '').toLowerCase().includes('siaga')).length} <span className="text-xs font-bold text-emerald-600">Unit</span></div>
-                    <div className="text-[11px] font-bold text-emerald-600 mt-0.5">Pelayanan Medis Normal / Standby</div>
-                  </div>
-                  {/* Pasien Triase Faskes stat card - Hidden as requested */}
-                  {/* 
-                  <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200">
-                    <div className="text-[10px] font-black uppercase text-purple-700">Pasien Triase Faskes</div>
-                    <div className="text-2xl font-black text-purple-700 mt-1">{faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.total_pasien) || 0), 0)} <span className="text-xs font-bold text-purple-600">Pasien</span></div>
-                    <div className="text-[11px] font-bold text-purple-600 mt-0.5">{faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_merah) || 0), 0)} Merah • {faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_kuning) || 0), 0)} Kuning • {faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_hijau) || 0), 0)} Hijau</div>
-                  </div>
-                  */}
                 </>
               ) : kabupatenMatrixTab === 'penyakit' ? (
                 <>
@@ -7298,13 +7292,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <th className="py-3.5 px-4">Kabupaten &amp; Kecamatan</th>
                       <th className="py-3.5 px-4 text-center">Triase Pasien</th>
                       <th className="py-3.5 px-4 text-center">Kondisi &amp; Status Siaga</th>
-                      <th className="py-3.5 px-4">PJ Medis / Dokter</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {faskesMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                        <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold text-xs">
                           Data fasilitas kesehatan tidak tersedia dari laporan lapangan.
                         </td>
                       </tr>
@@ -7382,16 +7375,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     </span>
                                   </div>
                                 </div>
-                              </td>
-                              <td className="py-3 px-4 text-slate-800 font-semibold text-[11px]">
-                                {row.pj_medis && row.pj_medis !== '-' ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${hasTriage ? 'bg-rose-500' : 'bg-teal-500'}`}></span>
-                                    <span className="font-bold text-slate-900">{row.pj_medis}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-400 font-medium">-</span>
-                                )}
                               </td>
                             </tr>
                           )

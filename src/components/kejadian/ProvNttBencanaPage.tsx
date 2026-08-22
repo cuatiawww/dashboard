@@ -118,7 +118,7 @@ export default function ProvNttBencanaPage() {
   useEffect(() => {
     setHeader({
       title: 'DASHBOARD GEMPA BUMI - PROV. NTT',
-      description: 'Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah PROV. NUSA TENGGARA TIMUR.',
+      description: 'Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan di wilayah PROV. NUSA TENGGARA TIMUR.',
     })
 
     return () => {
