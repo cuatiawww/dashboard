@@ -216,7 +216,9 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     source_url = os.getenv("SOURCE_URL", "https://ntt.tanggap-bencana.go.id/")
-    data_dir = Path(os.getenv("DATA_DIR", "/data"))
+    # Default: write to public/data/ntt next to the collector directory so Next.js API can find it
+    _default_data_dir = Path(__file__).parent.parent / "public" / "data" / "ntt"
+    data_dir = Path(os.getenv("DATA_DIR", str(_default_data_dir)))
     interval = max(env_int("INTERVAL_SECONDS", 1800), 60)
     run_once = os.getenv("RUN_ONCE", "0") == "1"
 
@@ -228,14 +230,21 @@ def main() -> None:
         }
     )
 
+    LOGGER.info("Data directory: %s", data_dir.resolve())
+    LOGGER.info("Source URL   : %s", source_url)
+    LOGGER.info("Interval     : %s detik", interval)
+
     while True:
         try:
             manifest = scrape_once(session, source_url, data_dir)
             LOGGER.info(
-                "berhasil memperbarui data: latest_date=%s, dates=%s",
+                "berhasil memperbarui data: latest_date=%s, total_tanggal=%s, manifest=%s",
                 manifest["latest_date"],
                 len(manifest["dates"]),
+                data_dir / "manifest.json",
             )
+            for date_key, files in sorted(manifest["dates"].items()):
+                LOGGER.info("  tanggal %s -> %s", date_key, list(files.keys()))
         except Exception:
             LOGGER.exception("scrape gagal; data lokal terakhir dipertahankan")
 

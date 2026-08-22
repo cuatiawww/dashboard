@@ -316,7 +316,7 @@ export async function GET(request: Request) {
       : mainDayEq?.mmi
       ? `${mainDayEq.mmi} MMI`
       : isNtt
-      ? 'VII - VIII MMI (Flores Timur, Alor, Sikka, Manggarai)'
+      ? 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)'
       : '-'
 
     const rawMmi = intensitasMmi.split(',')[0].trim()

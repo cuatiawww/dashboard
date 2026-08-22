@@ -466,13 +466,31 @@ export default function DisasterMap({
   useEffect(() => {
     let active = true
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+    const normalizeNttRows = (rows: any[]): any[] => {
+      if (!Array.isArray(rows)) return []
+      return rows.map(r => {
+        const out: any = {}
+        Object.keys(r).forEach(k => {
+          const key = k.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+          out[key] = r[k]
+        })
+        // Ensure numeric fields parsed correctly
+        out.meninggal = Number(out.meninggal || 0)
+        out.luka_berat = Number(out.luka_berat || 0)
+        out.luka_ringan = Number(out.luka_ringan || 0)
+        out.pengungsi = Number(out.pengungsi || 0)
+        out.titik_pengungsian = Number(out.titik_pengungsian || 0)
+        out.populasi_terdampak = Number(out.populasi_terdampak || out.penduduk_terdampak || 0)
+        return out
+      })
+    }
     fetch(`${basePath}/api/ntt-data`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
         if (!active) return
         if (json.success) {
           const list = json.tables?.situasi_kesehatan || json.data?.situasi_kesehatan || []
-          nttSituasiRef.current = Array.isArray(list) ? list : []
+          nttSituasiRef.current = normalizeNttRows(Array.isArray(list) ? list : [])
         }
       })
       .catch((e) => console.warn('[DisasterMap] NTT Data fetch:', e))
@@ -1987,7 +2005,8 @@ export default function DisasterMap({
       } else if (iconType === 'shelter') {
         inner = '<path d="M12 6l5 4.5v5.5H7v-5.5l5-4.5z" stroke="#ffffff" stroke-width="2" fill="rgba(255,255,255,0.2)"/>'
       } else if (iconType === 'tck') {
-        inner = '<path d="M12 7.2c-1.1-1.8-3.4-2-4.5-.7-1.3 1.4-1 3.5.3 4.9L12 15.5l4.2-4.1c1.3-1.4 1.6-3.5.3-4.9-1.1-1.3-3.4-1.1-4.5.7z" stroke="#ffffff" stroke-width="1.6" fill="#ffffff"/>'
+        // Tenaga Cadangan Kesehatan (TCK) - Dokter / Personil Medis Siaga
+        inner = '<circle cx="12" cy="7.2" r="2.8" fill="#ffffff"/><path d="M6.5 16c0-2.8 2.5-4.8 5.5-4.8s5.5 2 5.5 4.8" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M12 12v3.2M10.4 13.6h3.2" stroke="' + color + '" stroke-width="1.3" stroke-linecap="round"/>'
       } else if (iconType === 'flood' || iconType === 'gempa' || iconType === 'disaster') {
         inner = '<circle cx="12" cy="10" r="3.5" fill="#ffffff"/><circle cx="12" cy="10" r="1.5" fill="' + color + '"/>'
       } else if (iconType === 'earthquake') {
@@ -2433,68 +2452,61 @@ export default function DisasterMap({
       ref={mapContainerRef}
       className="relative h-full w-full overflow-hidden rounded-2xl border border-slate-200 bg-[#f1fcfc]"
     >
-      {/* Floating EOC Route details card on the left side of the map */}
-      {isFloodEocMode && showEocRoute && (
-        <div className="absolute top-4 left-4 z-20 w-80 max-h-[85%] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md transition-all duration-300">
+      {/* Floating EOC Route details card on the left side of the map (Hanya tampil saat rute aktif/diklik) */}
+      {isFloodEocMode && showEocRoute && selectedRouteTarget && (
+        <div className="absolute top-4 left-4 z-20 w-80 max-h-[85%] overflow-y-auto rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-xl backdrop-blur-md transition-all duration-300 animate-in fade-in slide-in-from-left-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
                 <Compass className="h-3.5 w-3.5 text-teal-700" />
                 Info Rujukan Faskes &amp; Evakuasi
               </span>
-              {selectedRouteTarget && (
-                <button 
-                  onClick={() => onSelectRouteTarget && onSelectRouteTarget(null, 'clinic')}
-                  className="text-slate-400 hover:text-slate-650 p-0.5 rounded transition"
-                  title="Bersihkan Rute"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <button 
+                onClick={() => onSelectRouteTarget && onSelectRouteTarget(null, 'clinic')}
+                className="text-slate-400 hover:text-slate-650 p-0.5 rounded transition"
+                title="Tutup / Bersihkan Rute"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
             
-            {selectedRouteTarget ? (
-              <div className="space-y-2.5 text-xs text-slate-750">
+            <div className="space-y-2.5 text-xs text-slate-750">
+              <div>
+                <h5 className="font-extrabold text-slate-900 text-sm leading-tight">{selectedRouteTarget.name}</h5>
+                <span className="text-[9px] uppercase font-bold text-teal-700">
+                  {selectedRouteTarget.type === 'hospital' ? 'Rumah Sakit Rujukan' : selectedRouteTarget.type === 'shelter' ? 'Posko Pengungsian' : selectedRouteTarget.type === 'tck' ? 'Relawan TCK Kemkes RI' : 'Puskesmas / Klinik'}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-200 bg-slate-50 px-2 rounded-lg">
                 <div>
-                  <h5 className="font-extrabold text-slate-900 text-sm leading-tight">{selectedRouteTarget.name}</h5>
-                  <span className="text-[9px] uppercase font-bold text-slate-450">{selectedRouteTarget.type}</span>
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Jarak Tempuh</span>
+                  <span className="font-extrabold text-slate-800 text-sm">
+                    {routeInfo ? `${routeInfo.distance.toFixed(1)} km` : '-'}
+                  </span>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-200 bg-slate-50 px-2 rounded-lg">
-                  <div>
-                    <span className="text-[9px] text-slate-400 block uppercase">Jarak Tempuh</span>
-                    <span className="font-extrabold text-slate-800 text-sm">
-                      {routeInfo ? `${routeInfo.distance.toFixed(1)} km` : '-'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] text-slate-400 block uppercase">Durasi Respon</span>
-                    <span className="font-extrabold text-slate-800 text-sm">
-                      {routeInfo ? `${Math.round(routeInfo.duration)} mnt` : '-'}
-                    </span>
-                  </div>
+                <div>
+                  <span className="text-[9px] text-slate-400 block uppercase font-bold">Durasi Respon</span>
+                  <span className="font-extrabold text-slate-800 text-sm">
+                    {routeInfo ? `${Math.round(routeInfo.duration)} mnt` : '-'}
+                  </span>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <span className="text-[9px] font-bold text-slate-455 uppercase block">Rute Taktis Darurat</span>
-                  <p className="text-[11px] text-slate-650 leading-relaxed font-semibold">
-                    {selectedRouteTarget.type === 'hospital' 
-                      ? 'Rute evakuasi gawat darurat ambulans menuju Rumah Sakit rujukan utama.'
-                      : selectedRouteTarget.type === 'shelter'
-                      ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
-                      : selectedRouteTarget.type === 'tck'
-                      ? 'Jalur koordinasi darurat & mobilisasi penugasan Tenaga Cadangan Kesehatan (TCK) / Tim EMT menuju lokasi bencana.'
-                      : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
-                    }
-                  </p>
-                </div>
+              <div className="space-y-1">
+                <span className="text-[9px] font-bold text-slate-455 uppercase block">Rute Taktis Darurat</span>
+                <p className="text-[11px] text-slate-650 leading-relaxed font-semibold">
+                  {selectedRouteTarget.type === 'hospital' 
+                    ? 'Rute evakuasi gawat darurat ambulans menuju Rumah Sakit rujukan utama.'
+                    : selectedRouteTarget.type === 'shelter'
+                    ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
+                    : selectedRouteTarget.type === 'tck'
+                    ? 'Jalur koordinasi darurat & mobilisasi penugasan Tenaga Cadangan Kesehatan (TCK) / Tim EMT menuju lokasi bencana.'
+                    : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
+                  }
+                </p>
               </div>
-            ) : (
-              <div className="text-center py-4 text-slate-400">
-                <Compass className="h-7 w-7 mx-auto text-slate-300 mb-1.5 stroke-[1.5]" />
-                <p className="text-[11px] leading-relaxed">Klik salah satu faskes (RS / Puskesmas / Klinik), posko, atau relawan TCK untuk menggambar rute jalan real-time.</p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

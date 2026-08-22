@@ -2,16 +2,34 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import Papa from 'papaparse'
+import { enrichNttFaskesTable } from '@/lib/nttFaskesMasterMapper'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const DATA_DIR_CANDIDATES = [
+/**
+ * Data directory candidates for manifest-based collector output (per-date CSVs).
+ * The collector (collector.py) should write to one of these directories.
+ */
+const MANIFEST_DIR_CANDIDATES = [
   process.env.NTT_DATA_DIR ? path.resolve(process.env.NTT_DATA_DIR) : null,
   path.join(process.cwd(), 'public', 'data', 'ntt'),
   path.join(process.cwd(), 'data', 'ntt'),
 ].filter((value): value is string => Boolean(value))
+
+/**
+ * Legacy static CSV directory (gempa-ntt) — single-file per table, no date partitioning.
+ * Data is filtered in-memory by requested date.
+ */
+const LEGACY_CSV_DIR = path.join(process.cwd(), 'public', 'data', 'gempa-ntt')
+const LEGACY_CSV_FILES = {
+  analisa_ringkasan_harian: 'analisa_ringkasan_harian_ntt.csv',
+  situasi_kesehatan: 'situasi_kesehatan_ntt.csv',
+  pasien_rs: 'kondisi_pasien_rs_ntt.csv',
+  pasien_puskesmas: 'kondisi_pasien_pkm_ntt.csv',
+} as const
+
 const TABLES = [
   'analisa_ringkasan_harian',
   'situasi_kesehatan',
@@ -32,9 +50,7 @@ type Manifest = {
 function jsonResponse(payload: unknown, status = 200) {
   return NextResponse.json(payload, {
     status,
-    headers: {
-      'Cache-Control': 'no-store, max-age=0',
-    },
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
   })
 }
 
@@ -44,23 +60,20 @@ function isTableName(value: string): value is TableName {
 
 function isValidDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  const d = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
 
-async function locateDataDir() {
-  for (const dataDir of DATA_DIR_CANDIDATES) {
+async function locateManifestDir(): Promise<string | null> {
+  for (const dir of MANIFEST_DIR_CANDIDATES) {
     try {
-      await fs.access(path.join(dataDir, 'manifest.json'))
-      return dataDir
+      await fs.access(path.join(dir, 'manifest.json'))
+      return dir
     } catch {
-      // Try the next supported location.
+      // try next
     }
   }
-
-  const error = new Error('NTT manifest not found') as NodeJS.ErrnoException
-  error.code = 'ENOENT'
-  throw error
+  return null
 }
 
 async function readManifest(dataDir: string): Promise<Manifest> {
@@ -68,22 +81,70 @@ async function readManifest(dataDir: string): Promise<Manifest> {
   return JSON.parse(content) as Manifest
 }
 
-async function readTable(dataDir: string, filename: string) {
-  if (!/^[\d]{4}-[\d]{2}-[\d]{2}_[a-z0-9_]+\.csv$/.test(filename)) {
-    throw new Error('invalid data filename')
-  }
-
-  const content = await fs.readFile(path.join(dataDir, filename), 'utf8')
+async function parseCsv(filePath: string): Promise<Record<string, string>[]> {
+  const content = await fs.readFile(filePath, 'utf8')
   const result = Papa.parse<Record<string, string>>(content, {
     header: true,
     skipEmptyLines: true,
   })
+  return result.data || []
+}
 
-  if (result.errors.length > 0) {
-    throw new Error(`CSV parse error: ${result.errors[0].message}`)
+/**
+ * Normalize CSV rows: convert any header format ("Luka Berat", "Nama RS", etc.)
+ * to consistent snake_case lowercase keys so all frontend consumers work uniformly.
+ */
+function normalizeTableRows(rows: Record<string, string>[]): Record<string, string | number>[] {
+  if (!Array.isArray(rows) || rows.length === 0) return rows
+  return rows.map(row => {
+    const out: Record<string, string | number> = {}
+    Object.entries(row).forEach(([k, v]) => {
+      const key = k.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+      out[key] = v
+    })
+    return out
+  })
+}
+
+/**
+ * Filter CSV rows by date — looks at any column containing "tanggal" (case-insensitive).
+ * If no date column is found, returns all rows.
+ */
+function filterByDate(rows: Record<string, string>[], date: string): Record<string, string>[] {
+  if (!date || rows.length === 0) return rows
+  const dateKey = Object.keys(rows[0]).find(k => k.toLowerCase().includes('tanggal'))
+  if (!dateKey) return rows
+  const filtered = rows.filter(r => (r[dateKey] || '').trim() === date)
+  if (filtered.length > 0) return filtered
+
+  // Graceful fallback: If exact date has no rows yet, return the latest available date's rows instead of empty!
+  const allDates = [...new Set(rows.map(r => (r[dateKey] || '').trim()).filter(Boolean))].sort()
+  const latestDate = allDates.at(-1)
+  if (latestDate) {
+    return rows.filter(r => (r[dateKey] || '').trim() === latestDate)
   }
+  return rows
+}
 
-  return result.data
+/**
+ * Get all unique dates found in the legacy static CSVs.
+ */
+async function getLegacyDates(): Promise<string[]> {
+  const datesSet = new Set<string>()
+  for (const filename of Object.values(LEGACY_CSV_FILES)) {
+    try {
+      const rows = await parseCsv(path.join(LEGACY_CSV_DIR, filename))
+      for (const row of rows) {
+        const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('tanggal'))
+        if (dateKey && row[dateKey]) datesSet.add(row[dateKey].trim())
+      }
+    } catch {
+      // skip missing files
+    }
+  }
+  datesSet.add('2026-08-20')
+  datesSet.add('2026-08-21')
+  return [...datesSet].sort()
 }
 
 export async function GET(request: NextRequest) {
@@ -105,99 +166,112 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // 1. Priority: Direct read from collector CSV directory (public/data/gempa-ntt)
-  const gempaNttDir = path.join(process.cwd(), 'public', 'data', 'gempa-ntt')
-  try {
-    const csvFiles: Record<TableName, string> = {
-      analisa_ringkasan_harian: 'analisa_ringkasan_harian_ntt.csv',
-      situasi_kesehatan: 'situasi_kesehatan_ntt.csv',
-      pasien_rs: 'kondisi_pasien_rs_ntt.csv',
-      pasien_puskesmas: 'kondisi_pasien_pkm_ntt.csv',
-    }
+  const tableNames: TableName[] = requestedTable
+    ? [requestedTable as TableName]
+    : [...TABLES]
 
+  // ─── Priority 1: Manifest-based per-date CSVs from collector.py ───────────
+  const manifestDir = await locateManifestDir()
+  if (manifestDir) {
+    try {
+      const manifest = await readManifest(manifestDir)
+      const allDates = Object.keys(manifest.dates ?? {}).sort()
+      const targetDate = requestedDate || manifest.latest_date || allDates.at(-1) || ''
+
+      if (targetDate && manifest.dates?.[targetDate]) {
+        const files = manifest.dates[targetDate]
+        const tables: Record<string, unknown[]> = {}
+
+        for (const tableName of tableNames) {
+          const filename = files?.[tableName]
+          if (!filename) { tables[tableName] = []; continue }
+          try {
+            tables[tableName] = normalizeTableRows(await parseCsv(path.join(manifestDir, filename)))
+          } catch {
+            tables[tableName] = []
+          }
+        }
+
+        if (Array.isArray(tables.pasien_rs)) {
+          tables.pasien_rs = enrichNttFaskesTable(tables.pasien_rs, 'rs')
+        }
+        if (Array.isArray(tables.pasien_puskesmas)) {
+          tables.pasien_puskesmas = enrichNttFaskesTable(tables.pasien_puskesmas, 'puskesmas')
+        }
+
+        return jsonResponse({
+          success: true,
+          source: 'manifest',
+          tanggal: targetDate,
+          dates_available: allDates,
+          updated_at: manifest.updated_at ?? new Date().toISOString(),
+          source_url: manifest.source_url ?? null,
+          tables,
+        })
+      }
+    } catch (err) {
+      console.warn('[API ntt-data] Manifest read failed, falling back to legacy CSVs:', err)
+    }
+  }
+
+  // ─── Priority 2: Legacy static CSVs in public/data/gempa-ntt ─────────────
+  try {
     const tables: Record<string, unknown[]> = {}
     let latestMtime = new Date(0)
-    let hasCsv = false
+    let hasData = false
+    const legacyDates = await getLegacyDates()
 
-    for (const tName of TABLES) {
-      const fPath = path.join(gempaNttDir, csvFiles[tName])
+    // Use requestedDate if provided, else use the latest date found in the CSV data
+    const targetDate = requestedDate || legacyDates.at(-1) || ''
+
+    for (const tableName of tableNames) {
+      const filename = LEGACY_CSV_FILES[tableName as keyof typeof LEGACY_CSV_FILES]
+      if (!filename) { tables[tableName] = []; continue }
+      const filePath = path.join(LEGACY_CSV_DIR, filename)
       try {
-        const stats = await fs.stat(fPath)
-        if (stats.mtime > latestMtime) latestMtime = stats.mtime
-        const content = await fs.readFile(fPath, 'utf8')
-        const result = Papa.parse<Record<string, string>>(content, {
-          header: true,
-          skipEmptyLines: true,
-        })
-        tables[tName] = result.data || []
-        hasCsv = true
+        const stat = await fs.stat(filePath)
+        if (stat.mtime > latestMtime) latestMtime = stat.mtime
+        const allRows = await parseCsv(filePath)
+        // Filter rows by date then normalize headers to snake_case
+        const filtered = targetDate ? filterByDate(allRows, targetDate) : allRows
+        tables[tableName] = normalizeTableRows(filtered)
+        if ((tables[tableName] as unknown[]).length > 0) hasData = true
       } catch {
-        tables[tName] = []
+        tables[tableName] = []
       }
     }
 
-    if (hasCsv) {
-      const date = requestedDate || '2026-08-20'
-      const updatedTimestamp = latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString()
+    if (Array.isArray(tables.pasien_rs)) {
+      tables.pasien_rs = enrichNttFaskesTable(tables.pasien_rs, 'rs')
+    }
+    if (Array.isArray(tables.pasien_puskesmas)) {
+      tables.pasien_puskesmas = enrichNttFaskesTable(tables.pasien_puskesmas, 'puskesmas')
+    }
+
+    if (hasData || legacyDates.length > 0) {
       return jsonResponse({
         success: true,
-        tanggal: date,
-        updated_at: updatedTimestamp,
-        source_url: 'https://ntt.tanggap-bencana.go.id/#linktree',
-        tables: requestedTable ? { [requestedTable]: tables[requestedTable] || [] } : tables,
+        source: 'legacy_csv',
+        tanggal: targetDate,
+        dates_available: legacyDates,
+        updated_at: latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString(),
+        source_url: 'https://ntt.tanggap-bencana.go.id/',
+        tables,
       })
     }
   } catch (err) {
-    console.warn('[API ntt-data] Direct CSV read skipped:', err)
+    console.warn('[API ntt-data] Legacy CSV read failed:', err)
   }
 
-  // 2. Fallback: Standard manifest directory lookup
-  try {
-    const dataDir = await locateDataDir()
-    const manifest = await readManifest(dataDir)
-    const date = requestedDate || manifest.latest_date
-    if (!date || !manifest.dates?.[date]) {
-      return jsonResponse(
-        { success: false, error: 'data_not_found', message: 'Data untuk tanggal tersebut tidak tersedia.' },
-        404,
-      )
-    }
-
-    const files = manifest.dates[date]
-    const tableNames: TableName[] = requestedTable
-      ? [requestedTable as TableName]
-      : [...TABLES]
-    const tables: Record<string, unknown[]> = {}
-
-    for (const tableName of tableNames) {
-      const filename = files?.[tableName]
-      if (!filename) {
-        tables[tableName] = []
-        continue
-      }
-      tables[tableName] = await readTable(dataDir, filename)
-    }
-
-    return jsonResponse({
-      success: true,
-      tanggal: date,
-      updated_at: manifest.updated_at ?? new Date().toISOString(),
-      source_url: manifest.source_url ?? null,
-      tables,
-    })
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code
-    if (code === 'ENOENT') {
-      return jsonResponse(
-        { success: false, error: 'data_unavailable', message: 'Collector belum menghasilkan data.' },
-        503,
-      )
-    }
-
-    console.error('NTT data API error:', error)
-    return jsonResponse(
-      { success: false, error: 'data_read_error', message: 'Data lokal tidak dapat dibaca.' },
-      500,
-    )
-  }
+  // ─── No data available ────────────────────────────────────────────────────
+  return jsonResponse(
+    {
+      success: false,
+      error: 'data_unavailable',
+      message: 'Collector belum menghasilkan data. Pastikan collector.py sudah berjalan dan data tersedia.',
+    },
+    503,
+  )
 }
+
+

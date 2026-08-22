@@ -739,10 +739,10 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       geometry: new Point(epicCenter),
       markerData: {
         type: 'earthquake',
-        nama: 'Episentrum Gempa Utama M 7.4 Laut Flores',
-        magnitude: 7.4,
-        depth: 12,
-        place: 'Laut Flores - 112 km Barat Laut Larantuka',
+        nama: 'Episentrum Gempa Utama M 7.7 Laut Flores - Mbay-Nagekeo',
+        magnitude: 7.7,
+        depth: 15,
+        place: 'Laut Flores - 30 km Timur Laut Mbay-Nagekeo',
         time: '09:18 WIB (15 Ags 2026)',
         mmi: 'VII-VIII MMI',
         lat: -8.3421,
@@ -758,7 +758,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
           stroke: new Stroke({ color: '#ffffff', width: 3 }),
         }),
         text: new OlText({
-          text: '★ EPISENTRUM M 7.4',
+          text: '★ EPISENTRUM M 7.7',
           font: 'bold 12px Roboto, sans-serif',
           fill: new Fill({ color: '#991b1b' }),
           stroke: new Stroke({ color: '#ffffff', width: 3.5 }),

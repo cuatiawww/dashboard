@@ -422,7 +422,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             pengungsi: 0,
             terdampak: 250000,
             titik_posko: 0,
-            tgl_kejadian: '2026-08-15 09:18 WIB (M 7.4)',
+            tgl_kejadian: '2026-08-15 09:18 WIB (M 7.7)',
           },
         ]
 
@@ -541,7 +541,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
         if (eqPoints.length === 0) {
           eqPoints = [
-            { lat: -8.3421, lng: 122.9814, magnitude: 7.4, depth: 12, place: 'Laut Flores - 112 km Barat Laut Larantuka', time: '09:18 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 0, isMainshock: true, mmi: 'VII-VIII' },
+            { lat: -8.3421, lng: 122.9814, magnitude: 7.7, depth: 15, place: 'Laut Flores - 30 km Timur Laut Mbay-Nagekeo', time: '09:18 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 0, isMainshock: true, mmi: 'VII-VIII' },
             { lat: -8.412, lng: 122.891, magnitude: 5.6, depth: 10, place: 'Laut Flores - 95 km Barat Laut Larantuka', time: '09:42 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 18, isMainshock: false },
             { lat: -8.489, lng: 122.754, magnitude: 5.2, depth: 15, place: 'Laut Flores - 80 km Barat Laut Maumere', time: '10:15 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 34, isMainshock: false },
             { lat: -8.312, lng: 122.612, magnitude: 4.8, depth: 10, place: 'Laut Flores - 72 km Utara Maumere', time: '11:04 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 42, isMainshock: false },

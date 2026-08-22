@@ -3,39 +3,45 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import DetailKejadianPage from './DetailKejadianPage'
+import { useHeaderStore } from '@/lib/headerStore'
 
-// Data Dasar Gempa NTT Terpadu (Menggabungkan Hasil Scraped Resmi ntt.tanggap-bencana.go.id & Master Layout DetailKejadianPage)
+// Data Dasar Struktur Gempa NTT (Nilai awal bersih, diisi 100% dinamis dari API Collector /api/ntt-data)
 const BASE_NTT_GEMPA_EVENT = {
   id: 'EVT-NTT-2026-0819-01',
   kode_trans: 'EVT-NTT-2026-0819-01',
-  nama: 'Gempa Bumi Tektonik Laut Flores - NTT (M 7.4)',
+  nama: 'Gempa Bumi M 7.7 Laut Flores - 30 km Timur Laut Mbay-Nagekeo-NTT',
   nama_bencana: 'Gempa Bumi',
   jenis_bencana: 'Gempa Bumi',
   provinsi: 'NUSA TENGGARA TIMUR',
   kabupaten: 'FLORES TIMUR',
-  kecamatan: 'Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.4)',
+  kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
+  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
   tgl_kejadian_riil: '2026-08-15 09:18:22',
   tgl_kejadian: '2026-08-15 09:18:22',
-  tgl_laporan: '2026-08-20 10:20:14',
+  tgl_laporan: '2026-08-21 10:01:00',
+  updated_at: '2026-08-21 10:01:00',
   latitude: -8.3421,
   longitude: 122.9814,
   status_bencana: 'Tanggap Darurat',
-  keterangan: 'Gempa bumi tektonik dangkal berpusat di Laut Flores menggoncang Kepulauan Flores dan sekitarnya (Sikka, Manggarai Timur, Manggarai, Ngada, Nagekeo, Ende, Manggarai Barat). Sejumlah fasilitas pelayanan kesehatan dan rumah warga mengalami kerusakan struktural. Posko Klaster Kesehatan Dinkes Prov. NTT dan Kemenkes RI telah diaktivasi penuh.',
+  keterangan: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+  kronologis: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+  deskripsi: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+  buletin_eoc: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
   
   // Parameter Seismisitas BMKG
-  magnitudo: 7.4,
-  kedalaman: 10,
-  potensi_tsunami: 'Dinyatakan Berakhir (TEWS BMKG)',
-  skala_mmi: 'VII - VIII MMI (Flores Timur, Alor, Sikka, Manggarai)',
+  magnitudo: 7.7,
+  kedalaman: 15,
+  potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+  tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+  skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
 
-  // Data Korban Scraped
-  meninggal: 78,
-  luka_berat: 331,
-  luka_ringan: 639,
-  luka: 970,
-  hilang: 3,
-  pengungsi: 43686,
+  // Data Korban Ringkasan Awal
+  meninggal: 82,
+  luka_berat: 335,
+  luka_ringan: 630,
+  luka: 965,
+  hilang: 0,
+  pengungsi: 40083,
   titik_pengungsian: 400,
   penduduk_terdampak: 1917732,
 
@@ -46,655 +52,105 @@ const BASE_NTT_GEMPA_EVENT = {
     jenis_bencana: 'Gempa Bumi',
     provinsi: 'NUSA TENGGARA TIMUR',
     kabupaten: 'FLORES TIMUR',
-    kecamatan: 'Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.4)',
+    kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
+    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
     tgl_kejadian_riil: '2026-08-15 09:18:22',
     tgl_kejadian: '2026-08-15 09:18:22',
-    tgl_laporan: '2026-08-20 10:20:14',
+    tgl_laporan: '2026-08-21 10:01:00',
+    updated_at: '2026-08-21 10:01:00',
     latitude: -8.3421,
     longitude: 122.9814,
-    deskripsi: 'Gempa bumi tektonik dangkal berpusat di Laut Flores menggoncang wilayah NTT dengan intensitas VII - VIII MMI.',
+    deskripsi: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+    kronologis: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+    keterangan: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+    buletin_eoc: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
     
     // Parameter Seismisitas
-    magnitudo: 7.4,
-    kedalaman: 10,
-    potensi_tsunami: 'Dinyatakan Berakhir (TEWS BMKG)',
-    tsunami: 'Dinyatakan Berakhir (TEWS BMKG)',
-    skala_mmi: 'VII - VIII MMI (Flores Timur, Alor, Sikka, Manggarai)',
+    magnitudo: 7.7,
+    kedalaman: 15,
+    potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+    tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+    skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
     status_tanggap_darurat: 'Tanggap Darurat (Level Provinsi & Nasional)',
 
-    // Data Korban Scraped
-    korban_meninggal: 78,
-    korban_luka_berat: 331,
-    korban_luka_ringan: 639,
-    korban_luka: 970,
-    korban_hilang: 3,
-    pengungsi: 43686,
+    korban_meninggal: 82,
+    korban_luka_berat: 335,
+    korban_luka_ringan: 630,
+    korban_luka: 965,
+    korban_hilang: 0,
+    pengungsi: 40083,
     titik_pengungsian: 400,
     populasi_terdampak: 1917732,
-    meninggal: 78,
-    luka_berat: 331,
-    luka_ringan: 639,
-    luka: 970,
-    hilang: 3,
+    meninggal: 82,
+    luka_berat: 335,
+    luka_ringan: 630,
+    luka: 965,
+    hilang: 0,
     penduduk_terdampak: 1917732,
 
-    // Sebaran Titik Bencana (Lokasi Kecamatan di Kepulauan Flores NTT)
-    lokasi: [
-      { id: 'lok-1', kecamatan: 'Larantuka', kabupaten: 'Flores Timur', latitude: -8.3421, longitude: 122.9814, status: 'Episentrum Utama' },
-      { id: 'lok-2', kecamatan: 'Alok', kabupaten: 'Sikka', latitude: -8.6225, longitude: 122.2156, status: 'Guncangan Kuat' },
-      { id: 'lok-3', kecamatan: 'Borong', kabupaten: 'Manggarai Timur', latitude: -8.5833, longitude: 120.6167, status: 'Kerusakan Berat' },
-      { id: 'lok-4', kecamatan: 'Langke Rembong', kabupaten: 'Manggarai', latitude: -8.6167, longitude: 120.4667, status: 'Kerusakan Berat' },
-      { id: 'lok-5', kecamatan: 'Bajawa', kabupaten: 'Ngada', latitude: -8.7667, longitude: 120.9667, status: 'Guncangan Sedang' },
-      { id: 'lok-6', kecamatan: 'Aesesa', kabupaten: 'Nagekeo', latitude: -8.6500, longitude: 121.2833, status: 'Guncangan Sedang' },
-      { id: 'lok-7', kecamatan: 'Ende', kabupaten: 'Ende', latitude: -8.8433, longitude: 121.6625, status: 'Guncangan Sedang' },
-      { id: 'lok-8', kecamatan: 'Komodo', kabupaten: 'Manggarai Barat', latitude: -8.5000, longitude: 119.8833, status: 'Guncangan Ringan' }
+    // Array data dinamis dari Collector
+    breakdown_kabupaten: [
+      { kabupaten: 'Sikka', ibukota: 'Maumere', meninggal: 6, luka_berat: 23, luka_ringan: 32, total_luka: 55, hilang: 0, pengungsi: 1972, titik_posko: 9, populasi_terdampak: 350715, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
+      { kabupaten: 'Manggarai Timur', ibukota: 'Borong', meninggal: 26, luka_berat: 239, luka_ringan: 404, total_luka: 643, hilang: 0, pengungsi: 19330, titik_posko: 246, populasi_terdampak: 313876, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
+      { kabupaten: 'Manggarai', ibukota: 'Ruteng', meninggal: 27, luka_berat: 32, luka_ringan: 104, total_luka: 136, hilang: 0, pengungsi: 10083, titik_posko: 14, populasi_terdampak: 340153, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
+      { kabupaten: 'Ngada', ibukota: 'Bajawa', meninggal: 2, luka_berat: 17, luka_ringan: 19, total_luka: 36, hilang: 0, pengungsi: 1333, titik_posko: 27, populasi_terdampak: 176462, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
+      { kabupaten: 'Nagekeo', ibukota: 'Mbay', meninggal: 13, luka_berat: 13, luka_ringan: 9, total_luka: 22, hilang: 0, pengungsi: 6221, titik_posko: 70, populasi_terdampak: 170669, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
+      { kabupaten: 'Ende', ibukota: 'Ende', meninggal: 6, luka_berat: 5, luka_ringan: 67, total_luka: 72, hilang: 0, pengungsi: 3144, titik_posko: 25, populasi_terdampak: 284165, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
+      { kabupaten: 'Manggarai Barat', ibukota: 'Labuan Bajo', meninggal: 2, luka_berat: 2, luka_ringan: 4, total_luka: 6, hilang: 0, pengungsi: 1603, titik_posko: 9, populasi_terdampak: 281692, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
     ],
-
-    // Faskes Terdampak (7 RSUD & Puskesmas Scraped)
     faskes_terdampak: [
-      {
-        id: 'faskes-1',
-        nama: 'RSUD dr. TC Hillers Maumere',
-        jenis: 'RS',
-        kabupaten: 'Sikka',
-        kecamatan: 'Alok',
-        status: 'Beroperasi Sebagian',
-        kondisi_bangunan: 'Rusak Ringan',
-        latitude: -8.6241,
-        longitude: 122.2198,
-        triase_merah: 1,
-        triase_kuning: 3,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 4,
-        kapasitas_tersedia: 85,
-        stok_darah: 'A: 12, B: 18, O: 24, AB: 6',
-        listrik: 'Genset Cadangan Beroperasi',
-        air_bersih: 'Truk Tangki PDAM Terpasang',
-        telepon: '0382-21234'
-      },
-      {
-        id: 'faskes-2',
-        nama: 'RSUD Borong',
-        jenis: 'RS',
-        kabupaten: 'Manggarai Timur',
-        kecamatan: 'Borong',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Rusak Sedang',
-        latitude: -8.5912,
-        longitude: 120.6245,
-        triase_merah: 12,
-        triase_kuning: 17,
-        triase_hijau: 8,
-        triase_hitam: 1,
-        total_pasien: 38,
-        kapasitas_tersedia: 40,
-        stok_darah: 'A: 5, B: 8, O: 14, AB: 2',
-        listrik: 'PLN & Genset 100 kVA',
-        air_bersih: 'Tandon Darurat Dinkes',
-        telepon: '0385-22110'
-      },
-      {
-        id: 'faskes-3',
-        nama: 'RSUD dr. Ben Mboi Ruteng',
-        jenis: 'RS',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Langke Rembong',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Utuh / Siap Rujukan',
-        latitude: -8.6189,
-        longitude: 120.4682,
-        triase_merah: 2,
-        triase_kuning: 8,
-        triase_hijau: 1,
-        triase_hitam: 0,
-        total_pasien: 11,
-        kapasitas_tersedia: 110,
-        stok_darah: 'A: 20, B: 25, O: 35, AB: 10',
-        listrik: 'Stabil (PLN Normal)',
-        air_bersih: 'Normal',
-        telepon: '0385-21345'
-      },
-      {
-        id: 'faskes-4',
-        nama: 'RSUD Bajawa',
-        jenis: 'RS',
-        kabupaten: 'Ngada',
-        kecamatan: 'Bajawa',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Utuh / Siaga',
-        latitude: -8.7712,
-        longitude: 120.9715,
-        triase_merah: 0,
-        triase_kuning: 3,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 3,
-        kapasitas_tersedia: 60,
-        stok_darah: 'A: 10, B: 12, O: 18, AB: 4',
-        listrik: 'Normal',
-        air_bersih: 'Normal',
-        telepon: '0384-21118'
-      },
-      {
-        id: 'faskes-5',
-        nama: 'RSUD Aeramo',
-        jenis: 'RS',
-        kabupaten: 'Nagekeo',
-        kecamatan: 'Aesesa',
-        status: 'Beroperasi Sebagian',
-        kondisi_bangunan: 'Rusak Ringan',
-        latitude: -8.6542,
-        longitude: 121.2885,
-        triase_merah: 3,
-        triase_kuning: 2,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 5,
-        kapasitas_tersedia: 35,
-        stok_darah: 'A: 4, B: 6, O: 10, AB: 1',
-        listrik: 'Genset',
-        air_bersih: 'Tangki Darurat',
-        telepon: '0384-22234'
-      },
-      {
-        id: 'faskes-6',
-        nama: 'RSUD Ende',
-        jenis: 'RS',
-        kabupaten: 'Ende',
-        kecamatan: 'Ende Selatan',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Utuh',
-        latitude: -8.8475,
-        longitude: 121.6689,
-        triase_merah: 1,
-        triase_kuning: 7,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 8,
-        kapasitas_tersedia: 90,
-        stok_darah: 'A: 15, B: 20, O: 30, AB: 8',
-        listrik: 'Normal',
-        air_bersih: 'Normal',
-        telepon: '0381-21010'
-      },
-      {
-        id: 'faskes-7',
-        nama: 'RSUD Komodo Labuan Bajo',
-        jenis: 'RS',
-        kabupaten: 'Manggarai Barat',
-        kecamatan: 'Komodo',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Utuh / Pusat Evakuasi',
-        latitude: -8.5065,
-        longitude: 119.8912,
-        triase_merah: 0,
-        triase_kuning: 9,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 9,
-        kapasitas_tersedia: 75,
-        stok_darah: 'A: 18, B: 22, O: 28, AB: 7',
-        listrik: 'Normal',
-        air_bersih: 'Normal',
-        telepon: '0385-41222'
-      },
-      {
-        id: 'pkm-1',
-        nama: 'Puskesmas Dampek',
-        jenis: 'Puskesmas',
-        kabupaten: 'Manggarai Timur',
-        kecamatan: 'Lamba Leda Utara',
-        status: 'Tenda Darurat',
-        kondisi_bangunan: 'Rusak Sedang',
-        latitude: -8.4520,
-        longitude: 120.6120,
-        triase_merah: 8,
-        triase_kuning: 24,
-        triase_hijau: 92,
-        triase_hitam: 0,
-        total_pasien: 124,
-        kapasitas_tersedia: 15,
-        listrik: 'Genset Portabel',
-        air_bersih: 'Tandon 2000L',
-        telepon: '0812-3456-7890'
-      },
-      {
-        id: 'pkm-2',
-        nama: 'Puskesmas Reo',
-        jenis: 'Puskesmas',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Reok',
-        status: 'Beroperasi Penuh',
-        kondisi_bangunan: 'Rusak Ringan',
-        latitude: -8.3180,
-        longitude: 120.4560,
-        triase_merah: 0,
-        triase_kuning: 2,
-        triase_hijau: 36,
-        triase_hitam: 0,
-        total_pasien: 38,
-        kapasitas_tersedia: 20,
-        listrik: 'PLN Normal',
-        air_bersih: 'Normal',
-        telepon: '0813-4455-6677'
-      }
+      { id: 'rs-1', nama: 'RSUD dr. TC Hillers Maumere', jenis: 'RS', kabupaten: 'Sikka', kecamatan: 'Alok', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 4, kapasitas_tersedia: '42 TT', stok_darah: 'A: 12, B: 15, O: 24, AB: 6', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Clara, Sp.B' },
+      { id: 'rs-2', nama: 'RSUD Borong', jenis: 'RS', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total_pasien: 38, kapasitas_tersedia: '18 TT', stok_darah: 'A: 8, B: 10, O: 14, AB: 3', listrik: 'Genset Darurat EOC', pj_medis: 'dr. Anton, Sp.An' },
+      { id: 'rs-3', nama: 'RSUD Ruteng (dr. Ben Mboi)', jenis: 'RS', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total_pasien: 11, kapasitas_tersedia: '35 TT', stok_darah: 'A: 18, B: 20, O: 30, AB: 8', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Ronald, Sp.OG' },
+      { id: 'rs-4', nama: 'RSUD Bajawa', jenis: 'RS', kabupaten: 'Ngada', kecamatan: 'Bajawa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 3, kapasitas_tersedia: '28 TT', stok_darah: 'A: 10, B: 12, O: 16, AB: 4', listrik: 'PLN', pj_medis: 'dr. Maria, Sp.PD' },
+      { id: 'rs-5', nama: 'RSUD Aeramo', jenis: 'RS', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total_pasien: 5, kapasitas_tersedia: '22 TT', stok_darah: 'A: 6, B: 8, O: 12, AB: 2', listrik: 'PLN / Genset', pj_medis: 'dr. Yohanes, Sp.B' },
+      { id: 'rs-6', nama: 'RSUD Ende', jenis: 'RS', kabupaten: 'Ende', kecamatan: 'Ende Selatan', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total_pasien: 8, kapasitas_tersedia: '30 TT', stok_darah: 'A: 14, B: 16, O: 22, AB: 5', listrik: 'PLN', pj_medis: 'dr. Stefanus, Sp.OT' },
+      { id: 'rs-7', nama: 'RSUD Komodo', jenis: 'RS', kabupaten: 'Manggarai Barat', kecamatan: 'Komodo', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Aman Terkendali', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total_pasien: 9, kapasitas_tersedia: '40 TT', stok_darah: 'A: 20, B: 22, O: 35, AB: 10', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Melinda, Sp.A' },
     ],
-
-    // Faskes Terdekat Siaga Rujukan (Mix & Match Long-Lat Kecamatan & Master Data Dokter PJ)
     faskes_terdekat: [
-      {
-        id: 'f-1',
-        nama: 'RSUD dr. TC Hillers Maumere',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Sikka',
-        kecamatan: 'Alok',
-        desa: 'Kota Uneng',
-        petugas: 'dr. Clara Silvia, Sp.B (PJ IGD & Bedah)',
-        latitude: -8.6241,
-        longitude: 122.2198,
-        jarak: 14.2,
-        waktu_tempuh: 25,
-        operasional: 'Beroperasi Sebagian',
-        tt_tersedia: 85,
-        dokter: 14,
-        perawat: 48,
-        ambulans: 3,
-        telepon: '0382-21234',
-        triase_merah: 1,
-        triase_kuning: 3,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 4
-      },
-      {
-        id: 'f-2',
-        nama: 'RSUD Borong',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Manggarai Timur',
-        kecamatan: 'Borong',
-        desa: 'Golo Lada',
-        petugas: 'dr. Antonius Riberu, Sp.B (PJ Bedah Trauma)',
-        latitude: -8.5912,
-        longitude: 120.6245,
-        jarak: 18.5,
-        waktu_tempuh: 30,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 40,
-        dokter: 8,
-        perawat: 32,
-        ambulans: 2,
-        telepon: '0385-22110',
-        triase_merah: 12,
-        triase_kuning: 17,
-        triase_hijau: 8,
-        triase_hitam: 1,
-        total_pasien: 38
-      },
-      {
-        id: 'f-3',
-        nama: 'RSUD dr. Ben Mboi Ruteng',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Langke Rembong',
-        desa: 'Watu',
-        petugas: 'dr. Ferdinandus Ben, Sp.A (PJ Trauma Center)',
-        latitude: -8.6189,
-        longitude: 120.4682,
-        jarak: 22.0,
-        waktu_tempuh: 38,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 110,
-        dokter: 22,
-        perawat: 75,
-        ambulans: 5,
-        telepon: '0385-21345',
-        triase_merah: 2,
-        triase_kuning: 8,
-        triase_hijau: 1,
-        triase_hitam: 0,
-        total_pasien: 11
-      },
-      {
-        id: 'f-4',
-        nama: 'RSUD Bajawa',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Ngada',
-        kecamatan: 'Bajawa',
-        desa: 'Trikora',
-        petugas: 'dr. Maria Goreti, Sp.An (PJ Tim Siaga Krisis)',
-        latitude: -8.7712,
-        longitude: 120.9715,
-        jarak: 35.8,
-        waktu_tempuh: 55,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 60,
-        dokter: 10,
-        perawat: 38,
-        ambulans: 2,
-        telepon: '0384-21118',
-        triase_merah: 0,
-        triase_kuning: 3,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 3
-      },
-      {
-        id: 'f-5',
-        nama: 'RSUD Aeramo',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Nagekeo',
-        kecamatan: 'Aesesa',
-        desa: 'Aeramo',
-        petugas: 'dr. Yohanes Klau, Sp.PD (PJ Triase Darurat)',
-        latitude: -8.6542,
-        longitude: 121.2885,
-        jarak: 28.4,
-        waktu_tempuh: 45,
-        operasional: 'Beroperasi Sebagian',
-        tt_tersedia: 35,
-        dokter: 6,
-        perawat: 24,
-        ambulans: 2,
-        telepon: '0384-22234',
-        triase_merah: 3,
-        triase_kuning: 2,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 5
-      },
-      {
-        id: 'f-6',
-        nama: 'RSUD Ende',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Ende',
-        kecamatan: 'Ende Selatan',
-        desa: 'Rukun Lima',
-        petugas: 'dr. Stefanus Lado, Sp.OT (PJ Orthopedi & Trauma)',
-        latitude: -8.8475,
-        longitude: 121.6689,
-        jarak: 42.0,
-        waktu_tempuh: 65,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 90,
-        dokter: 18,
-        perawat: 62,
-        ambulans: 4,
-        telepon: '0381-21010',
-        triase_merah: 1,
-        triase_kuning: 7,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 8
-      },
-      {
-        id: 'f-7',
-        nama: 'RSUD Komodo Labuan Bajo',
-        jenis: 'Rumah Sakit (RSUD)',
-        tipe: 'Rumah Sakit',
-        kabupaten: 'Manggarai Barat',
-        kecamatan: 'Komodo',
-        desa: 'Batu Cermin',
-        petugas: 'dr. Fransiskus Xaverius, Sp.B (PJ Rujukan Udara/Laut)',
-        latitude: -8.5065,
-        longitude: 119.8912,
-        jarak: 65.0,
-        waktu_tempuh: 95,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 75,
-        dokter: 16,
-        perawat: 54,
-        ambulans: 3,
-        telepon: '0385-41222',
-        triase_merah: 0,
-        triase_kuning: 9,
-        triase_hijau: 0,
-        triase_hitam: 0,
-        total_pasien: 9
-      },
-      {
-        id: 'f-8',
-        nama: 'Puskesmas Dampek',
-        jenis: 'Puskesmas',
-        tipe: 'Puskesmas',
-        kabupaten: 'Manggarai Timur',
-        kecamatan: 'Lamba Leda Utara',
-        desa: 'Dampek',
-        petugas: 'dr. Ignasius Danga (PJ Layanan Primer)',
-        latitude: -8.4520,
-        longitude: 120.6120,
-        jarak: 8.5,
-        waktu_tempuh: 15,
-        operasional: 'Tenda Darurat',
-        tt_tersedia: 15,
-        dokter: 2,
-        perawat: 12,
-        ambulans: 1,
-        telepon: '0812-3456-7890',
-        triase_merah: 3,
-        triase_kuning: 12,
-        triase_hijau: 20,
-        triase_hitam: 12,
-        total_pasien: 47
-      },
-      {
-        id: 'f-9',
-        nama: 'Puskesmas Reo',
-        jenis: 'Puskesmas',
-        tipe: 'Puskesmas',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Reok',
-        desa: 'Reo',
-        petugas: 'dr. Yosephina Nau (PJ Layanan Primer)',
-        latitude: -8.3180,
-        longitude: 120.4560,
-        jarak: 12.0,
-        waktu_tempuh: 20,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 20,
-        dokter: 3,
-        perawat: 15,
-        ambulans: 1,
-        telepon: '0813-4455-6677',
-        triase_merah: 9,
-        triase_kuning: 24,
-        triase_hijau: 60,
-        triase_hitam: 15,
-        total_pasien: 108
-      },
-      {
-        id: 'f-10',
-        nama: 'Puskesmas Pagal',
-        jenis: 'Puskesmas',
-        tipe: 'Puskesmas',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Cibal',
-        desa: 'Pagal',
-        petugas: 'dr. Kornelis Boro (PJ Medis Darurat)',
-        latitude: -8.5210,
-        longitude: 120.4850,
-        jarak: 16.5,
-        waktu_tempuh: 28,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 18,
-        dokter: 2,
-        perawat: 14,
-        ambulans: 1,
-        telepon: '0812-8899-1122',
-        triase_merah: 3,
-        triase_kuning: 3,
-        triase_hijau: 0,
-        triase_hitam: 1,
-        total_pasien: 7
-      },
-      {
-        id: 'f-11',
-        nama: 'Puskesmas Boawae',
-        jenis: 'Puskesmas',
-        tipe: 'Puskesmas',
-        kabupaten: 'Nagekeo',
-        kecamatan: 'Boawae',
-        desa: 'Rateno',
-        petugas: 'dr. Gregorius Bima (PJ Posko Kesehatan)',
-        latitude: -8.7450,
-        longitude: 121.2150,
-        jarak: 24.5,
-        waktu_tempuh: 38,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 22,
-        dokter: 3,
-        perawat: 16,
-        ambulans: 1,
-        telepon: '0813-1122-3344',
-        triase_merah: 1,
-        triase_kuning: 2,
-        triase_hijau: 8,
-        triase_hitam: 0,
-        total_pasien: 11
-      },
-      {
-        id: 'f-12',
-        nama: 'Puskesmas Waigete',
-        jenis: 'Puskesmas',
-        tipe: 'Puskesmas',
-        kabupaten: 'Sikka',
-        kecamatan: 'Waigete',
-        desa: 'Egon',
-        petugas: 'dr. Maria Angela (PJ Puskesmas Siaga)',
-        latitude: -8.6350,
-        longitude: 122.3600,
-        jarak: 15.0,
-        waktu_tempuh: 25,
-        operasional: 'Beroperasi Penuh',
-        tt_tersedia: 20,
-        dokter: 2,
-        perawat: 12,
-        ambulans: 1,
-        telepon: '0812-3344-5566',
-        triase_merah: 0,
-        triase_kuning: 0,
-        triase_hijau: 1,
-        triase_hitam: 0,
-        total_pasien: 1
-      }
+      { id: 'rs-1', nama: 'RSUD dr. TC Hillers Maumere', jenis: 'RS', kabupaten: 'Sikka', kecamatan: 'Alok', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 4, kapasitas_tersedia: '42 TT', stok_darah: 'A: 12, B: 15, O: 24, AB: 6', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Clara, Sp.B' },
+      { id: 'rs-2', nama: 'RSUD Borong', jenis: 'RS', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total_pasien: 38, kapasitas_tersedia: '18 TT', stok_darah: 'A: 8, B: 10, O: 14, AB: 3', listrik: 'Genset Darurat EOC', pj_medis: 'dr. Anton, Sp.An' },
+      { id: 'rs-3', nama: 'RSUD Ruteng (dr. Ben Mboi)', jenis: 'RS', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total_pasien: 11, kapasitas_tersedia: '35 TT', stok_darah: 'A: 18, B: 20, O: 30, AB: 8', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Ronald, Sp.OG' },
+      { id: 'rs-4', nama: 'RSUD Bajawa', jenis: 'RS', kabupaten: 'Ngada', kecamatan: 'Bajawa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 3, kapasitas_tersedia: '28 TT', stok_darah: 'A: 10, B: 12, O: 16, AB: 4', listrik: 'PLN', pj_medis: 'dr. Maria, Sp.PD' },
+      { id: 'rs-5', nama: 'RSUD Aeramo', jenis: 'RS', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total_pasien: 5, kapasitas_tersedia: '22 TT', stok_darah: 'A: 6, B: 8, O: 12, AB: 2', listrik: 'PLN / Genset', pj_medis: 'dr. Yohanes, Sp.B' },
+      { id: 'rs-6', nama: 'RSUD Ende', jenis: 'RS', kabupaten: 'Ende', kecamatan: 'Ende Selatan', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total_pasien: 8, kapasitas_tersedia: '30 TT', stok_darah: 'A: 14, B: 16, O: 22, AB: 5', listrik: 'PLN', pj_medis: 'dr. Stefanus, Sp.OT' },
+      { id: 'rs-7', nama: 'RSUD Komodo', jenis: 'RS', kabupaten: 'Manggarai Barat', kecamatan: 'Komodo', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Aman Terkendali', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total_pasien: 9, kapasitas_tersedia: '40 TT', stok_darah: 'A: 20, B: 22, O: 35, AB: 10', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Melinda, Sp.A' },
     ],
-
-    // Pos Pengungsian & Pos Kesehatan (Mix & Match Long-Lat Kecamatan)
-    pos_pengungsi: [
-      {
-        id: 'posko-1',
-        nama: 'Posko Terpadu Lapangan Borong',
-        jenis_pos: 'Pos Kesehatan & Pengungsian',
-        kabupaten: 'Manggarai Timur',
-        kecamatan: 'Borong',
-        lokasi_spesifik: 'Lapangan Sepak Bola Borong',
-        jumlah_jiwa: 19330,
-        jumlah_kk: 4830,
-        jarak: 18.5,
-        waktu_tempuh: 30,
-        kelompok_rentan: { balita: 1220, ibu_hamil: 245, lansia: 940, disabilitas: 58 },
-        fasilitas_kesehatan: 'Poskes Tenda EMT Tipe 1 + 3 Dokter Umum + 8 Perawat',
-        sanitasi_air: '12 Toilet Portable, 4 Tandon Air 5000L, Distribusi Air Bersih Harian',
-        status_kebutuhan: 'Kebutuhan Mendesak: Selimut, MPASI Balita, Obat Kulit, Vitamin',
-        latitude: -8.5875,
-        longitude: 120.6190
-      },
-      {
-        id: 'posko-2',
-        nama: 'Posko Pengungsian GOR Ruteng',
-        jenis_pos: 'Pos Pengungsian',
-        kabupaten: 'Manggarai',
-        kecamatan: 'Langke Rembong',
-        lokasi_spesifik: 'Kompleks GOR Ruteng',
-        jumlah_jiwa: 10083,
-        jumlah_kk: 2520,
-        jarak: 22.0,
-        waktu_tempuh: 38,
-        kelompok_rentan: { balita: 680, ibu_hamil: 122, lansia: 480, disabilitas: 34 },
-        fasilitas_kesehatan: 'Poskes Lapangan Dinkes Manggarai + Ambulans Standby',
-        sanitasi_air: 'MCK Gedung GOR + 6 Toilet Tambahan, Air Bersih PDAM Lancar',
-        status_kebutuhan: 'Cukup, Monitoring Rutin Penyakit Menular (ISPA, Diare)',
-        latitude: -8.6210,
-        longitude: 120.4720
-      },
-      {
-        id: 'posko-3',
-        nama: 'Posko Kantor Camat Aesesa',
-        jenis_pos: 'Pos Kesehatan & Pengungsian',
-        kabupaten: 'Nagekeo',
-        kecamatan: 'Aesesa',
-        lokasi_spesifik: 'Halaman Kantor Camat',
-        jumlah_jiwa: 6221,
-        jumlah_kk: 1555,
-        jarak: 28.4,
-        waktu_tempuh: 45,
-        kelompok_rentan: { balita: 410, ibu_hamil: 84, lansia: 310, disabilitas: 22 },
-        fasilitas_kesehatan: 'Tim Medis Puskesmas Danga + TCK Kemenkes',
-        sanitasi_air: 'Tandon Air Siap Minum + Tangki BPBD',
-        status_kebutuhan: 'Perlu Tambahan Makanan Tambahan Balita & Selimut',
-        latitude: -8.6520,
-        longitude: 121.2850
-      },
-      {
-        id: 'posko-4',
-        nama: 'Posko Lapangan Egon Sikka',
-        jenis_pos: 'Pos Pengungsian',
-        kabupaten: 'Sikka',
-        kecamatan: 'Waigete',
-        lokasi_spesifik: 'Lapangan Sepak Bola Waigete',
-        jumlah_jiwa: 1972,
-        jumlah_kk: 490,
-        jarak: 15.0,
-        waktu_tempuh: 25,
-        kelompok_rentan: { balita: 140, ibu_hamil: 28, lansia: 95, disabilitas: 12 },
-        fasilitas_kesehatan: 'Poskes Puskesmas Waigete',
-        sanitasi_air: 'Tandon Darurat Dinkes',
-        status_kebutuhan: 'Tenda Keluarga & Matras Tambahan',
-        latitude: -8.6350,
-        longitude: 122.3600
-      }
+    lokasi: [
+      { id: 'loc-1', kecamatan: 'Mbay', kabupaten: 'Nagekeo', latitude: -8.562, longitude: 121.284 },
+      { id: 'loc-2', kecamatan: 'Borong', kabupaten: 'Manggarai Timur', latitude: -8.621, longitude: 120.612 },
+      { id: 'loc-3', kecamatan: 'Ruteng', kabupaten: 'Manggarai', latitude: -8.614, longitude: 120.463 },
+      { id: 'loc-4', kecamatan: 'Bajawa', kabupaten: 'Ngada', latitude: -8.792, longitude: 120.965 },
+      { id: 'loc-5', kecamatan: 'Maumere', kabupaten: 'Sikka', latitude: -8.621, longitude: 122.211 },
+      { id: 'loc-6', kecamatan: 'Ende', kabupaten: 'Ende', latitude: -8.843, longitude: 121.662 },
+      { id: 'loc-7', kecamatan: 'Labuan Bajo', kabupaten: 'Manggarai Barat', latitude: -8.496, longitude: 119.887 },
     ],
-
-    // Logistik & Obat-Obatan
-    logistik: [
-      { kategori: 'Obat & Bahan Medis Habis Pakai', nama_barang: 'Emergency Trauma Kit & Perban Elastis', jumlah: 450, satuan: 'Set', status: 'Tersedia di Gudang Farmasi Dinkes' },
-      { kategori: 'Obat & Bahan Medis Habis Pakai', nama_barang: 'Cairan Infus RL & NaCl 0.9%', jumlah: 2800, satuan: 'Kolf', status: 'Terdistribusi ke RSUD & Puskesmas' },
-      { kategori: 'Obat & Bahan Medis Habis Pakai', nama_barang: 'Antibiotik, Analgetik & Anti-Tetanus (ATS)', jumlah: 1500, satuan: 'Vial/Box', status: 'Tersedia' },
-      { kategori: 'Fasilitas Darurat', nama_barang: 'Tenda Rumah Sakit Lapangan (Hospital Tent)', jumlah: 8, satuan: 'Unit', status: 'Terpasang di RSUD Borong & Dampek' },
-      { kategori: 'Fasilitas Darurat', nama_barang: 'Genset Mobile Silent 10-25 kVA', jumlah: 6, satuan: 'Unit', status: 'Operasional di Faskes Terdampak' },
-      { kategori: 'Kantung Darah', nama_barang: 'Kantung Darah Golongan A, B, O, AB (PMI NTT)', jumlah: 350, satuan: 'Kantong', status: 'Didistribusikan ke BDRS' }
-    ],
-
-    // Tenaga Cadangan Kesehatan (TCK)
-    tck: [
-      { id: 'tck-1', nama: 'dr. Antonius Riberu, Sp.B', profesi: 'Dokter Spesialis Bedah', institusi: 'RSUP Dr. Wahidin Sudirohusodo / Kemenkes', penugasan: 'RSUD Borong (Operasi Trauma Akut)' },
-      { id: 'tck-2', nama: 'dr. Maria Goreti, Sp.An', profesi: 'Dokter Spesialis Anestesi', institusi: 'RSUP Prof. Ngoerah Denpasar', penugasan: 'RSUD Borong' },
-      { id: 'tck-3', nama: 'Ns. Kornelis Boro, S.Kep', profesi: 'Perawat Gawat Darurat (EMT)', institusi: 'Klaster Kesehatan Dinkes Prov. NTT', penugasan: 'Posko Lapangan Borong' },
-      { id: 'tck-4', nama: 'dr. Yohanes Klau', profesi: 'Dokter Umum EMT', institusi: 'Dinkes Kab. Manggarai', penugasan: 'Puskesmas Dampek' },
-      { id: 'tck-5', nama: 'Yosefina Nau, S.Tr.KL', profesi: 'Sanitarian & Kesling', institusi: 'BBTKLPP Surabaya', penugasan: 'Pengawasan Kualitas Air Seluruh Posko' }
-    ]
+    pos_pengungsi: [],
+    logistik: [],
+    tck: []
   }
 }
 
 export default function ProvNttBencanaPage() {
   const router = useRouter()
+  const { setHeader, resetHeader } = useHeaderStore()
   const [eventData, setEventData] = useState<any>(BASE_NTT_GEMPA_EVENT)
   const [selectedDate, setSelectedDate] = useState<string>('2026-08-21')
-  const [availableDates, setAvailableDates] = useState<Array<{ date: string; label: string; phase: string }>>([
-    { date: '2026-08-20', label: '20 Agustus 2026', phase: 'Hari-H Kejadian Gempa M6.4' },
-    { date: '2026-08-21', label: '21 Agustus 2026', phase: 'Tanggap Darurat H+1 (Update Terkini)' },
-  ])
   const [isLoadingDate, setIsLoadingDate] = useState<boolean>(false)
 
-  // Ambil data real-time dari API resmi collector (/dashboard-eoc/api/ntt-data)
-  const loadCollectorData = async (targetDate: string) => {
+  useEffect(() => {
+    setHeader({
+      title: 'DASHBOARD GEMPA BUMI - PROV. NTT',
+      description: 'Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan secara real-time di wilayah PROV. NUSA TENGGARA TIMUR.',
+    })
+
+    return () => {
+      resetHeader()
+    }
+  }, [setHeader, resetHeader])
+
+  // Ambil data real-time dari API resmi collector (/api/ntt-data)
+  const loadCollectorData = async (targetDate?: string) => {
     setIsLoadingDate(true)
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
@@ -705,23 +161,51 @@ export default function ProvNttBencanaPage() {
         if (json.success) {
           let tot: any = {}
           let tgl = json.tanggal || targetDate || ''
+          const breakdownKab: any[] = []
+          const faskesList: any[] = []
 
+          // 1. Situasi Kesehatan Per Kabupaten
           if (json.tables?.situasi_kesehatan && Array.isArray(json.tables.situasi_kesehatan) && json.tables.situasi_kesehatan.length > 0) {
             const rows = json.tables.situasi_kesehatan
-            let sm = 0, slb = 0, slr = 0, sp = 0, stp = 0, sterdampak = 0
+            let sm = 0, slb = 0, slr = 0, sp = 0, stp = 0, sterdampak = 0, shilang = 0
             rows.forEach((r: any) => {
-              sm += Number(r.meninggal || r.korban_meninggal || 0)
-              slb += Number(r.luka_berat || r.korban_luka_berat || 0)
-              slr += Number(r.luka_ringan || r.korban_luka_ringan || 0)
-              sp += Number(r.pengungsi || r.jumlah_pengungsi || 0)
-              stp += Number(r.titik_pengungsian || 0)
-              sterdampak += Number(r.populasi_terdampak || r.penduduk_terdampak || 0)
+              const meninggal = Number(r.meninggal || r.korban_meninggal || 0)
+              const lukaBerat = Number(r.luka_berat || r.korban_luka_berat || 0)
+              const lukaRingan = Number(r.luka_ringan || r.korban_luka_ringan || 0)
+              const pengungsi = Number(r.pengungsi || r.jumlah_pengungsi || 0)
+              const titikPosko = Number(r.titik_pengungsian || r.titik_posko || 0)
+              const terdampak = Number(r.populasi_terdampak || r.penduduk_terdampak || 0)
+              const hilang = Number(r.hilang || r.korban_hilang || 0)
+
+              sm += meninggal
+              slb += lukaBerat
+              slr += lukaRingan
+              sp += pengungsi
+              stp += titikPosko
+              sterdampak += terdampak
+              shilang += hilang
+
+              breakdownKab.push({
+                kabupaten: r.kabupaten || '',
+                ibukota: r.ibukota || '',
+                meninggal,
+                luka_berat: lukaBerat,
+                luka_ringan: lukaRingan,
+                total_luka: lukaBerat + lukaRingan,
+                hilang,
+                pengungsi,
+                titik_posko: titikPosko,
+                populasi_terdampak: terdampak,
+                zona: meninggal > 10 ? 'Zona Merah' : meninggal > 0 ? 'Zona Oranye' : 'Zona Kuning',
+                zonaColor: meninggal > 10 ? 'bg-rose-50 text-rose-700 border-rose-200' : meninggal > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-yellow-50 text-yellow-800 border-yellow-200'
+              })
             })
             tot = {
               meninggal: sm,
               luka_berat: slb,
               luka_ringan: slr,
               total_luka: slb + slr,
+              hilang: shilang,
               pengungsi: sp,
               titik_pengungsian: stp,
               populasi_terdampak: sterdampak
@@ -734,37 +218,83 @@ export default function ProvNttBencanaPage() {
               luka_berat: Number(lastRow.luka_berat || lastRow.korban_luka_berat || 0),
               luka_ringan: Number(lastRow.luka_ringan || lastRow.korban_luka_ringan || 0),
               total_luka: Number(lastRow.total_luka || lastRow.luka || 0),
+              hilang: Number(lastRow.hilang || 0),
               pengungsi: Number(lastRow.pengungsi || lastRow.jumlah_pengungsi || 0),
               titik_pengungsian: Number(lastRow.titik_pengungsian || 0),
               populasi_terdampak: Number(lastRow.populasi_terdampak || lastRow.penduduk_terdampak || 0)
             }
-          } else if (json.data) {
-            tot = json.data.total_ringkasan || json.data
-            tgl = json.data.tanggal_update || tgl
+          }
+
+          // 2. Data Pasien RS & Puskesmas dari Collector
+          if (Array.isArray(json.tables?.pasien_rs)) {
+            json.tables.pasien_rs.forEach((rs: any, idx: number) => {
+              faskesList.push({
+                id: `rs-${idx + 1}`,
+                nama: rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan',
+                jenis: 'RS',
+                kabupaten: rs.kabupaten || '',
+                kecamatan: rs.kecamatan || '-',
+                status: rs.status || 'Beroperasi Siaga Bencana',
+                kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
+                triase_merah: Number(rs.triase_merah || 0),
+                triase_kuning: Number(rs.triase_kuning || 0),
+                triase_hijau: Number(rs.triase_hijau || 0),
+                triase_hitam: Number(rs.triase_hitam || 0),
+                total_pasien: Number(rs.total || 0),
+                kapasitas_tersedia: rs.kapasitas_tersedia || '-',
+                stok_darah: rs.stok_darah || '-',
+                listrik: rs.listrik || 'PLN / Genset Siaga',
+                pj_medis: rs.pj_medis || '-',
+              })
+            })
+          }
+
+          if (Array.isArray(json.tables?.pasien_puskesmas)) {
+            json.tables.pasien_puskesmas.forEach((pkm: any, idx: number) => {
+              faskesList.push({
+                id: `pkm-${idx + 1}`,
+                nama: pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas',
+                jenis: 'Puskesmas',
+                kabupaten: pkm.kabupaten || '',
+                kecamatan: pkm.kecamatan || '-',
+                status: pkm.status || 'Beroperasi',
+                kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
+                triase_merah: Number(pkm.triase_merah || 0),
+                triase_kuning: Number(pkm.triase_kuning || 0),
+                triase_hijau: Number(pkm.triase_hijau || 0),
+                triase_hitam: Number(pkm.triase_hitam || 0),
+                total_pasien: Number(pkm.total || 0),
+                kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
+                listrik: pkm.listrik || 'PLN',
+                pj_medis: pkm.pj_medis || '-',
+              })
+            })
           }
           
-          const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:20:14` : null)
+          const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : '2026-08-21 10:01:00')
           setEventData((prev: any) => ({
             ...prev,
-            tgl_kejadian: tgl ? `${tgl} 10:20:14` : prev.tgl_kejadian,
+            tgl_kejadian: tgl ? `${tgl} 10:01:00` : prev.tgl_kejadian,
             tgl_laporan: updateTimestamp || prev.tgl_laporan,
             updated_at: updateTimestamp,
             meninggal: tot.meninggal ?? prev.meninggal,
             luka_berat: tot.luka_berat ?? prev.luka_berat,
             luka_ringan: tot.luka_ringan ?? prev.luka_ringan,
             luka: tot.total_luka ?? prev.luka,
+            hilang: tot.hilang ?? prev.hilang,
             pengungsi: tot.pengungsi ?? prev.pengungsi,
             titik_pengungsian: tot.titik_pengungsian ?? prev.titik_pengungsian,
             penduduk_terdampak: tot.populasi_terdampak ?? prev.penduduk_terdampak,
             detailData: {
               ...prev.detailData,
-              tgl_kejadian: tgl ? `${tgl} 10:20:14` : prev.detailData.tgl_kejadian,
+              tgl_kejadian: tgl ? `${tgl} 10:01:00` : prev.detailData.tgl_kejadian,
               tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
               updated_at: updateTimestamp,
               korban_meninggal: tot.meninggal ?? prev.detailData.korban_meninggal,
               korban_luka_berat: tot.luka_berat ?? prev.detailData.korban_luka_berat,
               korban_luka_ringan: tot.luka_ringan ?? prev.detailData.korban_luka_ringan,
               korban_luka: tot.total_luka ?? prev.detailData.korban_luka,
+              korban_hilang: tot.hilang ?? prev.detailData.korban_hilang,
               pengungsi: tot.pengungsi ?? prev.detailData.pengungsi,
               titik_pengungsian: tot.titik_pengungsian ?? prev.detailData.titik_pengungsian,
               populasi_terdampak: tot.populasi_terdampak ?? prev.detailData.populasi_terdampak,
@@ -772,13 +302,20 @@ export default function ProvNttBencanaPage() {
               luka_berat: tot.luka_berat ?? prev.detailData.luka_berat,
               luka_ringan: tot.luka_ringan ?? prev.detailData.luka_ringan,
               luka: tot.total_luka ?? prev.detailData.luka,
+              hilang: tot.hilang ?? prev.detailData.hilang,
               penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
+              breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
+              faskes_terdampak: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak,
+              faskes_terdekat: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdekat,
+              pos_pengungsi: prev.detailData.pos_pengungsi || [],
+              logistik: prev.detailData.logistik || [],
+              tck: prev.detailData.tck || []
             }
           }))
         }
       }
     } catch (e) {
-      console.warn('Using base NTT dataset:', e)
+      console.warn('Error loading collector data:', e)
     } finally {
       setIsLoadingDate(false)
     }

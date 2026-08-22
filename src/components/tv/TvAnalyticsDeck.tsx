@@ -380,7 +380,7 @@ export default function TvAnalyticsDeck({
                   <span className="font-mono text-base font-black text-[#047D78]">
                     {readinessData.totalKrisis || 1}
                   </span>
-                  <span className="text-[8px] text-teal-800 font-semibold block">Kejadian Bencana M 7.4</span>
+                  <span className="text-[8px] text-teal-800 font-semibold block">Kejadian Bencana M 7.7</span>
                 </div>
 
                 <div className="p-2 rounded-xl bg-sky-50/70 border border-sky-200">
