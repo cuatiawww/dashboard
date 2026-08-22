@@ -2777,6 +2777,81 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const faskesTerdampakList = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : []
 
+  const resolveKabupatenName = (rep: any): string => {
+    if (!rep) return 'Kab. Kupang'
+
+    // 1. Cek properti langsung yang bertipe teks non-numerik
+    const candidates = [
+      rep.nama_kab,
+      rep.nama_kabupaten,
+      rep.kabupaten_nama,
+      rep.kabupaten,
+      rep.lokasi?.[0]?.kabupaten,
+      rep.lokasi?.[0]?.nama_kab,
+      rep.wilayah
+    ]
+
+    for (const c of candidates) {
+      if (c && typeof c === 'string') {
+        const clean = c.trim()
+        if (clean.length > 2 && isNaN(Number(clean)) && !clean.match(/^\d+$/)) {
+          return clean.startsWith('Kab.') || clean.startsWith('Kota ') ? clean : `Kab. ${clean}`
+        }
+      }
+    }
+
+    // 2. Scan isi teks laporan untuk mendeteksi nama kabupaten NTT
+    const combinedText = [
+      rep.upaya_kabupaten,
+      rep.upaya_provinsi,
+      rep.upaya_kemenkes,
+      rep.upaya,
+      rep.bantuan,
+      rep.bantuan_diperlukan,
+      rep.rekomendasi,
+      rep.tindak_lanjut,
+      rep.hambatan,
+      rep.nama,
+      rep.deskripsi,
+      rep.alamat
+    ].filter(Boolean).join(' ').toLowerCase()
+
+    if (combinedText.includes('kupang')) return 'Kab. Kupang'
+    if (combinedText.includes('manggarai barat') || combinedText.includes('labuan bajo')) return 'Kab. Manggarai Barat'
+    if (combinedText.includes('manggarai timur') || combinedText.includes('borong')) return 'Kab. Manggarai Timur'
+    if (combinedText.includes('manggarai') || combinedText.includes('ruteng')) return 'Kab. Manggarai'
+    if (combinedText.includes('ngada') || combinedText.includes('bajawa')) return 'Kab. Ngada'
+    if (combinedText.includes('nagekeo') || combinedText.includes('mbay')) return 'Kab. Nagekeo'
+    if (combinedText.includes('sikka') || combinedText.includes('maumere')) return 'Kab. Sikka'
+    if (combinedText.includes('ende')) return 'Kab. Ende'
+    if (combinedText.includes('flores timur') || combinedText.includes('larantuka') || combinedText.includes('adonara')) return 'Kab. Flores Timur'
+    if (combinedText.includes('lembata') || combinedText.includes('lewoleba')) return 'Kab. Lembata'
+    if (combinedText.includes('alor') || combinedText.includes('kalabahi')) return 'Kab. Alor'
+    if (combinedText.includes('sumba timur') || combinedText.includes('waingapu')) return 'Kab. Sumba Timur'
+    if (combinedText.includes('sumba')) return 'Kab. Sumba'
+    if (combinedText.includes('belu') || combinedText.includes('atambua')) return 'Kab. Belu'
+    if (combinedText.includes('malaka') || combinedText.includes('betun')) return 'Kab. Malaka'
+    if (combinedText.includes('rote')) return 'Kab. Rote Ndao'
+    if (combinedText.includes('timor tengah selatan') || combinedText.includes('tts')) return 'Kab. Timor Tengah Selatan'
+    if (combinedText.includes('timor tengah utara') || combinedText.includes('ttu')) return 'Kab. Timor Tengah Utara'
+
+    // 3. Fallback map ID kode SIPKK (3210 -> Kab. Kupang)
+    const idStr = String(rep.kabupaten || rep.id_kab || rep.kode_kab || rep.id || '').trim()
+    if (idStr === '3210' || idStr === '5301' || idStr === '5371') return 'Kab. Kupang'
+    if (idStr === '5310') return 'Kab. Manggarai'
+    if (idStr === '5319') return 'Kab. Manggarai Timur'
+    if (idStr === '5315') return 'Kab. Manggarai Barat'
+    if (idStr === '5307') return 'Kab. Sikka'
+    if (idStr === '5308') return 'Kab. Ende'
+    if (idStr === '5309') return 'Kab. Ngada'
+    if (idStr === '5316') return 'Kab. Nagekeo'
+    if (idStr === '5306') return 'Kab. Flores Timur'
+    if (idStr === '5305') return 'Kab. Alor'
+    if (idStr === '5313') return 'Kab. Lembata'
+
+    return 'Kab. Kupang'
+  }
+
   const stripHtmlText = (htmlStr: any): string => {
     if (!htmlStr) return ''
     const str = String(htmlStr)
@@ -2789,6 +2864,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
+      .replace(/ï¸§|ï¿½|ï¿½||\uFE0F|\u2022/g, '• ') // Bersihkan mojibake / corrupted bullets
+      .replace(/\[\d+\]\s*/g, '') // Bersihkan tag numeric ID mentah seperti [3210]
       .replace(/\n\s*\n/g, '\n')
       .trim()
   }
@@ -2819,7 +2896,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     // 2. Jika di level Provinsi NTT, agregasikan seluruh upaya riil dari laporan kabupaten SIPKK
     if (isNttEvent && nttSipkkReports.length > 0) {
       nttSipkkReports.forEach((rep: any) => {
-        const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+        const kab = resolveKabupatenName(rep)
         if (rep.upaya_sub_klaster_pelayanan_kesehatan) addUpaya(`Pelayanan Medis (${kab})`, rep.upaya_sub_klaster_pelayanan_kesehatan, 'Sub Klaster')
         if (rep.upaya_sub_klaster_pp_pl_air_bersih) addUpaya(`Pencegahan Penyakit & Sanitasi (${kab})`, rep.upaya_sub_klaster_pp_pl_air_bersih, 'Kesling & SKDR')
         if (rep.upaya_sub_klaster_gizi) addUpaya(`Pelayanan Gizi (${kab})`, rep.upaya_sub_klaster_gizi, 'Gizi Darurat')
@@ -2827,7 +2904,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (rep.upaya_sub_klaster_kia) addUpaya(`Kesehatan Reproduksi & KIA (${kab})`, rep.upaya_sub_klaster_kia, 'KIA')
         if (rep.upaya_tim_logistik_kesehatan) addUpaya(`Tim Logistik Medis (${kab})`, rep.upaya_tim_logistik_kesehatan, 'Logistik')
         if (rep.upaya_sub_klaster_dvi) addUpaya(`DVI & Identifikasi (${kab})`, rep.upaya_sub_klaster_dvi, 'DVI')
-        if (rep.upaya_kabupaten) addUpaya(`Dinkes Kab. ${kab}`, rep.upaya_kabupaten, 'Dinkes Kab')
+        if (rep.upaya_kabupaten) addUpaya(`Dinkes ${kab}`, rep.upaya_kabupaten, 'Dinkes Kab')
         if (rep.upaya_provinsi) addUpaya(`Dinkes Prov. NTT (${kab})`, rep.upaya_provinsi, 'Dinkes Prov')
         if (rep.upaya_kemenkes || rep.upaya) addUpaya(`EOC Pusat (${kab})`, rep.upaya_kemenkes || rep.upaya, 'EOC Pusat')
       })
@@ -5961,7 +6038,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               if (rawBantuan) list.push(rawBantuan)
               nttSipkkReports.forEach((rep: any) => {
                 const b = stripHtmlText(rep.bantuan || rep.bantuan_diterima)
-                const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+                const kab = resolveKabupatenName(rep)
                 if (b && !list.includes(b)) {
                   list.push(`• [${kab}] ${b}`)
                 }
@@ -5977,7 +6054,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               if (rawBantuanDiperlukan) list.push(rawBantuanDiperlukan)
               nttSipkkReports.forEach((rep: any) => {
                 const b = stripHtmlText(rep.bantuan_diperlukan)
-                const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+                const kab = resolveKabupatenName(rep)
                 if (b && !list.includes(b)) {
                   list.push(`• [${kab}] ${b}`)
                 }
@@ -6017,7 +6094,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               if (rawRekomendasi) list.push(rawRekomendasi)
               nttSipkkReports.forEach((rep: any) => {
                 const r = stripHtmlText(rep.rekomendasi)
-                const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+                const kab = resolveKabupatenName(rep)
                 if (r && !list.includes(r)) {
                   list.push(`• [${kab}] ${r}`)
                 }
@@ -6033,7 +6110,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               if (rawTindakLanjut) list.push(rawTindakLanjut)
               nttSipkkReports.forEach((rep: any) => {
                 const tl = stripHtmlText(rep.tindak_lanjut)
-                const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+                const kab = resolveKabupatenName(rep)
                 if (tl && !list.includes(tl)) {
                   list.push(`• [${kab}] ${tl}`)
                 }
@@ -6049,7 +6126,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               if (rawHambatan) list.push(rawHambatan)
               nttSipkkReports.forEach((rep: any) => {
                 const h = stripHtmlText(rep.hambatan)
-                const kab = rep.kabupaten || rep.nama_kab || 'Kabupaten'
+                const kab = resolveKabupatenName(rep)
                 if (h && !list.includes(h)) {
                   list.push(`• [${kab}] ${h}`)
                 }
