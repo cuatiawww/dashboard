@@ -3968,7 +3968,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             */}
           </div>
           <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
-            Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
+            Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, dan rute navigasi darurat
           </p>
 
           <div className="h-[540px] sm:h-[580px] lg:h-[620px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
@@ -4294,7 +4294,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     ? 'bg-blue-50 text-blue-700 border-blue-200'
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
-                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Faskes Rawat` : '100% Disiagakan'}
+                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} sedang merawat korban` : '100% Disiagakan'}
                               </span>
                             </div>
 
@@ -4331,7 +4331,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {cat.rawatPasien > 0 ? (
                                   <>
                                     <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
-                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">Faskes Rawat</span>
+                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">sedang merawat korban</span>
                                   </>
                                 ) : (
                                   <>
@@ -6893,7 +6893,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 )}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <div className={`grid grid-cols-1 ${isNttEvent ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
                 {/* Col 1: Upaya Penanggulangan */}
                 <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
                   <div>
@@ -6986,54 +6986,56 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
 
                 {/* Col 3: Rekomendasi, Tindak Lanjut & Hambatan */}
-                <div className="rounded-xl border border-teal-200/80 bg-gradient-to-b from-teal-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
-                  <div>
-                    <div className="flex items-center justify-between pb-2.5 border-b border-teal-200/60">
-                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-teal-950 m-0">
-                        Rekomendasi &amp; Tindak Lanjut
-                      </h5>
-                      <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 font-extrabold text-xs">
-                        Rencana Aksi
-                      </span>
-                    </div>
+                {!isNttEvent && (
+                  <div className="rounded-xl border border-teal-200/80 bg-gradient-to-b from-teal-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between pb-2.5 border-b border-teal-200/60">
+                        <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-teal-950 m-0">
+                          Rekomendasi &amp; Tindak Lanjut
+                        </h5>
+                        <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 font-extrabold text-xs">
+                          Rencana Aksi
+                        </span>
+                      </div>
 
-                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                      {rekomendasiText ? (
-                        <div className="bg-white p-3.5 rounded-xl border border-teal-150 shadow-2xs space-y-1">
-                          <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Rekomendasi EOC</span>
-                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
-                            {rekomendasiText}
-                          </p>
-                        </div>
-                      ) : !tindakLanjutText && !hambatanText ? (
-                        <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-teal-100">
-                          Belum ada catatan rekomendasi atau RTL yang dilaporkan.
-                        </div>
-                      ) : null}
+                      <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                        {rekomendasiText ? (
+                          <div className="bg-white p-3.5 rounded-xl border border-teal-150 shadow-2xs space-y-1">
+                            <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Rekomendasi EOC</span>
+                            <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                              {rekomendasiText}
+                            </p>
+                          </div>
+                        ) : !tindakLanjutText && !hambatanText ? (
+                          <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-teal-100">
+                            Belum ada catatan rekomendasi atau RTL yang dilaporkan.
+                          </div>
+                        ) : null}
 
-                      {tindakLanjutText && (
-                        <div className="bg-white p-3.5 rounded-xl border border-indigo-150 shadow-2xs space-y-1">
-                          <span className="text-xs font-black uppercase tracking-wide text-indigo-800 block">Rencana Tindak Lanjut (RTL)</span>
-                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
-                            {tindakLanjutText}
-                          </p>
-                        </div>
-                      )}
+                        {tindakLanjutText && (
+                          <div className="bg-white p-3.5 rounded-xl border border-indigo-150 shadow-2xs space-y-1">
+                            <span className="text-xs font-black uppercase tracking-wide text-indigo-800 block">Rencana Tindak Lanjut (RTL)</span>
+                            <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                              {tindakLanjutText}
+                            </p>
+                          </div>
+                        )}
 
-                      {hambatanText && (
-                        <div className="bg-rose-50/90 p-3.5 rounded-xl border border-rose-200 shadow-2xs space-y-1">
-                          <span className="text-xs font-black uppercase tracking-wide text-rose-800 flex items-center gap-1.5">
-                            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-                            Hambatan Pelayanan Lapangan
-                          </span>
-                          <p className="text-xs sm:text-sm text-rose-950 leading-relaxed font-semibold whitespace-pre-line m-0">
-                            {hambatanText}
-                          </p>
-                        </div>
-                      )}
+                        {hambatanText && (
+                          <div className="bg-rose-50/90 p-3.5 rounded-xl border border-rose-200 shadow-2xs space-y-1">
+                            <span className="text-xs font-black uppercase tracking-wide text-rose-800 flex items-center gap-1.5">
+                              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                              Hambatan Pelayanan Lapangan
+                            </span>
+                            <p className="text-xs sm:text-sm text-rose-950 leading-relaxed font-semibold whitespace-pre-line m-0">
+                              {hambatanText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {eventData.pelapor_nama && (
@@ -7248,13 +7250,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {!isNttEvent && <th className="py-3.5 px-4 text-center text-slate-600">Hilang</th>}
                       <th className="py-3.5 px-4 text-center text-blue-700">Pengungsi</th>
                       <th className="py-3.5 px-4 text-center text-blue-600">Titik Posko</th>
-                      <th className="py-3.5 px-4 text-center">Status Wilayah</th>
+                      {!isNttEvent && <th className="py-3.5 px-4 text-center">Status Wilayah</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {kabupatenMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={isNttEvent ? 9 : 10} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                        <td colSpan={isNttEvent ? 8 : 10} className="py-8 text-center text-slate-400 font-semibold text-xs">
                           Data per kabupaten tidak tersedia atau belum dilaporkan.
                         </td>
                       </tr>
@@ -7279,11 +7281,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             {!isNttEvent && <td className="py-3 px-4 text-center font-bold text-slate-600">{row.hilang || 0}</td>}
                             <td className="py-3 px-4 text-center font-black text-blue-900 bg-blue-50/30">{(row.pengungsi || 0).toLocaleString('id-ID')}</td>
                             <td className="py-3 px-4 text-center font-bold text-blue-700">{row.titik_posko || 0}</td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${row.zonaColor || 'bg-slate-50 text-slate-700 border-slate-200'}`}>
-                                {row.zona ? row.zona.split(' ')[1] || row.zona : 'Zona Kuning'}
-                              </span>
-                            </td>
+                            {!isNttEvent && (
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${row.zonaColor || 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                                  {row.zona ? row.zona.split(' ')[1] || row.zona : 'Zona Kuning'}
+                                </span>
+                              </td>
+                            )}
                           </tr>
                         ))
                     )}
@@ -7298,11 +7302,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {!isNttEvent && <td className="py-3.5 px-4 text-center text-slate-600">{breakdown.hilang}</td>}
                       <td className="py-3.5 px-4 text-center text-blue-900">{(breakdown.pengungsi || kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.pengungsi) || 0), 0)).toLocaleString('id-ID')}</td>
                       <td className="py-3.5 px-4 text-center text-blue-700">{kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.titik_posko) || 0), 0) || '-'}</td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
-                          Tanggap Darurat
-                        </span>
-                      </td>
+                      {!isNttEvent && (
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                            Tanggap Darurat
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   </tfoot>
                 </table>

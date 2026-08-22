@@ -3756,7 +3756,7 @@ export default function DisasterMap({
                   : eocPopup.type === 'hospital'
                   ? 'Rumah Sakit Rujukan'
                   : eocPopup.type === 'shelter'
-                  ? 'Posko Pengungsian & Medis'
+                  ? 'Posko Kesehatan & Darurat'
                   : eocPopup.type === 'pustu'
                   ? 'Puskesmas Pembantu'
                   : eocPopup.type === 'disaster'
