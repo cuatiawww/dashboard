@@ -3829,19 +3829,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </span>
                 )}
               </div>
-              <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
+              <div className={`border-t border-slate-300/40 pt-2.5 mt-auto grid ${isNttEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-center shrink-0`}>
                 <div>
                   <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Meninggal</span>
                 </div>
-                <div className="border-x border-slate-300/40 px-0.5">
+                <div className={`${isNttEvent ? 'border-l' : 'border-x'} border-slate-300/40 px-0.5`}>
                   <span className="text-lg sm:text-xl font-black text-amber-600 block leading-none">{breakdown.luka}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Luka</span>
                 </div>
-                <div>
-                  <span className="text-lg sm:text-xl font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Hilang</span>
-                </div>
+                {!isNttEvent && (
+                  <div>
+                    <span className="text-lg sm:text-xl font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
+                    <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Hilang</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -7075,9 +7077,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
                 <p className="text-xs sm:text-sm font-semibold text-slate-500">
                   {kabupatenMatrixTab === 'korban'
-                    ? 'Rincian jumlah korban meninggal, luka berat, luka ringan, korban hilang, dan pengungsi di setiap kabupaten terdampak.'
+                    ? (isNttEvent
+                        ? 'Rincian jumlah korban meninggal, luka berat, luka ringan, dan pengungsi di setiap kabupaten terdampak.'
+                        : 'Rincian jumlah korban meninggal, luka berat, luka ringan, korban hilang, dan pengungsi di setiap kabupaten terdampak.')
                     : kabupatenMatrixTab === 'faskes'
-                      ? 'Rincian kondisi fisik faskes, status operasional pelayanan, dan penanggung jawab medis.'
+                      ? (isNttEvent
+                          ? 'Rincian data fasilitas kesehatan dan triase penanganan pasien di kabupaten terdampak.'
+                          : 'Rincian kondisi fisik faskes, status operasional pelayanan, dan penanggung jawab medis.')
                       : kabupatenMatrixTab === 'penyakit'
                         ? 'Rincian surveilans penyakit menular potensial KLB pasca bencana, sebaran posko pengungsian, dan intervensi medis.'
                         : 'Rincian estimasi populasi terdampak dan agregasi kelompok rentan (balita, lansia, bumil) per kabupaten.'}
@@ -7100,7 +7106,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                     <div className="text-[10px] font-black uppercase text-slate-500">Total Korban Jiwa</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{totalKorbanReal.toLocaleString('id-ID')} <span className="text-xs font-bold text-slate-500">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">Meninggal + Luka + Hilang</div>
+                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">{isNttEvent ? 'Meninggal + Luka' : 'Meninggal + Luka + Hilang'}</div>
                   </div>
                   <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200">
                     <div className="text-[10px] font-black uppercase text-rose-700">Korban Meninggal</div>
@@ -7236,7 +7242,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <th className="py-3.5 px-4 text-center text-amber-700">Luka Berat</th>
                       <th className="py-3.5 px-4 text-center text-amber-600">Luka Ringan</th>
                       <th className="py-3.5 px-4 text-center text-slate-900">Total Luka</th>
-                      <th className="py-3.5 px-4 text-center text-slate-600">Hilang</th>
+                      {!isNttEvent && <th className="py-3.5 px-4 text-center text-slate-600">Hilang</th>}
                       <th className="py-3.5 px-4 text-center text-blue-700">Pengungsi</th>
                       <th className="py-3.5 px-4 text-center text-blue-600">Titik Posko</th>
                       <th className="py-3.5 px-4 text-center">Status Wilayah</th>
@@ -7245,7 +7251,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <tbody className="divide-y divide-slate-100">
                     {kabupatenMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                        <td colSpan={isNttEvent ? 9 : 10} className="py-8 text-center text-slate-400 font-semibold text-xs">
                           Data per kabupaten tidak tersedia atau belum dilaporkan.
                         </td>
                       </tr>
@@ -7267,7 +7273,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <td className="py-3 px-4 text-center font-bold text-amber-700">{row.luka_berat || 0}</td>
                             <td className="py-3 px-4 text-center font-bold text-slate-600">{row.luka_ringan || 0}</td>
                             <td className="py-3 px-4 text-center font-black text-amber-800 bg-amber-50/40">{row.total_luka || (row.luka_berat + row.luka_ringan) || 0}</td>
-                            <td className="py-3 px-4 text-center font-bold text-slate-600">{row.hilang || 0}</td>
+                            {!isNttEvent && <td className="py-3 px-4 text-center font-bold text-slate-600">{row.hilang || 0}</td>}
                             <td className="py-3 px-4 text-center font-black text-blue-900 bg-blue-50/30">{(row.pengungsi || 0).toLocaleString('id-ID')}</td>
                             <td className="py-3 px-4 text-center font-bold text-blue-700">{row.titik_posko || 0}</td>
                             <td className="py-3 px-4 text-center">
@@ -7286,7 +7292,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <td className="py-3.5 px-4 text-center text-amber-700">{breakdown.luka_berat || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_berat) || 0), 0))}</td>
                       <td className="py-3.5 px-4 text-center text-amber-600">{breakdown.luka_ringan || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_ringan) || 0), 0))}</td>
                       <td className="py-3.5 px-4 text-center text-amber-800">{breakdown.luka || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.total_luka) || 0), 0))}</td>
-                      <td className="py-3.5 px-4 text-center text-slate-600">{breakdown.hilang}</td>
+                      {!isNttEvent && <td className="py-3.5 px-4 text-center text-slate-600">{breakdown.hilang}</td>}
                       <td className="py-3.5 px-4 text-center text-blue-900">{(breakdown.pengungsi || kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.pengungsi) || 0), 0)).toLocaleString('id-ID')}</td>
                       <td className="py-3.5 px-4 text-center text-blue-700">{kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.titik_posko) || 0), 0) || '-'}</td>
                       <td className="py-3.5 px-4 text-center">
@@ -7305,13 +7311,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <th className="py-3.5 px-4">Nama Fasilitas Kesehatan &amp; Master Data</th>
                       <th className="py-3.5 px-4">Kabupaten &amp; Kecamatan</th>
                       <th className="py-3.5 px-4 text-center">Triase Pasien</th>
-                      <th className="py-3.5 px-4 text-center">Kondisi &amp; Status Siaga</th>
+                      {!isNttEvent && <th className="py-3.5 px-4 text-center">Kondisi &amp; Status Siaga</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {faskesMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                        <td colSpan={isNttEvent ? 4 : 5} className="py-8 text-center text-slate-400 font-semibold text-xs">
                           Data fasilitas kesehatan tidak tersedia dari laporan lapangan.
                         </td>
                       </tr>
@@ -7372,24 +7378,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   <span className="text-slate-400 font-semibold text-xs">0 Pasien (Standby)</span>
                                 )}
                               </td>
-                              <td className="py-3 px-4 text-center">
-                                <div className="space-y-1">
-                                  {hasTriage ? (
-                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
-                                      Aktif Rawat Pasien
-                                    </span>
-                                  ) : (
-                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                      Siaga Pelayanan
-                                    </span>
-                                  )}
-                                  <div>
-                                    <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                                      {row.status || 'Operasional'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
+                                {!isNttEvent && (
+                                  <td className="py-3 px-4 text-center">
+                                    <div className="space-y-1">
+                                      {hasTriage ? (
+                                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
+                                          Aktif Rawat Pasien
+                                        </span>
+                                      ) : (
+                                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                          Siaga Pelayanan
+                                        </span>
+                                      )}
+                                      <div>
+                                        <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                          {row.status || 'Operasional'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                )}
                             </tr>
                           )
                         })
