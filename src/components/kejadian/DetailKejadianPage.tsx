@@ -4266,7 +4266,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     ? 'bg-blue-50 text-blue-700 border-blue-200'
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               }`}>
-                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Rawat Pasien` : '100% Standby'}
+                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Faskes Rawat` : '100% Standby'}
                               </span>
                             </div>
 
@@ -4303,7 +4303,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {cat.rawatPasien > 0 ? (
                                   <>
                                     <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
-                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">Rawat Pasien</span>
+                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">Faskes Rawat</span>
                                   </>
                                 ) : (
                                   <>
@@ -4321,7 +4321,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               </div>
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
                                 <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
-                                <span className="text-[9.5px] font-semibold text-blue-600">Rawat</span>
+                                <span className="text-[9.5px] font-semibold text-blue-600">Faskes Rawat</span>
                               </div>
                               <div className="text-emerald-700">
                                 <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
