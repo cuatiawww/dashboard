@@ -3984,7 +3984,7 @@ export default function DisasterMap({
                   </div>
                 ) : null}
 
-                {eocPopup.details?.operasional && (
+                {eocPopup.details?.operasional && !isFloodEocMode && (
                   <div className="col-span-2 rounded-lg bg-emerald-50/50 border border-emerald-100 p-1.5 flex items-center justify-between text-[10px]">
                     <span className="text-emerald-700 font-bold">Status Kesiapan:</span>
                     <span className="font-extrabold text-emerald-800">{eocPopup.details.operasional}</span>

@@ -4311,16 +4311,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   </PieChart>
                                 </ResponsiveContainer>
                               )}
-                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
                                 {cat.rawatPasien > 0 ? (
                                   <>
-                                    <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
-                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">sedang merawat korban</span>
+                                    <span className="text-lg sm:text-xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
+                                    <span className="text-[8.5px] sm:text-[9px] font-black text-blue-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">sedang merawat korban</span>
                                   </>
                                 ) : (
                                   <>
-                                    <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.standby}/{cat.totalMaster}</span>
-                                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mt-0.5">Disiagakan</span>
+                                    <span className="text-lg sm:text-xl font-black text-slate-900 leading-none">{cat.standby}/{cat.totalMaster}</span>
+                                    <span className="text-[8.5px] sm:text-[9px] font-black text-emerald-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">Disiagakan</span>
                                   </>
                                 )}
                               </div>
@@ -4335,7 +4335,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               )}
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
                                 <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
-                                <span className="text-[9.5px] font-semibold text-blue-600">Faskes Rawat</span>
+                                <span className="text-[9.5px] font-semibold text-blue-600">sedang merawat korban</span>
                               </div>
                               <div className="text-emerald-700">
                                 <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
@@ -4781,7 +4781,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                       <strong className="text-rose-900">{masterFaskesCounts.totalMerawat} Faskes Aktif Rawat Pasien</strong>
                       <span className="text-slate-300">|</span>
-                      <span className="text-emerald-700 font-semibold">{Math.max(0, masterFaskesCounts.all - masterFaskesCounts.totalMerawat)} Siaga Standby</span>
+                      <span className="text-emerald-700 font-semibold">{Math.max(0, masterFaskesCounts.all - masterFaskesCounts.totalMerawat)} Disiagakan</span>
                     </span>
                   </div>
                 </div>
@@ -4946,7 +4946,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     </div>
                                   ) : (
                                     <span className="text-[11px] font-semibold text-slate-400">
-                                      0 Pasien (Standby)
+                                      0 Pasien
                                     </span>
                                   )}
                                 </td>
@@ -7294,14 +7294,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </tfoot>
                 </table>
               ) : kabupatenMatrixTab === 'faskes' ? (
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
                   <thead className="sticky top-0 z-10 bg-slate-100 border-b border-slate-200 shadow-2xs">
                     <tr className="text-slate-700 font-black uppercase text-[11px]">
-                      <th className="py-3.5 px-4 text-center">No</th>
-                      <th className="py-3.5 px-4">Nama Fasilitas Kesehatan &amp; Master Data</th>
-                      <th className="py-3.5 px-4">Kabupaten &amp; Kecamatan</th>
-                      <th className="py-3.5 px-4 text-center">Triase Pasien</th>
-                      {!isNttEvent && <th className="py-3.5 px-4 text-center">Kondisi &amp; Status Siaga</th>}
+                      <th className="py-3.5 px-4 text-center" style={{ width: isNttEvent ? '5%' : '5%' }}>No</th>
+                      <th className="py-3.5 px-4" style={{ width: isNttEvent ? '45%' : '35%' }}>Nama Fasilitas Kesehatan &amp; Master Data</th>
+                      <th className="py-3.5 px-4" style={{ width: isNttEvent ? '25%' : '20%' }}>Kabupaten &amp; Kecamatan</th>
+                      <th className="py-3.5 px-4 text-center" style={{ width: isNttEvent ? '25%' : '20%' }}>Triase Pasien</th>
+                      {!isNttEvent && <th className="py-3.5 px-4 text-center" style={{ width: '20%' }}>Kondisi &amp; Status Siaga</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
