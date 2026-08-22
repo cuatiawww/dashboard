@@ -2190,29 +2190,31 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const totalPendudukTerancam = useMemo(() => {
     const situList = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
       ? nttApiData.situasi_kesehatan
-      : (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0 ? detail.breakdown_kabupaten : [])
+      : (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0
+          ? detail.breakdown_kabupaten
+          : (Array.isArray(eventData.detailData?.breakdown_kabupaten) ? eventData.detailData.breakdown_kabupaten : []))
     const situSum = situList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
     if (situSum > 0) return situSum
 
-    const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : []
+    const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : (Array.isArray(eventData.detailData?.lokasi) ? eventData.detailData.lokasi : [])
     const sum = lokasiList.reduce((acc: number, loc: any) => acc + safeParseInt(loc.jml_terancam), 0)
     if (sum > 0) return sum
 
-    const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak
+    const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak || eventData.detailData?.populasi_terdampak || eventData.detailData?.penduduk_terdampak
     return safeParseInt(val) || 0
-  }, [detail?.lokasi, detail?.breakdown_kabupaten, nttApiData?.situasi_kesehatan, eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak])
+  }, [detail?.lokasi, detail?.breakdown_kabupaten, nttApiData?.situasi_kesehatan, eventData])
 
   const pendudukTerdampakDisplay = useMemo(() => {
     const sumTerancam = totalPendudukTerancam
     if (sumTerancam > 0) {
       return sumTerancam.toLocaleString('id-ID')
     }
-    const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak
+    const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak || eventData.detailData?.populasi_terdampak || eventData.detailData?.penduduk_terdampak
     if (val && safeParseInt(val) > 0) {
       return safeParseInt(val).toLocaleString('id-ID')
     }
     return 'NA'
-  }, [eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam])
+  }, [eventData, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam])
 
   // Vulnerable group counts (Murni NA jika tidak ada kolom eksplisit di API / database)
   const balitaDisplay = useMemo(() => {
