@@ -58,6 +58,11 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [])
 
+  const isGempaNttRoute =
+    pathname === '/gempa-ntt' ||
+    pathname === '/dashboard-eoc/gempa-ntt' ||
+    pathname?.includes('gempa-ntt')
+
   if (!isInitialized) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#fbffff]">
@@ -85,7 +90,7 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <NotificationProvider>
       <main className="min-h-screen">
-        <DashboardSidebar open={sidebarOpen} onClose={closeSidebar} />
+        {!isGempaNttRoute && <DashboardSidebar open={sidebarOpen} onClose={closeSidebar} />}
         <DashboardHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} />
         {children}
         <Footer />

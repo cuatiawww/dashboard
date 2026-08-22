@@ -443,6 +443,11 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   }
   const initials = getInitials(initialName)
 
+  const isGempaNttRoute =
+    pathname === '/gempa-ntt' ||
+    pathname === '/dashboard-eoc/gempa-ntt' ||
+    pathname?.includes('gempa-ntt')
+
   useEffect(() => {
     const onClickOutside = (event: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) setProfileOpen(false)
@@ -471,14 +476,16 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
         <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/82 to-white/92" />
         <div className="relative grid w-full gap-5 px-4 py-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="flex min-w-0 items-center gap-4">
-            <button
-              type="button"
-              aria-label="Buka menu"
-              onClick={onToggleSidebar}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-600 shadow-sm transition hover:bg-white"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            {!(pathname === '/gempa-ntt' || pathname === '/dashboard-eoc/gempa-ntt' || pathname?.includes('gempa-ntt')) && (
+              <button
+                type="button"
+                aria-label="Buka menu"
+                onClick={onToggleSidebar}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-600 shadow-sm transition hover:bg-white"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            )}
             <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center md:gap-5">
               <Image
                 src={`${basePath}/Logo-Kemenkes.png`}
@@ -516,7 +523,8 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+          {!isGempaNttRoute && (
+            <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
               <button
                 type="button"
                 onClick={handleRefresh}
@@ -807,7 +815,8 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                   )
                 ) : null}
               </div>
-          </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="h-[3px] bg-gradient-to-r from-teal-400/80 via-teal-400/40 to-transparent" />
