@@ -317,6 +317,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [kabupatenMatrixTab, setKabupatenMatrixTab] = useState<'all' | 'korban' | 'faskes' | 'pengungsi' | 'penyakit'>('all')
   const [kabupatenMatrixSearch, setKabupatenMatrixSearch] = useState<string>('')
 
+  // Master Data Faskes Filtering & Pagination State
+  const [masterFaskesTypeFilter, setMasterFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu'>('all')
+  const [masterFaskesKabFilter, setMasterFaskesKabFilter] = useState<string>('semua')
+  const [masterFaskesSearch, setMasterFaskesSearch] = useState<string>('')
+  const [masterFaskesPage, setMasterFaskesPage] = useState<number>(1)
+  const [masterFaskesPerPage, setMasterFaskesPerPage] = useState<number>(25)
+
+  // Status Faskes Tab Pagination State
+  const [statusFaskesPage, setStatusFaskesPage] = useState<number>(1)
+  const [statusFaskesPerPage, setStatusFaskesPerPage] = useState<number>(10)
+
   useEffect(() => {
     setMounted(true)
   }, [])
@@ -334,6 +345,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     pasien_puskesmas: any[]
     situasi_kesehatan: any[]
     analisa_ringkasan_harian: any[]
+    master_faskes: any[]
+    summary_faskes?: any
     updated_at?: string | null
     tanggal?: string | null
   }>({
@@ -341,6 +354,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     pasien_puskesmas: [],
     situasi_kesehatan: [],
     analisa_ringkasan_harian: [],
+    master_faskes: [],
+    summary_faskes: null,
     updated_at: null,
     tanggal: null,
   })
@@ -353,7 +368,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     let active = true
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
-    // 1. Ambil data CSV collector
+    // 1. Ambil data CSV collector & Master Faskes
     const fetchNtt = async () => {
       try {
         const res = await fetch(`${basePath}/api/ntt-data`, { cache: 'no-store' })
@@ -403,6 +418,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           pasien_puskesmas: normalizeRows(json.tables.pasien_puskesmas || json.data?.pasien_puskesmas || []),
           situasi_kesehatan: normalizeRows(json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           analisa_ringkasan_harian: normalizeRows(json.tables.analisa_ringkasan_harian || json.data?.analisa_ringkasan_harian || []),
+          master_faskes: Array.isArray(json.tables?.master_faskes) ? json.tables.master_faskes : (Array.isArray(json.data?.master_faskes) ? json.data.master_faskes : []),
+          summary_faskes: json.summary_faskes || null,
           updated_at: json.updated_at || (json.tanggal ? `${json.tanggal} 10:01:00` : '2026-08-21 10:01:00'),
           tanggal: json.tanggal || null,
         })
@@ -619,6 +636,210 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [detail, eventData]);
 
+  const faskesMatrixData = useMemo(() => {
+    // 1. Data master_faskes dari API /api/ntt-data jika ada (1.818 faskes se-NTT)
+    if (Array.isArray(nttApiData.master_faskes) && nttApiData.master_faskes.length > 0) {
+      return nttApiData.master_faskes
+    }
+
+    // 2. Data faskes_terdekat dari detail jika sudah memuat master lengkap
+    if (Array.isArray(detail?.faskes_terdekat) && detail.faskes_terdekat.length > 50) {
+      return detail.faskes_terdekat
+    }
+
+    // 3. Data faskes terdampak dari database kejadian
+    if (Array.isArray(detail?.faskes_terdampak) && detail.faskes_terdampak.length > 0) {
+      return detail.faskes_terdampak
+    }
+
+    // 4. Data faskes riil dari API Collector (/api/ntt-data) yang dipetakan ke Master Data Faskes
+    const combinedFaskes: any[] = []
+    const seenKeys = new Set<string>()
+
+    if (Array.isArray(nttApiData.pasien_rs) && nttApiData.pasien_rs.length > 0) {
+      nttApiData.pasien_rs.forEach((rs: any, idx: number) => {
+        const rawName = rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
+        const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${rawName.toLowerCase().trim()}`
+        if (seenKeys.has(dedupeKey)) return
+        seenKeys.add(dedupeKey)
+
+        const fLat = rs.latitude !== null && rs.latitude !== undefined && rs.latitude !== '' ? Number(rs.latitude) : null
+        const fLng = rs.longitude !== null && rs.longitude !== undefined && rs.longitude !== '' ? Number(rs.longitude) : null
+
+        combinedFaskes.push({
+          id: `rs-${idx + 1}`,
+          nama: rawName,
+          nama_faskes: rawName,
+          nama_master: rs.nama_master || '',
+          kode_sarana: rs.kode_sarana || '-',
+          kode_satusehat: rs.kode_satusehat || '-',
+          jenis: rs.subjenis || rs.jenis_faskes || 'Rumah Sakit Umum Daerah',
+          subjenis: rs.subjenis || 'Rumah Sakit Umum',
+          kabupaten: rs.nama_kab || rs.kabupaten || '',
+          kecamatan: rs.nama_kecamatan || rs.kecamatan || '-',
+          alamat: rs.alamat || '-',
+          latitude: fLat,
+          longitude: fLng,
+          lat: fLat,
+          lng: fLng,
+          status: rs.status || 'Beroperasi Siaga Bencana',
+          kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
+          triase_merah: Number(rs.triase_merah || 0),
+          triase_kuning: Number(rs.triase_kuning || 0),
+          triase_hijau: Number(rs.triase_hijau || 0),
+          triase_hitam: Number(rs.triase_hitam || 0),
+          total_pasien: Number(rs.total || 0),
+          kapasitas_tersedia: rs.kapasitas_tersedia || '-',
+          stok_darah: rs.stok_darah || '-',
+          listrik: rs.listrik || 'PLN / Genset Siaga',
+          pj_medis: rs.pj_medis || '-',
+          petugas: rs.pj_medis || '-',
+          telp: rs.telp || '-',
+          email: rs.email || '-',
+          has_collector_data: true,
+        })
+      })
+    }
+
+    if (Array.isArray(nttApiData.pasien_puskesmas) && nttApiData.pasien_puskesmas.length > 0) {
+      nttApiData.pasien_puskesmas.forEach((pkm: any, idx: number) => {
+        const rawName = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga')
+        const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${rawName.toLowerCase().trim()}`
+        if (seenKeys.has(dedupeKey)) return
+        seenKeys.add(dedupeKey)
+
+        const fLat = pkm.latitude !== null && pkm.latitude !== undefined && pkm.latitude !== '' ? Number(pkm.latitude) : null
+        const fLng = pkm.longitude !== null && pkm.longitude !== undefined && pkm.longitude !== '' ? Number(pkm.longitude) : null
+
+        combinedFaskes.push({
+          id: `pkm-${idx + 1}`,
+          nama: rawName,
+          nama_faskes: rawName,
+          nama_master: pkm.nama_master || '',
+          kode_sarana: pkm.kode_sarana || '-',
+          kode_satusehat: pkm.kode_satusehat || '-',
+          jenis: pkm.subjenis || pkm.jenis_faskes || 'Puskesmas',
+          subjenis: pkm.subjenis || 'Puskesmas',
+          kabupaten: pkm.nama_kab || pkm.kabupaten || '',
+          kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
+          alamat: pkm.alamat || '-',
+          latitude: fLat,
+          longitude: fLng,
+          lat: fLat,
+          lng: fLng,
+          status: pkm.status || 'Beroperasi',
+          kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
+          triase_merah: Number(pkm.triase_merah || 0),
+          triase_kuning: Number(pkm.triase_kuning || 0),
+          triase_hijau: Number(pkm.triase_hijau || 0),
+          triase_hitam: Number(pkm.triase_hitam || 0),
+          total_pasien: Number(pkm.total || 0),
+          kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
+          stok_darah: '-',
+          listrik: pkm.listrik || 'PLN',
+          pj_medis: pkm.pj_medis || '-',
+          petugas: pkm.pj_medis || '-',
+          telp: pkm.telp || '-',
+          email: pkm.email || '-',
+          has_collector_data: true,
+        })
+      })
+    }
+
+    return combinedFaskes
+  }, [detail, nttApiData.master_faskes, nttApiData.pasien_rs, nttApiData.pasien_puskesmas])
+
+  const effectiveFaskesList = useMemo(() => {
+    if (isNttEvent && faskesMatrixData.length > 0) {
+      return faskesMatrixData
+    }
+    return detail?.faskes_terdekat || []
+  }, [isNttEvent, faskesMatrixData, detail?.faskes_terdekat])
+
+  const masterFaskesCounts = useMemo(() => {
+    let rs = 0, pkm = 0, klinik = 0, pustu = 0, totalMerawat = 0
+    effectiveFaskesList.forEach((f: any) => {
+      const j = String(f.jenis_faskes || f.jenis || f.subjenis || '').toLowerCase()
+      if (j.includes('rumah sakit') || j.includes('rs')) rs++
+      else if (j.includes('puskesmas pembantu') || j.includes('pustu')) pustu++
+      else if (j.includes('puskesmas') || j.includes('pkm')) pkm++
+      else if (j.includes('klinik')) klinik++
+      else pustu++
+
+      if (f.has_collector_data || Number(f.total_pasien || 0) > 0) {
+        totalMerawat++
+      }
+    })
+    return {
+      all: effectiveFaskesList.length,
+      rs,
+      puskesmas: pkm,
+      klinik,
+      pustu,
+      totalMerawat,
+    }
+  }, [effectiveFaskesList])
+
+  const rsCount = isNttEvent
+    ? (nttApiData?.pasien_rs?.length || 7)
+    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('rs')).length : 0);
+
+  const pkmCount = isNttEvent
+    ? (nttApiData?.pasien_puskesmas?.length || 85)
+    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('pkm') || String(f.jenis || f.nama).toLowerCase().includes('puskesmas')).length : 0);
+
+  const masterFaskesKabupatenList = useMemo(() => {
+    const kabs = new Set<string>()
+    effectiveFaskesList.forEach((f: any) => {
+      const kab = String(f.nama_kab || f.kabupaten || '').trim()
+      if (kab) kabs.add(kab)
+    })
+    return ['semua', ...Array.from(kabs).sort()]
+  }, [effectiveFaskesList])
+
+  const filteredMasterFaskesList = useMemo(() => {
+    return effectiveFaskesList.filter((f: any) => {
+      // 1. Type Filter
+      if (masterFaskesTypeFilter !== 'all') {
+        const j = String(f.jenis_faskes || f.jenis || f.subjenis || '').toLowerCase()
+        if (masterFaskesTypeFilter === 'rs' && !j.includes('rumah sakit') && !j.includes('rs')) return false
+        if (masterFaskesTypeFilter === 'puskesmas' && (!j.includes('puskesmas') || j.includes('pustu') || j.includes('pembantu'))) return false
+        if (masterFaskesTypeFilter === 'pustu' && !j.includes('pustu') && !j.includes('pembantu')) return false
+        if (masterFaskesTypeFilter === 'klinik' && !j.includes('klinik')) return false
+      }
+
+      // 2. Kabupaten Filter
+      if (masterFaskesKabFilter !== 'semua') {
+        const kab = String(f.nama_kab || f.kabupaten || '').toLowerCase()
+        if (!kab.includes(masterFaskesKabFilter.toLowerCase())) return false
+      }
+
+      // 3. Search query
+      if (masterFaskesSearch.trim() !== '') {
+        const q = masterFaskesSearch.toLowerCase().trim()
+        const matchName = String(f.nama || f.nama_faskes || f.nama_master || '').toLowerCase().includes(q)
+        const matchKode = String(f.kode_sarana || f.kode_satusehat || '').toLowerCase().includes(q)
+        const matchKec = String(f.kecamatan || f.nama_kecamatan || '').toLowerCase().includes(q)
+        const matchKab = String(f.kabupaten || f.nama_kab || '').toLowerCase().includes(q)
+        const matchAlamat = String(f.alamat || '').toLowerCase().includes(q)
+        if (!matchName && !matchKode && !matchKec && !matchKab && !matchAlamat) return false
+      }
+
+      return true
+    })
+  }, [effectiveFaskesList, masterFaskesTypeFilter, masterFaskesKabFilter, masterFaskesSearch])
+
+  const totalMasterPages = Math.max(1, Math.ceil(filteredMasterFaskesList.length / masterFaskesPerPage))
+  const paginatedMasterFaskesList = useMemo(() => {
+    const start = (masterFaskesPage - 1) * masterFaskesPerPage
+    return filteredMasterFaskesList.slice(start, start + masterFaskesPerPage)
+  }, [filteredMasterFaskesList, masterFaskesPage, masterFaskesPerPage])
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setMasterFaskesPage(1)
+  }, [masterFaskesTypeFilter, masterFaskesKabFilter, masterFaskesSearch, masterFaskesPerPage])
+
   const faskesStatusSummary = useMemo(() => {
     const list = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak : []
 
@@ -656,7 +877,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const rb = safeParseInt(f.rusak_berat || (f.kondisi === 'Rusak Berat' ? 1 : 0))
       const rs = safeParseInt(f.rusak_sedang || (f.kondisi === 'Rusak Sedang' ? 1 : 0))
       const rr = safeParseInt(f.rusak_ringan || (f.kondisi === 'Rusak Ringan' ? 1 : 0))
-      const hasDamage = rb > 0 || rs > 0 || rr > 0 || String(f.kondisi || '').toLowerCase().includes('rusak')
+      const hasDamage = rb > 0 || rs > 0 || rr > 0 || String(f.kondisi || '').toLowerCase().includes('rusak') || String(f.status || '').toLowerCase().includes('rusak')
 
       if (hasDamage) {
         summary[category].terdampak += 1
@@ -668,43 +889,72 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const fungsi = String(f.fungsi || f.fungsi_pelayanan || '').toLowerCase()
       if (fungsi.includes('tidak') || fungsi.includes('non') || f.status === 'Tidak Operasional' || (rb > 0 && !fungsi.includes('berfungsi'))) {
         summary[category].tidakBerfungsi += 1
-      } else {
-        summary[category].berfungsi += 1
       }
     })
 
+    // Hitung total faskes berfungsi normal dari Master Data Faskes dikurangi faskes tidak beroperasi
+    const masterTotals = isNttEvent ? {
+      rs: nttApiData.summary_faskes?.rs_count || masterFaskesCounts.rs || 57,
+      pkm: nttApiData.summary_faskes?.puskesmas_count || masterFaskesCounts.puskesmas || 442,
+      pustu: nttApiData.summary_faskes?.pustu_count || masterFaskesCounts.pustu || 1193,
+      klinik: nttApiData.summary_faskes?.klinik_count || masterFaskesCounts.klinik || 126,
+      posyandu: 0
+    } : {
+      rs: masterFaskesCounts.rs || 0,
+      pkm: masterFaskesCounts.puskesmas || 0,
+      pustu: masterFaskesCounts.pustu || 0,
+      klinik: masterFaskesCounts.klinik || 0,
+      posyandu: 0
+    }
+
+    summary.rs.berfungsi = Math.max(0, masterTotals.rs - summary.rs.tidakBerfungsi)
+    summary.pkm.berfungsi = Math.max(0, masterTotals.pkm - summary.pkm.tidakBerfungsi)
+    summary.pustu.berfungsi = Math.max(0, masterTotals.pustu - summary.pustu.tidakBerfungsi)
+    summary.klinik.berfungsi = Math.max(0, masterTotals.klinik - summary.klinik.tidakBerfungsi)
+    summary.posyandu.berfungsi = Math.max(0, masterTotals.posyandu - summary.posyandu.tidakBerfungsi)
+
     return summary
-  }, [detail])
+  }, [detail, isNttEvent, nttApiData.summary_faskes, masterFaskesCounts])
 
   const faskesPieBreakdown = useMemo(() => {
     const summary = faskesStatusSummary
 
     // Hitung total faskes master yang riil
-    const masterList = isNttEvent && (nttApiData.pasien_rs.length > 0 || nttApiData.pasien_puskesmas.length > 0)
-      ? [...(nttApiData.pasien_rs || []), ...(nttApiData.pasien_puskesmas || [])]
-      : (Array.isArray(kapasitasNakes) && kapasitasNakes.length > 0
-        ? kapasitasNakes
-        : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat : []))
-
-    const masterCounts = {
+    const masterCounts = isNttEvent ? {
+      rs: nttApiData.summary_faskes?.rs_count || masterFaskesCounts.rs || 57,
+      pkm: nttApiData.summary_faskes?.puskesmas_count || masterFaskesCounts.puskesmas || 442,
+      pustu: nttApiData.summary_faskes?.pustu_count || masterFaskesCounts.pustu || 1193,
+      klinik: nttApiData.summary_faskes?.klinik_count || masterFaskesCounts.klinik || 126,
+    } : {
       rs: 0,
       pkm: 0,
       pustu: 0,
       klinik: 0
     }
 
-    masterList.forEach((f: any) => {
-      const type = String(f.jenis || f.subjenis || f.jenis_faskes || f.nama_rs ? 'rs' : (f.nama_puskesmas ? 'pkm' : '') || f.nama_faskes || f.nama || '').toLowerCase()
-      if (type.includes('rs') || type.includes('rumah sakit') || type.includes('rumkit') || type.startsWith('rs ') || type.startsWith('rs.')) {
-        masterCounts.rs += 1
-      } else if (type.includes('pustu') || type.includes('pembantu')) {
-        masterCounts.pustu += 1
-      } else if (type.includes('puskesmas') || type.includes('pkm')) {
-        masterCounts.pkm += 1
-      } else {
-        masterCounts.klinik += 1
-      }
-    })
+    if (!isNttEvent) {
+      const masterList = Array.isArray(kapasitasNakes) && kapasitasNakes.length > 0
+        ? kapasitasNakes
+        : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat : [])
+
+      masterList.forEach((f: any) => {
+        const type = String(f.jenis || f.subjenis || f.jenis_faskes || f.nama_rs ? 'rs' : (f.nama_puskesmas ? 'pkm' : '') || f.nama_faskes || f.nama || '').toLowerCase()
+        if (type.includes('rs') || type.includes('rumah sakit') || type.includes('rumkit') || type.startsWith('rs ') || type.startsWith('rs.')) {
+          masterCounts.rs += 1
+        } else if (type.includes('pustu') || type.includes('pembantu')) {
+          masterCounts.pustu += 1
+        } else if (type.includes('puskesmas') || type.includes('pkm')) {
+          masterCounts.pkm += 1
+        } else {
+          masterCounts.klinik += 1
+        }
+      })
+    }
+
+    const rsRawat = isNttEvent ? (nttApiData.pasien_rs?.length || rsCount || 7) : 0
+    const pkmRawat = isNttEvent ? (nttApiData.pasien_puskesmas?.length || pkmCount || 83) : 0
+    const pustuRawat = 0
+    const klinikRawat = 0
 
     const categories = [
       {
@@ -713,10 +963,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: Building2,
         iconColor: 'text-rose-600',
         terdampak: summary.rs.terdampak,
-        totalMaster: Math.max(summary.rs.terdampak, masterCounts.rs),
-        berfungsi: Math.max(0, Math.max(summary.rs.terdampak, masterCounts.rs) - summary.rs.terdampak),
-        color: '#e11d48',
-        normalColor: '#10b981'
+        rawatPasien: rsRawat,
+        totalMaster: Math.max(summary.rs.terdampak + rsRawat, masterCounts.rs),
+        standby: Math.max(0, Math.max(summary.rs.terdampak + rsRawat, masterCounts.rs) - summary.rs.terdampak - rsRawat),
+        rusakColor: '#e11d48',
+        rawatColor: '#2563eb', // Blue for active RSUD
+        standbyColor: '#10b981' // Emerald for standby normal
       },
       {
         key: 'pkm',
@@ -724,10 +976,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: Stethoscope,
         iconColor: 'text-orange-600',
         terdampak: summary.pkm.terdampak,
-        totalMaster: Math.max(summary.pkm.terdampak, masterCounts.pkm),
-        berfungsi: Math.max(0, Math.max(summary.pkm.terdampak, masterCounts.pkm) - summary.pkm.terdampak),
-        color: '#f97316',
-        normalColor: '#10b981'
+        rawatPasien: pkmRawat,
+        totalMaster: Math.max(summary.pkm.terdampak + pkmRawat, masterCounts.pkm),
+        standby: Math.max(0, Math.max(summary.pkm.terdampak + pkmRawat, masterCounts.pkm) - summary.pkm.terdampak - pkmRawat),
+        rusakColor: '#e11d48',
+        rawatColor: '#0891b2', // Teal / Cyan for active PKM
+        standbyColor: '#10b981'
       },
       {
         key: 'pustu',
@@ -735,10 +989,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: PlusSquare,
         iconColor: 'text-amber-600',
         terdampak: summary.pustu.terdampak,
-        totalMaster: Math.max(summary.pustu.terdampak, masterCounts.pustu),
-        berfungsi: Math.max(0, Math.max(summary.pustu.terdampak, masterCounts.pustu) - summary.pustu.terdampak),
-        color: '#eab308',
-        normalColor: '#10b981'
+        rawatPasien: pustuRawat,
+        totalMaster: Math.max(summary.pustu.terdampak + pustuRawat, masterCounts.pustu),
+        standby: Math.max(0, Math.max(summary.pustu.terdampak + pustuRawat, masterCounts.pustu) - summary.pustu.terdampak - pustuRawat),
+        rusakColor: '#e11d48',
+        rawatColor: '#d97706',
+        standbyColor: '#10b981'
       },
       {
         key: 'klinik',
@@ -746,19 +1002,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         icon: BriefcaseMedical,
         iconColor: 'text-indigo-600',
         terdampak: summary.klinik.terdampak,
-        totalMaster: Math.max(summary.klinik.terdampak, masterCounts.klinik),
-        berfungsi: Math.max(0, Math.max(summary.klinik.terdampak, masterCounts.klinik) - summary.klinik.terdampak),
-        color: '#6366f1',
-        normalColor: '#10b981'
+        rawatPasien: klinikRawat,
+        totalMaster: Math.max(summary.klinik.terdampak + klinikRawat, masterCounts.klinik),
+        standby: Math.max(0, Math.max(summary.klinik.terdampak + klinikRawat, masterCounts.klinik) - summary.klinik.terdampak - klinikRawat),
+        rusakColor: '#e11d48',
+        rawatColor: '#6366f1',
+        standbyColor: '#10b981'
       }
     ]
 
     return categories.map(cat => {
-      const pct = cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0
+      const pct = cat.totalMaster > 0 ? Math.round((cat.rawatPasien / cat.totalMaster) * 100) : 0
       const pieData = [
-        { name: 'Terdampak / Rusak', value: cat.terdampak, fill: cat.color },
-        { name: 'Berfungsi Normal', value: cat.berfungsi > 0 ? cat.berfungsi : (cat.totalMaster === 0 ? 1 : 0), fill: cat.totalMaster === 0 ? '#e2e8f0' : cat.normalColor }
-      ]
+        { name: 'Terdampak / Rusak', value: cat.terdampak, fill: cat.rusakColor },
+        { name: 'Aktif Rawat Pasien', value: cat.rawatPasien, fill: cat.rawatColor },
+        { name: 'Siaga Standby (Normal)', value: cat.standby > 0 ? cat.standby : (cat.totalMaster === 0 ? 1 : 0), fill: cat.totalMaster === 0 ? '#e2e8f0' : cat.standbyColor }
+      ].filter(item => item.value > 0 || cat.totalMaster === 0)
 
       return {
         ...cat,
@@ -1972,24 +2231,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return 'NA';
   }, [eventData.ibu_hamil, eventData.bumil, detail?.ibu_hamil, detail?.bumil]);
 
-  const rsCount = isNttEvent
-    ? (nttApiData?.pasien_rs?.length || 7)
-    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('rs')).length : 0);
-
-  const pkmCount = isNttEvent
-    ? (nttApiData?.pasien_puskesmas?.length || 85)
-    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('pkm') || String(f.jenis || f.nama).toLowerCase().includes('puskesmas')).length : 0);
-
   const totalFaskes = useMemo(() => {
     if (isNttEvent) {
-      const apiCount = (nttApiData?.pasien_rs?.length || 0) + (nttApiData?.pasien_puskesmas?.length || 0)
-      return apiCount > 0 ? apiCount : (rsCount + pkmCount)
+      if (masterFaskesCounts.all > 0) return masterFaskesCounts.all
+      if (nttApiData?.summary_faskes?.total_faskes) return nttApiData.summary_faskes.total_faskes
+      if (effectiveFaskesList.length > 0) return effectiveFaskesList.length
+      return 1818
     }
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
     const terdampak = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
     const eventTerdampak = Array.isArray(eventData?.faskes_terdampak) ? eventData.faskes_terdampak.length : 0
     return Math.max(terdekat, terdampak, eventTerdampak)
-  }, [detail, eventData?.faskes_terdampak, nttApiData?.pasien_puskesmas, nttApiData?.pasien_rs, isNttEvent, rsCount, pkmCount])
+  }, [detail, eventData?.faskes_terdampak, isNttEvent, masterFaskesCounts.all, nttApiData?.summary_faskes, effectiveFaskesList.length])
 
   const terdampakFaskes = useMemo(() => {
     // Only count physical damage reports from RHA
@@ -2003,19 +2256,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [totalFaskes, terdampakFaskes])
 
   const faskesTrendInfo = useMemo(() => {
+    const totalMerawat = masterFaskesCounts.totalMerawat || (rsCount + pkmCount) || 90
     if (terdampakFaskes > 0) {
       return {
-        label: `${terdampakFaskes} Terdampak | ${operasionalFaskes} Operasional`,
+        label: `${terdampakFaskes} Rusak | ${totalMerawat} Aktif Rawat Pasien`,
         badgeClass: 'bg-rose-50 border-rose-200 text-rose-700 shadow-xs font-black'
       }
     }
     return {
       label: isNttEvent
-        ? `${operasionalFaskes} Faskes Siaga Melayani (${rsCount} RS & ${pkmCount} PKM)`
+        ? `${totalMerawat} Aktif Rawat Pasien (${rsCount} RS & ${pkmCount} PKM)`
         : '100% Beroperasi Siaga Bencana',
       badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs font-black'
     }
-  }, [terdampakFaskes, operasionalFaskes, isNttEvent, rsCount, pkmCount])
+  }, [terdampakFaskes, isNttEvent, masterFaskesCounts.totalMerawat, rsCount, pkmCount])
 
   const terdampakTrendInfo = useMemo(() => {
     const rawVal = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak)
@@ -2835,9 +3089,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (combinedText.includes('timor tengah selatan') || combinedText.includes('tts')) return 'Kab. Timor Tengah Selatan'
     if (combinedText.includes('timor tengah utara') || combinedText.includes('ttu')) return 'Kab. Timor Tengah Utara'
 
-    // 3. Fallback map ID kode SIPKK (3210 -> Kab. Kupang)
+    // 3. Fallback map ID kode SIPKK
     const idStr = String(rep.kabupaten || rep.id_kab || rep.kode_kab || rep.id || '').trim()
-    if (idStr === '3210' || idStr === '5301' || idStr === '5371') return 'Kab. Kupang'
     if (idStr === '5310') return 'Kab. Manggarai'
     if (idStr === '5319') return 'Kab. Manggarai Timur'
     if (idStr === '5315') return 'Kab. Manggarai Barat'
@@ -2848,14 +3101,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (idStr === '5306') return 'Kab. Flores Timur'
     if (idStr === '5305') return 'Kab. Alor'
     if (idStr === '5313') return 'Kab. Lembata'
+    if (idStr === '3210' || idStr === '5301') return 'Kab. Kupang'
+    if (idStr === '5371') return 'Kota Kupang'
 
-    return 'Kab. Kupang'
+    return isNttEvent ? 'Kabupaten NTT' : (rep.kabupaten || 'Wilayah Terdampak')
   }
 
   const stripHtmlText = (htmlStr: any): string => {
     if (!htmlStr) return ''
-    const str = String(htmlStr)
-    return str
+    const raw = String(htmlStr).trim()
+    if (!raw || raw === '-' || raw.toLowerCase() === 'n/a' || raw.toLowerCase() === 'null' || raw.toLowerCase() === 'undefined' || raw.toLowerCase() === 'none' || raw.toLowerCase() === 'nihil') {
+      return ''
+    }
+
+    return raw
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n')
       .replace(/<\/li>/gi, '\n')
@@ -2864,7 +3123,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
-      .replace(/ï¸§|ï¿½|ï¿½||\uFE0F|\u2022/g, '• ') // Bersihkan mojibake / corrupted bullets
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ï¸§ï¿½\uFE0F\u2022]/g, '') // Bersihkan mojibake / corrupted bullets tanpa regex alternator kosong
       .replace(/\[\d+\]\s*/g, '') // Bersihkan tag numeric ID mentah seperti [3210]
       .replace(/\n\s*\n/g, '\n')
       .trim()
@@ -2875,7 +3136,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     const addUpaya = (label: string, rawText: any, category: string) => {
       const txt = stripHtmlText(rawText)
-      if (txt && !items.some(it => it.text === txt)) {
+      if (txt && txt.length > 2 && !items.some(it => it.text === txt)) {
         items.push({ label, text: txt, category })
       }
     }
@@ -3049,113 +3310,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return []
   }, [detail, nttApiData.situasi_kesehatan])
 
-  const faskesMatrixData = useMemo(() => {
-    // 1. Data faskes terdampak dari database kejadian
-    if (Array.isArray(detail?.faskes_terdampak) && detail.faskes_terdampak.length > 0) {
-      return detail.faskes_terdampak
-    }
 
-    // 2. Data faskes riil dari API Collector (/api/ntt-data) yang dipetakan ke Master Data Faskes
-    const combinedFaskes: any[] = []
-    const seenKeys = new Set<string>()
-
-    if (Array.isArray(nttApiData.pasien_rs) && nttApiData.pasien_rs.length > 0) {
-      nttApiData.pasien_rs.forEach((rs: any, idx: number) => {
-        const rawName = rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
-        const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${rawName.toLowerCase().trim()}`
-        if (seenKeys.has(dedupeKey)) return
-        seenKeys.add(dedupeKey)
-
-        const fLat = rs.latitude !== null && rs.latitude !== undefined && rs.latitude !== '' ? Number(rs.latitude) : null
-        const fLng = rs.longitude !== null && rs.longitude !== undefined && rs.longitude !== '' ? Number(rs.longitude) : null
-
-        combinedFaskes.push({
-          id: `rs-${idx + 1}`,
-          nama: rawName,
-          nama_faskes: rawName,
-          nama_master: rs.nama_master || '',
-          kode_sarana: rs.kode_sarana || '-',
-          kode_satusehat: rs.kode_satusehat || '-',
-          jenis: rs.subjenis || rs.jenis_faskes || 'Rumah Sakit Umum Daerah',
-          subjenis: rs.subjenis || 'Rumah Sakit Umum',
-          kabupaten: rs.nama_kab || rs.kabupaten || '',
-          kecamatan: rs.nama_kecamatan || rs.kecamatan || '-',
-          alamat: rs.alamat || '-',
-          latitude: fLat,
-          longitude: fLng,
-          lat: fLat,
-          lng: fLng,
-          status: rs.status || 'Beroperasi Siaga Bencana',
-          kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
-          triase_merah: Number(rs.triase_merah || 0),
-          triase_kuning: Number(rs.triase_kuning || 0),
-          triase_hijau: Number(rs.triase_hijau || 0),
-          triase_hitam: Number(rs.triase_hitam || 0),
-          total_pasien: Number(rs.total || 0),
-          kapasitas_tersedia: rs.kapasitas_tersedia || '-',
-          stok_darah: rs.stok_darah || '-',
-          listrik: rs.listrik || 'PLN / Genset Siaga',
-          pj_medis: rs.pj_medis || '-',
-          petugas: rs.pj_medis || '-',
-          telp: rs.telp || '-',
-          email: rs.email || '-',
-        })
-      })
-    }
-
-    if (Array.isArray(nttApiData.pasien_puskesmas) && nttApiData.pasien_puskesmas.length > 0) {
-      nttApiData.pasien_puskesmas.forEach((pkm: any, idx: number) => {
-        const rawName = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga')
-        const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${rawName.toLowerCase().trim()}`
-        if (seenKeys.has(dedupeKey)) return
-        seenKeys.add(dedupeKey)
-
-        const fLat = pkm.latitude !== null && pkm.latitude !== undefined && pkm.latitude !== '' ? Number(pkm.latitude) : null
-        const fLng = pkm.longitude !== null && pkm.longitude !== undefined && pkm.longitude !== '' ? Number(pkm.longitude) : null
-
-        combinedFaskes.push({
-          id: `pkm-${idx + 1}`,
-          nama: rawName,
-          nama_faskes: rawName,
-          nama_master: pkm.nama_master || '',
-          kode_sarana: pkm.kode_sarana || '-',
-          kode_satusehat: pkm.kode_satusehat || '-',
-          jenis: pkm.subjenis || pkm.jenis_faskes || 'Puskesmas',
-          subjenis: pkm.subjenis || 'Puskesmas',
-          kabupaten: pkm.nama_kab || pkm.kabupaten || '',
-          kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
-          alamat: pkm.alamat || '-',
-          latitude: fLat,
-          longitude: fLng,
-          lat: fLat,
-          lng: fLng,
-          status: pkm.status || 'Beroperasi',
-          kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
-          triase_merah: Number(pkm.triase_merah || 0),
-          triase_kuning: Number(pkm.triase_kuning || 0),
-          triase_hijau: Number(pkm.triase_hijau || 0),
-          triase_hitam: Number(pkm.triase_hitam || 0),
-          total_pasien: Number(pkm.total || 0),
-          kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
-          stok_darah: '-',
-          listrik: pkm.listrik || 'PLN',
-          pj_medis: pkm.pj_medis || '-',
-          petugas: pkm.pj_medis || '-',
-          telp: pkm.telp || '-',
-          email: pkm.email || '-',
-        })
-      })
-    }
-
-    return combinedFaskes
-  }, [detail, nttApiData.pasien_rs, nttApiData.pasien_puskesmas])
-
-  const effectiveFaskesList = useMemo(() => {
-    if (isNttEvent && faskesMatrixData.length > 0) {
-      return faskesMatrixData
-    }
-    return detail?.faskes_terdekat || []
-  }, [isNttEvent, faskesMatrixData, detail?.faskes_terdekat])
 
   const penyakitMatrixData = useMemo(() => {
     const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : []
@@ -3870,15 +4025,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </div>
                         <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
                           <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Terdampak/Rusak</span>
-                          <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">({totalPctFaskes}%)</span></span>
+                          <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">Unit</span></span>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80">
+                          <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block">Aktif Rawat Pasien</span>
+                          <span className="text-xl sm:text-2xl font-black text-blue-950">{masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)} <span className="text-xs sm:text-sm font-bold text-blue-700">Faskes</span></span>
                         </div>
                         <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Berfungsi Normal</span>
-                          <span className="text-xl sm:text-2xl font-black text-emerald-950">{totalMasterFaskes - totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-emerald-700">Unit</span></span>
-                        </div>
-                        <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-teal-800 block">Status Layanan</span>
-                          <span className="text-sm sm:text-base font-black text-teal-950 leading-tight block mt-1">{totalPctFaskes > 30 ? 'Perlu Backup' : 'Layanan Aman'}</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Siaga Standby</span>
+                          <span className="text-xl sm:text-2xl font-black text-emerald-950">{Math.max(0, totalMasterFaskes - totalTerdampakFaskes - (masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)))} <span className="text-xs sm:text-sm font-bold text-emerald-700">Unit</span></span>
                         </div>
                       </div>
                     </div>
@@ -3897,9 +4052,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
                   {/* Sisi Kanan (70% / 8 cols): 4 Donut Pie Charts */}
                   <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
-                    <div className="flex items-center justify-end gap-5 pb-3 mb-3 border-b border-slate-200/80 text-xs sm:text-sm font-bold text-slate-700">
-                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>
-                      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Berfungsi Normal</span>
+                    <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-5 pb-3 mb-3 border-b border-slate-200/80 text-xs sm:text-sm font-bold text-slate-700">
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500 shrink-0" /> Terdampak / Rusak</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" /> Aktif Rawat Pasien (Siaga Bencana)</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Siaga Standby (Normal)</span>
                     </div>
 
                     {/* 4 Cards Grid */}
@@ -3913,9 +4069,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 <IconComp className={`h-4 w-4 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
                                 <span className="truncate">{cat.title}</span>
                               </span>
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${cat.terdampak > 0 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                }`}>
-                                {cat.pct}%
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${
+                                cat.terdampak > 0
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : cat.rawatPasien > 0
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Rawat Pasien` : '100% Standby'}
                               </span>
                             </div>
 
@@ -3930,7 +4091,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       cy="50%"
                                       innerRadius={42}
                                       outerRadius={76}
-                                      paddingAngle={3}
+                                      paddingAngle={cat.pieData.length > 1 ? 3 : 0}
                                       dataKey="value"
                                       isAnimationActive={true}
                                       animationDuration={1000}
@@ -3949,14 +4110,33 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 </ResponsiveContainer>
                               )}
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.terdampak}/{cat.totalMaster}</span>
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Unit</span>
+                                {cat.rawatPasien > 0 ? (
+                                  <>
+                                    <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
+                                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-wider mt-0.5">Rawat Pasien</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-xl sm:text-2xl font-black text-slate-900 leading-none">{cat.standby}/{cat.totalMaster}</span>
+                                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider mt-0.5">Siaga Standby</span>
+                                  </>
+                                )}
                               </div>
                             </div>
 
-                            <div className="mt-2 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
-                              <span className="text-rose-600 font-black flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" /> Rusak: {cat.terdampak}</span>
-                              <span className="text-emerald-600 font-black flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" /> Normal: {cat.berfungsi}</span>
+                            <div className="mt-2 pt-2.5 border-t border-slate-100 grid grid-cols-3 gap-1 text-[11px] font-bold text-center">
+                              <div className="text-slate-600">
+                                <span className="block text-rose-600 font-black leading-none">{cat.terdampak}</span>
+                                <span className="text-[9.5px] font-semibold text-slate-400">Rusak</span>
+                              </div>
+                              <div className="border-x border-slate-150 px-0.5 text-blue-700">
+                                <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
+                                <span className="text-[9.5px] font-semibold text-blue-600">Rawat</span>
+                              </div>
+                              <div className="text-emerald-700">
+                                <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
+                                <span className="text-[9.5px] font-semibold text-emerald-600">Standby</span>
+                              </div>
                             </div>
                           </div>
                         )
@@ -4176,12 +4356,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <button
               type="button"
               onClick={() => setMatrixTab('faskes')}
-              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 ${matrixTab === 'faskes'
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'faskes'
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm font-black'
                 : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                 }`}
             >
-              Faskes Terdekat
+              <Building2 className="h-4 w-4 text-emerald-600" />
+              {isNttEvent ? 'Direktori Faskes NTT' : 'Faskes Terdekat'}
+              {masterFaskesCounts.all > 0 && (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-black">
+                  {masterFaskesCounts.all.toLocaleString('id-ID')}
+                </span>
+              )}
             </button>
             <button
               type="button"
@@ -4286,124 +4472,343 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           <div className="overflow-x-auto min-h-[180px]">
             {matrixTab === 'faskes' && (
               <div className="space-y-4">
-                {/* Total Counter / Summary Widget Bar */}
-                {Array.isArray(effectiveFaskesList) && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-r from-emerald-900/5 via-teal-900/5 to-slate-900/5 p-3 rounded-2xl border border-emerald-200/80 shadow-2xs">
-                    <div className="bg-white p-3 rounded-xl border border-emerald-100 shadow-2xs flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-black text-base shadow-2xs">
-                        {effectiveFaskesList.length}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Total Faskes Terpantau</div>
-                        <div className="text-xs font-black text-slate-800">Area Terdampak</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-xl border border-blue-100 shadow-2xs flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center font-black text-base shadow-2xs">
-                        {effectiveFaskesList.filter((f: any) => String(f.jenis || '').toLowerCase().includes('rs') || String(f.jenis || '').toLowerCase().includes('rumah sakit')).length}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Rumah Sakit Siaga</div>
-                        <div className="text-xs font-black text-blue-900">Rujukan Utama</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-xl border border-teal-100 shadow-2xs flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center font-black text-base shadow-2xs">
-                        {effectiveFaskesList.filter((f: any) => String(f.jenis || '').toLowerCase().includes('puskesmas')).length}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Puskesmas Siaga</div>
-                        <div className="text-xs font-black text-teal-900">Layanan Primer</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center font-black text-base shadow-2xs">
-                        {effectiveFaskesList.filter((f: any) => String(f.jenis || '').toLowerCase().includes('klinik') || String(f.jenis || '').toLowerCase().includes('pustu')).length}
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Klinik & Pustu</div>
-                        <div className="text-xs font-black text-indigo-900">Pos Penyangga</div>
-                      </div>
+                {/* 1. Summary Cards Bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="rounded-xl bg-slate-900 text-white p-3 shadow-2xs border border-slate-800 flex flex-col justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-300">Total Faskes NTT</span>
+                    <div className="flex items-baseline justify-between mt-1">
+                      <span className="text-xl font-black">{masterFaskesCounts.all.toLocaleString('id-ID')}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Semua Faskes</span>
                     </div>
                   </div>
-                )}
 
-                <div className="overflow-x-auto">
-                  {Array.isArray(effectiveFaskesList) && effectiveFaskesList.length > 0 ? (
-                    <div className={effectiveFaskesList.length > 10 ? 'max-h-[380px] overflow-y-auto' : ''}>
-                      <table className="w-full text-left border-collapse text-[13px]">
-                        <thead className="sticky top-0 z-10">
-                          <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-bold">
-                            <th className="py-3 px-3">Wilayah</th>
-                            <th className="py-3 px-3">Faskes Terdekat</th>
-                            <th className="py-3 px-3">Jenis</th>
-                            <th className="py-3 px-3">Petugas / Dokter PJ</th>
-                            <th className="py-3 px-3 text-center">Jarak</th>
-                            <th className="py-3 px-3 text-center">Waktu Tempuh</th>
-                            <th className="py-3 px-3 text-center">Google Maps</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {effectiveFaskesList.map((f: any, fidx: number) => {
-                            const isSelected = selectedRouteTarget?.name === f.nama;
+                  <div className="rounded-xl bg-blue-50 border border-blue-200/90 p-3 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-blue-800">Rumah Sakit</span>
+                      <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xl font-black text-blue-950">{masterFaskesCounts.rs}</span>
+                      <span className="text-[10px] text-blue-700 ml-1 font-semibold">RSUD / Swasta</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-teal-50 border border-teal-200/90 p-3 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-teal-800">Puskesmas</span>
+                      <Stethoscope className="h-3.5 w-3.5 text-teal-600" />
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xl font-black text-teal-950">{masterFaskesCounts.puskesmas}</span>
+                      <span className="text-[10px] text-teal-700 ml-1 font-semibold">Layanan Primer</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-indigo-50 border border-indigo-200/90 p-3 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-indigo-800">Klinik & Poskes</span>
+                      <BriefcaseMedical className="h-3.5 w-3.5 text-indigo-600" />
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xl font-black text-indigo-950">{masterFaskesCounts.klinik}</span>
+                      <span className="text-[10px] text-indigo-700 ml-1 font-semibold">Pratama/Utama</span>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1 rounded-xl bg-amber-50 border border-amber-200/90 p-3 shadow-2xs flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-amber-800">Pustu</span>
+                      <PlusSquare className="h-3.5 w-3.5 text-amber-600" />
+                    </div>
+                    <div className="mt-1">
+                      <span className="text-xl font-black text-amber-950">{masterFaskesCounts.pustu.toLocaleString('id-ID')}</span>
+                      <span className="text-[10px] text-amber-700 ml-1 font-semibold">Pusk. Pembantu</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Type Filter Switcher & Status Info */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-slate-50/70 p-2.5 rounded-2xl border border-emerald-200/80 shadow-2xs">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[
+                      { key: 'all', label: 'Semua Faskes', count: masterFaskesCounts.all },
+                      { key: 'rs', label: 'Rumah Sakit', count: masterFaskesCounts.rs },
+                      { key: 'puskesmas', label: 'Puskesmas', count: masterFaskesCounts.puskesmas },
+                      { key: 'klinik', label: 'Klinik', count: masterFaskesCounts.klinik },
+                      { key: 'pustu', label: 'Pustu', count: masterFaskesCounts.pustu },
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setMasterFaskesTypeFilter(tab.key as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${
+                          masterFaskesTypeFilter === tab.key
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs scale-[1.02]'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        {tab.label}
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                            masterFaskesTypeFilter === tab.key
+                              ? 'bg-white/25 text-white'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-[11px] font-bold text-slate-700 shadow-2xs">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                      <strong className="text-rose-900">{masterFaskesCounts.totalMerawat} Faskes Aktif Rawat Pasien</strong>
+                      <span className="text-slate-300">|</span>
+                      <span className="text-emerald-700 font-semibold">{Math.max(0, masterFaskesCounts.all - masterFaskesCounts.totalMerawat)} Siaga Standby</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. Search & Filter Bar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={masterFaskesSearch}
+                      onChange={(e) => setMasterFaskesSearch(e.target.value)}
+                      placeholder="Cari faskes, kode sarana/SatuSehat, kecamatan, alamat..."
+                      className="w-full pl-9 pr-8 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                    {masterFaskesSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setMasterFaskesSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                    <div className="flex items-center gap-1.5">
+                      <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">Wilayah:</span>
+                      <select
+                        value={masterFaskesKabFilter}
+                        onChange={(e) => setMasterFaskesKabFilter(e.target.value)}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-2xs"
+                      >
+                        <option value="semua">Semua Kabupaten/Kota ({masterFaskesKabupatenList.length - 1})</option>
+                        {masterFaskesKabupatenList.filter(k => k !== 'semua').map((kab) => (
+                          <option key={kab} value={kab}>{kab}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">Per Halaman:</span>
+                      <select
+                        value={masterFaskesPerPage}
+                        onChange={(e) => setMasterFaskesPerPage(Number(e.target.value))}
+                        className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 focus:outline-none"
+                      >
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Master Faskes Table */}
+                <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="max-h-[520px] overflow-y-auto">
+                    <table className="w-full text-left border-collapse text-[13px]">
+                      <thead className="bg-slate-100/90 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10">
+                        <tr>
+                          <th className="py-3 px-3 w-10 text-center">No</th>
+                          <th className="py-3 px-3">Nama Fasilitas Kesehatan</th>
+                          <th className="py-3 px-3">Jenis & Kategori</th>
+                          <th className="py-3 px-3">Kode Sarana / SatuSehat</th>
+                          <th className="py-3 px-3">Kabupaten / Kota</th>
+                          <th className="py-3 px-3">Kecamatan</th>
+                          <th className="py-3 px-3">Status Operasional</th>
+                          <th className="py-3 px-3 text-center">Status Korban Bencana</th>
+                          <th className="py-3 px-3 text-center">Aksi / Peta</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {paginatedMasterFaskesList.length > 0 ? (
+                          paginatedMasterFaskesList.map((f: any, idx: number) => {
+                            const rowNum = (masterFaskesPage - 1) * masterFaskesPerPage + idx + 1
+                            const isSelected = selectedRouteTarget?.name === f.nama || selectedRouteTarget?.name === f.nama_faskes
+                            const isRS = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('rs') || String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('rumah sakit')
+                            const isPKM = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('puskesmas') && !String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('pustu') && !String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('pembantu')
+                            const isPustu = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('pustu') || String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('pembantu')
+                            const isKlinik = String(f.jenis || f.jenis_faskes || '').toLowerCase().includes('klinik')
+
                             return (
                               <tr
-                                key={fidx}
-                                onClick={() => handleSelectTarget(f, String(f.jenis || '').toLowerCase().includes('rs') ? 'hospital' : 'clinic')}
-                                className={`border-b border-slate-100 hover:bg-teal-50/60 transition-all cursor-pointer ${isSelected
-                                  ? 'bg-teal-50/80 border-l-4 border-teal-600'
-                                  : fidx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
-                                  }`}
+                                key={f.id || idx}
+                                onClick={() => handleSelectTarget(f, isRS ? 'hospital' : 'clinic')}
+                                className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-emerald-50/90 border-l-4 border-emerald-600'
+                                    : idx % 2 === 0
+                                    ? 'bg-white'
+                                    : 'bg-slate-50/30'
+                                }`}
                               >
-                                <td className="py-2.5 px-3 font-semibold text-slate-800">
-                                  {f.kecamatan ? `Kec. ${f.kecamatan}` : 'Kec. -'}
-                                  {f.desa ? `, Desa ${f.desa}` : ''}
-                                </td>
+                                <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{rowNum}</td>
                                 <td className="py-2.5 px-3 font-bold text-slate-900">
-                                  <div>{f.nama || '-'}</div>
-                                  {(f.triase_merah !== undefined || f.total_pasien !== undefined) && (Number(f.triase_merah || 0) > 0 || Number(f.triase_kuning || 0) > 0 || Number(f.triase_hijau || 0) > 0 || Number(f.triase_hitam || 0) > 0) && (
-                                    <div className="flex flex-wrap items-center gap-1 mt-1 font-semibold text-[9.5px]">
-                                      {Number(f.triase_merah || 0) > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-extrabold">{f.triase_merah} Merah</span>}
-                                      {Number(f.triase_kuning || 0) > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-extrabold">{f.triase_kuning} Kuning</span>}
-                                      {Number(f.triase_hijau || 0) > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold">{f.triase_hijau} Hijau</span>}
-                                      {Number(f.triase_hitam || 0) > 0 && <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300 font-extrabold">{f.triase_hitam} Hitam</span>}
+                                  <div className="flex items-center gap-1.5">
+                                    {isRS && <Building2 className="h-4 w-4 text-blue-600 shrink-0" />}
+                                    {isPKM && <Stethoscope className="h-4 w-4 text-teal-600 shrink-0" />}
+                                    {isKlinik && <BriefcaseMedical className="h-4 w-4 text-indigo-600 shrink-0" />}
+                                    {isPustu && <PlusSquare className="h-4 w-4 text-amber-600 shrink-0" />}
+                                    <span className="font-black text-slate-900">{f.nama || f.nama_faskes || '-'}</span>
+                                  </div>
+                                  {f.alamat && f.alamat !== '-' && (
+                                    <div className="text-[11px] text-slate-500 font-normal mt-0.5 truncate max-w-sm" title={f.alamat}>
+                                      📍 {f.alamat}
                                     </div>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-3 text-slate-600">{f.jenis || '-'}</td>
-                                <td className="py-2.5 px-3 text-slate-700 font-semibold">{maskName(f.petugas || '')}</td>
-                                <td className="py-2.5 px-3 text-center font-bold text-slate-700">
-                                  {f.jarak !== null && f.jarak !== undefined ? `${f.jarak.toFixed(1)} km` : '-'}
+                                <td className="py-2.5 px-3">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${
+                                      isRS
+                                        ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                        : isPKM
+                                        ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                        : isKlinik
+                                        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                                    }`}
+                                  >
+                                    {f.jenis || f.jenis_faskes || 'Faskes'}
+                                  </span>
+                                  {f.subjenis && f.subjenis !== f.jenis && (
+                                    <span className="block text-[10px] text-slate-500 mt-0.5">{f.subjenis}</span>
+                                  )}
                                 </td>
-                                <td className="py-2.5 px-3 text-center font-bold text-slate-700">
-                                  {f.waktu_tempuh !== null && f.waktu_tempuh !== undefined ? `${f.waktu_tempuh} menit` : '-'}
+                                <td className="py-2.5 px-3 font-semibold text-slate-700 text-xs">
+                                  <div className="font-mono text-[11px]">{f.kode_sarana && f.kode_sarana !== '-' ? f.kode_sarana : '-'}</div>
+                                  {f.kode_satusehat && f.kode_satusehat !== '-' && (
+                                    <div className="text-[10px] text-teal-700 font-mono">IHC: {f.kode_satusehat}</div>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 font-bold text-slate-800 text-xs whitespace-nowrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                                    {f.nama_kab || f.kabupaten || '-'}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-slate-700 text-xs">
+                                  {f.nama_kecamatan || f.kecamatan || '-'}
+                                </td>
+                                <td className="py-2.5 px-3 text-xs">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10.5px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    {f.status || f.status_operasional || 'Operasional'}
+                                  </span>
                                 </td>
                                 <td className="py-2.5 px-3 text-center">
-                                  <a
-                                    href={getGmapsDirUrl(f.latitude, f.longitude, f.nama, f.alamat)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
-                                  >
-                                    Buka Maps
-                                  </a>
+                                  {f.has_collector_data || Number(f.total_pasien || 0) > 0 ? (
+                                    <div className="inline-flex flex-col items-center gap-1">
+                                      <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-900 border border-rose-200 font-black text-xs">
+                                        🏥 {f.total_pasien} Pasien (Faskes Siaga)
+                                      </span>
+                                      <div className="flex items-center gap-1 text-[9.5px] font-bold">
+                                        {Number(f.triase_merah || 0) > 0 && <span className="px-1 rounded bg-rose-50 text-rose-700">🔴 {f.triase_merah}</span>}
+                                        {Number(f.triase_kuning || 0) > 0 && <span className="px-1 rounded bg-amber-50 text-amber-700">🟡 {f.triase_kuning}</span>}
+                                        {Number(f.triase_hijau || 0) > 0 && <span className="px-1 rounded bg-emerald-50 text-emerald-700">🟢 {f.triase_hijau}</span>}
+                                        {Number(f.triase_hitam || 0) > 0 && <span className="px-1 rounded bg-slate-100 text-slate-700">⚫ {f.triase_hitam}</span>}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] font-semibold text-slate-400">
+                                      0 Pasien (Standby)
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleSelectTarget(f, isRS ? 'hospital' : 'clinic')
+                                        const mapEl = document.getElementById('peta-detail')
+                                        if (mapEl) mapEl.scrollIntoView({ behavior: 'smooth' })
+                                      }}
+                                      className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-200 transition-colors text-[11px]"
+                                    >
+                                      Peta / Rute
+                                    </button>
+                                    {f.latitude && f.longitude && (
+                                      <a
+                                        href={getGmapsDirUrl(f.latitude, f.longitude, f.nama || f.nama_faskes, f.alamat)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold border border-slate-200 transition-colors text-[11px]"
+                                      >
+                                        Maps ↗
+                                      </a>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                      <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                      <p className="text-[11px] font-semibold">Mencari faskes terdekat...</p>
-                    </div>
-                  )}
+                            )
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={9} className="py-12 text-center text-slate-400 font-semibold">
+                              Tidak ada fasilitas kesehatan yang cocok dengan kata kunci atau filter pencarian.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* 5. Pagination Footer */}
+                {filteredMasterFaskesList.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-semibold">
+                    <div>
+                      Menampilkan <b className="text-slate-900 font-black">{(masterFaskesPage - 1) * masterFaskesPerPage + 1}</b> - <b className="text-slate-900 font-black">{Math.min(masterFaskesPage * masterFaskesPerPage, filteredMasterFaskesList.length)}</b> dari total <b className="text-slate-900 font-black">{filteredMasterFaskesList.length.toLocaleString('id-ID')}</b> fasilitas kesehatan
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={masterFaskesPage <= 1}
+                        onClick={() => setMasterFaskesPage(prev => Math.max(1, prev - 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Sebelumnya
+                      </button>
+
+                      <div className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-black">
+                        Halaman {masterFaskesPage} / {totalMasterPages}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={masterFaskesPage >= totalMasterPages}
+                        onClick={() => setMasterFaskesPage(prev => Math.min(totalMasterPages, prev + 1))}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Selanjutnya →
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -5110,69 +5515,149 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 </div>
 
-                {/* Detailed Affected Facilities Table */}
+                {/* Detailed Affected Facilities Table with Pagination */}
                 <div className="space-y-3 pt-2">
-                  <h5 className="text-[13px] font-black uppercase tracking-wider text-slate-850 border-b border-slate-100 pb-2">
-                    Daftar Detail Fasilitas Kesehatan Terdampak Bencana
-                  </h5>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-2 gap-2">
+                    <h5 className="text-[13px] font-black uppercase tracking-wider text-slate-850 m-0">
+                      Daftar Detail Fasilitas Kesehatan Terdampak Bencana
+                    </h5>
+                    {faskesTerdampakList.length > 0 && (
+                      <span className="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-full">
+                        Total {faskesTerdampakList.length} Faskes Terdata
+                      </span>
+                    )}
+                  </div>
+
                   {faskesTerdampakList.length > 0 ? (
-                    <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                      <table className="w-full text-left border-collapse text-[13px]">
-                        <thead>
-                          <tr className="border-b border-slate-150 bg-slate-50 text-slate-500 font-bold">
-                            <th className="py-3 px-3">Nama Fasilitas Kesehatan</th>
-                            <th className="py-3 px-3">Jenis</th>
-                            <th className="py-3 px-3 text-center">Status</th>
-                            <th className="py-3 px-3 text-center">Kondisi Kerusakan</th>
-                            <th className="py-3 px-3 text-center">Fungsi Pelayanan</th>
-                            <th className="py-3 px-3 text-center">Google Maps</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {faskesTerdampakList.map((f: any, idx: number) => {
-                            const cond = getFaskesCondition(f.nama_faskes || f.nama || '');
-                            return (
-                              <tr key={idx} className={`border-b border-slate-100 hover:bg-teal-50/20 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                                <td className="py-3 px-3 font-bold text-slate-900">{f.nama_faskes || f.nama || '-'}</td>
-                                <td className="py-3 px-3 font-semibold text-slate-650">{f.jenis || '-'}</td>
-                                <td className="py-3 px-3 text-center">
-                                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${cond.color}`}>
-                                    {f.status || cond.label}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-3 text-center">
-                                  {safeParseInt(f.rusak_berat) > 0 ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-rose-50 text-rose-700 border-rose-250 uppercase">
-                                      R. Berat
-                                    </span>
-                                  ) : safeParseInt(f.rusak_sedang) > 0 ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 text-amber-700 border-amber-250 uppercase">
-                                      R. Sedang
-                                    </span>
-                                  ) : safeParseInt(f.rusak_ringan) > 0 ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-250 uppercase">
-                                      R. Ringan
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-500 font-semibold text-xs">-</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-3 text-center font-bold text-slate-700">{f.fungsi || '-'}</td>
-                                <td className="py-3 px-3 text-center">
-                                  <a
-                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((f.nama_faskes || f.nama || '') + ' ' + (eventData.kabupaten || ''))}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
-                                  >
-                                    Buka Maps
-                                  </a>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                    <div className="space-y-3">
+                      <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                        <table className="w-full text-left border-collapse text-[13px]">
+                          <thead>
+                            <tr className="border-b border-slate-150 bg-slate-50 text-slate-500 font-bold">
+                              <th className="py-3 px-3">Nama Fasilitas Kesehatan</th>
+                              <th className="py-3 px-3">Jenis</th>
+                              <th className="py-3 px-3 text-center">Status</th>
+                              <th className="py-3 px-3 text-center">Kondisi Kerusakan</th>
+                              <th className="py-3 px-3 text-center">Fungsi Pelayanan</th>
+                              <th className="py-3 px-3 text-center">Google Maps</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {faskesTerdampakList
+                              .slice((statusFaskesPage - 1) * statusFaskesPerPage, statusFaskesPage * statusFaskesPerPage)
+                              .map((f: any, idx: number) => {
+                                const cond = getFaskesCondition(f.nama_faskes || f.nama || '');
+                                return (
+                                  <tr key={idx} className={`border-b border-slate-100 hover:bg-teal-50/20 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                    <td className="py-3 px-3 font-bold text-slate-900">{f.nama_faskes || f.nama || '-'}</td>
+                                    <td className="py-3 px-3 font-semibold text-slate-650">{f.jenis || '-'}</td>
+                                    <td className="py-3 px-3 text-center">
+                                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${cond.color}`}>
+                                        {f.status || cond.label}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3 text-center">
+                                      {safeParseInt(f.rusak_berat) > 0 ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-rose-50 text-rose-700 border-rose-250 uppercase">
+                                          R. Berat
+                                        </span>
+                                      ) : safeParseInt(f.rusak_sedang) > 0 ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 text-amber-700 border-amber-250 uppercase">
+                                          R. Sedang
+                                        </span>
+                                      ) : safeParseInt(f.rusak_ringan) > 0 ? (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-250 uppercase">
+                                          R. Ringan
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-500 font-semibold text-xs">-</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-3 text-center font-bold text-slate-700">{f.fungsi || '-'}</td>
+                                    <td className="py-3 px-3 text-center">
+                                      <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((f.nama_faskes || f.nama || '') + ' ' + (eventData.kabupaten || ''))}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center px-2 py-1 rounded bg-teal-50 hover:bg-teal-100 text-teal-800 font-extrabold border border-teal-200 transition-colors cursor-pointer"
+                                      >
+                                        Buka Maps
+                                      </a>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Controls */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                          <span>
+                            Menampilkan <strong className="text-slate-900">{(statusFaskesPage - 1) * statusFaskesPerPage + 1}</strong> s/d{' '}
+                            <strong className="text-slate-900">{Math.min(statusFaskesPage * statusFaskesPerPage, faskesTerdampakList.length)}</strong> dari{' '}
+                            <strong className="text-teal-900">{faskesTerdampakList.length}</strong> faskes
+                          </span>
+                          <select
+                            value={statusFaskesPerPage}
+                            onChange={(e) => {
+                              setStatusFaskesPerPage(Number(e.target.value))
+                              setStatusFaskesPage(1)
+                            }}
+                            className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 cursor-pointer shadow-2xs"
+                          >
+                            <option value={10}>10 / hal</option>
+                            <option value={25}>25 / hal</option>
+                            <option value={50}>50 / hal</option>
+                          </select>
+                        </div>
+
+                        {Math.ceil(faskesTerdampakList.length / statusFaskesPerPage) > 1 && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setStatusFaskesPage(p => Math.max(1, p - 1))}
+                              disabled={statusFaskesPage === 1}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition shadow-2xs"
+                            >
+                              &larr; Prev
+                            </button>
+                            {Array.from({ length: Math.min(5, Math.ceil(faskesTerdampakList.length / statusFaskesPerPage)) }, (_, i) => {
+                              const totalP = Math.ceil(faskesTerdampakList.length / statusFaskesPerPage)
+                              let pageNum = i + 1
+                              if (totalP > 5) {
+                                if (statusFaskesPage > 3) {
+                                  pageNum = statusFaskesPage - 2 + i
+                                  if (pageNum > totalP) pageNum = totalP - (4 - i)
+                                }
+                              }
+                              return (
+                                <button
+                                  key={pageNum}
+                                  type="button"
+                                  onClick={() => setStatusFaskesPage(pageNum)}
+                                  className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
+                                    statusFaskesPage === pageNum
+                                      ? 'bg-teal-700 text-white shadow-2xs'
+                                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              )
+                            })}
+                            <button
+                              type="button"
+                              onClick={() => setStatusFaskesPage(p => Math.min(Math.ceil(faskesTerdampakList.length / statusFaskesPerPage), p + 1))}
+                              disabled={statusFaskesPage === Math.ceil(faskesTerdampakList.length / statusFaskesPerPage)}
+                              className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 transition shadow-2xs"
+                            >
+                              Next &rarr;
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50/50 rounded-xl border border-slate-100 border-dashed">
@@ -6031,109 +6516,115 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const rawTindakLanjut = stripHtmlText(eventData.tindak_lanjut)
           const rawHambatan = stripHtmlText(eventData.hambatan)
 
+          const isValidReportText = (t: string) => {
+            if (!t) return false
+            const l = t.trim().toLowerCase()
+            return l !== '' && l !== '-' && l !== 'n/a' && l !== 'na' && l !== 'null' && l !== 'none' && l !== 'nihil' && l !== 'tidak ada' && l !== 'belum ada'
+          }
+
           // Agregasi seluruh laporan kabupaten jika di halaman Provinsi NTT
           const aggregatedBantuan = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawBantuan) list.push(rawBantuan)
+              if (rawBantuan && isValidReportText(rawBantuan)) list.push(rawBantuan)
               nttSipkkReports.forEach((rep: any) => {
                 const b = stripHtmlText(rep.bantuan || rep.bantuan_diterima)
                 const kab = resolveKabupatenName(rep)
-                if (b && !list.includes(b)) {
+                if (b && isValidReportText(b) && !list.includes(b)) {
                   list.push(`• [${kab}] ${b}`)
                 }
               })
               return list.join('\n')
             }
-            return rawBantuan
+            return isValidReportText(rawBantuan) ? rawBantuan : ''
           })()
 
           const aggregatedBantuanDiperlukan = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawBantuanDiperlukan) list.push(rawBantuanDiperlukan)
+              if (rawBantuanDiperlukan && isValidReportText(rawBantuanDiperlukan)) list.push(rawBantuanDiperlukan)
               nttSipkkReports.forEach((rep: any) => {
                 const b = stripHtmlText(rep.bantuan_diperlukan)
                 const kab = resolveKabupatenName(rep)
-                if (b && !list.includes(b)) {
+                if (b && isValidReportText(b) && !list.includes(b)) {
                   list.push(`• [${kab}] ${b}`)
                 }
               })
               return list.join('\n')
             }
-            return rawBantuanDiperlukan
+            return isValidReportText(rawBantuanDiperlukan) ? rawBantuanDiperlukan : ''
           })()
 
           const aggregatedEmt = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawEmt) list.push(rawEmt)
+              if (rawEmt && isValidReportText(rawEmt)) list.push(rawEmt)
               nttSipkkReports.forEach((rep: any) => {
-                if (rep.mobilisasi_emt && !list.includes(rep.mobilisasi_emt)) list.push(rep.mobilisasi_emt)
+                if (rep.mobilisasi_emt && isValidReportText(rep.mobilisasi_emt) && !list.includes(rep.mobilisasi_emt)) list.push(rep.mobilisasi_emt)
               })
               return list.join(', ')
             }
-            return rawEmt || ''
+            return isValidReportText(rawEmt) ? rawEmt : ''
           })()
 
           const aggregatedPsc = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawPsc) list.push(rawPsc)
+              if (rawPsc && isValidReportText(rawPsc)) list.push(rawPsc)
               nttSipkkReports.forEach((rep: any) => {
-                if (rep.mobilisasi_psc && !list.includes(rep.mobilisasi_psc)) list.push(rep.mobilisasi_psc)
+                if (rep.mobilisasi_psc && isValidReportText(rep.mobilisasi_psc) && !list.includes(rep.mobilisasi_psc)) list.push(rep.mobilisasi_psc)
               })
               return list.join(', ')
             }
-            return rawPsc || ''
+            return isValidReportText(rawPsc) ? rawPsc : ''
           })()
 
           const aggregatedRekomendasi = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawRekomendasi) list.push(rawRekomendasi)
+              if (rawRekomendasi && isValidReportText(rawRekomendasi)) list.push(rawRekomendasi)
               nttSipkkReports.forEach((rep: any) => {
                 const r = stripHtmlText(rep.rekomendasi)
                 const kab = resolveKabupatenName(rep)
-                if (r && !list.includes(r)) {
+                if (r && isValidReportText(r) && !list.includes(r)) {
                   list.push(`• [${kab}] ${r}`)
                 }
               })
               return list.join('\n')
             }
-            return rawRekomendasi
+            return isValidReportText(rawRekomendasi) ? rawRekomendasi : ''
           })()
 
           const aggregatedTindakLanjut = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawTindakLanjut) list.push(rawTindakLanjut)
+              if (rawTindakLanjut && isValidReportText(rawTindakLanjut)) list.push(rawTindakLanjut)
               nttSipkkReports.forEach((rep: any) => {
                 const tl = stripHtmlText(rep.tindak_lanjut)
                 const kab = resolveKabupatenName(rep)
-                if (tl && !list.includes(tl)) {
+                if (tl && isValidReportText(tl) && !list.includes(tl)) {
                   list.push(`• [${kab}] ${tl}`)
                 }
               })
               return list.join('\n')
             }
-            return rawTindakLanjut
+            return isValidReportText(rawTindakLanjut) ? rawTindakLanjut : ''
           })()
 
           const aggregatedHambatan = (() => {
             if (isNttEvent && nttSipkkReports.length > 0) {
               const list: string[] = []
-              if (rawHambatan) list.push(rawHambatan)
+              if (rawHambatan && isValidReportText(rawHambatan)) list.push(rawHambatan)
               nttSipkkReports.forEach((rep: any) => {
                 const h = stripHtmlText(rep.hambatan)
                 const kab = resolveKabupatenName(rep)
-                if (h && !list.includes(h)) {
+                if (h && isValidReportText(h) && !list.includes(h)) {
                   list.push(`• [${kab}] ${h}`)
                 }
               })
               return list.join('\n')
             }
-            return rawHambatan
+            return isValidReportText(rawHambatan) ? rawHambatan : ''
           })()
 
           const emtText = aggregatedEmt || ''
@@ -6400,7 +6891,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                     <div className="text-[10px] font-black uppercase text-slate-500">Total Faskes Terpantau</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{faskesMatrixData.length || totalFaskes} <span className="text-xs font-bold text-slate-500">Unit</span></div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">RSUD + Puskesmas Wilayah</div>
+                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">RS, Puskesmas, Klinik, Pustu</div>
                   </div>
                   <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200">
                     <div className="text-[10px] font-black uppercase text-rose-700">Faskes Terdampak/Rusak</div>
@@ -6410,7 +6901,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200">
                     <div className="text-[10px] font-black uppercase text-emerald-700">Faskes Operasional</div>
                     <div className="text-2xl font-black text-emerald-700 mt-1">{faskesMatrixData.filter((f: any) => String(f.status || '').toLowerCase().includes('operasi') || String(f.status || '').toLowerCase().includes('siaga')).length} <span className="text-xs font-bold text-emerald-600">Unit</span></div>
-                    <div className="text-[11px] font-bold text-emerald-600 mt-0.5">Layanan IGD 24 Jam Aktif</div>
+                    <div className="text-[11px] font-bold text-emerald-600 mt-0.5">Pelayanan Medis Normal / Standby</div>
                   </div>
                   <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200">
                     <div className="text-[10px] font-black uppercase text-purple-700">Pasien Triase Faskes</div>
@@ -6596,9 +7087,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <th className="py-3.5 px-4 text-center">No</th>
                       <th className="py-3.5 px-4">Nama Fasilitas Kesehatan &amp; Master Data</th>
                       <th className="py-3.5 px-4">Kabupaten &amp; Kecamatan</th>
-                      <th className="py-3.5 px-4 text-center">Triase Pasien (Collector)</th>
-                      <th className="py-3.5 px-4 text-center">Kondisi &amp; Operasional</th>
-                      <th className="py-3.5 px-4">PJ Medis / Kontak</th>
+                      <th className="py-3.5 px-4 text-center">Triase Pasien</th>
+                      <th className="py-3.5 px-4 text-center">Kondisi &amp; Status Siaga</th>
+                      <th className="py-3.5 px-4">PJ Medis / Dokter</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -6618,73 +7109,84 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           (f.kode_sarana && f.kode_sarana.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())) ||
                           (f.pj_medis && f.pj_medis.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()))
                         )
-                        .map((row: any, idx: number) => (
-                          <tr key={idx} className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                            <td className="py-3 px-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                            <td className="py-3 px-4">
-                              <div className="font-extrabold text-slate-900">{row.nama}</div>
-                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] text-teal-700 font-bold">{row.jenis}</span>
-                                {row.kode_sarana && row.kode_sarana !== '-' && (
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">
-                                    Sarana: {row.kode_sarana}
-                                  </span>
-                                )}
-                                {row.kode_satusehat && row.kode_satusehat !== '-' && (
-                                  <span className="px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 text-[9px] font-bold border border-teal-200">
-                                    SatuSehat: {row.kode_satusehat}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="font-bold text-slate-800">{row.kabupaten}</div>
-                              <div className="text-[10px] text-slate-500 font-semibold">Kec. {row.kecamatan}</div>
-                              {row.latitude && row.longitude && (
-                                <div className="text-[9px] text-slate-400 font-medium">
-                                  {Number(row.latitude).toFixed(4)}, {Number(row.longitude).toFixed(4)}
+                        .map((row: any, idx: number) => {
+                          const totalPasien = Number(row.total_pasien || (Number(row.triase_merah || 0) + Number(row.triase_kuning || 0) + Number(row.triase_hijau || 0) + Number(row.triase_hitam || 0)) || 0)
+                          const hasTriage = totalPasien > 0 || row.has_collector_data
+
+                          return (
+                            <tr key={idx} className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                              <td className="py-3 px-4 font-bold text-slate-400 text-center">{idx + 1}</td>
+                              <td className="py-3 px-4">
+                                <div className="font-extrabold text-slate-900">{row.nama}</div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] text-teal-700 font-bold">{row.jenis}</span>
+                                  {row.kode_sarana && row.kode_sarana !== '-' && (
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">
+                                      Sarana: {row.kode_sarana}
+                                    </span>
+                                  )}
+                                  {row.kode_satusehat && row.kode_satusehat !== '-' && (
+                                    <span className="px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 text-[9px] font-bold border border-teal-200">
+                                      SatuSehat: {row.kode_satusehat}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <div className="font-black text-slate-900 text-xs">{row.total_pasien || (row.triase_merah + row.triase_kuning + row.triase_hijau + row.triase_hitam) || 0} Pasien</div>
-                              <div className="text-[10px] font-bold mt-0.5 space-x-1">
-                                {row.triase_merah > 0 && <span className="text-rose-600 font-black">{row.triase_merah} M</span>}
-                                {row.triase_kuning > 0 && <span className="text-amber-600 font-bold">{row.triase_kuning} K</span>}
-                                {row.triase_hijau > 0 && <span className="text-emerald-600 font-bold">{row.triase_hijau} H</span>}
-                                {row.triase_hitam > 0 && <span className="text-slate-600 font-bold">{row.triase_hitam} Htm</span>}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <div className="space-y-1">
-                                <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black border ${String(row.kondisi_bangunan || '').includes('Berat')
-                                  ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                  : String(row.kondisi_bangunan || '').includes('Sedang')
-                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                    : String(row.kondisi_bangunan || '').includes('Ringan')
-                                      ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
-                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  }`}>
-                                  {row.kondisi_bangunan || 'Normal'}
-                                </span>
-                                <div>
-                                  <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${String(row.status || '').includes('Penuh') || String(row.status || '').includes('Siaga')
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    : 'bg-blue-50 text-blue-800 border-blue-200'
-                                    }`}>
-                                    {row.status || 'Beroperasi'}
-                                  </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="font-bold text-slate-800">{row.kabupaten}</div>
+                                <div className="text-[10px] text-slate-500 font-semibold">Kec. {row.kecamatan}</div>
+                                {row.latitude && row.longitude && (
+                                  <div className="text-[9px] text-slate-400 font-medium">
+                                    {Number(row.latitude).toFixed(4)}, {Number(row.longitude).toFixed(4)}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                {hasTriage ? (
+                                  <>
+                                    <div className="font-black text-rose-700 text-xs">{totalPasien} Pasien Terawat</div>
+                                    <div className="text-[10px] font-bold mt-0.5 space-x-1">
+                                      {Number(row.triase_merah || 0) > 0 && <span className="text-rose-600 font-black">{row.triase_merah} M</span>}
+                                      {Number(row.triase_kuning || 0) > 0 && <span className="text-amber-600 font-bold">{row.triase_kuning} K</span>}
+                                      {Number(row.triase_hijau || 0) > 0 && <span className="text-emerald-600 font-bold">{row.triase_hijau} H</span>}
+                                      {Number(row.triase_hitam || 0) > 0 && <span className="text-slate-600 font-bold">{row.triase_hitam} Htm</span>}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <span className="text-slate-400 font-semibold text-xs">0 Pasien (Standby)</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <div className="space-y-1">
+                                  {hasTriage ? (
+                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
+                                      Aktif Rawat Pasien
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                      Siaga Pelayanan
+                                    </span>
+                                  )}
+                                  <div>
+                                    <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                      {row.status || 'Operasional'}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-slate-700 font-medium text-[11px]">
-                              <div className="font-semibold text-slate-800">{row.pj_medis || '-'}</div>
-                              {row.telp && row.telp !== '-' && (
-                                <div className="text-[10px] text-slate-500 font-mono">Telp: {row.telp}</div>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                              </td>
+                              <td className="py-3 px-4 text-slate-800 font-semibold text-[11px]">
+                                {row.pj_medis && row.pj_medis !== '-' ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${hasTriage ? 'bg-rose-500' : 'bg-teal-500'}`}></span>
+                                    <span className="font-bold text-slate-900">{row.pj_medis}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 font-medium">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
                     )}
                   </tbody>
                   <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900">
@@ -6830,7 +7332,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             {/* Modal Footer */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-150 shrink-0">
               <span className="text-xs text-slate-500 font-medium">
-                💡 Data sinkron dengan Sistem Informasi Penanggulangan Krisis Kesehatan (SIPKK) &amp; API Collector EOC NTT.
+                💡 Data sinkron dengan Sistem Informasi Penanggulangan Krisis Kesehatan (SIPKK) &amp; EOC Kemenkes RI.
               </span>
               <button
                 onClick={() => setShowKabupatenMatrixModal(false)}

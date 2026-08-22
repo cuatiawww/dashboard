@@ -253,10 +253,19 @@ export default function ProvNttBencanaPage() {
             json.tables.pasien_rs.forEach((rs: any, idx: number) => {
               faskesList.push({
                 id: `rs-${idx + 1}`,
-                nama: rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan',
+                nama: rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan',
+                nama_faskes: rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan',
                 jenis: 'RS',
-                kabupaten: rs.kabupaten || '',
-                kecamatan: rs.kecamatan || '-',
+                jenis_faskes: 'Rumah Sakit',
+                kode_sarana: rs.kode_sarana || '-',
+                kode_satusehat: rs.kode_satusehat || '-',
+                kabupaten: rs.nama_kab || rs.kabupaten || '',
+                kecamatan: rs.nama_kecamatan || rs.kecamatan || '-',
+                alamat: rs.alamat || '-',
+                latitude: rs.latitude ?? null,
+                longitude: rs.longitude ?? null,
+                lat: rs.latitude ?? null,
+                lng: rs.longitude ?? null,
                 status: rs.status || 'Beroperasi Siaga Bencana',
                 kondisi_bangunan: rs.kondisi_bangunan || 'Normal / Siaga',
                 triase_merah: Number(rs.triase_merah || 0),
@@ -268,6 +277,9 @@ export default function ProvNttBencanaPage() {
                 stok_darah: rs.stok_darah || '-',
                 listrik: rs.listrik || 'PLN / Genset Siaga',
                 pj_medis: rs.pj_medis || '-',
+                telp: rs.telp || '-',
+                email: rs.email || '-',
+                has_collector_data: true,
               })
             })
           }
@@ -276,10 +288,19 @@ export default function ProvNttBencanaPage() {
             json.tables.pasien_puskesmas.forEach((pkm: any, idx: number) => {
               faskesList.push({
                 id: `pkm-${idx + 1}`,
-                nama: pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas',
+                nama: pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas'),
+                nama_faskes: pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas'),
                 jenis: 'Puskesmas',
-                kabupaten: pkm.kabupaten || '',
-                kecamatan: pkm.kecamatan || '-',
+                jenis_faskes: 'Puskesmas',
+                kode_sarana: pkm.kode_sarana || '-',
+                kode_satusehat: pkm.kode_satusehat || '-',
+                kabupaten: pkm.nama_kab || pkm.kabupaten || '',
+                kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
+                alamat: pkm.alamat || '-',
+                latitude: pkm.latitude ?? null,
+                longitude: pkm.longitude ?? null,
+                lat: pkm.latitude ?? null,
+                lng: pkm.longitude ?? null,
                 status: pkm.status || 'Beroperasi',
                 kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
                 triase_merah: Number(pkm.triase_merah || 0),
@@ -290,9 +311,17 @@ export default function ProvNttBencanaPage() {
                 kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
                 listrik: pkm.listrik || 'PLN',
                 pj_medis: pkm.pj_medis || '-',
+                telp: pkm.telp || '-',
+                email: pkm.email || '-',
+                has_collector_data: true,
               })
             })
           }
+
+          // 3. Seluruh Master Data Faskes NTT (1.818 faskes) dari Master Dataset API
+          const allMasterFaskes = Array.isArray(json.tables?.master_faskes) && json.tables.master_faskes.length > 0
+            ? json.tables.master_faskes
+            : (faskesList.length > 0 ? faskesList : [])
           
           const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : '2026-08-21 10:01:00')
           setEventData((prev: any) => ({
@@ -326,8 +355,9 @@ export default function ProvNttBencanaPage() {
               hilang: tot.hilang ?? prev.detailData.hilang,
               penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
               breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
-              faskes_terdampak: [], // Faskes rusak fisik (hanya jika ada laporan kerusakan bangunan)
-              faskes_terdekat: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdekat,
+              faskes_terdampak: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak,
+              faskes_terdekat: allMasterFaskes.length > 0 ? allMasterFaskes : prev.detailData.faskes_terdekat,
+              summary_faskes: json.summary_faskes || null,
               pos_pengungsi: prev.detailData.pos_pengungsi || [],
               logistik: prev.detailData.logistik || [],
               tck: prev.detailData.tck || []

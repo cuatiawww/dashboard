@@ -2,7 +2,11 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import Papa from 'papaparse'
-import { enrichNttFaskesTable } from '@/lib/nttFaskesMasterMapper'
+import {
+  enrichNttFaskesTable,
+  getAllNttMasterFaskesWithCollectorOverlay,
+  getNttMasterFaskesSummary,
+} from '@/lib/nttFaskesMasterMapper'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,6 +39,7 @@ const TABLES = [
   'situasi_kesehatan',
   'pasien_rs',
   'pasien_puskesmas',
+  'master_faskes',
 ] as const
 
 type TableName = (typeof TABLES)[number]
@@ -199,6 +204,14 @@ export async function GET(request: NextRequest) {
           tables.pasien_puskesmas = enrichNttFaskesTable(tables.pasien_puskesmas, 'puskesmas')
         }
 
+        // Generate complete 1,818+ Master Faskes with Collector Overlay
+        const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(
+          tables.pasien_rs || [],
+          tables.pasien_puskesmas || []
+        )
+        const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
+        tables.master_faskes = masterFaskes
+
         return jsonResponse({
           success: true,
           source: 'manifest',
@@ -207,6 +220,7 @@ export async function GET(request: NextRequest) {
           updated_at: manifest.updated_at ?? new Date().toISOString(),
           source_url: manifest.source_url ?? null,
           tables,
+          summary_faskes: summaryFaskes,
         })
       }
     } catch (err) {
@@ -225,6 +239,7 @@ export async function GET(request: NextRequest) {
     const targetDate = requestedDate || legacyDates.at(-1) || ''
 
     for (const tableName of tableNames) {
+      if (tableName === 'master_faskes') continue
       const filename = LEGACY_CSV_FILES[tableName as keyof typeof LEGACY_CSV_FILES]
       if (!filename) { tables[tableName] = []; continue }
       const filePath = path.join(LEGACY_CSV_DIR, filename)
@@ -248,7 +263,15 @@ export async function GET(request: NextRequest) {
       tables.pasien_puskesmas = enrichNttFaskesTable(tables.pasien_puskesmas, 'puskesmas')
     }
 
-    if (hasData || legacyDates.length > 0) {
+    // Generate complete 1,818+ Master Faskes with Collector Overlay
+    const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(
+      tables.pasien_rs || [],
+      tables.pasien_puskesmas || []
+    )
+    const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
+    tables.master_faskes = masterFaskes
+
+    if (hasData || legacyDates.length > 0 || masterFaskes.length > 0) {
       return jsonResponse({
         success: true,
         source: 'legacy_csv',
@@ -257,10 +280,32 @@ export async function GET(request: NextRequest) {
         updated_at: latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString(),
         source_url: 'https://ntt.tanggap-bencana.go.id/',
         tables,
+        summary_faskes: summaryFaskes,
       })
     }
   } catch (err) {
     console.warn('[API ntt-data] Legacy CSV read failed:', err)
+  }
+
+  // ─── Priority 3: Fallback directly to Master Faskes if static CSV unavailable ───
+  const masterFaskesFallback = getAllNttMasterFaskesWithCollectorOverlay([], [])
+  if (masterFaskesFallback.length > 0) {
+    return jsonResponse({
+      success: true,
+      source: 'master_dataset_fallback',
+      tanggal: requestedDate || '2026-08-21',
+      dates_available: ['2026-08-20', '2026-08-21'],
+      updated_at: new Date().toISOString(),
+      source_url: 'https://ntt.tanggap-bencana.go.id/',
+      tables: {
+        analisa_ringkasan_harian: [],
+        situasi_kesehatan: [],
+        pasien_rs: [],
+        pasien_puskesmas: [],
+        master_faskes: masterFaskesFallback,
+      },
+      summary_faskes: getNttMasterFaskesSummary(masterFaskesFallback),
+    })
   }
 
   // ─── No data available ────────────────────────────────────────────────────
@@ -273,5 +318,6 @@ export async function GET(request: NextRequest) {
     503,
   )
 }
+
 
 

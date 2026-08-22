@@ -28,6 +28,41 @@ export interface MasterFaskesInfo {
 
 let cachedMasterList: MasterFaskesInfo[] | null = null
 
+export function cleanNttCoordinates(rawLat: any, rawLng: any): { lat: number | null; lng: number | null } {
+  let lat = typeof rawLat === 'number' ? rawLat : parseFloat(String(rawLat || ''))
+  let lng = typeof rawLng === 'number' ? rawLng : parseFloat(String(rawLng || ''))
+
+  if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+    return { lat: null, lng: null }
+  }
+
+  // 1. Fix Longitude/Latitude scale typos (e.g. 123624295.18 -> 123.624295)
+  if (lng > 1000) lng = lng / 1000000
+  if (lat > 1000) lat = lat / 1000000
+
+  // 2. Fix Swapped Coordinates (e.g. lat: 121.64, lng: -8.83)
+  if (lat >= 118.0 && lat <= 126.0 && lng <= -7.0 && lng >= -12.0) {
+    const temp = lat
+    lat = lng
+    lng = temp
+  }
+
+  // 3. Fix positive latitude for NTT southern hemisphere (e.g. 8.62 -> -8.62)
+  if (lat > 7.0 && lat < 12.0) {
+    lat = -lat
+  }
+
+  // 4. Strict NTT Bounding Box check:
+  // NTT Latitude: -11.6 to -7.5 (South of equator)
+  // NTT Longitude: 118.5 to 125.5 (East)
+  if (lat < -11.6 || lat > -7.5 || lng < 118.5 || lng > 125.5) {
+    // Outside NTT bounds (e.g., Jakarta dummy -6.2, Bangka -2.4, Papua, Vietnam/ocean coordinates) -> Hide from map
+    return { lat: null, lng: null }
+  }
+
+  return { lat, lng }
+}
+
 function cleanLookupName(name: string): string {
   return String(name || '')
     .toLowerCase()
@@ -62,6 +97,7 @@ export function getNttMasterFaskesList(): MasterFaskesInfo[] {
         const parsed = Papa.parse<string[]>(content, { header: false, skipEmptyLines: true })
         parsed.data.forEach((r) => {
           if (!r || r.length < 5) return
+          const coords = cleanNttCoordinates(r[13], r[14])
           const item: MasterFaskesInfo = {
             id: String(r[0] || '').trim(),
             jenis_faskes: String(r[1] || '').trim(),
@@ -76,8 +112,8 @@ export function getNttMasterFaskesList(): MasterFaskesInfo[] {
             nama_kab: String(r[10] || '').trim(),
             kode_kecamatan: String(r[11] || '').trim(),
             nama_kecamatan: String(r[12] || '').trim(),
-            latitude: parseFloat(String(r[13] || '')) || null,
-            longitude: parseFloat(String(r[14] || '')) || null,
+            latitude: coords.lat,
+            longitude: coords.lng,
             telp: String(r[15] || '').trim(),
             email: String(r[16] || '').trim(),
             website: String(r[17] || '').trim(),
@@ -111,6 +147,7 @@ export function getNttMasterFaskesList(): MasterFaskesInfo[] {
           const kodeSarana = String(r['Kode Sarana / Faskes'] || '').trim()
           const exists = list.some((it) => it.kode_sarana === kodeSarana || it.nama_master.toLowerCase() === String(r['Nama Fasilitas Kesehatan']).toLowerCase())
           if (!exists) {
+            const coords = cleanNttCoordinates(r['Latitude'], r['Longitude'])
             list.push({
               id: String(r['No'] || '').trim(),
               jenis_faskes: String(r['Jenis Faskes'] || '').trim(),
@@ -125,8 +162,8 @@ export function getNttMasterFaskesList(): MasterFaskesInfo[] {
               nama_kab: String(r['Nama Kab/Kota'] || '').trim(),
               kode_kecamatan: String(r['Kode Kecamatan'] || '').trim(),
               nama_kecamatan: String(r['Nama Kecamatan'] || '').trim(),
-              latitude: parseFloat(String(r['Latitude'] || '')) || null,
-              longitude: parseFloat(String(r['Longitude'] || '')) || null,
+              latitude: coords.lat,
+              longitude: coords.lng,
               telp: String(r['No Telepon'] || '').trim(),
               email: String(r['Email'] || '').trim(),
               website: String(r['Website'] || '').trim(),
@@ -288,3 +325,220 @@ export function enrichNttFaskesTable(rows: any[], type: 'rs' | 'puskesmas' | 'fa
 
   return Array.from(uniqueMap.values())
 }
+
+/**
+ * Returns the entire Master Data Faskes NTT (1,818+ RS, Puskesmas, Klinik, Pustu se-NTT)
+ * overlaid with active patient situation & triage from Collector data.
+ */
+export function getAllNttMasterFaskesWithCollectorOverlay(
+  collectorPasienRs: any[] = [],
+  collectorPasienPkm: any[] = []
+): any[] {
+  const masterList = getNttMasterFaskesList()
+  if (!masterList || masterList.length === 0) return []
+
+  // Build lookup index from collector RS
+  const collectorMap = new Map<string, any>()
+
+  const registerCollectorItem = (item: any, defaultJenis: string) => {
+    if (!item) return
+    const rawName = String(
+      item.nama_rs ||
+      item.nama_puskesmas ||
+      item.nama_faskes ||
+      item.nama ||
+      ''
+    ).trim()
+    const rawKab = String(item.kabupaten || item.nama_kab || '').trim()
+    const rawKode = String(item.kode_sarana || item.kode || '').trim()
+
+    // Enrich with master match first
+    const matchedMaster = findMasterFaskes(rawName, rawKab, rawKode)
+    const masterKey = matchedMaster ? (matchedMaster.kode_sarana || matchedMaster.nama_master.toLowerCase()) : null
+
+    const dataObj = {
+      has_collector_data: true,
+      triase_merah: Number(item.triase_merah || item.merah || 0),
+      triase_kuning: Number(item.triase_kuning || item.kuning || 0),
+      triase_hijau: Number(item.triase_hijau || item.hijau || 0),
+      triase_hitam: Number(item.triase_hitam || item.hitam || 0),
+      total_pasien: Number(item.total || item.total_pasien || 0),
+      kapasitas_tersedia: item.kapasitas_tersedia || '-',
+      stok_darah: item.stok_darah || '-',
+      listrik: item.listrik || 'PLN / Genset Siaga',
+      pj_medis: item.pj_medis || '-',
+      catatan_medis: item.catatan || item.catatan_khusus || '',
+      status_bencana: 'Merawat Pasien Bencana (Terdata Collector)',
+      kondisi_bangunan: item.kondisi_bangunan || 'Normal / Siaga',
+    }
+
+    if (rawKode && rawKode !== '-') {
+      collectorMap.set(`code_${rawKode}`, dataObj)
+    }
+    if (masterKey) {
+      collectorMap.set(`master_${masterKey}`, dataObj)
+    }
+    if (rawName) {
+      collectorMap.set(`name_${cleanLookupName(rawName)}`, dataObj)
+    }
+  }
+
+  if (Array.isArray(collectorPasienRs)) {
+    collectorPasienRs.forEach(r => registerCollectorItem(r, 'Rumah Sakit'))
+  }
+  if (Array.isArray(collectorPasienPkm)) {
+    collectorPasienPkm.forEach(p => registerCollectorItem(p, 'Puskesmas'))
+  }
+
+  return masterList.map((m, idx) => {
+    // Find matching collector situation
+    let coll = (
+      (m.kode_sarana && collectorMap.get(`code_${m.kode_sarana}`)) ||
+      (m.kode_sarana && collectorMap.get(`master_${m.kode_sarana}`)) ||
+      collectorMap.get(`master_${m.nama_master.toLowerCase()}`) ||
+      collectorMap.get(`name_${cleanLookupName(m.nama_master)}`) ||
+      collectorMap.get(`name_${cleanLookupName(m.alias_collector)}`)
+    )
+
+    const prefix = m.jenis_faskes === 'Rumah Sakit' ? 'rs' : m.jenis_faskes === 'Puskesmas' ? 'pkm' : m.jenis_faskes === 'Klinik' ? 'klinik' : 'pustu'
+    const id = m.id ? `${prefix}-${m.id}` : `${prefix}-${idx + 1}`
+
+    const hasCollector = Boolean(coll)
+    const triaseMerah = coll ? coll.triase_merah : 0
+    const triaseKuning = coll ? coll.triase_kuning : 0
+    const triaseHijau = coll ? coll.triase_hijau : 0
+    const triaseHitam = coll ? coll.triase_hitam : 0
+    const totalPasien = coll ? coll.total_pasien : 0
+
+    return {
+      id,
+      nama: m.nama_master,
+      nama_faskes: m.nama_master,
+      nama_master: m.nama_master,
+      kode_sarana: m.kode_sarana || '-',
+      kode_satusehat: m.kode_satusehat || '-',
+      jenis: m.jenis_faskes,
+      jenis_faskes: m.jenis_faskes,
+      subjenis: m.subjenis || m.jenis_faskes,
+      alamat: m.alamat || '-',
+      kode_prop: m.kode_prop || '53',
+      nama_prop: m.nama_prop || 'Nusa Tenggara Timur',
+      kode_kab: m.kode_kab || '',
+      nama_kab: m.nama_kab || '',
+      kabupaten: m.nama_kab || '',
+      kode_kecamatan: m.kode_kecamatan || '',
+      nama_kecamatan: m.nama_kecamatan || '',
+      kecamatan: m.nama_kecamatan || '-',
+      latitude: m.latitude,
+      longitude: m.longitude,
+      lat: m.latitude,
+      lng: m.longitude,
+      telp: m.telp || '-',
+      email: m.email || '-',
+      website: m.website || '-',
+      status: m.operasional || 'Operasional',
+      status_operasional: m.operasional || 'Operasional',
+      status_aktif: m.status_aktif || 'Aktif',
+      kondisi_bangunan: coll?.kondisi_bangunan || 'Normal / Siaga',
+      
+      // Patient Situation Attributes (Overlay from Collector)
+      has_collector_data: hasCollector,
+      status_bencana: hasCollector ? coll.status_bencana : 'Siaga Bencana (Standby)',
+      triase_merah: triaseMerah,
+      triase_kuning: triaseKuning,
+      triase_hijau: triaseHijau,
+      triase_hitam: triaseHitam,
+      total_pasien: totalPasien,
+      kapasitas_tersedia: coll?.kapasitas_tersedia || '-',
+      stok_darah: coll?.stok_darah || '-',
+      listrik: coll?.listrik || 'PLN / Genset Siaga',
+      pj_medis: coll?.pj_medis || '-',
+      catatan_medis: coll?.catatan_medis || '',
+    }
+  })
+}
+
+/**
+ * Generates aggregated summary of all Master Data Faskes in NTT.
+ */
+export function getNttMasterFaskesSummary(masterWithOverlay: any[]): {
+  total: number
+  rs_count: number
+  puskesmas_count: number
+  klinik_count: number
+  pustu_count: number
+  total_merawat_pasien: number
+  total_pasien_terlayani: number
+  rekap_per_kabupaten: Record<string, {
+    nama_kab: string
+    rs: number
+    puskesmas: number
+    klinik: number
+    pustu: number
+    total: number
+    total_pasien: number
+  }>
+} {
+  const list = masterWithOverlay || []
+  let rsCount = 0
+  let pkmCount = 0
+  let klinikCount = 0
+  let pustuCount = 0
+  let totalMerawat = 0
+  let totalPasien = 0
+  const rekapKab: Record<string, any> = {}
+
+  list.forEach((f) => {
+    const j = String(f.jenis_faskes || '').toLowerCase()
+    if (j.includes('rumah sakit') || j.includes('rs')) {
+      rsCount++
+    } else if (j.includes('puskesmas pembantu') || j.includes('pustu')) {
+      pustuCount++
+    } else if (j.includes('puskesmas') || j.includes('pkm')) {
+      pkmCount++
+    } else if (j.includes('klinik')) {
+      klinikCount++
+    } else {
+      pustuCount++
+    }
+
+    if (f.has_collector_data || f.total_pasien > 0) {
+      totalMerawat++
+      totalPasien += Number(f.total_pasien || 0)
+    }
+
+    const kab = f.nama_kab || 'Kabupaten Lainnya'
+    if (!rekapKab[kab]) {
+      rekapKab[kab] = {
+        nama_kab: kab,
+        rs: 0,
+        puskesmas: 0,
+        klinik: 0,
+        pustu: 0,
+        total: 0,
+        total_pasien: 0,
+      }
+    }
+
+    if (j.includes('rumah sakit') || j.includes('rs')) rekapKab[kab].rs++
+    else if (j.includes('puskesmas pembantu') || j.includes('pustu')) rekapKab[kab].pustu++
+    else if (j.includes('puskesmas') || j.includes('pkm')) rekapKab[kab].puskesmas++
+    else if (j.includes('klinik')) rekapKab[kab].klinik++
+    else rekapKab[kab].pustu++
+
+    rekapKab[kab].total++
+    rekapKab[kab].total_pasien += Number(f.total_pasien || 0)
+  })
+
+  return {
+    total: list.length,
+    rs_count: rsCount,
+    puskesmas_count: pkmCount,
+    klinik_count: klinikCount,
+    pustu_count: pustuCount,
+    total_merawat_pasien: totalMerawat,
+    total_pasien_terlayani: totalPasien,
+    rekap_per_kabupaten: rekapKab,
+  }
+}
+

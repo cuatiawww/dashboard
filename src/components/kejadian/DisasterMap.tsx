@@ -507,6 +507,38 @@ export default function DisasterMap({
   const [showEocRoute, setShowEocRoute] = useState(true)
   const [pulseRadius, setPulseRadius] = useState<number>(1) // Default 1 km
 
+  // ── Faskes Sub-Category Checkbox Filters ──
+  const [faskesTypeFilters, setFaskesTypeFilters] = useState<{
+    rs: boolean
+    puskesmas: boolean
+    klinik: boolean
+    pustu: boolean
+    siagaOnly: boolean
+  }>({
+    rs: true,
+    puskesmas: true,
+    klinik: true,
+    pustu: true,
+    siagaOnly: false,
+  })
+
+  const faskesCountsByType = useMemo(() => {
+    const list = Array.isArray(faskesList) ? faskesList : []
+    let rs = 0, puskesmas = 0, klinik = 0, pustu = 0, siaga = 0
+    list.forEach((f: any) => {
+      const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
+      const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
+      const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
+      if (hasTriage) siaga++
+
+      if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) rs++
+      else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')) pustu++
+      else if (jStr.includes('klinik') || nStr.includes('klinik')) klinik++
+      else puskesmas++
+    })
+    return { rs, puskesmas, klinik, pustu, siaga, total: list.length }
+  }, [faskesList])
+
   // Auto-enable EOC Routing layer when a route target is selected
   useEffect(() => {
     if (selectedRouteTarget) {
@@ -2197,28 +2229,53 @@ export default function DisasterMap({
       })
     }
 
-    // 2. Add Faskes List
+    // 2. Add Faskes List (Filtered by Checkboxes: RS, Puskesmas, Klinik, Pustu, Siaga Only)
     const fList = Array.isArray(faskesList) ? faskesList : []
     fList.forEach((f: any, idx: number) => {
       const fLat = Number(f.latitude || f.lat || 0)
       const fLng = Number(f.longitude || f.lng || 0)
       if (fLat !== 0 && fLng !== 0) {
-        const jStr = String(f.jenis || f.jenis_faskes || '').toLowerCase()
-        const nStr = String(f.nama || '').toLowerCase()
+        // Strict NTT Bounding Box check when in NTT event / provincial mode:
+        // NTT Latitude: -11.6 to -7.5 (South)
+        // NTT Longitude: 118.5 to 125.5 (East)
+        if (isFloodEocMode) {
+          if (fLat < -11.6 || fLat > -7.5 || fLng < 118.5 || fLng > 125.5) {
+            return // Skip faskes located outside NTT province
+          }
+        }
+
+        const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
+        const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
+
+        const isRS = jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')
+        const isPustu = jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')
+        const isKlinik = jStr.includes('klinik') || nStr.includes('klinik')
+        const isPKM = !isRS && !isPustu && !isKlinik && (jStr.includes('puskesmas') || jStr.includes('pkm') || nStr.includes('puskesmas') || nStr.includes('pkm'))
+
+        // Filter based on checkboxes
+        if (isRS && !faskesTypeFilters.rs) return
+        if (isPustu && !faskesTypeFilters.pustu) return
+        if (isKlinik && !faskesTypeFilters.klinik) return
+        if (isPKM && !faskesTypeFilters.puskesmas) return
+        if (!isRS && !isPustu && !isKlinik && !isPKM && !faskesTypeFilters.pustu) return
+
+        // Filter for Siaga only (merawat pasien bencana)
+        const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
+        if (faskesTypeFilters.siagaOnly && !hasTriage) return
 
         let pinColor = '#059669' // emerald for Puskesmas
         let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'clinic'
         let itemCategory: 'hospital' | 'clinic' | 'pustu' = 'clinic'
 
-        if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) {
+        if (isRS) {
           pinColor = '#2563eb' // blue for RS
           iconType = 'hospital'
           itemCategory = 'hospital'
-        } else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')) {
+        } else if (isPustu) {
           pinColor = '#d97706' // amber for Pustu
           iconType = 'pustu'
           itemCategory = 'pustu'
-        } else if (jStr.includes('klinik') || nStr.includes('klinik')) {
+        } else if (isKlinik) {
           pinColor = '#0891b2' // cyan for Klinik
           iconType = 'clinic'
           itemCategory = 'clinic'
@@ -2227,7 +2284,7 @@ export default function DisasterMap({
         const fFeat = new Feature({
           geometry: new Point(fromLonLat([fLng, fLat])),
           id: f.nama || `faskes-${idx}`,
-          name: f.nama,
+          name: f.nama || f.nama_faskes,
           rawItem: f,
           itemType: itemCategory
         })
@@ -2247,8 +2304,13 @@ export default function DisasterMap({
     fRusakList.forEach((f: any, idx: number) => {
       const fLat = Number(f.latitude || f.lat || 0)
       const fLng = Number(f.longitude || f.lng || 0)
-      // Only show on map if has coordinates
+      // Only show on map if has coordinates within NTT bounds
       if (fLat !== 0 && fLng !== 0) {
+        if (isFloodEocMode) {
+          if (fLat < -11.6 || fLat > -7.5 || fLng < 118.5 || fLng > 125.5) {
+            return
+          }
+        }
         const hasBerat = Number(f.rusak_berat || 0) > 0
         const hasSedang = Number(f.rusak_sedang || 0) > 0
         const pinColor = hasBerat ? '#dc2626' : hasSedang ? '#ea580c' : '#f59e0b' // red / orange / amber
@@ -2276,6 +2338,11 @@ export default function DisasterMap({
       const pLat = Number(pos.latitude || pos.lat || 0)
       const pLng = Number(pos.longitude || pos.lng || 0)
       if (pLat !== 0 && pLng !== 0) {
+        if (isFloodEocMode) {
+          if (pLat < -11.6 || pLat > -7.5 || pLng < 118.5 || pLng > 125.5) {
+            return
+          }
+        }
         const jenisPos = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase()
         let pinColor = '#7c3aed' // purple for Pos Pengungsian
         let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'shelter'
@@ -2361,6 +2428,12 @@ export default function DisasterMap({
         }
 
         if (tLat !== 0 && tLng !== 0) {
+          if (isFloodEocMode) {
+            if (tLat < -11.6 || tLat > -7.5 || tLng < 118.5 || tLng > 125.5) {
+              return
+            }
+          }
+
           const tFeat = new Feature({
             geometry: new Point(fromLonLat([tLng, tLat])),
             id: tck.id_relawan || `tck-${idx}`,
@@ -2424,7 +2497,7 @@ export default function DisasterMap({
         }
       }
     }
-  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -2833,6 +2906,132 @@ export default function DisasterMap({
                       <span
                         className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showEocRoute ? 'translate-x-4' : 'translate-x-0'}`}
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-Checkbox Filter Faskes (Simple List styled like Jenis Kejadian) */}
+                {isFloodEocMode && showEocRoute && (
+                  <div className="mt-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Tipe Fasilitas Kesehatan
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setFaskesTypeFilters({ rs: true, puskesmas: true, klinik: true, pustu: true, siagaOnly: false })}
+                          className="text-[10px] font-bold text-teal-700 hover:text-teal-900 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 hover:bg-teal-100 transition-colors"
+                        >
+                          Semua
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFaskesTypeFilters({ rs: false, puskesmas: false, klinik: false, pustu: false, siagaOnly: false })}
+                          className="text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 hover:bg-slate-100 transition-colors"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 border border-slate-100 rounded-xl bg-[#fcfdfd] p-2 shadow-inner">
+                      {/* Rumah Sakit */}
+                      <div
+                        onClick={() => setFaskesTypeFilters((prev) => ({ ...prev, rs: !prev.rs }))}
+                        className="flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={faskesTypeFilters.rs}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">Rumah Sakit (RS)</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-400">
+                          {faskesCountsByType.rs}
+                        </span>
+                      </div>
+
+                      {/* Puskesmas */}
+                      <div
+                        onClick={() => setFaskesTypeFilters((prev) => ({ ...prev, puskesmas: !prev.puskesmas }))}
+                        className="flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={faskesTypeFilters.puskesmas}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-400">
+                          {faskesCountsByType.puskesmas}
+                        </span>
+                      </div>
+
+                      {/* Klinik */}
+                      <div
+                        onClick={() => setFaskesTypeFilters((prev) => ({ ...prev, klinik: !prev.klinik }))}
+                        className="flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={faskesTypeFilters.klinik}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">Klinik</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-400">
+                          {faskesCountsByType.klinik}
+                        </span>
+                      </div>
+
+                      {/* Puskesmas Pembantu (Pustu) */}
+                      <div
+                        onClick={() => setFaskesTypeFilters((prev) => ({ ...prev, pustu: !prev.pustu }))}
+                        className="flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-lg transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={faskesTypeFilters.pustu}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                          />
+                          <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas Pembantu (Pustu)</span>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-400">
+                          {faskesCountsByType.pustu.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+
+                      {/* Hanya Faskes Rawat Pasien */}
+                      <div
+                        onClick={() => setFaskesTypeFilters((prev) => ({ ...prev, siagaOnly: !prev.siagaOnly }))}
+                        className="flex cursor-pointer items-center justify-between py-1.5 px-2 hover:bg-slate-50 border-t border-slate-150 pt-2 transition-all"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={faskesTypeFilters.siagaOnly}
+                            onChange={() => {}}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
+                          />
+                          <span className={`text-[11px] font-bold truncate ${faskesTypeFilters.siagaOnly ? 'text-rose-700 font-extrabold' : 'text-slate-700'}`}>
+                            Hanya Faskes Rawat Pasien
+                          </span>
+                        </div>
+                        <span className={`text-[10px] font-extrabold ${faskesTypeFilters.siagaOnly ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {faskesCountsByType.siaga}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
