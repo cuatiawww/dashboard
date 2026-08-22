@@ -3875,7 +3875,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </span>
                 )}
               </div>
-              {!isNttEvent && (
+              {isNttEvent ? (
+                <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
+                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{totalFaskes.toLocaleString('id-ID')}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">DISIAGAKAN</span>
+                </div>
+              ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
                   <div className="border-r border-slate-300/40 px-0.5">
                     <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
@@ -3911,7 +3916,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </span>
                 )}
               </div>
-              {!isNttEvent && (
+              {isNttEvent ? (
+                <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
+                  <span className="text-lg sm:text-xl font-black text-blue-900 block leading-none">{(breakdown.pengungsi || 95871).toLocaleString('id-ID')}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">PENGUNGSI TERDATA</span>
+                </div>
+              ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
                   <div className="min-w-0 px-0.5">
                     <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
@@ -4231,8 +4241,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         Kondisi fungsional fasilitas pelayanan kesehatan (Rumah Sakit, Puskesmas, Klinik, dan Poskesdes) di {displayRegion} guna memastikan ketersediaan layanan rujukan darurat pasca bencana.
                       </p>
 
-                      {/* Quick Metrics 2x2 Grid with Big Numbers */}
-                      <div className="grid grid-cols-2 gap-3 mt-4">
+                      {/* Quick Metrics Grid with Big Numbers */}
+                      <div className={`grid ${isNttEvent ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'} gap-3 mt-4`}>
                         <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Total Faskes</span>
                           <span className="text-xl sm:text-2xl font-black text-slate-900">{totalMasterFaskes} <span className="text-xs sm:text-sm font-bold text-slate-500">Unit</span></span>
@@ -6881,7 +6891,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </h4>
                   <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
                     {isNttEvent
-                      ? 'Agregasi terpadu upaya penanggulangan, logistik kesehatan, dan rencana tindak lanjut dari seluruh kabupaten terdampak se-NTT'
+                      ? 'Agregasi terpadu upaya penanggulangan dan distribusi logistik kesehatan dari seluruh kabupaten terdampak se-NTT'
                       : 'Upaya penanggulangan, distribusi logistik, dan rekomendasi tindak lanjut real-time dari laporan kejadian'}
                   </p>
                 </div>
