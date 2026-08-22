@@ -3823,9 +3823,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="text-center flex-1 flex flex-col justify-center items-center">
                 <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">TOTAL KORBAN</span>
                 <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">{totalKorbanReal.toLocaleString('id-ID')}</span>
-                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
-                  {korbanTrendInfo.label}
-                </span>
+                {!isNttEvent && (
+                  <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
+                    {korbanTrendInfo.label}
+                  </span>
+                )}
               </div>
               <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
                 <div>
@@ -3862,9 +3864,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">
                   {totalFaskes.toLocaleString('id-ID')}
                 </span>
-                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${faskesTrendInfo.badgeClass}`}>
-                  {faskesTrendInfo.label}
-                </span>
+                {!isNttEvent && (
+                  <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${faskesTrendInfo.badgeClass}`}>
+                    {faskesTrendInfo.label}
+                  </span>
+                )}
               </div>
               {!isNttEvent && (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
@@ -3896,9 +3900,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </span>
                   {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-500">Jiwa</span>}
                 </div>
-                <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${terdampakTrendInfo.badgeClass}`}>
-                  {terdampakTrendInfo.label}
-                </span>
+                {!isNttEvent && (
+                  <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${terdampakTrendInfo.badgeClass}`}>
+                    {terdampakTrendInfo.label}
+                  </span>
+                )}
               </div>
               {!isNttEvent && (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
@@ -4477,23 +4483,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
 
               {/* ─── KESIMPULAN REKOMENDASI OPERASIONAL ─── */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200">
-                    KESIMPULAN ANALISIS
-                  </span>
-                  <span className="text-sm sm:text-base font-bold text-slate-900">Sintesis Rekomendasi Terpadu EOC Kemenkes</span>
-                </div>
-                {eocNarrative && (
-                  <p className="text-sm sm:text-base text-slate-900 font-normal leading-relaxed m-0">
-                    <strong className="font-bold text-slate-950">Rekomendasi Utama: </strong>
-                    {eocNarrative}
+              {!isNttEvent && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200">
+                      KESIMPULAN ANALISIS
+                    </span>
+                    <span className="text-sm sm:text-base font-bold text-slate-900">Sintesis Rekomendasi Terpadu EOC Kemenkes</span>
+                  </div>
+                  {eocNarrative && (
+                    <p className="text-sm sm:text-base text-slate-900 font-normal leading-relaxed m-0">
+                      <strong className="font-bold text-slate-950">Rekomendasi Utama: </strong>
+                      {eocNarrative}
+                    </p>
+                  )}
+                  <p className="text-sm sm:text-base text-slate-700 font-normal leading-relaxed m-0">
+                    {korbanNarrative} {faskesNarrative} {penyakitNarrative}
                   </p>
-                )}
-                <p className="text-sm sm:text-base text-slate-700 font-normal leading-relaxed m-0">
-                  {korbanNarrative} {faskesNarrative} {penyakitNarrative}
-                </p>
-              </div>
+                </div>
+              )}
 
               {/* ── BENCHMARKING & VALIDASI DATA AI VS SYSTEM ── */}
               <div className="hidden rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-purple-50/40 to-slate-50 p-4 text-xs space-y-3 shadow-2xs">
