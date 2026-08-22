@@ -3822,6 +3822,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <h4 className="text-xl sm:text-2xl font-black text-slate-900">
               Pemetaan Spasial Kejadian Bencana - {displayRegion}
             </h4>
+            {/* SPASIAL MODE button - Hidden as requested */}
+            {/* 
             <a
               href="/dashboard-eoc/gempa-ntt/tv"
               target="_blank"
@@ -3835,6 +3837,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 PROV. NTT
               </span>
             </a>
+            */}
           </div>
           <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
             Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, pos pengungsian, dan rute navigasi darurat
