@@ -1031,7 +1031,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const pieData = [
         { name: 'Terdampak / Rusak', value: cat.terdampak, fill: cat.rusakColor },
         { name: 'Aktif Rawat Pasien', value: cat.rawatPasien, fill: cat.rawatColor },
-        { name: 'Siaga Standby (Normal)', value: cat.standby > 0 ? cat.standby : (cat.totalMaster === 0 ? 1 : 0), fill: cat.totalMaster === 0 ? '#e2e8f0' : cat.standbyColor }
+        { name: 'Disiagakan (Normal)', value: cat.standby > 0 ? cat.standby : (cat.totalMaster === 0 ? 1 : 0), fill: cat.totalMaster === 0 ? '#e2e8f0' : cat.standbyColor }
       ].filter(item => item.value > 0 || cat.totalMaster === 0)
 
       return {
@@ -4278,7 +4278,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 }`}>
-                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} sedang merawat korban` : '100% Disiagakan'}
+                                {cat.rawatPasien > 0 ? `${cat.rawatPasien} Sedang Merawat Korban` : '100% Disiagakan'}
                               </span>
                             </div>
 
@@ -4315,12 +4315,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 {cat.rawatPasien > 0 ? (
                                   <>
                                     <span className="text-lg sm:text-xl font-black text-slate-900 leading-none">{cat.rawatPasien}/{cat.totalMaster}</span>
-                                    <span className="text-[8.5px] sm:text-[9px] font-black text-blue-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">sedang merawat korban</span>
+                                    <span className="text-[8.5px] sm:text-[9px] font-black text-blue-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">SEDANG MERAWAT KORBAN</span>
                                   </>
                                 ) : (
                                   <>
                                     <span className="text-lg sm:text-xl font-black text-slate-900 leading-none">{cat.standby}/{cat.totalMaster}</span>
-                                    <span className="text-[8.5px] sm:text-[9px] font-black text-emerald-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">Disiagakan</span>
+                                    <span className="text-[8.5px] sm:text-[9px] font-black text-emerald-700 uppercase tracking-tight leading-tight mt-1 max-w-[85%] text-center">DISIAGAKAN</span>
                                   </>
                                 )}
                               </div>
@@ -4335,7 +4335,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               )}
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
                                 <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
-                                <span className="text-[9.5px] font-semibold text-blue-600">sedang merawat korban</span>
+                                <span className="text-[9.5px] font-semibold text-blue-600">Sedang Merawat Korban</span>
                               </div>
                               <div className="text-emerald-700">
                                 <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
