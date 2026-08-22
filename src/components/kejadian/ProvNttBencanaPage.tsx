@@ -5,43 +5,43 @@ import { useRouter } from 'next/navigation'
 import DetailKejadianPage from './DetailKejadianPage'
 import { useHeaderStore } from '@/lib/headerStore'
 
-// Data Dasar Struktur Gempa NTT (Nilai awal bersih, diisi 100% dinamis dari API Collector /api/ntt-data)
+// Data Dasar Struktur Gempa NTT (Sinkron dengan BMKG & API Collector /api/ntt-data)
 const BASE_NTT_GEMPA_EVENT = {
   id: 'EVT-NTT-2026-0819-01',
   kode_trans: 'EVT-NTT-2026-0819-01',
-  nama: 'Gempa Bumi M 7.7 Laut Flores - 30 km Timur Laut Mbay-Nagekeo-NTT',
+  nama: 'Gempa Bumi M 5.2 - Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai',
   nama_bencana: 'Gempa Bumi',
   jenis_bencana: 'Gempa Bumi',
   provinsi: 'NUSA TENGGARA TIMUR',
   kabupaten: 'FLORES TIMUR',
   kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
+  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA',
   tgl_kejadian_riil: '2026-08-15 09:18:22',
   tgl_kejadian: '2026-08-15 09:18:22',
-  tgl_laporan: '2026-08-21 10:01:00',
-  updated_at: '2026-08-21 10:01:00',
-  latitude: -8.3421,
-  longitude: 122.9814,
+  tgl_laporan: '22 Agustus 2026, 01:47 WIB',
+  updated_at: '2026-08-22 01:47:00',
+  latitude: -8.03,
+  longitude: 120.68,
   status_bencana: 'Tanggap Darurat',
-  keterangan: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-  kronologis: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-  deskripsi: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-  buletin_eoc: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+  keterangan: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+  kronologis: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+  deskripsi: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+  buletin_eoc: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
   
   // Parameter Seismisitas BMKG
-  magnitudo: 7.7,
-  kedalaman: 15,
-  potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
-  tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
-  skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
+  magnitudo: 5.2,
+  kedalaman: '10 km',
+  potensi_tsunami: 'Tidak Berpotensi Tsunami',
+  tsunami: 'Tidak Berpotensi Tsunami',
+  skala_mmi: 'III MMI (Ruteng-Manggarai)',
 
-  // Data Korban Ringkasan Awal
-  meninggal: 82,
-  luka_berat: 335,
-  luka_ringan: 630,
-  luka: 965,
+  // Data Korban Ringkasan (Sinkron dengan collector)
+  meninggal: 78,
+  luka_berat: 331,
+  luka_ringan: 639,
+  luka: 970,
   hilang: 0,
-  pengungsi: 40083,
+  pengungsi: 43686,
   titik_pengungsian: 400,
   penduduk_terdampak: 1917732,
 
@@ -53,69 +53,44 @@ const BASE_NTT_GEMPA_EVENT = {
     provinsi: 'NUSA TENGGARA TIMUR',
     kabupaten: 'FLORES TIMUR',
     kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
+    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA',
     tgl_kejadian_riil: '2026-08-15 09:18:22',
     tgl_kejadian: '2026-08-15 09:18:22',
-    tgl_laporan: '2026-08-21 10:01:00',
-    updated_at: '2026-08-21 10:01:00',
-    latitude: -8.3421,
-    longitude: 122.9814,
-    deskripsi: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-    kronologis: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-    keterangan: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
-    buletin_eoc: 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.',
+    tgl_laporan: '22 Agustus 2026, 01:47 WIB',
+    updated_at: '2026-08-22 01:47:00',
+    latitude: -8.03,
+    longitude: 120.68,
+    deskripsi: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+    kronologis: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+    keterangan: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+    buletin_eoc: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
     
     // Parameter Seismisitas
-    magnitudo: 7.7,
-    kedalaman: 15,
-    potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
-    tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
-    skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
+    magnitudo: 5.2,
+    kedalaman: '10 km',
+    potensi_tsunami: 'Tidak Berpotensi Tsunami',
+    tsunami: 'Tidak Berpotensi Tsunami',
+    skala_mmi: 'III MMI (Ruteng-Manggarai)',
     status_tanggap_darurat: 'Tanggap Darurat (Level Provinsi & Nasional)',
 
-    korban_meninggal: 82,
-    korban_luka_berat: 335,
-    korban_luka_ringan: 630,
-    korban_luka: 965,
+    korban_meninggal: 78,
+    korban_luka_berat: 331,
+    korban_luka_ringan: 639,
+    korban_luka: 970,
     korban_hilang: 0,
-    pengungsi: 40083,
+    pengungsi: 43686,
     titik_pengungsian: 400,
     populasi_terdampak: 1917732,
-    meninggal: 82,
-    luka_berat: 335,
-    luka_ringan: 630,
-    luka: 965,
+    meninggal: 78,
+    luka_berat: 331,
+    luka_ringan: 639,
+    luka: 970,
     hilang: 0,
     penduduk_terdampak: 1917732,
 
-    // Array data dinamis dari Collector
-    breakdown_kabupaten: [
-      { kabupaten: 'Sikka', ibukota: 'Maumere', meninggal: 6, luka_berat: 23, luka_ringan: 32, total_luka: 55, hilang: 0, pengungsi: 1972, titik_posko: 9, populasi_terdampak: 350715, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
-      { kabupaten: 'Manggarai Timur', ibukota: 'Borong', meninggal: 26, luka_berat: 239, luka_ringan: 404, total_luka: 643, hilang: 0, pengungsi: 19330, titik_posko: 246, populasi_terdampak: 313876, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
-      { kabupaten: 'Manggarai', ibukota: 'Ruteng', meninggal: 27, luka_berat: 32, luka_ringan: 104, total_luka: 136, hilang: 0, pengungsi: 10083, titik_posko: 14, populasi_terdampak: 340153, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
-      { kabupaten: 'Ngada', ibukota: 'Bajawa', meninggal: 2, luka_berat: 17, luka_ringan: 19, total_luka: 36, hilang: 0, pengungsi: 1333, titik_posko: 27, populasi_terdampak: 176462, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
-      { kabupaten: 'Nagekeo', ibukota: 'Mbay', meninggal: 13, luka_berat: 13, luka_ringan: 9, total_luka: 22, hilang: 0, pengungsi: 6221, titik_posko: 70, populasi_terdampak: 170669, zona: 'Zona Merah', zonaColor: 'bg-rose-50 text-rose-700 border-rose-200' },
-      { kabupaten: 'Ende', ibukota: 'Ende', meninggal: 6, luka_berat: 5, luka_ringan: 67, total_luka: 72, hilang: 0, pengungsi: 3144, titik_posko: 25, populasi_terdampak: 284165, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
-      { kabupaten: 'Manggarai Barat', ibukota: 'Labuan Bajo', meninggal: 2, luka_berat: 2, luka_ringan: 4, total_luka: 6, hilang: 0, pengungsi: 1603, titik_posko: 9, populasi_terdampak: 281692, zona: 'Zona Oranye', zonaColor: 'bg-amber-50 text-amber-700 border-amber-200' },
-    ],
-    faskes_terdampak: [
-      { id: 'rs-1', nama: 'RSUD dr. TC Hillers Maumere', jenis: 'RS', kabupaten: 'Sikka', kecamatan: 'Alok', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 4, kapasitas_tersedia: '42 TT', stok_darah: 'A: 12, B: 15, O: 24, AB: 6', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Clara, Sp.B' },
-      { id: 'rs-2', nama: 'RSUD Borong', jenis: 'RS', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total_pasien: 38, kapasitas_tersedia: '18 TT', stok_darah: 'A: 8, B: 10, O: 14, AB: 3', listrik: 'Genset Darurat EOC', pj_medis: 'dr. Anton, Sp.An' },
-      { id: 'rs-3', nama: 'RSUD Ruteng (dr. Ben Mboi)', jenis: 'RS', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total_pasien: 11, kapasitas_tersedia: '35 TT', stok_darah: 'A: 18, B: 20, O: 30, AB: 8', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Ronald, Sp.OG' },
-      { id: 'rs-4', nama: 'RSUD Bajawa', jenis: 'RS', kabupaten: 'Ngada', kecamatan: 'Bajawa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 3, kapasitas_tersedia: '28 TT', stok_darah: 'A: 10, B: 12, O: 16, AB: 4', listrik: 'PLN', pj_medis: 'dr. Maria, Sp.PD' },
-      { id: 'rs-5', nama: 'RSUD Aeramo', jenis: 'RS', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total_pasien: 5, kapasitas_tersedia: '22 TT', stok_darah: 'A: 6, B: 8, O: 12, AB: 2', listrik: 'PLN / Genset', pj_medis: 'dr. Yohanes, Sp.B' },
-      { id: 'rs-6', nama: 'RSUD Ende', jenis: 'RS', kabupaten: 'Ende', kecamatan: 'Ende Selatan', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total_pasien: 8, kapasitas_tersedia: '30 TT', stok_darah: 'A: 14, B: 16, O: 22, AB: 5', listrik: 'PLN', pj_medis: 'dr. Stefanus, Sp.OT' },
-      { id: 'rs-7', nama: 'RSUD Komodo', jenis: 'RS', kabupaten: 'Manggarai Barat', kecamatan: 'Komodo', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Aman Terkendali', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total_pasien: 9, kapasitas_tersedia: '40 TT', stok_darah: 'A: 20, B: 22, O: 35, AB: 10', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Melinda, Sp.A' },
-    ],
-    faskes_terdekat: [
-      { id: 'rs-1', nama: 'RSUD dr. TC Hillers Maumere', jenis: 'RS', kabupaten: 'Sikka', kecamatan: 'Alok', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 4, kapasitas_tersedia: '42 TT', stok_darah: 'A: 12, B: 15, O: 24, AB: 6', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Clara, Sp.B' },
-      { id: 'rs-2', nama: 'RSUD Borong', jenis: 'RS', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total_pasien: 38, kapasitas_tersedia: '18 TT', stok_darah: 'A: 8, B: 10, O: 14, AB: 3', listrik: 'Genset Darurat EOC', pj_medis: 'dr. Anton, Sp.An' },
-      { id: 'rs-3', nama: 'RSUD Ruteng (dr. Ben Mboi)', jenis: 'RS', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total_pasien: 11, kapasitas_tersedia: '35 TT', stok_darah: 'A: 18, B: 20, O: 30, AB: 8', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Ronald, Sp.OG' },
-      { id: 'rs-4', nama: 'RSUD Bajawa', jenis: 'RS', kabupaten: 'Ngada', kecamatan: 'Bajawa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total_pasien: 3, kapasitas_tersedia: '28 TT', stok_darah: 'A: 10, B: 12, O: 16, AB: 4', listrik: 'PLN', pj_medis: 'dr. Maria, Sp.PD' },
-      { id: 'rs-5', nama: 'RSUD Aeramo', jenis: 'RS', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Sedang', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total_pasien: 5, kapasitas_tersedia: '22 TT', stok_darah: 'A: 6, B: 8, O: 12, AB: 2', listrik: 'PLN / Genset', pj_medis: 'dr. Yohanes, Sp.B' },
-      { id: 'rs-6', nama: 'RSUD Ende', jenis: 'RS', kabupaten: 'Ende', kecamatan: 'Ende Selatan', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Rusak Ringan', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total_pasien: 8, kapasitas_tersedia: '30 TT', stok_darah: 'A: 14, B: 16, O: 22, AB: 5', listrik: 'PLN', pj_medis: 'dr. Stefanus, Sp.OT' },
-      { id: 'rs-7', nama: 'RSUD Komodo', jenis: 'RS', kabupaten: 'Manggarai Barat', kecamatan: 'Komodo', status: 'Beroperasi Siaga Bencana', kondisi_bangunan: 'Aman Terkendali', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total_pasien: 9, kapasitas_tersedia: '40 TT', stok_darah: 'A: 20, B: 22, O: 35, AB: 10', listrik: 'PLN / Genset Siaga', pj_medis: 'dr. Melinda, Sp.A' },
-    ],
+    breakdown_kabupaten: [],
+    faskes_terdampak: [],
+    faskes_terdekat: [],
     lokasi: [
       { id: 'loc-1', kecamatan: 'Mbay', kabupaten: 'Nagekeo', latitude: -8.562, longitude: 121.284 },
       { id: 'loc-2', kecamatan: 'Borong', kabupaten: 'Manggarai Timur', latitude: -8.621, longitude: 120.612 },
@@ -149,7 +124,78 @@ export default function ProvNttBencanaPage() {
     }
   }, [setHeader, resetHeader])
 
-  // Ambil data real-time dari API resmi collector (/api/ntt-data)
+  // 1. Ambil Parameter Seismisitas Real-time dari BMKG API
+  useEffect(() => {
+    let active = true
+    const fetchBmkg = async () => {
+      try {
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+        const res = await fetch(`${basePath}/api/bmkg-gempa`, { cache: 'no-store' })
+        if (!res.ok) return
+        const json = await res.json()
+        if (!active || !json.success || !json.data) return
+
+        const allGempa = [
+          ...(Array.isArray(json.data.gempadirasakan) ? json.data.gempadirasakan : (json.data.gempadirasakan ? [json.data.gempadirasakan] : [])),
+          ...(Array.isArray(json.data.gempaterkini) ? json.data.gempaterkini : (json.data.gempaterkini ? [json.data.gempaterkini] : [])),
+          json.data.autogempa,
+        ].filter(Boolean)
+
+        // Cari gempa terdekat / terkait wilayah NTT (Manggarai, Ruteng, Sikka, Mbay, Nagekeo, Flores, NTT)
+        const nttKeywords = ['manggarai', 'ruteng', 'sikka', 'mbay', 'nagekeo', 'flores', 'ende', 'ntt', 'kupang', 'alor']
+        const matched = allGempa.find((g: any) => {
+          const text = `${g.Wilayah || ''} ${g.Dirasakan || ''} ${g.region || ''}`.toLowerCase()
+          return nttKeywords.some(kw => text.includes(kw))
+        }) || json.data.autogempa || allGempa[0]
+
+        if (matched) {
+          const coords = matched.Coordinates ? matched.Coordinates.split(',') : []
+          const lat = coords[0] ? parseFloat(coords[0].trim()) : -8.03
+          const lng = coords[1] ? parseFloat(coords[1].trim()) : 120.68
+          const mag = parseFloat(matched.Magnitude) || 5.2
+          const depth = matched.Kedalaman || '10 km'
+          const mmi = matched.Dirasakan ? `${matched.Dirasakan} MMI` : 'III MMI (Ruteng-Manggarai)'
+          const potensi = matched.Potensi || 'Tidak Berpotensi Tsunami'
+          const wilayahStr = matched.Wilayah || 'Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai'
+          const kronologisText = 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.'
+
+          setEventData((prev: any) => ({
+            ...prev,
+            nama: `Gempa Bumi M ${mag} - ${wilayahStr}`,
+            magnitudo: mag,
+            kedalaman: depth,
+            potensi_tsunami: potensi,
+            tsunami: potensi,
+            skala_mmi: mmi,
+            latitude: lat,
+            longitude: lng,
+            keterangan: kronologisText,
+            kronologis: kronologisText,
+            buletin_eoc: kronologisText,
+            detailData: {
+              ...prev.detailData,
+              magnitudo: mag,
+              kedalaman: depth,
+              potensi_tsunami: potensi,
+              tsunami: potensi,
+              skala_mmi: mmi,
+              latitude: lat,
+              longitude: lng,
+              deskripsi: kronologisText,
+              kronologis: kronologisText,
+              buletin_eoc: kronologisText,
+            }
+          }))
+        }
+      } catch (err) {
+        console.warn('[ProvNttBencanaPage] Gagal memuat data BMKG live:', err)
+      }
+    }
+
+    fetchBmkg()
+  }, [])
+
+  // 2. Ambil data real-time dari API resmi collector (/api/ntt-data)
   const loadCollectorData = async (targetDate?: string) => {
     setIsLoadingDate(true)
     try {
@@ -225,7 +271,7 @@ export default function ProvNttBencanaPage() {
             }
           }
 
-          // 2. Data Pasien RS & Puskesmas dari Collector
+          // 2. Data Pasien RS & Puskesmas dari Collector (Faskes Siaga yang melayani pasien)
           if (Array.isArray(json.tables?.pasien_rs)) {
             json.tables.pasien_rs.forEach((rs: any, idx: number) => {
               faskesList.push({
@@ -235,7 +281,7 @@ export default function ProvNttBencanaPage() {
                 kabupaten: rs.kabupaten || '',
                 kecamatan: rs.kecamatan || '-',
                 status: rs.status || 'Beroperasi Siaga Bencana',
-                kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
+                kondisi_bangunan: rs.kondisi_bangunan || 'Normal / Siaga',
                 triase_merah: Number(rs.triase_merah || 0),
                 triase_kuning: Number(rs.triase_kuning || 0),
                 triase_hijau: Number(rs.triase_hijau || 0),
@@ -274,7 +320,6 @@ export default function ProvNttBencanaPage() {
           const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : '2026-08-21 10:01:00')
           setEventData((prev: any) => ({
             ...prev,
-            tgl_kejadian: tgl ? `${tgl} 10:01:00` : prev.tgl_kejadian,
             tgl_laporan: updateTimestamp || prev.tgl_laporan,
             updated_at: updateTimestamp,
             meninggal: tot.meninggal ?? prev.meninggal,
@@ -287,7 +332,6 @@ export default function ProvNttBencanaPage() {
             penduduk_terdampak: tot.populasi_terdampak ?? prev.penduduk_terdampak,
             detailData: {
               ...prev.detailData,
-              tgl_kejadian: tgl ? `${tgl} 10:01:00` : prev.detailData.tgl_kejadian,
               tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
               updated_at: updateTimestamp,
               korban_meninggal: tot.meninggal ?? prev.detailData.korban_meninggal,
@@ -305,7 +349,7 @@ export default function ProvNttBencanaPage() {
               hilang: tot.hilang ?? prev.detailData.hilang,
               penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
               breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
-              faskes_terdampak: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak,
+              faskes_terdampak: [], // Faskes rusak fisik (hanya jika ada laporan kerusakan bangunan)
               faskes_terdekat: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdekat,
               pos_pengungsi: prev.detailData.pos_pengungsi || [],
               logistik: prev.detailData.logistik || [],

@@ -265,59 +265,46 @@ export async function GET(request: Request) {
 
     const isNtt = provParam.toLowerCase().includes('nusa tenggara timur') || kabParam.toLowerCase().includes('flores') || kabParam.toLowerCase().includes('manggarai')
 
-    // Determine Main Characteristics for Disaster Date (15 Agu / dateParam)
+    // Determine Main Characteristics for Disaster Date (dateParam)
     const mainDayEq = byDate[dateParam]
     const parsedDbMag = parseFloat(dbMag)
-    const defaultMag = isNtt ? '7.4' : (!isNaN(parsedDbMag) && parsedDbMag > 0 ? String(parsedDbMag) : '5.0')
-    const mainMagNum = !isNaN(parsedDbMag) && parsedDbMag > 0 ? parsedDbMag : (bmkgMatch?.Magnitude ? parseFloat(bmkgMatch.Magnitude) : parseFloat(defaultMag))
+    const mainMagNum = bmkgMatch?.Magnitude ? parseFloat(bmkgMatch.Magnitude) : (!isNaN(parsedDbMag) && parsedDbMag > 0 ? parsedDbMag : (mainDayEq ? parseFloat(mainDayEq.mag) : 5.0))
 
-    const magnitude = dbMag
-      ? `${dbMag} SR`
-      : bmkgMatch?.Magnitude
+    const magnitude = bmkgMatch?.Magnitude
       ? `${bmkgMatch.Magnitude} SR`
       : apiIndoMatch?.magnitude
       ? `${apiIndoMatch.magnitude} SR`
+      : dbMag
+      ? `${dbMag} SR`
       : mainDayEq
       ? `${Number(mainDayEq.mag).toFixed(1)} SR`
-      : isNtt
-      ? '7.4 SR'
-      : '-'
+      : '5.0 SR'
 
-    const kedalaman = dbDepth
-      ? (String(dbDepth).includes('km') ? dbDepth : `${dbDepth} km`)
-      : bmkgMatch?.Kedalaman
+    const kedalaman = bmkgMatch?.Kedalaman
       ? bmkgMatch.Kedalaman
       : apiIndoMatch?.depth_km || apiIndoMatch?.depth
       ? `${apiIndoMatch.depth_km || apiIndoMatch.depth} km`
+      : dbDepth
+      ? (String(dbDepth).includes('km') ? dbDepth : `${dbDepth} km`)
       : mainDayEq
       ? `${mainDayEq.depth} km`
-      : isNtt
-      ? '10 km'
-      : '-'
+      : '10 km'
 
-    const potensiTsunami = dbTsunami
-      ? dbTsunami
-      : bmkgMatch?.Potensi
+    const potensiTsunami = bmkgMatch?.Potensi
       ? bmkgMatch.Potensi
       : apiIndoMatch?.potential
       ? apiIndoMatch.potential
-      : isNtt
-      ? 'Dinyatakan Berakhir (TEWS BMKG)'
-      : mainDayEq && mainDayEq.mag >= 7.0 && mainDayEq.depth < 50
-      ? 'Waspada / Berpotensi Tsunami'
-      : 'Tidak Berpotensi Tsunami'
+      : dbTsunami
+      ? dbTsunami
+      : (mainMagNum >= 7.0 ? 'Waspada / Berpotensi Tsunami' : 'Tidak Berpotensi Tsunami')
 
-    const intensitasMmi = dbMmi
-      ? (dbMmi.includes('MMI') ? dbMmi : `${dbMmi} MMI`)
-      : bmkgMatch?.Dirasakan
+    const intensitasMmi = bmkgMatch?.Dirasakan
       ? bmkgMatch.Dirasakan
       : apiIndoMatch?.felt_areas
       ? apiIndoMatch.felt_areas
-      : mainDayEq?.mmi
-      ? `${mainDayEq.mmi} MMI`
-      : isNtt
-      ? 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)'
-      : '-'
+      : dbMmi
+      ? (dbMmi.includes('MMI') ? dbMmi : `${dbMmi} MMI`)
+      : (mainDayEq?.mmi ? `${mainDayEq.mmi} MMI` : 'III MMI')
 
     const rawMmi = intensitasMmi.split(',')[0].trim()
     const mmiMatch = rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)

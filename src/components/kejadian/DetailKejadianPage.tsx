@@ -436,7 +436,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   return { ...m, ...dJson.data }
                 }
               }
-            } catch {}
+            } catch { }
             return m
           })
         )
@@ -897,11 +897,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       let db_pengungsi = safeParseInt(detail?.pengungsi ?? eventData?.pengungsi) || (lastPerkembangan ? safeParseInt(lastPerkembangan.pengungsi || lastPerkembangan.pengungsi_total) : 0)
 
       if (isNttEvent && db_meninggal === 0 && db_luka === 0) {
-        db_meninggal = 82
-        db_luka_berat = 335
-        db_luka_ringan = 630
-        db_luka = 965
-        db_pengungsi = 40083
+        db_meninggal = 78
+        db_luka_berat = 331
+        db_luka_ringan = 639
+        db_luka = 970
+        db_pengungsi = 43686
       }
 
       return {
@@ -1543,14 +1543,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   // Dynamic 7-day earthquake timeline (Day 0 to Day 6): strictly 7 days starting from disaster day
   const earthquakeTimeline = useMemo(() => {
-    const isNtt = String(eventData.provinsi || '').toLowerCase().includes('nusa tenggara timur') || String(eventData.kabupaten || '').toLowerCase().includes('flores')
-    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || (isNtt ? '2026-08-15T09:18:22' : '2026-08-15')
+    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || '2026-08-20'
     const base = new Date(realDateStr)
-    const rawMag = parseFloat(eventData.magnitudo || (isNtt ? '7.4' : (bmkgGempa?.Magnitude || bmkgGempa?.magnitude || '5.0')))
-    const mainMag = isNaN(rawMag) || rawMag <= 0 ? (isNtt ? 7.4 : 5.0) : rawMag
-    const rawMmi = eventData.skala_mmi || (isNtt ? 'VII - VIII MMI (Flores Timur, Alor, Sikka, Manggarai)' : (bmkgGempa?.Dirasakan || 'V MMI'))
+    const rawMag = parseFloat(eventData.magnitudo || (bmkgGempa?.Magnitude || bmkgGempa?.magnitude || '5.0'))
+    const mainMag = isNaN(rawMag) || rawMag <= 0 ? 5.0 : rawMag
+    const rawMmi = eventData.skala_mmi || bmkgGempa?.Dirasakan || 'III MMI'
     const mmiMatch = String(rawMmi).match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
-    const mmiShort = mmiMatch ? mmiMatch[1] : (isNtt ? 'VII-VIII' : 'V')
+    const mmiShort = mmiMatch ? mmiMatch[1] : 'III'
 
     const dates = []
     for (let i = 0; i < 7; i++) {
@@ -1927,39 +1926,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return 0;
   }, [eventData.pos_pengungsi]);
 
-  // Vulnerable group counts (using backend real values or NA if 0/null/undefined)
-  const balitaDisplay = useMemo(() => {
-    const val = eventData.balita || detail?.balita;
-    if (val === undefined || val === null || val === 0 || val === '0') {
-      return isNttEvent ? '88.217' : 'NA';
-    }
-    return safeParseInt(val).toLocaleString('id-ID');
-  }, [eventData.balita, detail?.balita, isNttEvent]);
-
-  const lansiaDisplay = useMemo(() => {
-    const val = eventData.lansia || detail?.lansia;
-    if (val === undefined || val === null || val === 0 || val === '0') {
-      return isNttEvent ? '65.420' : 'NA';
-    }
-    return safeParseInt(val).toLocaleString('id-ID');
-  }, [eventData.lansia, detail?.lansia, isNttEvent]);
-
-  const bumilDisplay = useMemo(() => {
-    const val = eventData.ibu_hamil || eventData.bumil || detail?.ibu_hamil || detail?.bumil;
-    if (val === undefined || val === null || val === 0 || val === '0') {
-      return isNttEvent ? '12.850' : 'NA';
-    }
-    return safeParseInt(val).toLocaleString('id-ID');
-  }, [eventData.ibu_hamil, eventData.bumil, detail?.ibu_hamil, detail?.bumil, isNttEvent]);
-
   const totalPendudukTerancam = useMemo(() => {
+    const bkList = Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0
+      ? detail.breakdown_kabupaten
+      : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : []);
+    const bkSum = bkList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0);
+    if (bkSum > 0) return bkSum;
     const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : [];
     const sum = lokasiList.reduce((acc: number, loc: any) => acc + safeParseInt(loc.jml_terancam), 0);
     if (sum > 0) return sum;
-    const bkList = Array.isArray(detail?.breakdown_kabupaten) ? detail.breakdown_kabupaten : [];
-    const bkSum = bkList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0);
-    return bkSum;
-  }, [detail?.lokasi, detail?.breakdown_kabupaten]);
+    const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak;
+    return safeParseInt(val) || 0;
+  }, [detail?.lokasi, detail?.breakdown_kabupaten, nttApiData?.situasi_kesehatan, eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak]);
 
   const pendudukTerdampakDisplay = useMemo(() => {
     const sumTerancam = totalPendudukTerancam;
@@ -1967,22 +1945,55 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       return sumTerancam.toLocaleString('id-ID');
     }
     const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak;
-    if (val === undefined || val === null || val === 0 || val === '0') {
-      return isNttEvent ? '1.917.732' : 'NA';
+    if (val && safeParseInt(val) > 0) {
+      return safeParseInt(val).toLocaleString('id-ID');
     }
-    return safeParseInt(val).toLocaleString('id-ID');
-  }, [eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam, isNttEvent]);
+    return 'NA';
+  }, [eventData.penduduk_terdampak, eventData.populasi_terdampak, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam]);
+
+  // Vulnerable group counts (strictly NA if no explicit field in database)
+  const balitaDisplay = useMemo(() => {
+    const val = eventData.balita || detail?.balita;
+    if (val && safeParseInt(val) > 0) {
+      return safeParseInt(val).toLocaleString('id-ID');
+    }
+    return 'NA';
+  }, [eventData.balita, detail?.balita]);
+
+  const lansiaDisplay = useMemo(() => {
+    const val = eventData.lansia || detail?.lansia;
+    if (val && safeParseInt(val) > 0) {
+      return safeParseInt(val).toLocaleString('id-ID');
+    }
+    return 'NA';
+  }, [eventData.lansia, detail?.lansia]);
+
+  const bumilDisplay = useMemo(() => {
+    const val = eventData.ibu_hamil || eventData.bumil || detail?.ibu_hamil || detail?.bumil;
+    if (val && safeParseInt(val) > 0) {
+      return safeParseInt(val).toLocaleString('id-ID');
+    }
+    return 'NA';
+  }, [eventData.ibu_hamil, eventData.bumil, detail?.ibu_hamil, detail?.bumil]);
+
+  const rsCount = isNttEvent
+    ? (nttApiData?.pasien_rs?.length || 7)
+    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('rs')).length : 0);
+
+  const pkmCount = isNttEvent
+    ? (nttApiData?.pasien_puskesmas?.length || 85)
+    : (Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.filter((f: any) => String(f.jenis || f.nama).toLowerCase().includes('pkm') || String(f.jenis || f.nama).toLowerCase().includes('puskesmas')).length : 0);
 
   const totalFaskes = useMemo(() => {
     if (isNttEvent) {
       const apiCount = (nttApiData?.pasien_rs?.length || 0) + (nttApiData?.pasien_puskesmas?.length || 0)
-      return apiCount > 0 ? apiCount : 92
+      return apiCount > 0 ? apiCount : (rsCount + pkmCount)
     }
     const terdekat = Array.isArray(detail?.faskes_terdekat) ? detail.faskes_terdekat.length : 0
     const terdampak = Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak.length : 0
     const eventTerdampak = Array.isArray(eventData?.faskes_terdampak) ? eventData.faskes_terdampak.length : 0
     return Math.max(terdekat, terdampak, eventTerdampak)
-  }, [detail, eventData?.faskes_terdampak, nttApiData?.pasien_puskesmas, nttApiData?.pasien_rs, isNttEvent])
+  }, [detail, eventData?.faskes_terdampak, nttApiData?.pasien_puskesmas, nttApiData?.pasien_rs, isNttEvent, rsCount, pkmCount])
 
   const terdampakFaskes = useMemo(() => {
     // Only count physical damage reports from RHA
@@ -2003,10 +2014,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
     return {
-      label: isNttEvent ? '7 RSUD & 85 PKM Siaga Melayani' : '100% Beroperasi Siaga Bencana',
+      label: isNttEvent
+        ? `${operasionalFaskes} Faskes Siaga Melayani (${rsCount} RS & ${pkmCount} PKM)`
+        : '100% Beroperasi Siaga Bencana',
       badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-xs font-black'
     }
-  }, [terdampakFaskes, operasionalFaskes, isNttEvent])
+  }, [terdampakFaskes, operasionalFaskes, isNttEvent, rsCount, pkmCount])
 
   const terdampakTrendInfo = useMemo(() => {
     const rawVal = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak)
@@ -2481,35 +2494,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
-      const isNtt = String(eventData.provinsi || '').toLowerCase().includes('nusa tenggara timur') || String(eventData.kabupaten || '').toLowerCase().includes('flores')
-      const defaultMag = isNtt ? '7.7 SR' : '5.0 SR'
-      const defaultDepth = isNtt ? '15 km' : '10 km'
-      const defaultTsunami = isNtt ? (eventData.potensi_tsunami || 'Berpotensi Tsunami (Status Siaga & Waspada)') : 'Tidak Berpotensi Tsunami'
-      const defaultMmi = isNtt ? (eventData.skala_mmi || 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)') : 'V MMI'
-
       const char = seismicResult?.characteristics || {}
 
       const magn = eventData.magnitudo
-        ? `${eventData.magnitudo} SR`
-        : (char.magnitude && char.magnitude !== '-'
-          ? char.magnitude
-          : defaultMag)
+        ? (String(eventData.magnitudo).includes('SR') ? eventData.magnitudo : `${eventData.magnitudo} SR`)
+        : (char.magnitude && char.magnitude !== '-' ? char.magnitude : '5.2 SR')
 
       const depth = eventData.kedalaman
         ? (String(eventData.kedalaman).includes('km') ? eventData.kedalaman : `${eventData.kedalaman} km`)
-        : (char.kedalaman && char.kedalaman !== '-'
-          ? char.kedalaman
-          : defaultDepth)
+        : (char.kedalaman && char.kedalaman !== '-' ? char.kedalaman : '10 km')
 
       const tsunami = eventData.potensi_tsunami || eventData.tsunami
-        || (char.potensiTsunami && char.potensiTsunami !== '-'
-          ? char.potensiTsunami
-          : defaultTsunami)
+        || (char.potensiTsunami && char.potensiTsunami !== '-' ? char.potensiTsunami : 'Tidak Berpotensi Tsunami')
 
       const mmi = eventData.skala_mmi
-        || (char.intensitasMmi && char.intensitasMmi !== '-'
-          ? char.intensitasMmi
-          : defaultMmi)
+        || (char.intensitasMmi && char.intensitasMmi !== '-' ? char.intensitasMmi : 'III MMI (Ruteng-Manggarai)')
 
       return [
         { label: 'Magnitudo Gempa (BMKG)', value: magn, icon: Activity, color: 'text-red-600' },
@@ -3208,14 +3207,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <Share2 className="h-3.5 w-3.5" />
             {shareCopied ? 'Tersalin' : 'Share'}
           </button>
-          <button
-            onClick={handleDownload}
-            className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            title="Unduh ringkasan"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Unduh
-          </button>
+
         </div>
       </div>
 
@@ -3482,16 +3474,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </span>
               </div>
               <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
-                <div>
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{balitaDisplay}</span>
+                <div className="min-w-0 px-0.5">
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Balita</span>
                 </div>
-                <div className="border-x border-slate-300/40 px-0.5">
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{lansiaDisplay}</span>
+                <div className="border-x border-slate-300/40 min-w-0 px-0.5">
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={lansiaDisplay}>{lansiaDisplay}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Lansia</span>
                 </div>
-                <div>
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{bumilDisplay}</span>
+                <div className="min-w-0 px-0.5">
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={bumilDisplay}>{bumilDisplay}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Bumil</span>
                 </div>
               </div>
@@ -3583,8 +3575,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const totalPctFaskes = totalMasterFaskes > 0 ? Math.round((totalTerdampakFaskes / totalMasterFaskes) * 100) : 0;
 
           const faskesNarrative = totalTerdampakFaskes > 0
-            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total fasilitas kesehatan (${totalPctFaskes}%) di ${displayRegion} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title.split(' ')[0]}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
-            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${displayRegion} terpantau berfungsi normal. Belum ada laporan faskes rusak pada Formulir Lengkap.`;
+            ? `Sebanyak ${totalTerdampakFaskes} dari ${totalMasterFaskes} total fasilitas kesehatan (${totalPctFaskes}%) di ${displayRegion} dilaporkan terdampak/rusak pada Formulir Lengkap RHA. Rincian: ${faskesPieBreakdown.map(c => `${c.title}: ${c.terdampak}/${c.totalMaster}`).join(', ')}.`
+            : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${displayRegion} terpantau berfungsi normal. Belum ada laporan kerusakan fisik bangunan faskes pada Formulir Lengkap RHA.`;
 
           const korbanNarrative = totalKorbanLast > 0 || terdampakLast > 0
             ? `Tercatat ${totalKorbanLast.toLocaleString('id-ID')} total korban (${meninggalLast.toLocaleString('id-ID')} meninggal, ${lukaLast.toLocaleString('id-ID')} luka-luka), ${pengungsiLast.toLocaleString('id-ID')} pengungsi, serta ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak.`
@@ -4405,7 +4397,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   ({pos.jml_pengungsi_laki || 0} L / {pos.jml_pengungsi_perempuan || 0} P)
                                 </span>
                               </td>
-                               <td className="py-3 px-3 text-center font-bold text-slate-700">
+                              <td className="py-3 px-3 text-center font-bold text-slate-700">
                                 {pos.jarak !== null && pos.jarak !== undefined ? `${pos.jarak.toFixed(1)} km` : '-'}
                               </td>
                               <td className="py-3 px-3 text-center font-bold text-slate-700">
@@ -4421,20 +4413,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   Buka Maps
                                 </a>
                               </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-slate-400">
-                      <AlertTriangle className="h-6 w-6 mb-2 text-slate-300" />
-                      <p className="text-[11px] font-semibold">Tidak ada pos pengungsian &amp; kesehatan yang diinput untuk kejadian ini.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                    <AlertTriangle className="h-6 w-6 mb-2 text-slate-300" />
+                    <p className="text-[11px] font-semibold">Tidak ada pos pengungsian &amp; kesehatan yang diinput untuk kejadian ini.</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {(matrixTab === 'situasi_faskes' || matrixTab === 'situasi_rs' || matrixTab === 'situasi_puskesmas') && (
               <div className="space-y-4 animate-in fade-in duration-200">
@@ -4444,19 +4436,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <button
                       type="button"
                       onClick={() => setSituasiFaskesSubTab('rs')}
-                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${
-                        situasiFaskesSubTab === 'rs'
+                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${situasiFaskesSubTab === 'rs'
                           ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <Building2 className="h-4 w-4" />
                       Situasi Rumah Sakit
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        situasiFaskesSubTab === 'rs'
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${situasiFaskesSubTab === 'rs'
                           ? 'bg-white/25 text-white'
                           : 'bg-blue-100 text-blue-800'
-                      }`}>
+                        }`}>
                         {pasienRsList.length} RSUD
                       </span>
                     </button>
@@ -4464,19 +4454,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <button
                       type="button"
                       onClick={() => setSituasiFaskesSubTab('puskesmas')}
-                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${
-                        situasiFaskesSubTab === 'puskesmas'
+                      className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${situasiFaskesSubTab === 'puskesmas'
                           ? 'bg-teal-600 text-white border-teal-600 shadow-md scale-[1.02]'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <Stethoscope className="h-4 w-4" />
                       Situasi Puskesmas
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        situasiFaskesSubTab === 'puskesmas'
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${situasiFaskesSubTab === 'puskesmas'
                           ? 'bg-white/25 text-white'
                           : 'bg-teal-100 text-teal-800'
-                      }`}>
+                        }`}>
                         {pasienPkmList.length} PKM
                       </span>
                     </button>
@@ -4588,11 +4576,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         key={kab}
                         type="button"
                         onClick={() => setSituasiKabFilter(kab)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 ${
-                          situasiKabFilter === kab
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 ${situasiKabFilter === kab
                             ? 'bg-slate-900 text-white shadow-2xs'
                             : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                        }`}
+                          }`}
                       >
                         {kab === 'semua' ? 'Semua Kabupaten' : `Kab. ${kab}`}
                       </button>
@@ -4631,9 +4618,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     handleSelectTarget(matched, 'hospital')
                                   }
                                 }}
-                                className={`hover:bg-blue-50/60 transition-colors cursor-pointer ${
-                                  isSelected ? 'bg-blue-50/80 border-l-4 border-blue-600' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
-                                }`}
+                                className={`hover:bg-blue-50/60 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/80 border-l-4 border-blue-600' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+                                  }`}
                               >
                                 <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
                                 <td className="py-2.5 px-3 font-semibold text-slate-600 whitespace-nowrap">{rs.tanggal}</td>
@@ -4783,9 +4769,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       handleSelectTarget(matched, 'clinic')
                                     }
                                   }}
-                                  className={`hover:bg-teal-50/60 transition-colors cursor-pointer ${
-                                    isSelected ? 'bg-teal-50/80 border-l-4 border-teal-600' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
-                                  }`}
+                                  className={`hover:bg-teal-50/60 transition-colors cursor-pointer ${isSelected ? 'bg-teal-50/80 border-l-4 border-teal-600' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'
+                                    }`}
                                 >
                                   <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{idx + 1}</td>
                                   <td className="py-2.5 px-3 font-semibold text-slate-600 whitespace-nowrap">{pkm.tanggal}</td>
@@ -5881,8 +5866,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 {/* Iframe Container */}
                 <div
                   className={`relative w-full rounded-2xl border border-slate-200/90 bg-slate-900/5 shadow-inner overflow-hidden transition-all duration-300 ${isDataStudioFullscreen
-                      ? 'fixed inset-2 md:inset-6 z-50 bg-white p-4 shadow-2xl flex flex-col'
-                      : 'min-h-[850px] h-[900px]'
+                    ? 'fixed inset-2 md:inset-6 z-50 bg-white p-4 shadow-2xl flex flex-col'
+                    : 'min-h-[850px] h-[900px]'
                     }`}
                 >
                   {isDataStudioFullscreen && (
@@ -6409,15 +6394,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             {/* Search & Context Controls */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-xl text-xs font-black border ${
-                  kabupatenMatrixTab === 'korban'
+                <span className={`px-3 py-1 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
                     ? 'bg-rose-50 text-rose-700 border-rose-200'
                     : kabupatenMatrixTab === 'faskes'
                       ? 'bg-teal-50 text-teal-800 border-teal-200'
                       : kabupatenMatrixTab === 'penyakit'
                         ? 'bg-amber-50 text-amber-800 border-amber-200'
                         : 'bg-blue-50 text-blue-800 border-blue-200'
-                }`}>
+                  }`}>
                   {kabupatenMatrixTab === 'korban'
                     ? 'Data Rincian Korban Jiwa'
                     : kabupatenMatrixTab === 'faskes'
@@ -6598,19 +6582,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <td className="py-3 px-4 text-center">
                               <div className="space-y-1">
                                 <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-black border ${String(row.kondisi_bangunan || '').includes('Berat')
-                                    ? 'bg-rose-50 text-rose-800 border-rose-200'
-                                    : String(row.kondisi_bangunan || '').includes('Sedang')
-                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                      : String(row.kondisi_bangunan || '').includes('Ringan')
-                                        ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
-                                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                  : String(row.kondisi_bangunan || '').includes('Sedang')
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : String(row.kondisi_bangunan || '').includes('Ringan')
+                                      ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
+                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                   }`}>
                                   {row.kondisi_bangunan || 'Normal'}
                                 </span>
                                 <div>
                                   <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border ${String(row.status || '').includes('Penuh') || String(row.status || '').includes('Siaga')
-                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                      : 'bg-blue-50 text-blue-800 border-blue-200'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : 'bg-blue-50 text-blue-800 border-blue-200'
                                     }`}>
                                     {row.status || 'Beroperasi'}
                                   </span>
