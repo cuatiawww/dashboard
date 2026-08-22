@@ -28,6 +28,29 @@ import CircleGeom from 'ol/geom/Circle'
 import 'ol/ol.css'
 import { WindLayer } from 'ol-wind'
 
+function maskPersonName(name: string): string {
+  if (!name || name === '-') return '-'
+  const parts = name.split(',')
+  const mainName = parts[0].trim()
+  const degrees = parts.slice(1).join(',').trim()
+
+  const knownPrefixes = new Set(['dr.', 'dr', 'drg.', 'drg', 'ns.', 'ns', 'apt.', 'apt', 'bdn.', 'bdn', 'prof.', 'prof', 'ir.', 'ir', 'drs.', 'drs', 'dra.', 'dra'])
+
+  const words = mainName.split(/\s+/)
+  const maskedWords = words.map(w => {
+    const cleanWord = w.replace(/[^a-zA-Z.]/g, '')
+    if (knownPrefixes.has(cleanWord.toLowerCase())) {
+      return w
+    }
+    if (w.length <= 2) return w[0] + '*'
+    if (w.length === 3) return w[0] + '*' + w[2]
+    return w.substring(0, 1) + '***' + w.substring(w.length - 1)
+  })
+
+  const maskedMain = maskedWords.join(' ')
+  return degrees ? `${maskedMain}, ${degrees}` : maskedMain
+}
+
 function destroyWindLayerSafely(wl: any) {
   if (!wl) return
   try { wl.setVisible?.(false) } catch {}
@@ -3741,7 +3764,7 @@ export default function DisasterMap({
                   : 'Puskesmas / Klinik Siaga'}
               </span>
               <h4 className="mt-1.5 text-sm font-black text-slate-900 leading-snug">
-                {eocPopup.name}
+                {eocPopup.type === 'tck' ? maskPersonName(eocPopup.name) : eocPopup.name}
               </h4>
               {eocPopup.type === 'tck' && eocPopup.details?.golongan && (
                 <div className="flex items-center gap-1.5 mt-1">
@@ -4285,9 +4308,6 @@ export default function DisasterMap({
                         <div key={idx} className="rounded-xl border border-teal-100 bg-teal-50/40 p-2 text-xs">
                           <div className="flex items-start justify-between gap-1">
                             <span className="font-bold text-slate-800 text-[11px] truncate">{f.nama || f.nama_faskes}</span>
-                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white border border-teal-200 text-teal-800 shrink-0">
-                              {f.operasional || f.status || f.kondisi_bangunan || 'Siaga'}
-                            </span>
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
                             {f.kecamatan && <span>Kec. {f.kecamatan}</span>}

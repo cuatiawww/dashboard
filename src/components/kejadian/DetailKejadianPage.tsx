@@ -145,22 +145,25 @@ const formatDateISO = (d: Date): string => {
 
 const maskName = (name: string): string => {
   if (!name || name === '-') return '-'
-  const clean = name.trim()
-  const words = clean.split(/\s+/)
-  return words.map((word, idx) => {
-    const lower = word.toLowerCase()
-    // Abaikan gelar medis/umum di awal agar tidak tersensor
-    if (idx === 0 && (lower === 'dr.' || lower === 'dr' || lower === 'drs' || lower === 'drs.' || lower === 'hj' || lower === 'hj.' || lower === 'drg' || lower === 'drg.')) {
-      return word;
+  const parts = name.split(',')
+  const mainName = parts[0].trim()
+  const degrees = parts.slice(1).join(',').trim()
+
+  const knownPrefixes = new Set(['dr.', 'dr', 'drg.', 'drg', 'ns.', 'ns', 'apt.', 'apt', 'bdn.', 'bdn', 'prof.', 'prof', 'ir.', 'ir', 'drs.', 'drs', 'dra.', 'dra'])
+
+  const words = mainName.split(/\s+/)
+  const maskedWords = words.map(w => {
+    const cleanWord = w.replace(/[^a-zA-Z.]/g, '')
+    if (knownPrefixes.has(cleanWord.toLowerCase())) {
+      return w
     }
-    if (word.length <= 2) {
-      return word;
-    }
-    if (word.length <= 4) {
-      return word.charAt(0) + '***';
-    }
-    return word.substring(0, 2) + '***' + word.substring(word.length - 1);
-  }).join(' ');
+    if (w.length <= 2) return w[0] + '*'
+    if (w.length === 3) return w[0] + '*' + w[2]
+    return w.substring(0, 1) + '***' + w.substring(w.length - 1)
+  })
+
+  const maskedMain = maskedWords.join(' ')
+  return degrees ? `${maskedMain}, ${degrees}` : maskedMain
 }
 
 const formatPerkembangan = (p: any): string => {
@@ -6509,7 +6512,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[12px] font-black text-slate-900 leading-tight truncate">{r.nama_lengkap || 'Tidak Diketahui'}</p>
+                                <p className="text-[12px] font-black text-slate-900 leading-tight truncate">{maskName(r.nama_lengkap || r.nama || 'Tidak Diketahui')}</p>
                                 <p className="text-[10px] text-slate-500 font-semibold truncate">{r.kab_kota || r.provinsi || '-'}</p>
                               </div>
                             </div>
