@@ -204,7 +204,7 @@ export default function TvAnalyticsDeck({
       { nama: 'Manggarai Timur', meninggal: 26, total_luka: 643, pengungsi: 19330, terdampak: 313876, lat: -8.6, lng: 120.6 },
       { nama: 'Manggarai', meninggal: 27, total_luka: 136, pengungsi: 10083, terdampak: 340153, lat: -8.61, lng: 120.46 },
       { nama: 'Ende', meninggal: 2, total_luka: 72, pengungsi: 3144, terdampak: 284165, lat: -8.84, lng: 121.65 },
-      { nama: 'Sikka', meninggal: 6, total_luka: 55, pengungsi: 1972, terdampak: 350715, lat: -8.62, lng: 122.21 },
+      { nama: 'Sikka', meninggal: 6, total_luka: 55, pengungsi: 7104, terdampak: 350715, lat: -8.62, lng: 122.21 },
       { nama: 'Ngada', meninggal: 2, total_luka: 36, pengungsi: 1333, terdampak: 176462, lat: -8.78, lng: 120.96 },
       { nama: 'Nagekeo', meninggal: 13, total_luka: 22, pengungsi: 6221, terdampak: 170669, lat: -8.67, lng: 121.28 },
       { nama: 'Manggarai Barat', meninggal: 2, total_luka: 6, pengungsi: 1603, terdampak: 281692, lat: -8.51, lng: 119.89 },
