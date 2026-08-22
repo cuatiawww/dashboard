@@ -343,6 +343,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [nttApiData, setNttApiData] = useState<{
     pasien_rs: any[]
     pasien_puskesmas: any[]
+    timeline_pasien_rs?: any[]
+    timeline_pasien_puskesmas?: any[]
     situasi_kesehatan: any[]
     timeline_situasi_kesehatan: any[]
     analisa_ringkasan_harian: any[]
@@ -353,6 +355,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }>({
     pasien_rs: [],
     pasien_puskesmas: [],
+    timeline_pasien_rs: [],
+    timeline_pasien_puskesmas: [],
     situasi_kesehatan: [],
     timeline_situasi_kesehatan: [],
     analisa_ringkasan_harian: [],
@@ -371,9 +375,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
     // 1. Ambil data CSV collector & Master Faskes
-    const fetchNtt = async () => {
+    const fetchNtt = async (targetDate?: string) => {
       try {
-        const res = await fetch(`${basePath}/api/ntt-data`, { cache: 'no-store' })
+        const url = targetDate
+          ? `${basePath}/api/ntt-data?tanggal=${targetDate}`
+          : `${basePath}/api/ntt-data`
+        const res = await fetch(url, { cache: 'no-store' })
         if (!res.ok) return
         const json = await res.json()
         if (!active || !json.success || !json.tables) return
@@ -418,6 +425,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         setNttApiData({
           pasien_rs: normalizeRows(json.tables.pasien_rs || json.data?.pasien_rs || []),
           pasien_puskesmas: normalizeRows(json.tables.pasien_puskesmas || json.data?.pasien_puskesmas || []),
+          timeline_pasien_rs: normalizeRows(json.timeline_pasien_rs || json.tables.pasien_rs || []),
+          timeline_pasien_puskesmas: normalizeRows(json.timeline_pasien_puskesmas || json.tables.pasien_puskesmas || []),
           situasi_kesehatan: normalizeRows(json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           timeline_situasi_kesehatan: normalizeRows(json.timeline_situasi_kesehatan || json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           analisa_ringkasan_harian: normalizeRows(json.tables.analisa_ringkasan_harian || json.data?.analisa_ringkasan_harian || []),
@@ -2011,25 +2020,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const pasienRsList = useMemo(() => {
     if (!isNttEvent) return []
-    const seen = new Set<string>()
-    return (nttApiData.pasien_rs || []).filter((r: any) => {
-      const k = (r.kode_sarana && r.kode_sarana !== '-') ? r.kode_sarana : (r.nama_rs || r.nama || '').toLowerCase().trim()
-      if (!k || seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
-  }, [isNttEvent, nttApiData.pasien_rs])
+    const list = (nttApiData.timeline_pasien_rs && nttApiData.timeline_pasien_rs.length > 0)
+      ? nttApiData.timeline_pasien_rs
+      : (nttApiData.pasien_rs || [])
+    return [...list].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
+  }, [isNttEvent, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs])
 
   const pasienPkmList = useMemo(() => {
     if (!isNttEvent) return []
-    const seen = new Set<string>()
-    return (nttApiData.pasien_puskesmas || []).filter((p: any) => {
-      const k = (p.kode_sarana && p.kode_sarana !== '-') ? p.kode_sarana : (p.nama_puskesmas || p.nama || '').toLowerCase().trim()
-      if (!k || seen.has(k)) return false
-      seen.add(k)
-      return true
-    })
-  }, [isNttEvent, nttApiData.pasien_puskesmas])
+    const list = (nttApiData.timeline_pasien_puskesmas && nttApiData.timeline_pasien_puskesmas.length > 0)
+      ? nttApiData.timeline_pasien_puskesmas
+      : (nttApiData.pasien_puskesmas || [])
+    return [...list].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
+  }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas])
 
   const rsKabupatenOptions = useMemo(() => {
     const kabs = Array.from(new Set(pasienRsList.map(r => r.kabupaten).filter(Boolean)))

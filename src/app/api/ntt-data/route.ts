@@ -239,6 +239,8 @@ export async function GET(request: NextRequest) {
     const targetDate = requestedDate || legacyDates.at(-1) || ''
     let allSituasiRows: Record<string, string>[] = []
     let allAnalisaRows: Record<string, string>[] = []
+    let allPasienRsRows: Record<string, string>[] = []
+    let allPasienPkmRows: Record<string, string>[] = []
 
     for (const tableName of tableNames) {
       if (tableName === 'master_faskes') continue
@@ -251,6 +253,8 @@ export async function GET(request: NextRequest) {
         const allRows = await parseCsv(filePath)
         if (tableName === 'situasi_kesehatan') allSituasiRows = allRows
         if (tableName === 'analisa_ringkasan_harian') allAnalisaRows = allRows
+        if (tableName === 'pasien_rs') allPasienRsRows = allRows
+        if (tableName === 'pasien_puskesmas') allPasienPkmRows = allRows
         // Filter rows by date then normalize headers to snake_case
         const filtered = targetDate ? filterByDate(allRows, targetDate) : allRows
         tables[tableName] = normalizeTableRows(filtered)
@@ -283,6 +287,8 @@ export async function GET(request: NextRequest) {
         dates_available: legacyDates,
         timeline_situasi_kesehatan: normalizeTableRows(allSituasiRows),
         timeline_analisa_ringkasan: normalizeTableRows(allAnalisaRows),
+        timeline_pasien_rs: enrichNttFaskesTable(normalizeTableRows(allPasienRsRows), 'rs'),
+        timeline_pasien_puskesmas: enrichNttFaskesTable(normalizeTableRows(allPasienPkmRows), 'puskesmas'),
         updated_at: latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString(),
         source_url: 'https://ntt.tanggap-bencana.go.id/',
         tables,
