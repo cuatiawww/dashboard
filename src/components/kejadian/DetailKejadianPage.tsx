@@ -2735,11 +2735,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData, parsedTma, parsedLuas, parsedLama, soilSaturation, eventDayIspu, eventDayIspuCategory, realtimeWind, totalRainfall, peakRainfall, bmkgGempa, seismicResult, petaBencanaData, floodHydrology, detail?.lokasi])
 
   const eocNarrative = useMemo(() => {
+    if (isNttEvent) {
+      return 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.'
+    }
     if (detail?.buletin_eoc) return detail.buletin_eoc;
     if (eventData.buletin_eoc) return eventData.buletin_eoc;
     if (kronologi) return kronologi;
     return '';
-  }, [detail?.buletin_eoc, eventData.buletin_eoc, kronologi])
+  }, [detail?.buletin_eoc, eventData.buletin_eoc, kronologi, isNttEvent])
 
   const bmkgWaktuDisplay = useMemo(() => {
     if (eventData.waktu_kejadian_bmkg) {

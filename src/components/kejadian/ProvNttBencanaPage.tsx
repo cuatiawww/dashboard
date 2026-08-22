@@ -6,34 +6,36 @@ import DetailKejadianPage from './DetailKejadianPage'
 import { useHeaderStore } from '@/lib/headerStore'
 
 // Data Dasar Struktur Gempa NTT (Sinkron dengan BMKG & API Collector /api/ntt-data)
+const NTT_KRONOLOGIS_TEXT = 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.'
+
 const BASE_NTT_GEMPA_EVENT = {
   id: 'EVT-NTT-2026-0819-01',
   kode_trans: 'EVT-NTT-2026-0819-01',
-  nama: 'Gempa Bumi M 5.2 - Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai',
+  nama: 'Gempa Bumi M 7.7 Laut Flores - 30 km Timur Laut Mbay-Nagekeo-NTT',
   nama_bencana: 'Gempa Bumi',
   jenis_bencana: 'Gempa Bumi',
   provinsi: 'NUSA TENGGARA TIMUR',
   kabupaten: 'FLORES TIMUR',
   kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA',
+  waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
   tgl_kejadian_riil: '2026-08-15 09:18:22',
   tgl_kejadian: '2026-08-15 09:18:22',
   tgl_laporan: '22 Agustus 2026, 01:47 WIB',
   updated_at: '2026-08-22 01:47:00',
-  latitude: -8.03,
-  longitude: 120.68,
+  latitude: -8.3421,
+  longitude: 122.9814,
   status_bencana: 'Tanggap Darurat',
-  keterangan: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-  kronologis: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-  deskripsi: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-  buletin_eoc: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+  keterangan: NTT_KRONOLOGIS_TEXT,
+  kronologis: NTT_KRONOLOGIS_TEXT,
+  deskripsi: NTT_KRONOLOGIS_TEXT,
+  buletin_eoc: NTT_KRONOLOGIS_TEXT,
   
   // Parameter Seismisitas BMKG
-  magnitudo: 5.2,
-  kedalaman: '10 km',
-  potensi_tsunami: 'Tidak Berpotensi Tsunami',
-  tsunami: 'Tidak Berpotensi Tsunami',
-  skala_mmi: 'III MMI (Ruteng-Manggarai)',
+  magnitudo: 7.7,
+  kedalaman: '15 km',
+  potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+  tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+  skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
 
   // Data Korban Ringkasan (Sinkron dengan collector)
   meninggal: 78,
@@ -53,24 +55,24 @@ const BASE_NTT_GEMPA_EVENT = {
     provinsi: 'NUSA TENGGARA TIMUR',
     kabupaten: 'FLORES TIMUR',
     kecamatan: 'Mbay, Larantuka, Tanjung Bunga, Ile Mandiri, Adonara, Borong, Ruteng, Bajawa, Ende',
-    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA',
+    waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
     tgl_kejadian_riil: '2026-08-15 09:18:22',
     tgl_kejadian: '2026-08-15 09:18:22',
     tgl_laporan: '22 Agustus 2026, 01:47 WIB',
     updated_at: '2026-08-22 01:47:00',
-    latitude: -8.03,
-    longitude: 120.68,
-    deskripsi: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-    kronologis: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-    keterangan: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
-    buletin_eoc: 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.',
+    latitude: -8.3421,
+    longitude: 122.9814,
+    deskripsi: NTT_KRONOLOGIS_TEXT,
+    kronologis: NTT_KRONOLOGIS_TEXT,
+    keterangan: NTT_KRONOLOGIS_TEXT,
+    buletin_eoc: NTT_KRONOLOGIS_TEXT,
     
     // Parameter Seismisitas
-    magnitudo: 5.2,
-    kedalaman: '10 km',
-    potensi_tsunami: 'Tidak Berpotensi Tsunami',
-    tsunami: 'Tidak Berpotensi Tsunami',
-    skala_mmi: 'III MMI (Ruteng-Manggarai)',
+    magnitudo: 7.7,
+    kedalaman: '15 km',
+    potensi_tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+    tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
+    skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
     status_tanggap_darurat: 'Tanggap Darurat (Level Provinsi & Nasional)',
 
     korban_meninggal: 78,
@@ -124,7 +126,7 @@ export default function ProvNttBencanaPage() {
     }
   }, [setHeader, resetHeader])
 
-  // 1. Ambil Parameter Seismisitas Real-time dari BMKG API
+  // 1. Inisialisasi data gempa NTT
   useEffect(() => {
     let active = true
     const fetchBmkg = async () => {
@@ -141,49 +143,24 @@ export default function ProvNttBencanaPage() {
           json.data.autogempa,
         ].filter(Boolean)
 
-        // Cari gempa terdekat / terkait wilayah NTT (Manggarai, Ruteng, Sikka, Mbay, Nagekeo, Flores, NTT)
         const nttKeywords = ['manggarai', 'ruteng', 'sikka', 'mbay', 'nagekeo', 'flores', 'ende', 'ntt', 'kupang', 'alor']
         const matched = allGempa.find((g: any) => {
           const text = `${g.Wilayah || ''} ${g.Dirasakan || ''} ${g.region || ''}`.toLowerCase()
           return nttKeywords.some(kw => text.includes(kw))
-        }) || json.data.autogempa || allGempa[0]
+        })
 
-        if (matched) {
-          const coords = matched.Coordinates ? matched.Coordinates.split(',') : []
-          const lat = coords[0] ? parseFloat(coords[0].trim()) : -8.03
-          const lng = coords[1] ? parseFloat(coords[1].trim()) : 120.68
-          const mag = parseFloat(matched.Magnitude) || 5.2
-          const depth = matched.Kedalaman || '10 km'
-          const mmi = matched.Dirasakan ? `${matched.Dirasakan} MMI` : 'III MMI (Ruteng-Manggarai)'
-          const potensi = matched.Potensi || 'Tidak Berpotensi Tsunami'
-          const wilayahStr = matched.Wilayah || 'Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai'
-          const kronologisText = 'Pusat Krisis Kemenkes memantau dampak gempa bumi M 5.2 (Pusat gempa berada di laut 68 km timur laut Ruteng-Manggarai). Tidak berpotensi tsunami. RSUD rujukan dan seluruh puskesmas di wilayah terdampak disiagakan.'
-
+        if (matched && active) {
+          // Tetap pertahankan kronologis resmi yang diinput oleh EOC Kemenkes
           setEventData((prev: any) => ({
             ...prev,
-            nama: `Gempa Bumi M ${mag} - ${wilayahStr}`,
-            magnitudo: mag,
-            kedalaman: depth,
-            potensi_tsunami: potensi,
-            tsunami: potensi,
-            skala_mmi: mmi,
-            latitude: lat,
-            longitude: lng,
-            keterangan: kronologisText,
-            kronologis: kronologisText,
-            buletin_eoc: kronologisText,
+            keterangan: NTT_KRONOLOGIS_TEXT,
+            kronologis: NTT_KRONOLOGIS_TEXT,
+            buletin_eoc: NTT_KRONOLOGIS_TEXT,
             detailData: {
               ...prev.detailData,
-              magnitudo: mag,
-              kedalaman: depth,
-              potensi_tsunami: potensi,
-              tsunami: potensi,
-              skala_mmi: mmi,
-              latitude: lat,
-              longitude: lng,
-              deskripsi: kronologisText,
-              kronologis: kronologisText,
-              buletin_eoc: kronologisText,
+              deskripsi: NTT_KRONOLOGIS_TEXT,
+              kronologis: NTT_KRONOLOGIS_TEXT,
+              buletin_eoc: NTT_KRONOLOGIS_TEXT,
             }
           }))
         }
