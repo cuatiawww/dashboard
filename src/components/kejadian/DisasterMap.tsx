@@ -381,6 +381,34 @@ const geojsonCache: Record<string, any> = {}
 const NEXT_BASE_PATH: string = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 // ─────────────────────────────────────────────
+// Helper: Categorize a faskes item into rs/puskesmas/klinik/pustu
+// Pure function — defined at module level for stable reference in useMemo
+// ─────────────────────────────────────────────
+function categorizeFaskes(f: any): 'rs' | 'puskesmas' | 'klinik' | 'pustu' {
+  const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
+  const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
+  // Check RS first — use specific terms to avoid false positives from bare 'rs' substring
+  if (
+    jStr === 'rumah sakit' ||
+    jStr.includes('rumah sakit') ||
+    jStr.startsWith('rs') ||
+    jStr === 'rsia' || jStr === 'rsud' || jStr === 'rsu' || jStr === 'rstp' || jStr === 'rsk' ||
+    nStr.startsWith('rsud ') || nStr.startsWith('rs ') || nStr.includes(' rsud') ||
+    nStr.includes('rumah sakit')
+  ) return 'rs'
+  // Pustu / Pembantu
+  if (
+    jStr.includes('pustu') || jStr.includes('pembantu') ||
+    jStr.includes('poskesdes') || jStr.includes('polindes') || jStr.includes('posyandu') ||
+    nStr.includes('pustu') || nStr.includes('pembantu')
+  ) return 'pustu'
+  // Klinik
+  if (jStr.includes('klinik') || nStr.includes('klinik') || jStr.includes('balai pengobatan')) return 'klinik'
+  // Default: Puskesmas
+  return 'puskesmas'
+}
+
+// ─────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────
 
@@ -526,14 +554,13 @@ export default function DisasterMap({
     const list = Array.isArray(faskesList) ? faskesList : []
     let rs = 0, puskesmas = 0, klinik = 0, pustu = 0, siaga = 0
     list.forEach((f: any) => {
-      const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
-      const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
       const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
       if (hasTriage) siaga++
 
-      if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) rs++
-      else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu')) pustu++
-      else if (jStr.includes('klinik') || nStr.includes('klinik')) klinik++
+      const cat = categorizeFaskes(f)
+      if (cat === 'rs') rs++
+      else if (cat === 'pustu') pustu++
+      else if (cat === 'klinik') klinik++
       else puskesmas++
     })
     return { rs, puskesmas, klinik, pustu, siaga, total: list.length }
@@ -2246,19 +2273,8 @@ export default function DisasterMap({
             }
           }
 
-          const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
-          const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
-
-          let category: 'rs' | 'puskesmas' | 'klinik' | 'pustu' = 'puskesmas'
-          if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) {
-            category = 'rs'
-          } else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu') || jStr.includes('poskesdes') || jStr.includes('polindes') || jStr.includes('posyandu')) {
-            category = 'pustu'
-          } else if (jStr.includes('klinik') || nStr.includes('klinik') || jStr.includes('balai pengobatan')) {
-            category = 'klinik'
-          } else {
-            category = 'puskesmas'
-          }
+          // Categorize using shared helper for consistency with count display
+          const category = categorizeFaskes(f)
 
           // Filter based on checkboxes
           if (category === 'rs' && !faskesTypeFilters.rs) return
@@ -2319,25 +2335,18 @@ export default function DisasterMap({
             }
           }
 
-          const jStr = String(f.jenis || f.jenis_faskes || f.subjenis || '').toLowerCase()
-          const nStr = String(f.nama || f.nama_faskes || '').toLowerCase()
-
-          let category: 'rs' | 'puskesmas' | 'klinik' | 'pustu' = 'puskesmas'
-          if (jStr.includes('rumah sakit') || jStr.includes('rs') || nStr.startsWith('rs') || nStr.includes('rumah sakit') || nStr.includes('rsud')) {
-            category = 'rs'
-          } else if (jStr.includes('pustu') || jStr.includes('pembantu') || nStr.includes('pustu') || jStr.includes('poskesdes') || jStr.includes('polindes') || jStr.includes('posyandu')) {
-            category = 'pustu'
-          } else if (jStr.includes('klinik') || nStr.includes('klinik') || jStr.includes('balai pengobatan')) {
-            category = 'klinik'
-          } else {
-            category = 'puskesmas'
-          }
+          // Categorize using shared helper for consistency
+          const category = categorizeFaskes(f)
 
           // Filter based on checkboxes
           if (category === 'rs' && !faskesTypeFilters.rs) return
           if (category === 'puskesmas' && !faskesTypeFilters.puskesmas) return
           if (category === 'klinik' && !faskesTypeFilters.klinik) return
           if (category === 'pustu' && !faskesTypeFilters.pustu) return
+
+          // Filter for Siaga only — juga berlaku untuk faskes terdampak
+          const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
+          if (faskesTypeFilters.siagaOnly && !hasTriage) return
 
           const hasBerat = Number(f.rusak_berat || 0) > 0
           const hasSedang = Number(f.rusak_sedang || 0) > 0
@@ -2526,7 +2535,7 @@ export default function DisasterMap({
         }
       }
     }
-  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesRusakList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data

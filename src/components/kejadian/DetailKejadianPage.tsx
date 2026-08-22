@@ -4450,6 +4450,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </span>
               )}
             </button>
+            {/* Tab Pos Pengungsian & Kesehatan - Hidden as requested */}
+            {/* 
             <button
               type="button"
               onClick={() => setMatrixTab('pengungsian')}
@@ -4460,6 +4462,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             >
               Pos Pengungsian &amp; Kesehatan
             </button>
+            */}
 
             {isNttEvent && (
               <button
@@ -4488,6 +4491,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             >
               Status Fasilitas Kesehatan
             </button>
+
+            {/* Tab Sumber Daya Kesehatan, Sanitasi Kesling, dan Logistik Kesehatan - Hidden as requested */}
+            {/* 
             <button
               type="button"
               onClick={() => setMatrixTab('sumber_daya')}
@@ -4518,6 +4524,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             >
               Logistik Kesehatan
             </button>
+            */}
             <button
               type="button"
               onClick={() => setMatrixTab('tck')}
