@@ -7318,7 +7318,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         )
                         .map((row: any, idx: number) => {
                           const totalPasien = Number(row.total_pasien || (Number(row.triase_merah || 0) + Number(row.triase_kuning || 0) + Number(row.triase_hijau || 0) + Number(row.triase_hitam || 0)) || 0)
-                          const hasTriage = totalPasien > 0 || row.has_collector_data
+                          const hasTriage = totalPasien > 0
 
                           return (
                             <tr key={idx} className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
