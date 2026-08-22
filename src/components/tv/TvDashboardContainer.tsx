@@ -11,7 +11,6 @@ import TvLayerServicesDrawer, { TvLayerState } from './TvLayerServicesDrawer'
 import TvBottomTicker from './TvBottomTicker'
 import TvSpotlightCard, { SpotlightItem, RouteInfo } from './TvSpotlightCard'
 import type { TvMapEngineRef, MarkerData, FaskesItem, PoskoItem, EarthquakePoint } from './TvMapEngine'
-import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
 // Dynamically import TvMapEngine to prevent SSR issues
 const TvMapEngine = dynamic(() => import('./TvMapEngine'), {
@@ -199,7 +198,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
           }
         }
 
-        // Fallback to local dataset
+        // If no collector data received from API
         if (!nttData) {
           try {
             const nttResScraped = await fetch('/api/gempa-ntt-scraped', { cache: 'no-store' })
@@ -209,12 +208,12 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
                 nttData = nttJsonScraped.data
               }
             }
-          } catch {
-            nttData = gempaNttData
+          } catch (err) {
+            console.warn('[TV NTT] Fallback fetch failed:', err)
           }
         }
 
-        const situasiList = Array.isArray(nttData?.situasi_kesehatan) ? nttData.situasi_kesehatan : (gempaNttData as any).situasi_kesehatan || []
+        const situasiList = Array.isArray(nttData?.situasi_kesehatan) ? nttData.situasi_kesehatan : []
         let sumMeninggal = 0
         let sumLuka = 0
         let sumPengungsi = 0
@@ -519,13 +518,12 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         const totalTriaseKuning = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_kuning || 0), 0)
         const totalTriaseHijau = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_hijau || 0), 0)
 
-        setPenyakitList([
-          { nama_penyakit: 'Triase Merah (Gawat Darurat)', count: totalTriaseMerah || 24 },
-          { nama_penyakit: 'Triase Kuning (Rawat Intensif)', count: totalTriaseKuning || 82 },
-          { nama_penyakit: 'Triase Hijau (Rawat Jalan)', count: totalTriaseHijau || 156 },
-          { nama_penyakit: 'ISPA & Debu Reruntuhan', count: 145 },
-          { nama_penyakit: 'Trauma Fisik & Luka Robek', count: 98 },
-        ])
+        const triaseItems: any[] = []
+        if (totalTriaseMerah > 0) triaseItems.push({ nama_penyakit: 'Triase Merah (Gawat Darurat)', count: totalTriaseMerah })
+        if (totalTriaseKuning > 0) triaseItems.push({ nama_penyakit: 'Triase Kuning (Rawat Intensif)', count: totalTriaseKuning })
+        if (totalTriaseHijau > 0) triaseItems.push({ nama_penyakit: 'Triase Hijau (Rawat Jalan)', count: totalTriaseHijau })
+
+        setPenyakitList(triaseItems)
 
         // ── 5. SEISMIC AFTERSHOCKS POINTS ──
         let eqPoints: EarthquakePoint[] = []

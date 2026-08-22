@@ -179,13 +179,7 @@ export default function TvAnalyticsDeck({
       })
     }
 
-    return [
-      { nama: 'Triase Merah (Gawat Darurat)', kasus: 24, persen: 18, color: '#ef4444', badgeBg: 'bg-rose-50 text-rose-700 border-rose-200', kategori: 'PRIORITAS 1' },
-      { nama: 'Triase Kuning (Perawatan Intensif)', kasus: 82, persen: 42, color: '#f59e0b', badgeBg: 'bg-amber-50 text-amber-700 border-amber-200', kategori: 'PRIORITAS 2' },
-      { nama: 'Triase Hijau (Rawat Jalan)', kasus: 156, persen: 65, color: '#047D78', badgeBg: 'bg-teal-50 text-[#047D78] border-teal-200', kategori: 'RAWAT JALAN' },
-      { nama: 'ISPA / Gangguan Pernafasan', kasus: 145, persen: 58, color: '#047D78', badgeBg: 'bg-teal-50 text-[#047D78] border-teal-200', kategori: 'SURVEILANS' },
-      { nama: 'Trauma Fisik / Fraktur', kasus: 68, persen: 32, color: '#ef4444', badgeBg: 'bg-rose-50 text-rose-700 border-rose-200', kategori: 'BEDAH' },
-    ]
+    return []
   }, [penyakitList])
 
   // 4. Sebaran Kabupaten (Normalized from kabupatenDetailList or wilayahList)
@@ -442,33 +436,40 @@ export default function TvAnalyticsDeck({
               </div>
 
               <div className="space-y-2">
-                {penyakitTrend.map((penyakit, idx) => (
-                  <div key={idx} className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-bold text-slate-800 truncate text-[11px]">
-                        {penyakit.nama}
-                      </span>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[8px] font-black px-1.5 py-0.2 rounded border ${penyakit.badgeBg}`}>
-                          {penyakit.kategori}
+                {penyakitTrend.length > 0 ? (
+                  penyakitTrend.map((penyakit, idx) => (
+                    <div key={idx} className="p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold text-slate-800 truncate text-[11px]">
+                          {penyakit.nama}
                         </span>
-                        <span className="font-mono font-black text-slate-900 text-[11px]">
-                          {penyakit.kasus.toLocaleString('id-ID')} Pasien
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className={`text-[8px] font-black px-1.5 py-0.2 rounded border ${penyakit.badgeBg}`}>
+                            {penyakit.kategori}
+                          </span>
+                          <span className="font-mono font-black text-slate-900 text-[11px]">
+                            {penyakit.kasus.toLocaleString('id-ID')} Pasien
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${penyakit.persen}%`,
+                            backgroundColor: penyakit.color,
+                          }}
+                        />
                       </div>
                     </div>
-
-                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${penyakit.persen}%`,
-                          backgroundColor: penyakit.color,
-                        }}
-                      />
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center">
+                    <span className="text-[11px] font-bold text-slate-600 block">Surveilans Penyakit: #N/A</span>
+                    <span className="text-[9px] text-slate-400">Belum ada laporan data kasus penyakit KLB</span>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 

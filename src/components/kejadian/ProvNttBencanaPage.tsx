@@ -706,26 +706,49 @@ export default function ProvNttBencanaPage() {
           let tot: any = {}
           let tgl = json.tanggal || targetDate || ''
 
-          if (json.tables?.analisa_ringkasan_harian) {
+          if (json.tables?.situasi_kesehatan && Array.isArray(json.tables.situasi_kesehatan) && json.tables.situasi_kesehatan.length > 0) {
+            const rows = json.tables.situasi_kesehatan
+            let sm = 0, slb = 0, slr = 0, sp = 0, stp = 0, sterdampak = 0
+            rows.forEach((r: any) => {
+              sm += Number(r.meninggal || r.korban_meninggal || 0)
+              slb += Number(r.luka_berat || r.korban_luka_berat || 0)
+              slr += Number(r.luka_ringan || r.korban_luka_ringan || 0)
+              sp += Number(r.pengungsi || r.jumlah_pengungsi || 0)
+              stp += Number(r.titik_pengungsian || 0)
+              sterdampak += Number(r.populasi_terdampak || r.penduduk_terdampak || 0)
+            })
+            tot = {
+              meninggal: sm,
+              luka_berat: slb,
+              luka_ringan: slr,
+              total_luka: slb + slr,
+              pengungsi: sp,
+              titik_pengungsian: stp,
+              populasi_terdampak: sterdampak
+            }
+          } else if (json.tables?.analisa_ringkasan_harian) {
             const rows = json.tables.analisa_ringkasan_harian
             const lastRow = rows[rows.length - 1] || {}
             tot = {
-              meninggal: Number(lastRow.meninggal || lastRow.korban_meninggal || 0) || 78,
-              luka_berat: Number(lastRow.luka_berat || lastRow.korban_luka_berat || 0) || 142,
-              luka_ringan: Number(lastRow.luka_ringan || lastRow.korban_luka_ringan || 0) || 518,
-              total_luka: Number(lastRow.total_luka || lastRow.luka || 0) || 660,
-              pengungsi: Number(lastRow.pengungsi || lastRow.jumlah_pengungsi || 0) || 37606,
-              titik_pengungsian: Number(lastRow.titik_pengungsian || 0) || 28,
-              populasi_terdampak: Number(lastRow.populasi_terdampak || lastRow.penduduk_terdampak || 0) || 124500
+              meninggal: Number(lastRow.meninggal || lastRow.korban_meninggal || 0),
+              luka_berat: Number(lastRow.luka_berat || lastRow.korban_luka_berat || 0),
+              luka_ringan: Number(lastRow.luka_ringan || lastRow.korban_luka_ringan || 0),
+              total_luka: Number(lastRow.total_luka || lastRow.luka || 0),
+              pengungsi: Number(lastRow.pengungsi || lastRow.jumlah_pengungsi || 0),
+              titik_pengungsian: Number(lastRow.titik_pengungsian || 0),
+              populasi_terdampak: Number(lastRow.populasi_terdampak || lastRow.penduduk_terdampak || 0)
             }
           } else if (json.data) {
             tot = json.data.total_ringkasan || json.data
             tgl = json.data.tanggal_update || tgl
           }
           
+          const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:20:14` : null)
           setEventData((prev: any) => ({
             ...prev,
             tgl_kejadian: tgl ? `${tgl} 10:20:14` : prev.tgl_kejadian,
+            tgl_laporan: updateTimestamp || prev.tgl_laporan,
+            updated_at: updateTimestamp,
             meninggal: tot.meninggal ?? prev.meninggal,
             luka_berat: tot.luka_berat ?? prev.luka_berat,
             luka_ringan: tot.luka_ringan ?? prev.luka_ringan,
@@ -736,6 +759,8 @@ export default function ProvNttBencanaPage() {
             detailData: {
               ...prev.detailData,
               tgl_kejadian: tgl ? `${tgl} 10:20:14` : prev.detailData.tgl_kejadian,
+              tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
+              updated_at: updateTimestamp,
               korban_meninggal: tot.meninggal ?? prev.detailData.korban_meninggal,
               korban_luka_berat: tot.luka_berat ?? prev.detailData.korban_luka_berat,
               korban_luka_ringan: tot.luka_ringan ?? prev.detailData.korban_luka_ringan,
@@ -761,6 +786,10 @@ export default function ProvNttBencanaPage() {
 
   useEffect(() => {
     loadCollectorData(selectedDate)
+    const interval = setInterval(() => {
+      loadCollectorData(selectedDate)
+    }, 30 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [selectedDate])
 
   return (

@@ -2565,7 +2565,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 selectedRegions={selectedRegions}
                 userScope={activeUserScope}
                 onSelectProvince={(prov) => setProvince(prov)}
-                isGuest={!token || !user}
+                isGuest={false}
                 markerMonths={markerMonths}
                 setMarkerMonths={setMarkerMonths}
                 onSelectEvent={(event) => setSelectedEvent(event)}

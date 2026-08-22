@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDisasterName } from '@/lib/utils/disasterUtils'
-import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity, RotateCcw, Wind } from 'lucide-react'
+import { Loader2, Settings, X, MapPin, Eye, EyeOff, Globe, Layers, Info, Clock, AlertTriangle, Compass, Activity, RotateCcw, Wind, Building2, Tent } from 'lucide-react'
 import { useAuthStore } from '@/lib/authStore'
 import gempaNttData from '../../../public/data/gempa-ntt/gempa_ntt_data.json'
 
@@ -153,10 +153,16 @@ interface MarkerData {
   lng: number
   provinsi?: string
   kabupaten?: string
+  nama_kab?: string
   nama_desa?: string
   kecamatan?: string
   topografi?: string
   total_korban: number
+  meninggal?: number
+  luka_berat?: number
+  luka_ringan?: number
+  pengungsi?: number
+  terdampak?: number
   icon_file?: string
   jml_titik_lokasi?: number
 }
@@ -451,6 +457,29 @@ export default function DisasterMap({
   const userScopeRef = useRef(userScope)
   const markersRef = useRef(markers)
   const onSelectRouteTargetRef = useRef(onSelectRouteTarget)
+  const faskesListRef = useRef(faskesList)
+  const poskoListRef = useRef(poskoList)
+  const faskesRusakListRef = useRef(faskesRusakList)
+  const lokasiListRef = useRef(lokasiList)
+  const nttSituasiRef = useRef<any[]>([])
+
+  useEffect(() => {
+    let active = true
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+    fetch(`${basePath}/api/ntt-data`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return
+        if (json.success) {
+          const list = json.tables?.situasi_kesehatan || json.data?.situasi_kesehatan || []
+          nttSituasiRef.current = Array.isArray(list) ? list : []
+        }
+      })
+      .catch((e) => console.warn('[DisasterMap] NTT Data fetch:', e))
+    return () => {
+      active = false
+    }
+  }, [])
 
   // ── UI state ──
   const [isLoading, setIsLoading] = useState(false)
@@ -536,8 +565,6 @@ export default function DisasterMap({
     }
   }, [disasterCategory, disasterType])
 
-
-
   const [markerPopup, setMarkerPopup] = useState<MarkerPopupState | null>(null)
   const [eocPopup, setEocPopup] = useState<EocPopupState | null>(null)
 
@@ -587,7 +614,6 @@ export default function DisasterMap({
   const [excludedCategories, setExcludedCategories] = useState<Set<string>>(new Set())
   const [excludedTypes, setExcludedTypes] = useState<Set<string>>(new Set())
 
-
   const toggleCategory = (catId: string) => {
     setExcludedCategories((prev) => {
       const next = new Set(prev)
@@ -612,16 +638,29 @@ export default function DisasterMap({
     })
   }
 
-  // Polygon popup state (existing click-on-province/kabupaten popup)
+  // Polygon popup state (province / kabupaten click popup)
   const [activePopup, setActivePopup] = useState<{
     type: 'provinsi' | 'kabupaten'
     name: string
+    featureExtent?: any
     warnings?: any[]
     stats: {
       totalEvents: number
       totalKorban: number
-      breakdown: { name: string; count: number; totalKorban: number }[]
+      meninggal?: number
+      lukaBerat?: number
+      lukaRingan?: number
+      totalLuka?: number
+      pengungsi?: number
+      titikPosko?: number
+      populasiTerdampak?: number
+      faskesCount?: number
+      poskoCount?: number
+      breakdown: { name: string; count: number; totalKorban?: number }[]
       eventsList?: MarkerData[]
+      faskesList?: any[]
+      poskoList?: any[]
+      lokasiList?: any[]
     }
   } | null>(null)
 
@@ -674,7 +713,11 @@ export default function DisasterMap({
     userScopeRef.current = userScope
     markersRef.current = markers
     onSelectRouteTargetRef.current = onSelectRouteTarget
-  }, [onSelectProvince, userScope, markers, onSelectRouteTarget])
+    faskesListRef.current = faskesList
+    poskoListRef.current = poskoList
+    faskesRusakListRef.current = faskesRusakList
+    lokasiListRef.current = lokasiList
+  }, [onSelectProvince, userScope, markers, onSelectRouteTarget, faskesList, poskoList, faskesRusakList, lokasiList])
 
   // Dismiss popup on scope changes
   useEffect(() => {
@@ -1069,6 +1112,12 @@ export default function DisasterMap({
 
         const provCleaned = cleanKey(provName)
         const provMarkers = markersRef.current.filter((m) => cleanKey(m.provinsi) === provCleaned)
+        const extent = polyFeature.getGeometry()?.getExtent()
+
+        // Smoothly zoom/fit to the clicked province
+        if (extent) {
+          map.getView().fit(extent, { padding: [50, 50, 50, 50], duration: 600 })
+        }
 
         // Group by kabupaten
         const kabMap = new Map<string, { count: number; totalKorban: number }>()
@@ -1087,6 +1136,7 @@ export default function DisasterMap({
         setActivePopup({
           type: 'provinsi',
           name: provName,
+          featureExtent: extent,
           warnings: warningsByProvince.get(provCleaned) || [],
           stats: {
             totalEvents: provMarkers.length,
@@ -1100,16 +1150,71 @@ export default function DisasterMap({
         if (!kabName) return
 
         const kabCleaned = cleanKey(kabName)
-        const kabMarkers = markersRef.current.filter((m) => cleanKey(m.kabupaten) === kabCleaned)
+        const extent = polyFeature.getGeometry()?.getExtent()
+
+        // Auto zoom/focus smoothly to clicked kabupaten
+        if (extent) {
+          map.getView().fit(extent, { padding: [60, 60, 60, 60], duration: 600 })
+        }
+
+        const kabMarkers = markersRef.current.filter((m) => cleanKey(m.kabupaten) === kabCleaned || cleanKey(m.nama_kab) === kabCleaned)
+
+        const allFaskes = [...(faskesListRef.current || []), ...(faskesRusakListRef.current || [])]
+        const kabFaskes = allFaskes.filter((f: any) => {
+          const k1 = cleanKey(f.kabupaten)
+          const k2 = cleanKey(f.kab_kota)
+          const k3 = cleanKey(f.alamat)
+          const k4 = cleanKey(f.nama || f.nama_faskes)
+          const k5 = cleanKey(f.desa)
+          return k1 === kabCleaned || k2 === kabCleaned || k3.includes(kabCleaned) || k4.includes(kabCleaned) || k5.includes(kabCleaned)
+        })
+
+        const allPosko = poskoListRef.current || []
+        const kabPosko = allPosko.filter((p: any) => {
+          const k1 = cleanKey(p.kabupaten)
+          const k2 = cleanKey(p.lokasi_spesifik)
+          const k3 = cleanKey(p.nama || p.nama_pos)
+          return k1 === kabCleaned || k2.includes(kabCleaned) || k3.includes(kabCleaned)
+        })
+
+        const allLokasi = lokasiListRef.current || []
+        const kabLokasi = allLokasi.filter((l: any) => cleanKey(l.kabupaten) === kabCleaned)
+
+        // NTT Collector Dataset lookup
+        let nttData: any = null
+        if (Array.isArray(nttSituasiRef.current) && nttSituasiRef.current.length > 0) {
+          nttData = nttSituasiRef.current.find((item: any) => cleanKey(item.kabupaten) === kabCleaned)
+        }
+
+        const meninggal = nttData ? Number(nttData.meninggal || 0) : kabMarkers.reduce((s, m) => s + (m.meninggal || 0), 0)
+        const lukaBerat = nttData ? Number(nttData.luka_berat || 0) : kabMarkers.reduce((s, m) => s + (m.luka_berat || 0), 0)
+        const lukaRingan = nttData ? Number(nttData.luka_ringan || 0) : kabMarkers.reduce((s, m) => s + (m.luka_ringan || 0), 0)
+        const totalLuka = nttData ? (lukaBerat + lukaRingan) : (kabMarkers.reduce((s, m) => s + (m.luka_berat || 0) + (m.luka_ringan || 0), 0) || kabMarkers.reduce((s, m) => s + (m.total_korban || 0), 0))
+        const pengungsi = nttData ? Number(nttData.pengungsi || 0) : (kabPosko.reduce((s: number, p: any) => s + Number(p.jumlah_jiwa || p.jiwa || 0), 0) || kabMarkers.reduce((s, m) => s + (m.pengungsi || 0), 0))
+        const titikPosko = nttData ? Number(nttData.titik_pengungsian || 0) : kabPosko.length
+        const populasiTerdampak = nttData ? Number(nttData.populasi_terdampak || 0) : kabMarkers.reduce((s, m) => s + (m.terdampak || 0), 0)
 
         setActivePopup({
           type: 'kabupaten',
           name: kabName,
+          featureExtent: extent,
           stats: {
-            totalEvents: kabMarkers.length,
-            totalKorban: kabMarkers.reduce((s, m) => s + (m.total_korban || 0), 0),
+            totalEvents: kabMarkers.length || (nttData ? 1 : 0),
+            totalKorban: (meninggal + totalLuka) || kabMarkers.reduce((s, m) => s + (m.total_korban || 0), 0),
+            meninggal,
+            lukaBerat,
+            lukaRingan,
+            totalLuka,
+            pengungsi,
+            titikPosko,
+            populasiTerdampak,
+            faskesCount: kabFaskes.length,
+            poskoCount: kabPosko.length || titikPosko,
             breakdown: [],
             eventsList: kabMarkers,
+            faskesList: kabFaskes,
+            poskoList: kabPosko,
+            lokasiList: kabLokasi,
           },
         })
       }
@@ -3840,152 +3945,239 @@ export default function DisasterMap({
         </div>
       )}
 
-      {/* ── Polygon Popup (existing: province / kabupaten click) ── */}
+      {/* ── Polygon Popup (Province / Kabupaten Click) ── */}
       {activePopup && (
-        <div className="absolute right-5 top-14 z-10 w-[320px] max-h-[420px] flex flex-col rounded-2xl border border-[#cbe3e2] bg-white/95 backdrop-blur-md p-4 shadow-[0_12px_40px_rgba(15,118,110,0.15)] transition-all duration-300">
+        <div className="absolute right-4 top-14 z-20 w-[330px] sm:w-[380px] max-h-[540px] flex flex-col rounded-2xl border border-teal-300/80 bg-white/95 backdrop-blur-md p-4 shadow-[0_16px_50px_rgba(15,118,110,0.18)] transition-all duration-300 animate-in fade-in slide-in-from-top-2">
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-slate-100 pb-2 mb-3">
+          <div className="flex items-start justify-between border-b border-slate-100 pb-2.5 mb-3">
             <div className="min-w-0">
-              <span className="inline-block rounded-full bg-teal-50 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-teal-700">
-                Detail {activePopup.type}
-              </span>
-              <h4 className="mt-1 text-sm font-extrabold uppercase tracking-wider text-[#1a3535] truncate">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="inline-block rounded-full bg-teal-100 text-teal-800 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider">
+                  Detail {activePopup.type}
+                </span>
+                <span className="inline-block rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[9px] font-bold">
+                  Data Terbuka
+                </span>
+              </div>
+              <h4 className="text-base font-black uppercase tracking-wider text-slate-900 truncate">
                 {activePopup.name}
               </h4>
             </div>
             <button
               onClick={() => setActivePopup(null)}
               className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              title="Tutup Detail"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {isGuest ? (
-            /* Guest restricted view */
-            <div className="flex flex-col items-center py-5 text-center flex-1 justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-500 mb-3 border border-red-100">
-                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h5 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Data Terkunci</h5>
-              <p className="mt-2 text-xs text-slate-500 leading-relaxed px-2">
-                Statistik kejadian dan detail korban wilayah ini tidak dapat diakses publik.
+          {/* ── Ringkasan Statistik 2x2 Grid ── */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {/* Meninggal */}
+            <div className="rounded-xl bg-rose-50/90 p-2.5 border border-rose-200/70">
+              <p className="text-[9.5px] font-extrabold text-rose-800 uppercase tracking-wide">Meninggal</p>
+              <p className="text-lg font-black text-rose-950">
+                {(activePopup.stats.meninggal ?? 0).toLocaleString('id-ID')} <span className="text-[10px] font-bold text-rose-700">Jiwa</span>
               </p>
-              <div className="mt-5 flex w-full flex-col gap-2">
-                <a href="/login" className="flex w-full items-center justify-center rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white transition hover:bg-teal-800">
-                  MASUK / LOGIN
-                </a>
-                <a href="/register" className="flex w-full items-center justify-center rounded-xl border border-teal-200 bg-white py-2.5 text-xs font-bold text-teal-800 transition hover:bg-teal-50">
-                  REGISTRASI MASYARAKAT
-                </a>
-              </div>
             </div>
-          ) : (
-            <>
-              {/* Stats badges */}
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <div className="rounded-xl bg-teal-50/70 p-2 border border-teal-100/50">
-                  <p className="text-[9px] font-bold text-teal-700/80 uppercase">Kejadian</p>
-                  <p className="text-lg font-extrabold text-teal-700">{activePopup.stats.totalEvents}</p>
-                </div>
-                <div className="rounded-xl bg-red-50/70 p-2 border border-red-100/50">
-                  <p className="text-[9px] font-bold text-red-700/80 uppercase">Total Korban</p>
-                  <p className="text-lg font-extrabold text-red-600">{activePopup.stats.totalKorban.toLocaleString('id-ID')}</p>
-                </div>
-              </div>
 
-              {/* Breakdown / events list */}
-              <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-[200px]">
-                {activePopup.type === 'provinsi' ? (
-                  <>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Sebaran per Kab/Kota:</p>
-                    {activePopup.stats.breakdown.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {activePopup.stats.breakdown.map((item, idx) => (
-                          <div key={idx} className="flex justify-between items-center rounded-lg bg-slate-50/50 p-2 text-xs border border-slate-100">
-                            <span className="font-semibold text-slate-700 truncate max-w-[180px]">{item.name}</span>
-                            <span className="font-extrabold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md">
-                              {item.count} kejadian
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
+            {/* Luka-luka */}
+            <div className="rounded-xl bg-amber-50/90 p-2.5 border border-amber-200/70">
+              <p className="text-[9.5px] font-extrabold text-amber-800 uppercase tracking-wide">Luka-Luka</p>
+              <p className="text-lg font-black text-amber-950">
+                {(activePopup.stats.totalLuka ?? activePopup.stats.totalKorban ?? 0).toLocaleString('id-ID')} <span className="text-[10px] font-bold text-amber-700">Jiwa</span>
+              </p>
+            </div>
+
+            {/* Pengungsi */}
+            <div className="rounded-xl bg-sky-50/90 p-2.5 border border-sky-200/70">
+              <p className="text-[9.5px] font-extrabold text-sky-800 uppercase tracking-wide">Pengungsi</p>
+              <p className="text-lg font-black text-sky-950">
+                {(activePopup.stats.pengungsi ?? 0).toLocaleString('id-ID')} <span className="text-[10px] font-bold text-sky-700">Jiwa</span>
+              </p>
+            </div>
+
+            {/* Terdampak / Posko */}
+            <div className="rounded-xl bg-teal-50/90 p-2.5 border border-teal-200/70">
+              <p className="text-[9.5px] font-extrabold text-teal-800 uppercase tracking-wide">Populasi Terdampak</p>
+              <p className="text-lg font-black text-teal-950">
+                {(activePopup.stats.populasiTerdampak ?? 0) > 0
+                  ? `${(activePopup.stats.populasiTerdampak ?? 0).toLocaleString('id-ID')} Jiwa`
+                  : `${activePopup.stats.totalEvents} Kejadian`}
+              </p>
+            </div>
+          </div>
+
+          {/* ── Detail Content List (Scrollable) ── */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-2.5 max-h-[220px]">
+            {activePopup.type === 'provinsi' ? (
+              <>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
+                  Sebaran Kejadian per Kab/Kota:
+                </p>
+                {activePopup.stats.breakdown.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana tercatat.</p>
                 ) : (
-                  <>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">Daftar Kejadian:</p>
-                    {!activePopup.stats.eventsList?.length ? (
-                      <p className="text-xs text-slate-400 italic">Tidak ada kejadian bencana.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {activePopup.stats.eventsList.map((item, idx) => (
-                          <div key={idx} className="rounded-xl border border-slate-100 bg-slate-50/30 p-2.5 text-xs">
-                            <div className="flex justify-between items-start">
-                              <span className="font-bold text-teal-800">{formatDisasterName(item.jenis_bencana)}</span>
-                              <span className="text-[10px] text-slate-400">{item.tgl_kejadian}</span>
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-500">
-                              {item.kecamatan && <span>Kec. {item.kecamatan}</span>}
-                              {item.nama_desa && <span>, Desa {item.nama_desa}</span>}
-                            </div>
-                            <div className="mt-1.5 flex items-center justify-between border-t border-dashed border-slate-200/60 pt-1.5">
-                              <span className="text-[10px] text-slate-400">Korban:</span>
-                              <span className="font-bold text-red-600">{item.total_korban} orang</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Warnings from API Indonesia */}
-              {activePopup.type === 'provinsi' && activePopup.warnings && activePopup.warnings.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-red-500 flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                    PERINGATAN CUACA BMKG:
-                  </p>
-                  <div className="max-h-[80px] overflow-y-auto space-y-1 pr-1">
-                    {activePopup.warnings.map((w, idx) => (
-                      <div key={idx} className="bg-red-50/50 border border-red-100 rounded-lg p-2 text-[10px] text-slate-700">
-                        <strong className="text-red-750 block">{w.event}</strong>
-                        <span className="block mt-0.5 text-slate-550 leading-relaxed font-normal">{w.area}</span>
-                        <span className="block mt-1 text-[8.5px] text-slate-400 font-semibold uppercase">Berlaku s/d {w.expires}</span>
+                  <div className="space-y-1.5">
+                    {activePopup.stats.breakdown.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center rounded-lg bg-slate-50 p-2 text-xs border border-slate-100">
+                        <span className="font-semibold text-slate-700 truncate max-w-[180px]">{item.name}</span>
+                        <div className="flex items-center gap-1.5">
+                          {item.totalKorban ? (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                              {item.totalKorban} korban
+                            </span>
+                          ) : null}
+                          <span className="font-extrabold text-slate-900 bg-white border border-slate-200 px-1.5 py-0.5 rounded-md">
+                            {item.count} kejadian
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </>
+            ) : (
+              <>
+                {/* Faskes List in this Kabupaten */}
+                {activePopup.stats.faskesList && activePopup.stats.faskesList.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-teal-800 flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                      Fasilitas Kesehatan Terkait ({activePopup.stats.faskesList.length} Unit):
+                    </p>
+                    <div className="space-y-1.5">
+                      {activePopup.stats.faskesList.map((f: any, idx: number) => (
+                        <div key={idx} className="rounded-xl border border-teal-100 bg-teal-50/40 p-2 text-xs">
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="font-bold text-slate-800 text-[11px] truncate">{f.nama || f.nama_faskes}</span>
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white border border-teal-200 text-teal-800 shrink-0">
+                              {f.operasional || f.status || f.kondisi_bangunan || 'Siaga'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-500 font-medium">
+                            {f.kecamatan && <span>Kec. {f.kecamatan}</span>}
+                            {f.tt_tersedia && <span>• {f.tt_tersedia} TT Tersedia</span>}
+                            {f.dokter && <span>• {f.dokter} Dokter</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              {/* Footer action */}
-              {activePopup.type === 'provinsi' && (
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <button
-                    onClick={() => {
-                      onSelectProvinceRef.current?.(activePopup.name)
-                      setActivePopup(null)
-                    }}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-teal-700 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-800"
-                  >
-                    LIHAT DETAIL PROVINSI
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </>
+                {/* Posko List in this Kabupaten */}
+                {activePopup.stats.poskoList && activePopup.stats.poskoList.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1">
+                      <Tent className="w-3.5 h-3.5 text-sky-600" />
+                      Pos Pengungsian ({activePopup.stats.poskoList.length} Posko):
+                    </p>
+                    <div className="space-y-1.5">
+                      {activePopup.stats.poskoList.map((pos: any, idx: number) => (
+                        <div key={idx} className="rounded-xl border border-sky-100 bg-sky-50/40 p-2 text-xs">
+                          <div className="flex items-start justify-between gap-1">
+                            <span className="font-bold text-slate-800 text-[11px] truncate">{pos.nama || pos.nama_pos}</span>
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white border border-sky-200 text-sky-800 shrink-0">
+                              {(pos.jumlah_jiwa || pos.jiwa || 0).toLocaleString('id-ID')} Jiwa
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-500 font-medium truncate">
+                            {pos.lokasi_spesifik || pos.kecamatan || 'Posko Pengungsian'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Events list in this Kabupaten */}
+                {activePopup.stats.eventsList && activePopup.stats.eventsList.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                      Titik Kejadian Bencana ({activePopup.stats.eventsList.length}):
+                    </p>
+                    <div className="space-y-1.5">
+                      {activePopup.stats.eventsList.map((item, idx) => (
+                        <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 text-xs">
+                          <div className="flex justify-between items-start">
+                            <span className="font-bold text-teal-800">{formatDisasterName(item.jenis_bencana)}</span>
+                            <span className="text-[10px] text-slate-400">{item.tgl_kejadian}</span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-500">
+                            {item.kecamatan && <span>Kec. {item.kecamatan}</span>}
+                            {item.nama_desa && <span>, Desa {item.nama_desa}</span>}
+                          </div>
+                          <div className="mt-1 flex items-center justify-between border-t border-dashed border-slate-200 pt-1">
+                            <span className="text-[10px] text-slate-400">Total Korban:</span>
+                            <span className="font-bold text-red-600">{item.total_korban} orang</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Warnings from BMKG/API Indonesia */}
+          {activePopup.warnings && activePopup.warnings.length > 0 && (
+            <div className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-red-500 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                PERINGATAN DINI CUACA BMKG:
+              </p>
+              <div className="max-h-[70px] overflow-y-auto space-y-1 pr-1">
+                {activePopup.warnings.map((w, idx) => (
+                  <div key={idx} className="bg-red-50 border border-red-100 rounded-lg p-1.5 text-[10px] text-slate-700">
+                    <strong className="text-red-700 block">{w.event}</strong>
+                    <span className="block text-slate-600">{w.area}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
+
+          {/* Action Footer */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-2">
+            {activePopup.featureExtent && (
+              <button
+                onClick={() => {
+                  if (mapInstanceRef.current && activePopup.featureExtent) {
+                    mapInstanceRef.current.getView().fit(activePopup.featureExtent, { padding: [70, 70, 70, 70], duration: 600 })
+                  }
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 py-2 text-xs font-bold text-white shadow-xs transition active:scale-[0.98]"
+              >
+                <Compass className="w-3.5 h-3.5" />
+                Fokus Wilayah
+              </button>
+            )}
+
+            {activePopup.type === 'provinsi' && (
+              <button
+                onClick={() => {
+                  onSelectProvinceRef.current?.(activePopup.name)
+                  setActivePopup(null)
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 py-2 text-xs font-bold text-white shadow-xs transition"
+              >
+                Lihat Detail Provinsi &rarr;
+              </button>
+            )}
+
+            <button
+              onClick={() => setActivePopup(null)}
+              className="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 text-xs font-bold transition"
+            >
+              Tutup
+            </button>
+          </div>
         </div>
       )}
 

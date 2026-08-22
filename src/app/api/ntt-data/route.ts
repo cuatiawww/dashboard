@@ -105,6 +105,53 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // 1. Priority: Direct read from collector CSV directory (public/data/gempa-ntt)
+  const gempaNttDir = path.join(process.cwd(), 'public', 'data', 'gempa-ntt')
+  try {
+    const csvFiles: Record<TableName, string> = {
+      analisa_ringkasan_harian: 'analisa_ringkasan_harian_ntt.csv',
+      situasi_kesehatan: 'situasi_kesehatan_ntt.csv',
+      pasien_rs: 'kondisi_pasien_rs_ntt.csv',
+      pasien_puskesmas: 'kondisi_pasien_pkm_ntt.csv',
+    }
+
+    const tables: Record<string, unknown[]> = {}
+    let latestMtime = new Date(0)
+    let hasCsv = false
+
+    for (const tName of TABLES) {
+      const fPath = path.join(gempaNttDir, csvFiles[tName])
+      try {
+        const stats = await fs.stat(fPath)
+        if (stats.mtime > latestMtime) latestMtime = stats.mtime
+        const content = await fs.readFile(fPath, 'utf8')
+        const result = Papa.parse<Record<string, string>>(content, {
+          header: true,
+          skipEmptyLines: true,
+        })
+        tables[tName] = result.data || []
+        hasCsv = true
+      } catch {
+        tables[tName] = []
+      }
+    }
+
+    if (hasCsv) {
+      const date = requestedDate || '2026-08-20'
+      const updatedTimestamp = latestMtime.getTime() > 0 ? latestMtime.toISOString() : new Date().toISOString()
+      return jsonResponse({
+        success: true,
+        tanggal: date,
+        updated_at: updatedTimestamp,
+        source_url: 'https://ntt.tanggap-bencana.go.id/#linktree',
+        tables: requestedTable ? { [requestedTable]: tables[requestedTable] || [] } : tables,
+      })
+    }
+  } catch (err) {
+    console.warn('[API ntt-data] Direct CSV read skipped:', err)
+  }
+
+  // 2. Fallback: Standard manifest directory lookup
   try {
     const dataDir = await locateDataDir()
     const manifest = await readManifest(dataDir)
@@ -134,35 +181,11 @@ export async function GET(request: NextRequest) {
     return jsonResponse({
       success: true,
       tanggal: date,
-      updated_at: manifest.updated_at ?? null,
+      updated_at: manifest.updated_at ?? new Date().toISOString(),
       source_url: manifest.source_url ?? null,
       tables,
     })
   } catch (error) {
-    // Seamless fallback to public/data/gempa-ntt/gempa_ntt_data.json
-    try {
-      const fallbackPath = path.join(process.cwd(), 'public', 'data', 'gempa-ntt', 'gempa_ntt_data.json')
-      const raw = await fs.readFile(fallbackPath, 'utf8')
-      const json = JSON.parse(raw)
-      const date = requestedDate || json.tanggal_update || '2026-08-20'
-      const tables: Record<string, unknown[]> = {
-        analisa_ringkasan_harian: json.analisa_harian || [],
-        situasi_kesehatan: json.situasi_kesehatan || [],
-        pasien_rs: json.pasien_rs || [],
-        pasien_puskesmas: json.pasien_puskesmas || [],
-      }
-      return jsonResponse({
-        success: true,
-        tanggal: date,
-        updated_at: `${date}T10:20:14.000Z`,
-        source_url: json.sumber_url || 'https://ntt.tanggap-bencana.go.id/#linktree',
-        tables: requestedTable ? { [requestedTable]: tables[requestedTable] || [] } : tables,
-        data: json,
-      })
-    } catch (e) {
-      console.error('NTT fallback data error:', e)
-    }
-
     const code = (error as NodeJS.ErrnoException).code
     if (code === 'ENOENT') {
       return jsonResponse(
