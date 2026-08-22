@@ -43,7 +43,7 @@ const BASE_NTT_GEMPA_EVENT = {
   luka_ringan: 639,
   luka: 970,
   hilang: 0,
-  pengungsi: 43686,
+  pengungsi: 95871,
   titik_pengungsian: 400,
   penduduk_terdampak: 1917732,
 

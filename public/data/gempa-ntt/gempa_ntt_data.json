@@ -128,14 +128,80 @@
       "titik_pengungsian": 25
     },
     {
-      "tanggal": "2026-08-20",
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Sikka",
+      "populasi_terdampak": 350715,
+      "meninggal": 6,
+      "luka_berat": 23,
+      "luka_ringan": 32,
+      "pengungsi": 7104,
+      "titik_pengungsian": 9
+    },
+    {
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Manggarai Timur",
+      "populasi_terdampak": 313876,
+      "meninggal": 26,
+      "luka_berat": 239,
+      "luka_ringan": 404,
+      "pengungsi": 19803,
+      "titik_pengungsian": 246
+    },
+    {
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Manggarai",
+      "populasi_terdampak": 340153,
+      "meninggal": 27,
+      "luka_berat": 32,
+      "luka_ringan": 104,
+      "pengungsi": 29982,
+      "titik_pengungsian": 14
+    },
+    {
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Ngada",
+      "populasi_terdampak": 176462,
+      "meninggal": 2,
+      "luka_berat": 17,
+      "luka_ringan": 19,
+      "pengungsi": 2551,
+      "titik_pengungsian": 27
+    },
+    {
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Nagekeo",
+      "populasi_terdampak": 170669,
+      "meninggal": 13,
+      "luka_berat": 13,
+      "luka_ringan": 9,
+      "pengungsi": 28104,
+      "titik_pengungsian": 70
+    },
+    {
+      "tanggal": "2026-08-21",
+      "waktu": "20.00 WIB",
+      "kabupaten": "Ende",
+      "populasi_terdampak": 284165,
+      "meninggal": 2,
+      "luka_berat": 5,
+      "luka_ringan": 67,
+      "pengungsi": 3298,
+      "titik_pengungsian": 25
+    },
+    {
+      "tanggal": "2026-08-21",
       "waktu": "20.00 WIB",
       "kabupaten": "Manggarai Barat",
       "populasi_terdampak": 281692,
       "meninggal": 2,
       "luka_berat": 2,
       "luka_ringan": 4,
-      "pengungsi": 1603,
+      "pengungsi": 5029,
       "titik_pengungsian": 9
     }
   ],
