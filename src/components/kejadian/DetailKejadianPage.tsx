@@ -3498,6 +3498,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <Info className="h-3.5 w-3.5 text-sky-700" />
             <span>Sumber Data API</span>
           </button>
+          {/* Timeline Log button - Hidden as requested */}
+          {/* 
           <button
             onClick={() => setShowLogModal(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-800 shadow-xs transition hover:bg-teal-100 hover:border-teal-300"
@@ -3511,6 +3513,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </span>
             )}
           </button>
+          */}
           <button
             onClick={handleShare}
             className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -6994,11 +6997,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="text-2xl font-black text-emerald-700 mt-1">{faskesMatrixData.filter((f: any) => String(f.status || '').toLowerCase().includes('operasi') || String(f.status || '').toLowerCase().includes('siaga')).length} <span className="text-xs font-bold text-emerald-600">Unit</span></div>
                     <div className="text-[11px] font-bold text-emerald-600 mt-0.5">Pelayanan Medis Normal / Standby</div>
                   </div>
+                  {/* Pasien Triase Faskes stat card - Hidden as requested */}
+                  {/* 
                   <div className="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200">
                     <div className="text-[10px] font-black uppercase text-purple-700">Pasien Triase Faskes</div>
                     <div className="text-2xl font-black text-purple-700 mt-1">{faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.total_pasien) || 0), 0)} <span className="text-xs font-bold text-purple-600">Pasien</span></div>
                     <div className="text-[11px] font-bold text-purple-600 mt-0.5">{faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_merah) || 0), 0)} Merah • {faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_kuning) || 0), 0)} Kuning • {faskesMatrixData.reduce((s: number, f: any) => s + (Number(f.triase_hijau) || 0), 0)} Hijau</div>
                   </div>
+                  */}
                 </>
               ) : kabupatenMatrixTab === 'penyakit' ? (
                 <>
