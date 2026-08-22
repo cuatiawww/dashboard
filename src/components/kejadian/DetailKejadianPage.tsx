@@ -2194,8 +2194,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const situList = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
       ? nttApiData.situasi_kesehatan
       : (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0
-          ? detail.breakdown_kabupaten
-          : (Array.isArray(eventData.detailData?.breakdown_kabupaten) ? eventData.detailData.breakdown_kabupaten : []))
+        ? detail.breakdown_kabupaten
+        : (Array.isArray(eventData.detailData?.breakdown_kabupaten) ? eventData.detailData.breakdown_kabupaten : []))
     const situSum = situList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
     if (situSum > 0) return situSum
 
@@ -4297,13 +4297,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 <IconComp className={`h-4 w-4 ${cat.iconColor} shrink-0 stroke-[2.5]`} />
                                 <span className="truncate">{cat.title}</span>
                               </span>
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${
-                                cat.terdampak > 0
-                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                  : cat.rawatPasien > 0
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              }`}>
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${cat.terdampak > 0
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : cat.rawatPasien > 0
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                }`}>
                                 {cat.rawatPasien > 0 ? `${cat.rawatPasien} sedang merawat korban` : '100% Disiagakan'}
                               </span>
                             </div>
@@ -4581,7 +4580,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               Peta Akses &amp; Status Sumber Daya Kesehatan - {displayRegion}
             </h4>
             <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
-              Pemantauan matriks faskes terdekat, pos pengungsian, ketersediaan SDM kesehatan, sanitasi lingkungan, logistik, dan relawan TCK
+              Pemantauan matriks faskes terdekat, ketersediaan SDM kesehatan, dan TCK
             </p>
           </div>
 
@@ -4689,7 +4688,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 }`}
             >
               <HeartPulse className="h-4 w-4" />
-              TCK Kemkes
+              {isNttEvent ? 'TCK Terregistrasi Wilayah' : 'TCK Kemkes'}
               {tckTotal > 0 && (
                 <span className="ml-1 px-2 py-0.5 rounded-full bg-teal-700 text-white text-[10px] font-black">{tckTotal.toLocaleString('id-ID')}</span>
               )}
@@ -4784,19 +4783,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         key={tab.key}
                         type="button"
                         onClick={() => setMasterFaskesTypeFilter(tab.key as any)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${
-                          masterFaskesTypeFilter === tab.key
-                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs scale-[1.02]'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all border flex items-center gap-1.5 ${masterFaskesTypeFilter === tab.key
+                          ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs scale-[1.02]'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
                       >
                         {tab.label}
                         <span
-                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                            masterFaskesTypeFilter === tab.key
-                              ? 'bg-white/25 text-white'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${masterFaskesTypeFilter === tab.key
+                            ? 'bg-white/25 text-white'
+                            : 'bg-emerald-100 text-emerald-800'
+                            }`}
                         >
                           {tab.count}
                         </span>
@@ -4898,13 +4895,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               <tr
                                 key={f.id || idx}
                                 onClick={() => handleSelectTarget(f, isRS ? 'hospital' : 'clinic')}
-                                className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-emerald-50/90 border-l-4 border-emerald-600'
-                                    : idx % 2 === 0
+                                className={`hover:bg-emerald-50/50 transition-colors cursor-pointer ${isSelected
+                                  ? 'bg-emerald-50/90 border-l-4 border-emerald-600'
+                                  : idx % 2 === 0
                                     ? 'bg-white'
                                     : 'bg-slate-50/30'
-                                }`}
+                                  }`}
                               >
                                 <td className="py-2.5 px-3 text-center text-slate-400 font-semibold">{rowNum}</td>
                                 <td className="py-2.5 px-3 font-bold text-slate-900">
@@ -4923,15 +4919,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 </td>
                                 <td className="py-2.5 px-3">
                                   <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${
-                                      isRS
-                                        ? 'bg-blue-50 text-blue-800 border-blue-200'
-                                        : isPKM
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${isRS
+                                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                      : isPKM
                                         ? 'bg-teal-50 text-teal-800 border-teal-200'
                                         : isKlinik
-                                        ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                                        : 'bg-amber-50 text-amber-800 border-amber-200'
-                                    }`}
+                                          ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                          : 'bg-amber-50 text-amber-800 border-amber-200'
+                                      }`}
                                   >
                                     {f.jenis || f.jenis_faskes || 'Faskes'}
                                   </span>
@@ -5163,15 +5158,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       type="button"
                       onClick={() => setSituasiFaskesSubTab('rs')}
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${situasiFaskesSubTab === 'rs'
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
                       <Building2 className="h-4 w-4" />
                       Situasi Rumah Sakit
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${situasiFaskesSubTab === 'rs'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-blue-100 text-blue-800'
+                        ? 'bg-white/25 text-white'
+                        : 'bg-blue-100 text-blue-800'
                         }`}>
                         {pasienRsList.length} RSUD
                       </span>
@@ -5181,15 +5176,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       type="button"
                       onClick={() => setSituasiFaskesSubTab('puskesmas')}
                       className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border flex items-center gap-2 ${situasiFaskesSubTab === 'puskesmas'
-                          ? 'bg-teal-600 text-white border-teal-600 shadow-md scale-[1.02]'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-md scale-[1.02]'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
                       <Stethoscope className="h-4 w-4" />
                       Situasi Puskesmas
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${situasiFaskesSubTab === 'puskesmas'
-                          ? 'bg-white/25 text-white'
-                          : 'bg-teal-100 text-teal-800'
+                        ? 'bg-white/25 text-white'
+                        : 'bg-teal-100 text-teal-800'
                         }`}>
                         {pasienPkmList.length} PKM
                       </span>
@@ -5303,8 +5298,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         type="button"
                         onClick={() => setSituasiKabFilter(kab)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 ${situasiKabFilter === kab
-                            ? 'bg-slate-900 text-white shadow-2xs'
-                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white shadow-2xs'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                           }`}
                       >
                         {kab === 'semua' ? 'Semua Kabupaten' : `Kab. ${kab}`}
@@ -5882,11 +5877,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   key={pageNum}
                                   type="button"
                                   onClick={() => setStatusFaskesPage(pageNum)}
-                                  className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
-                                    statusFaskesPage === pageNum
-                                      ? 'bg-teal-700 text-white shadow-2xs'
-                                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                                  }`}
+                                  className={`w-7 h-7 rounded-lg text-xs font-bold transition ${statusFaskesPage === pageNum
+                                    ? 'bg-teal-700 text-white shadow-2xs'
+                                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                    }`}
                                 >
                                   {pageNum}
                                 </button>
@@ -7095,12 +7089,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <p className="text-xs sm:text-sm font-semibold text-slate-500">
                   {kabupatenMatrixTab === 'korban'
                     ? (isNttEvent
-                        ? 'Rincian jumlah korban meninggal, luka berat, luka ringan, dan pengungsi di setiap kabupaten terdampak.'
-                        : 'Rincian jumlah korban meninggal, luka berat, luka ringan, korban hilang, dan pengungsi di setiap kabupaten terdampak.')
+                      ? 'Rincian jumlah korban meninggal, luka berat, luka ringan, dan pengungsi di setiap kabupaten terdampak.'
+                      : 'Rincian jumlah korban meninggal, luka berat, luka ringan, korban hilang, dan pengungsi di setiap kabupaten terdampak.')
                     : kabupatenMatrixTab === 'faskes'
                       ? (isNttEvent
-                          ? 'Rincian data fasilitas kesehatan dan triase penanganan pasien di kabupaten terdampak.'
-                          : 'Rincian kondisi fisik faskes, status operasional pelayanan, dan penanggung jawab medis.')
+                        ? 'Rincian data fasilitas kesehatan dan triase penanganan pasien di kabupaten terdampak.'
+                        : 'Rincian kondisi fisik faskes, status operasional pelayanan, dan penanggung jawab medis.')
                       : kabupatenMatrixTab === 'penyakit'
                         ? 'Rincian surveilans penyakit menular potensial KLB pasca bencana, sebaran posko pengungsian, dan intervensi medis.'
                         : 'Rincian estimasi populasi terdampak dan agregasi kelompok rentan (balita, lansia, bumil) per kabupaten.'}
@@ -7202,12 +7196,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2">
                 <span className={`px-3 py-1 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
-                    ? 'bg-rose-50 text-rose-700 border-rose-200'
-                    : kabupatenMatrixTab === 'faskes'
-                      ? 'bg-teal-50 text-teal-800 border-teal-200'
-                      : kabupatenMatrixTab === 'penyakit'
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : 'bg-blue-50 text-blue-800 border-blue-200'
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : kabupatenMatrixTab === 'faskes'
+                    ? 'bg-teal-50 text-teal-800 border-teal-200'
+                    : kabupatenMatrixTab === 'penyakit'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                      : 'bg-blue-50 text-blue-800 border-blue-200'
                   }`}>
                   {kabupatenMatrixTab === 'korban'
                     ? 'Data Rincian Korban Jiwa'
@@ -7399,26 +7393,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   <span className="text-slate-400 font-semibold text-xs">0 Pasien (Standby)</span>
                                 )}
                               </td>
-                                {!isNttEvent && (
-                                  <td className="py-3 px-4 text-center">
-                                    <div className="space-y-1">
-                                      {hasTriage ? (
-                                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
-                                          Aktif Rawat Pasien
-                                        </span>
-                                      ) : (
-                                        <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                          Siaga Pelayanan
-                                        </span>
-                                      )}
-                                      <div>
-                                        <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                                          {row.status || 'Operasional'}
-                                        </span>
-                                      </div>
+                              {!isNttEvent && (
+                                <td className="py-3 px-4 text-center">
+                                  <div className="space-y-1">
+                                    {hasTriage ? (
+                                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
+                                        Aktif Rawat Pasien
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        Siaga Pelayanan
+                                      </span>
+                                    )}
+                                    <div>
+                                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                        {row.status || 'Operasional'}
+                                      </span>
                                     </div>
-                                  </td>
-                                )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           )
                         })
