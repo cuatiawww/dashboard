@@ -4862,7 +4862,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           <th className="py-3 px-3">Kode Sarana / SatuSehat</th>
                           <th className="py-3 px-3">Kabupaten / Kota</th>
                           <th className="py-3 px-3">Kecamatan</th>
-                          <th className="py-3 px-3">Status Operasional</th>
+                          {!isNttEvent && <th className="py-3 px-3">Status Operasional</th>}
                           <th className="py-3 px-3 text-center">Status Korban Bencana</th>
                           <th className="py-3 px-3 text-center">Aksi / Peta</th>
                         </tr>
@@ -4936,12 +4936,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 <td className="py-2.5 px-3 text-slate-700 text-xs">
                                   {f.nama_kecamatan || f.kecamatan || '-'}
                                 </td>
-                                <td className="py-2.5 px-3 text-xs">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10.5px]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    {f.status || f.status_operasional || 'Operasional'}
-                                  </span>
-                                </td>
+                                {!isNttEvent && (
+                                  <td className="py-2.5 px-3 text-xs">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[10.5px]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                      {f.status || f.status_operasional || 'Operasional'}
+                                    </span>
+                                  </td>
+                                )}
                                 <td className="py-2.5 px-3 text-center">
                                   {f.has_collector_data || Number(f.total_pasien || 0) > 0 ? (
                                     <div className="inline-flex flex-col items-center gap-1">
@@ -6401,13 +6403,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div>
                       <div className="flex items-center gap-2">
                         <UserCheck className="h-4 w-4 text-teal-700" />
-                        <span className="text-[12px] font-black uppercase tracking-wider text-teal-900">Tenaga Cadangan Kesehatan (TCK) Kemkes RI</span>
+                        <span className="text-[12px] font-black uppercase tracking-wider text-teal-900">
+                          {isNttEvent ? 'TCK Terregistrasi Wilayah' : 'Tenaga Cadangan Kesehatan (TCK) Kemkes RI'}
+                        </span>
                         {tckTotal > 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">{tckTotal.toLocaleString('id-ID')} relawan</span>
+                          <span className="px-2 py-0.5 rounded-full bg-teal-700 text-white text-[9px] font-black">
+                            {tckTotal.toLocaleString('id-ID')} {isNttEvent ? 'personil TCK' : 'relawan'}
+                          </span>
                         )}
                       </div>
                       <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                        Relawan TCK terlatih siaga di {eventData.provinsi || eventData.kabupaten || 'Wilayah Kejadian'}
+                        {isNttEvent ? 'Personil TCK terregistrasi di' : 'Relawan TCK terlatih siaga di'} {eventData.provinsi || eventData.kabupaten || 'Wilayah Kejadian'}
                       </p>
                     </div>
                     <a href="https://tenagacadangankesehatan.kemkes.go.id" target="_blank" rel="noopener noreferrer"
@@ -6426,10 +6432,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="text-center py-10 text-slate-500 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 p-6 space-y-2">
                       <UserCheck className="h-10 w-10 mx-auto mb-2 text-teal-600 opacity-60" />
                       <h5 className="text-sm font-bold text-slate-800">
-                        {tckError ? 'Informasi Akses API TCK Kemkes' : 'Data Relawan TCK Belum Tersedia'}
+                        {tckError ? 'Informasi Akses API TCK Kemkes' : 'Data Personil TCK Belum Tersedia'}
                       </h5>
                       <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                        {tckError || `Tidak ada data relawan TCK yang terdaftar untuk wilayah ${eventData.provinsi || eventData.kabupaten || 'ini'}.`}
+                        {tckError || `Tidak ada data personil TCK yang terdaftar untuk wilayah ${eventData.provinsi || eventData.kabupaten || 'ini'}.`}
                       </p>
                       <div className="pt-2">
                         <a
@@ -6448,7 +6454,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {/* Summary mini cards */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div className="rounded-xl bg-teal-700 text-white px-4 py-3 flex flex-col">
-                          <span className="text-[10px] font-bold uppercase opacity-80">Total Relawan</span>
+                          <span className="text-[10px] font-bold uppercase opacity-80">{isNttEvent ? 'Total TCK' : 'Total Relawan'}</span>
                           <span className="text-2xl font-black mt-1">{tckTotal.toLocaleString('id-ID')}</span>
                           <span className="text-[10px] opacity-70 mt-0.5 truncate">di {eventData.provinsi || eventData.kabupaten}</span>
                         </div>
@@ -6456,7 +6462,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           <div key={golongan} className={`rounded-xl border px-3 py-3 flex flex-col ${getGolStyle(golongan)}`}>
                             <span className="text-[9px] font-bold uppercase opacity-70 leading-tight">{golongan.replace('Tenaga ', '')}</span>
                             <span className="text-xl font-black mt-1">{count}</span>
-                            <span className="text-[9px] opacity-60 mt-0.5">relawan</span>
+                            <span className="text-[9px] opacity-60 mt-0.5">{isNttEvent ? 'personil' : 'relawan'}</span>
                           </div>
                         ))}
                       </div>
@@ -6480,7 +6486,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           </svg>
                         </div>
                         <span className="text-[11px] text-slate-400 font-semibold shrink-0">
-                          <span className="font-black text-slate-700">{filteredTck.length}</span> relawan
+                          <span className="font-black text-slate-700">{filteredTck.length}</span> {isNttEvent ? 'personil TCK' : 'relawan'}
                         </span>
                       </div>
 

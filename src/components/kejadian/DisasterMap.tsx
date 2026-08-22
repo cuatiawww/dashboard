@@ -3250,7 +3250,7 @@ export default function DisasterMap({
                   <div>
                     <p className="text-xs font-semibold text-teal-900 flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-teal-600 animate-pulse" />
-                      Relawan TCK Kemkes RI
+                      TCK Terregistrasi Wilayah
                       {tckList && tckList.length > 0 && (
                         <span className="text-[9px] font-bold px-1.5 py-0.2 bg-teal-700 text-white rounded-full">
                           {tckList.length}
