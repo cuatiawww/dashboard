@@ -1088,14 +1088,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   // ── Fetch Tenaga Cadangan Kesehatan (TCK) Kemkes API ──
   useEffect(() => {
-    // Coba dari provinsi dulu, fallback dari kabupaten
+    // Coba dari provinsi dulu, fallback dari kabupaten atau default NTT (53)
     const provName = eventData.provinsi || ''
     const kabName = eventData.kabupaten || ''
-    const kdProp = getKdProp(provName, kabName)
-    if (!kdProp) {
-      console.warn('[TCK] Tidak dapat menentukan kd_prop untuk provinsi:', provName, 'kabupaten:', kabName)
-      return
-    }
+    const kdProp = getKdProp(provName, kabName) || (isNttEvent ? '53' : '53')
 
     let active = true
     setTckLoading(true)
@@ -1159,7 +1155,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventData.provinsi])
+  }, [eventData.provinsi, eventData.kabupaten, isNttEvent])
 
   // Fetch real route from OSRM Routing API (real road network routing)
   useEffect(() => {
