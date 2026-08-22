@@ -2349,7 +2349,53 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const finalTerdampak = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak);
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
-    // Jika ada multi-log perkembangan nyata dari database (> 1 laporan perkembangan)
+    // 1. Prioritas Utama untuk NTT: Ambil riwayat tanggal riil dari collector (situasi_kesehatan per tanggal)
+    if (isNttEvent && Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0) {
+      const dateMap: { [date: string]: { meninggal: number; luka: number; hilang: number; pengungsi: number; terdampak: number } } = {};
+      nttApiData.situasi_kesehatan.forEach((item: any) => {
+        const rawDate = item.tanggal || item.tgl || item.tgl_laporan;
+        if (!rawDate) return;
+        if (!dateMap[rawDate]) {
+          dateMap[rawDate] = {
+            meninggal: 0,
+            luka: 0,
+            hilang: 0,
+            pengungsi: 0,
+            terdampak: 0
+          };
+        }
+        dateMap[rawDate].meninggal += safeParseInt(item.meninggal);
+        dateMap[rawDate].luka += (safeParseInt(item.luka_berat) + safeParseInt(item.luka_ringan)) || safeParseInt(item.korban_luka);
+        dateMap[rawDate].hilang += safeParseInt(item.hilang);
+        dateMap[rawDate].pengungsi += safeParseInt(item.pengungsi);
+        dateMap[rawDate].terdampak += safeParseInt(item.populasi_terdampak);
+      });
+
+      const dates = Object.keys(dateMap).sort();
+      if (dates.length > 0) {
+        const points: any[] = [];
+        dates.forEach((dateStr) => {
+          const d = new Date(dateStr);
+          const formattedLabel = !isNaN(d.getTime())
+            ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+            : dateStr;
+          const stat = dateMap[dateStr];
+          const totalK = stat.meninggal + stat.luka + stat.hilang;
+          points.push({
+            date: formattedLabel,
+            'Total Korban': totalK > 0 ? totalK : finalKorban,
+            'Penduduk Terancam/Terdampak': stat.terdampak > 0 ? stat.terdampak : finalTerdampak,
+            'Total Pengungsi': stat.pengungsi > 0 ? stat.pengungsi : finalPengungsi,
+            'Meninggal': stat.meninggal > 0 ? stat.meninggal : finalMeninggal,
+            'Luka-luka': stat.luka > 0 ? stat.luka : finalLuka,
+            'Hilang': stat.hilang,
+          });
+        });
+        return points;
+      }
+    }
+
+    // 2. Jika ada multi-log perkembangan nyata dari database (> 1 laporan perkembangan)
     if (list.length > 1) {
       const dateMap: { [date: string]: any } = {};
       list.forEach((item: any) => {
@@ -2403,7 +2449,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
-    // Default: Dynamic 5-day continuous progression curve around event date (H-2, H-1, H-0, H+1, H+2)
+    // 3. Fallback: Dynamic 5-day continuous progression curve around event date (H-2, H-1, H-0, H+1, H+2)
     const dateStr = eventData.tgl_kejadian || '';
     const dateParts = dateStr.split(' ');
     const baseDate = dateParts[0] ? new Date(dateParts[0]) : new Date();
@@ -2433,7 +2479,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       });
     });
     return points;
-  }, [eventData, detail?.perkembangan, totalPendudukTerancam]);
+  }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.situasi_kesehatan]);
 
   const faskesTrendData = useMemo(() => {
     const list = Array.isArray(eventData.faskes_terdampak) ? eventData.faskes_terdampak : [];
