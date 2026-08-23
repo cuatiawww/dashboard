@@ -74,40 +74,32 @@ export default function TvAnalyticsDeck({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0)
 
-  // 1. Disaster Identity & Mainshock Data
+  // 1. Disaster Identity & Mainshock Data (Kejadian 15 Agustus 2026)
   const autogempa = bmkgData?.autogempa || bmkgData?.gempa || null
 
-  const magnitudoStr = autogempa?.Magnitude
-    ? `${autogempa.Magnitude} SR`
-    : isNttScope
+  const magnitudoStr = isNttScope
     ? '7.7 SR'
-    : '5.0+ SR'
+    : (autogempa?.Magnitude ? `${autogempa.Magnitude} SR` : '-')
 
-  const kedalamanStr = autogempa?.Kedalaman
-    ? autogempa.Kedalaman
-    : isNttScope
+  const kedalamanStr = isNttScope
     ? '15 km'
-    : '-'
+    : (autogempa?.Kedalaman || '-')
 
-  const statusTsunamiStr = autogempa?.Potensi
-    ? autogempa.Potensi
-    : isNttScope
+  const statusTsunamiStr = isNttScope
     ? 'Berpotensi Tsunami (Status Siaga & Waspada)'
-    : '-'
+    : (autogempa?.Potensi || '-')
 
-  const mmiStr = autogempa?.Dirasakan
-    ? autogempa.Dirasakan
-    : isNttScope
+  const mmiStr = isNttScope
     ? 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur)'
-    : '-'
+    : (autogempa?.Dirasakan || '-')
 
   const lokasiStr = isNttScope
     ? 'Kec. Mbay, Larantuka, Tanjung Bunga, Ende, Sikka'
-    : autogempa?.Wilayah || 'Wilayah Terdampak Bencana'
+    : (autogempa?.Wilayah || '-')
 
-  const waktuGempaStr = autogempa?.Tanggal && autogempa?.Jam
-    ? `${autogempa.Tanggal}, ${autogempa.Jam} (M ${autogempa.Magnitude || '7.7'})`
-    : '15 Agu 2026, 09:18:22 WITA (M 7.7)'
+  const waktuGempaStr = isNttScope
+    ? '15 Agu 2026, 09:18:22 WITA (M 7.7)'
+    : (autogempa?.Tanggal && autogempa?.Jam ? `${autogempa.Tanggal}, ${autogempa.Jam}` : '-')
 
   const tglLaporanStr = '23 Agustus 2026, 12:19 WIB'
 

@@ -136,35 +136,20 @@ export default function TvTopHud({
           <div className="h-7 w-px bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">
             <span className="font-extrabold tracking-wider text-sm text-[#047D78]">
-              {currentTourProvince && (currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR'))
-                ? 'DASHBOARD GEMPA BUMI - PROV. NTT'
-                : 'PEMANTAUAN EOC'}
+              DASHBOARD GEMPA BUMI - PROV. NTT
             </span>
             <span className="text-[10px] sm:text-[11px] font-semibold text-slate-600 max-w-[480px] truncate">
-              {currentTourProvince && (currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR'))
-                ? 'Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan di wilayah PROV. NUSA TENGGARA TIMUR.'
-                : 'Pusat Krisis Kesehatan • Kementerian Kesehatan RI'}
+              Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan di wilayah PROV. NUSA TENGGARA TIMUR.
             </span>
           </div>
         </div>
 
-        {currentTourProvince ? (
-          <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-slate-200">
-            <span className="text-[10px] text-[#047D78] font-extrabold uppercase tracking-wider">Pemantauan Wilayah:</span>
-            <span className="text-xs font-black text-[#047D78] bg-teal-50 border border-teal-300 px-2.5 py-0.5 rounded-xl truncate max-w-[280px]">
-              {currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR')
-                ? 'PROV. NTT (8 KABUPATEN TERDAMPAK)'
-                : currentTourProvince}
-            </span>
-          </div>
-        ) : (
-          <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-slate-200">
-            <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">Cakupan Wilayah:</span>
-            <span className="text-xs font-black text-[#047D78] bg-teal-50 border border-teal-200 px-2.5 py-0.5 rounded-xl">
-              Nasional (34 Provinsi)
-            </span>
-          </div>
-        )}
+        <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-slate-200">
+          <span className="text-[10px] text-[#047D78] font-extrabold uppercase tracking-wider">Pemantauan Wilayah:</span>
+          <span className="text-xs font-black text-[#047D78] bg-teal-50 border border-teal-300 px-2.5 py-0.5 rounded-xl truncate max-w-[280px]">
+            PROV. NTT (8 KABUPATEN TERDAMPAK)
+          </span>
+        </div>
       </div>
 
       {/* ── Middle Live Digital Clock (3 Timezones: WIB, WITA, WIT without icon) ── */}

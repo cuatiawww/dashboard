@@ -667,7 +667,6 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   }
 
   const handleSelectProvince = (provName: string) => {
-    setCurrentTourProvince(provName)
     mapEngineRef.current?.focusProvince(provName)
   }
 

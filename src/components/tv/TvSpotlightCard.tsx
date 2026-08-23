@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Flame,
   MapPin,
@@ -12,6 +12,9 @@ import {
   Clock,
   ArrowRight,
   ShieldAlert,
+  FileText,
+  Share2,
+  Check,
 } from 'lucide-react'
 
 export interface SpotlightItem {
@@ -74,6 +77,16 @@ export default function TvSpotlightCard({
   onStartRoute,
   onClearRoute,
 }: TvSpotlightCardProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href).catch(() => {})
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   if (!item && !routeInfo) return null
 
   // ── 1. ACTIVE TACTICAL ROUTE VIEW ──
@@ -85,7 +98,7 @@ export default function TvSpotlightCard({
             type="button"
             onClick={onClearRoute}
             className="absolute top-2.5 right-2.5 h-6 w-6 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-all cursor-pointer"
-            title="Tutup Navigasi Rute"
+            title="Tutup Rute"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -191,10 +204,10 @@ export default function TvSpotlightCard({
               >
                 {isFaskes ? 'FASILITAS KESEHATAN' : isPosko ? 'POSKO PENGUNGSIAN' : isEarthquake ? 'GEMPABUMI BMKG' : 'TITIK KEJADIAN'}
               </span>
-              <span className="text-[10px] text-slate-400 font-semibold">{item.time || item.tgl_kejadian || 'NTT'}</span>
+              <span className="text-[10px] text-slate-400 font-semibold">{item.time || item.tgl_kejadian || '-'}</span>
             </div>
             <h4 className="font-extrabold text-sm text-slate-900 truncate mt-0.5">{title}</h4>
-            <p className="text-[11px] text-slate-500 font-medium truncate">{locationStr || item.place || 'Wilayah PROV. NUSA TENGGARA TIMUR'}</p>
+            <p className="text-[11px] text-slate-500 font-medium truncate">{locationStr || item.place || '-'}</p>
           </div>
         </div>
 
@@ -248,7 +261,7 @@ export default function TvSpotlightCard({
               </div>
               <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
                 <span className="text-[9px] text-slate-500 block font-bold">Status</span>
-                <span className="text-[10px] font-black text-emerald-700 block truncate">Siaga Bantuan</span>
+                <span className="text-[10px] font-black text-emerald-700 block truncate">{item.status || 'Posko Terdaftar'}</span>
               </div>
             </div>
 
@@ -307,7 +320,8 @@ export default function TvSpotlightCard({
         )}
 
         {isDisaster && (
-          <div className="grid grid-cols-3 gap-1.5 mt-2.5 pt-2.5 border-t border-slate-200">
+          <div className="space-y-2 mt-2.5 pt-2.5 border-t border-slate-200">
+            {/* Total Korban Metric */}
             <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
               <span className="text-[9px] text-slate-500 block font-bold">Total Korban</span>
               <span className="font-mono text-sm sm:text-base font-black text-red-600">
@@ -315,18 +329,45 @@ export default function TvSpotlightCard({
               </span>
             </div>
 
-            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-              <span className="text-[9px] text-slate-500 block font-bold">Rincian</span>
-              <span className="font-mono text-[10px] font-bold text-slate-700 block truncate">
-                🔴 {item.meninggal || 0} MD • 🟠 {item.luka || 0} LK
-              </span>
-            </div>
+            {/* 3 Action Buttons: Renkon, Respon, Share */}
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open('/renkon', '_blank')
+                  }
+                }}
+                className="py-1.5 px-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-[#047D78] border border-teal-200 text-xs font-black shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer text-center"
+                title="Buka Rencana Kontinjensi (Renkon)"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Renkon</span>
+              </button>
 
-            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-              <span className="text-[9px] text-slate-500 block font-bold">Status Respon</span>
-              <span className="text-[10px] font-black text-emerald-700 block truncate">
-                Kluster Siaga
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open('/respon', '_blank')
+                  }
+                }}
+                className="py-1.5 px-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-black shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer text-center"
+                title="Buka Respon Tanggap Darurat"
+              >
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-700" />
+                <span>Respon</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShare}
+                className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-black shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer text-center"
+                title="Bagikan Tautan Kejadian"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5 text-slate-600" />}
+                <span>{copied ? 'Tersalin' : 'Share'}</span>
+              </button>
             </div>
           </div>
         )}
