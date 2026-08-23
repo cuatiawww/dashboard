@@ -30,7 +30,7 @@ const TvMapEngine = dynamic(() => import('./TvMapEngine'), {
 const DEFAULT_LAYERS: TvLayerState = {
   baseMap: 'osm',
   bnpbBanjir: false,
-  bnpbGempa: false,
+  bnpbGempa: true,
   bnpbLongsor: false,
   bnpbKarhutla: false,
   bnpbHillshade: false,
@@ -118,7 +118,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [poskoList, setPoskoList] = useState<PoskoItem[]>([])
   const [earthquakePoints, setEarthquakePoints] = useState<EarthquakePoint[]>([])
   const [kabupatenDetailList, setKabupatenDetailList] = useState<any[]>([])
-  const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[] } | null>(null)
+  const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[]; gempadirasakan?: any[] } | null>(null)
   const [peringatanDiniList, setPeringatanDiniList] = useState<any[]>([])
 
   // Faskes Real API Counts for Layer Services Drawer
@@ -406,22 +406,27 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             const th = r.triase_hijau !== undefined ? Number(r.triase_hijau) : 0
             const tht = r.triase_hitam !== undefined ? Number(r.triase_hitam) : 0
             const tot = r.total !== undefined ? Number(r.total) : (tm + tk + th + tht)
-            const name = r.nama_master || r.nama_resmi || r.nama_rs || r.rs || 'RSUD Rujukan'
+            const name = r.nama_master || r.nama_resmi || r.nama_rs || r.rs || r.nama || ''
+            if (!name) return
+
+            const lat = Number(r.latitude)
+            const lng = Number(r.longitude)
+            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
 
             parsedFaskes.push({
               nama_rs: name,
               nama_faskes: name,
-              kabupaten: r.nama_kab || r.kabupaten || 'NTT',
-              kecamatan: r.nama_kecamatan || r.kecamatan || '-',
+              kabupaten: r.nama_kab || r.kabupaten || '',
+              kecamatan: r.nama_kecamatan || r.kecamatan || '',
               triase_merah: tm,
               triase_kuning: tk,
               triase_hijau: th,
               triase_hitam: tht,
               total: tot,
-              lat: Number(r.latitude) || -8.6,
-              lng: Number(r.longitude) || 121.5,
-              status: r.status || 'Siaga 24 Jam',
-              igd: r.igd || 'Buka Normal',
+              lat,
+              lng,
+              status: r.status || '',
+              igd: r.igd || '',
             })
           })
         }
@@ -433,22 +438,27 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             const th = pkm.triase_hijau !== undefined ? Number(pkm.triase_hijau) : 0
             const tht = pkm.triase_hitam !== undefined ? Number(pkm.triase_hitam) : 0
             const tot = pkm.total !== undefined ? Number(pkm.total) : (tm + tk + th + tht)
-            const name = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas')
+            const name = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || '')
+            if (!name) return
+
+            const lat = Number(pkm.latitude)
+            const lng = Number(pkm.longitude)
+            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
 
             parsedFaskes.push({
               nama_rs: name,
               nama_faskes: name,
-              kabupaten: pkm.nama_kab || pkm.kabupaten || 'NTT',
-              kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
+              kabupaten: pkm.nama_kab || pkm.kabupaten || '',
+              kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '',
               triase_merah: tm,
               triase_kuning: tk,
               triase_hijau: th,
               triase_hitam: tht,
               total: tot,
-              lat: Number(pkm.latitude) || -8.6,
-              lng: Number(pkm.longitude) || 121.5,
-              status: pkm.status || 'Beroperasi Siaga',
-              igd: 'Pelayanan Dasar',
+              lat,
+              lng,
+              status: pkm.status || '',
+              igd: pkm.igd || '',
             })
           })
         }
@@ -468,9 +478,9 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
                 total_luka: lb + lr,
                 pengungsi: Number(s.pengungsi || s.jumlah_pengungsi || 0),
                 terdampak: Number(s.populasi_terdampak || s.penduduk_terdampak || 0),
-                titik_posko: Number(s.titik_pengungsian || s.titik_posko || 0),
-                lat: Number(s.latitude || s.lat || -8.6),
-                lng: Number(s.longitude || s.lng || 121.5),
+                titik_posko: Number(s.titik_posko || s.titik_pengungsian || 0),
+                lat: Number(s.latitude || s.lat || 0),
+                lng: Number(s.longitude || s.lng || 0),
               }
             })
           : []
@@ -491,41 +501,74 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
         setPenyakitList(triaseItems)
 
-        // ── 5. SEISMIC AFTERSHOCKS POINTS (Strictly from API) ──
+        // ── 5. BMKG OPEN DATA GEMPA BUMI & SEISMIC POINTS (BMKG API) ──
         let eqPoints: EarthquakePoint[] = []
         try {
-          const seismicRes = await fetch('/api/bencana-seismic?provinsi=NUSA%20TENGGARA%20TIMUR', { cache: 'no-store' })
-          if (seismicRes.ok) {
-            const seismicJson = await seismicRes.json()
+          const [seismicRes, bmkgRes] = await Promise.allSettled([
+            fetch('/api/bencana-seismic?provinsi=NUSA%20TENGGARA%20TIMUR', { cache: 'no-store' }),
+            fetch('/api/bmkg-gempa', { cache: 'no-store' }),
+          ])
+
+          if (seismicRes.status === 'fulfilled' && seismicRes.value.ok) {
+            const seismicJson = await seismicRes.value.json()
             if (seismicJson.success && Array.isArray(seismicJson.data?.earthquakeFeatures)) {
               eqPoints = seismicJson.data.earthquakeFeatures
             }
           }
+
+          if (bmkgRes.status === 'fulfilled' && bmkgRes.value.ok) {
+            const bmkgJson = await bmkgRes.value.json()
+            if (bmkgJson.success && bmkgJson.data) {
+              setBmkgData(bmkgJson.data)
+            }
+          }
         } catch (e) {
-          console.warn('[TV NTT] Failed to fetch /api/bencana-seismic:', e)
+          console.warn('[TV NTT] Failed to fetch seismic / BMKG data:', e)
         }
 
         setEarthquakePoints(eqPoints)
 
         // ── 6. POSKO PENGUNGSIAN (Strictly from API) ──
-        const parsedPosko: PoskoItem[] = Array.isArray(nttData?.posko || nttData?.posko_pengungsian)
-          ? (nttData.posko || nttData.posko_pengungsian).map((p: any, idx: number) => ({
-              id: p.id || `posko-${idx}`,
-              nama: p.nama_pos || p.nama || 'Posko Pengungsian',
-              nama_pos: p.nama_pos || p.nama || 'Posko Pengungsian',
-              kabupaten: p.kabupaten || 'NTT',
-              kecamatan: p.kecamatan || '-',
-              latitude: Number(p.latitude || p.lat || -8.6),
-              longitude: Number(p.longitude || p.lng || 121.5),
-              lat: Number(p.latitude || p.lat || -8.6),
-              lng: Number(p.longitude || p.lng || 121.5),
-              pengungsi: Number(p.pengungsi || p.jiwa || 0),
-              jiwa: Number(p.pengungsi || p.jiwa || 0),
-              kapasitas: Number(p.kapasitas || 0),
-              pj_kontak: p.pj_kontak || 'BPBD / Dinsos Local',
-            }))
+        const parsedPosko: PoskoItem[] = []
+        const rawPosko = Array.isArray(nttData?.posko || nttData?.posko_pengungsian)
+          ? (nttData.posko || nttData.posko_pengungsian)
           : []
+
+        rawPosko.forEach((p: any, idx: number) => {
+          const lat = Number(p.latitude || p.lat)
+          const lng = Number(p.longitude || p.lng)
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
+
+          parsedPosko.push({
+            id: p.id || `posko-${idx}`,
+            nama: p.nama_pos || p.nama || 'Posko Pengungsian',
+            nama_pos: p.nama_pos || p.nama || 'Posko Pengungsian',
+            kabupaten: p.kabupaten || '',
+            kecamatan: p.kecamatan || '',
+            latitude: lat,
+            longitude: lng,
+            lat,
+            lng,
+            pengungsi: Number(p.pengungsi || p.jiwa || 0),
+            jiwa: Number(p.pengungsi || p.jiwa || 0),
+            kapasitas: Number(p.kapasitas || 0),
+            pj_kontak: p.pj_kontak || '',
+          })
+        })
         setPoskoList(parsedPosko)
+
+        // ── 7. PERINGATAN DINI CUACA BMKG NOWCAST (CAP) ──
+        try {
+          const nowcastRes = await fetch('/api/bmkg-nowcast', { cache: 'no-store' })
+          if (nowcastRes.ok) {
+            const nowcastJson = await nowcastRes.json()
+            if (nowcastJson.success && Array.isArray(nowcastJson.data)) {
+              setPeringatanDiniList(nowcastJson.data)
+            }
+          }
+        } catch (e) {
+          console.warn('[TV NTT] Failed to fetch /api/bmkg-nowcast:', e)
+        }
 
         // Set initial spotlight item if markers exist
         if (ntt8KabMarkers.length > 0) {
@@ -538,7 +581,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         const [dashRes, bmkgRes, alertsRes] = await Promise.allSettled([
           fetch(`/api/dashboard-utama?startDate=${startDate}&endDate=${endDate}`, { cache: 'no-store' }),
           fetch('/api/bmkg-autogempa', { cache: 'no-store' }),
-          fetch('/api/bmkg-peringatan-dini', { cache: 'no-store' }),
+          fetch('/api/bmkg-nowcast', { cache: 'no-store' }),
         ])
 
         if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
@@ -664,7 +707,11 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         earthquakePoints={earthquakePoints}
         routeCoords={routeCoords}
         wilayahList={wilayahList}
-        bmkgGempas={bmkgData?.gempaterkini || []}
+        bmkgGempas={[
+          ...(bmkgData?.autogempa ? [bmkgData.autogempa] : []),
+          ...(Array.isArray(bmkgData?.gempaterkini) ? bmkgData.gempaterkini : []),
+          ...(Array.isArray(bmkgData?.gempadirasakan) ? bmkgData.gempadirasakan : []),
+        ]}
         layers={layers}
         initialCenter={initialCenter}
         initialZoom={initialZoom}
@@ -715,14 +762,14 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onToggleCollapse={() => setIsKpiCollapsed(!isKpiCollapsed)}
       />
 
-      {/* ── 4. LEFT FLOATING SITUASI FASKES DECK ── */}
+      {/* ── 4. LEFT FLOATING PERINGATAN DINI CUACA (CAP) DECK ── */}
       <TvLiveFeedDeck
-        faskesList={faskesList}
+        peringatanDiniList={peringatanDiniList}
         isKpiCollapsed={isKpiCollapsed}
-        onSelectFaskes={(f) => handleSelectFeature(f, 'faskes')}
+        onSelectProvince={handleSelectProvince}
       />
 
-      {/* ── 5. RIGHT FLOATING ANALYTICS & HOTSPOT DECK ── */}
+      {/* ── 5. RIGHT FLOATING KARAKTERISTIK BENCANA & KRONOLOGIS DECK ── */}
       <TvAnalyticsDeck
         jenisBencanaList={jenisBencanaList}
         wilayahList={wilayahList}
@@ -731,6 +778,9 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         recentMarkers={markers}
         penyakitList={penyakitList}
         summary={summary}
+        bmkgData={bmkgData}
+        earthquakePoints={earthquakePoints}
+        isNttScope={isNttScope}
         isKpiCollapsed={isKpiCollapsed}
         onSelectProvince={handleSelectProvince}
         onSelectLocation={handleSelectLocation}

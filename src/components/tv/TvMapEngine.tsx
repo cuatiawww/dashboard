@@ -376,18 +376,18 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       return new Style({
         fill: new Fill({ color: baseColor }),
         stroke: new Stroke({
-          color: count > 0 ? '#047D78' : 'rgba(148, 163, 184, 0.4)',
-          width: count > 0 ? 1.8 : 0.8,
+          color: count > 0 ? '#047D78' : '#64748b',
+          width: count > 0 ? 2.2 : 1.2,
         }),
-        text: count > 0 ? new OlText({
-          text: `${name}\n(${count})`,
-          font: 'bold 11px Roboto, sans-serif',
-          fill: new Fill({ color: '#ffffff' }),
-          stroke: new Stroke({ color: 'rgba(15, 23, 42, 0.85)', width: 3 }),
+        text: new OlText({
+          text: count > 0 ? `${name}\n(${count})` : name,
+          font: count > 0 ? 'bold 11px Roboto, sans-serif' : 'bold 9.5px Roboto, sans-serif',
+          fill: new Fill({ color: count > 0 ? '#ffffff' : '#1e293b' }),
+          stroke: new Stroke({ color: count > 0 ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)', width: 3 }),
           textAlign: 'center',
           textBaseline: 'middle',
           offsetY: 0,
-        }) : undefined,
+        }),
       })
     })
     layer.changed()
@@ -410,8 +410,8 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/batas_administrasi/MapServer',
       }),
       visible: layers.bnpbAdmin,
-      opacity: 0.5,
-      zIndex: 2,
+      opacity: 0.85,
+      zIndex: 11,
     })
     bnpbAdminRef.current = bnpbAdmin
 
@@ -900,12 +900,14 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       geometry: new Point(epicCenter),
       markerData: {
         type: 'earthquake',
-        nama: `Episentrum Gempa Utama M ${mainshock.magnitude || '7.4'} - ${mainshock.place || 'Laut Flores'}`,
-        magnitude: mainshock.magnitude,
-        depth: mainshock.depth,
-        place: mainshock.place || 'Laut Flores',
-        time: mainshock.time || mainshock.dateStr || 'WIB',
-        mmi: mainshock.mmi || '-',
+        nama: mainshock.place
+          ? `Episentrum Gempa Utama M ${mainshock.magnitude ? mainshock.magnitude.toFixed(1) : ''} - ${mainshock.place}`
+          : 'Episentrum Gempa Utama',
+        magnitude: mainshock.magnitude || undefined,
+        depth: mainshock.depth || undefined,
+        place: mainshock.place || '',
+        time: mainshock.time || mainshock.dateStr || '',
+        mmi: mainshock.mmi || '',
         lat: mainshock.lat,
         lng: mainshock.lng,
       },
@@ -925,7 +927,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     source.addFeatures(featureList)
   }, [earthquakePoints, layers.impactRadiusKm])
 
-  // ── 3. Earthquake Aftershocks Bubble Dots ──
+  // ── 3. BMKG Real-Time Earthquake Points & Aftershocks ──
   useEffect(() => {
     const layer = earthquakeLayerRef.current
     const source = layer?.getSource()
@@ -933,32 +935,138 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     source.clear()
 
     const features: Feature[] = []
-    earthquakePoints.forEach((eq, idx) => {
-      if (eq.isMainshock) return // handled by shakingZoneLayer
+    const seenPoints = new Set<string>()
+
+    const getSvgGempaBadge = (mag: number) => {
+      const color = mag >= 6.0 ? '#dc2626' : mag >= 5.0 ? '#ea580c' : '#f59e0b'
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,0.18)" stroke="#ffffff" stroke-width="1.5"/>
+        <circle cx="20" cy="20" r="15" fill="${color}" stroke="#ffffff" stroke-width="2.5"/>
+        <text x="20" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="900" fill="#ffffff">M ${mag.toFixed(1)}</text>
+      </svg>`
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+    }
+
+    const parseGempaCoords = (g: any): { lat: number; lng: number } | null => {
+      if (g.lat && g.lng && !isNaN(Number(g.lat)) && !isNaN(Number(g.lng))) {
+        return { lat: Number(g.lat), lng: Number(g.lng) }
+      }
+      if (g.latitude && g.longitude && !isNaN(Number(g.latitude)) && !isNaN(Number(g.longitude))) {
+        return { lat: Number(g.latitude), lng: Number(g.longitude) }
+      }
+      if (g.Coordinates && typeof g.Coordinates === 'string') {
+        const parts = g.Coordinates.split(',')
+        if (parts.length === 2) {
+          const lat = parseFloat(parts[0].trim())
+          const lng = parseFloat(parts[1].trim())
+          if (!isNaN(lat) && !isNaN(lng)) return { lat, lng }
+        }
+      }
+      if (g.Lintang && g.Bujur) {
+        const latStr = String(g.Lintang).toUpperCase().replace(/LS/g, '').replace(/LU/g, '').trim()
+        let lat = parseFloat(latStr)
+        if (String(g.Lintang).toUpperCase().includes('LS') && lat > 0) lat = -lat
+
+        const lngStr = String(g.Bujur).toUpperCase().replace(/BT/g, '').replace(/BB/g, '').trim()
+        const lng = parseFloat(lngStr)
+        if (!isNaN(lat) && !isNaN(lng)) return { lat, lng }
+      }
+      return null
+    }
+
+    // 1. Plot Seismic Aftershock Points from API
+    earthquakePoints.forEach((eq) => {
+      if (eq.isMainshock) return // Handled by shakingZoneLayer
+      if (!eq.lat || !eq.lng) return
+
+      const mag = Number(eq.magnitude)
+      if (isNaN(mag) || mag <= 0) return
+
+      const coordKey = `${eq.lat.toFixed(3)},${eq.lng.toFixed(3)}`
+      seenPoints.add(coordKey)
+
       const pt = fromLonLat([eq.lng, eq.lat])
+
       const feat = new Feature({
         geometry: new Point(pt),
-        markerData: { ...eq, type: 'earthquake' },
+        markerData: {
+          ...eq,
+          type: 'earthquake',
+          nama: eq.place ? `Gempa M ${mag.toFixed(1)} - ${eq.place}` : `Gempa M ${mag.toFixed(1)}`,
+          magnitude: mag,
+          depth: eq.depth ?? '',
+          place: eq.place || '',
+          time: eq.time || '',
+          source: (eq as any).source || 'BMKG',
+        },
         itemType: 'earthquake',
       })
 
-      const mag = Number(eq.magnitude || 4.5)
-      const radius = Math.max(6, (mag - 3) * 3)
-
       feat.setStyle(
         new Style({
-          image: new CircleStyle({
-            radius: radius,
-            fill: new Fill({ color: mag >= 5.5 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(245, 158, 11, 0.85)' }),
-            stroke: new Stroke({ color: '#ffffff', width: 1.5 }),
+          image: new Icon({
+            src: getSvgGempaBadge(mag),
+            size: [40, 40],
+            scale: 0.85,
+            anchor: [0.5, 0.5],
           }),
         })
       )
       features.push(feat)
     })
 
+    // 2. Plot BMKG Live Gempabumi (autogempa, gempaterkini, gempadirasakan)
+    if (Array.isArray(bmkgGempas)) {
+      bmkgGempas.forEach((g) => {
+        const coords = parseGempaCoords(g)
+        if (!coords) return
+
+        const mag = parseFloat(String(g.Magnitude || g.magnitude || ''))
+        if (isNaN(mag) || mag <= 0) return
+
+        const coordKey = `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`
+        if (seenPoints.has(coordKey)) return
+        seenPoints.add(coordKey)
+
+        const wilayah = g.Wilayah || g.Lokasi || g.region || ''
+        const kedalaman = g.Kedalaman || g.depth || ''
+        const timeStr = `${g.Tanggal || ''} ${g.Jam || g.DateTime || ''}`.trim()
+
+        const feat = new Feature({
+          geometry: new Point(fromLonLat([coords.lng, coords.lat])),
+          markerData: {
+            type: 'earthquake',
+            nama: wilayah ? `Gempabumi BMKG M ${mag.toFixed(1)} - ${wilayah}` : `Gempabumi BMKG M ${mag.toFixed(1)}`,
+            magnitude: mag,
+            depth: kedalaman,
+            place: wilayah,
+            time: timeStr,
+            mmi: g.Dirasakan || '',
+            potensi: g.Potensi || '',
+            shakemapUrl: g.shakemapUrl || (g.Shakemap ? `https://static.bmkg.go.id/${g.Shakemap}` : null),
+            source: 'BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)',
+            lat: coords.lat,
+            lng: coords.lng,
+          },
+          itemType: 'earthquake',
+        })
+
+        feat.setStyle(
+          new Style({
+            image: new Icon({
+              src: getSvgGempaBadge(mag),
+              size: [40, 40],
+              scale: 0.88,
+              anchor: [0.5, 0.5],
+            }),
+          })
+        )
+        features.push(feat)
+      })
+    }
+
     source.addFeatures(features)
-  }, [earthquakePoints])
+  }, [earthquakePoints, bmkgGempas])
 
   // ── 4. Faskes Markers (RSUD & Puskesmas NTT with SVG Icons & Sub-Filters) ──
   useEffect(() => {

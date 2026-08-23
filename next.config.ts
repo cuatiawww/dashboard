@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: '/dashboard-eoc/api/:path*',
+          destination: '/api/:path*',
+        },
+        {
           source: '/dashboard-eoc/gempa_ntt',
           destination: '/dashboard-eoc/gempa-ntt',
         },

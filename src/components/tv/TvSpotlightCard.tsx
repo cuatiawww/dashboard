@@ -43,10 +43,13 @@ export interface SpotlightItem {
   status?: string
   igd?: string
   magnitude?: number
-  depth?: number
+  depth?: number | string
   place?: string
   time?: string
   mmi?: string
+  potensi?: string
+  shakemapUrl?: string
+  source?: string
 }
 
 export interface RouteInfo {
@@ -86,7 +89,6 @@ export default function TvSpotlightCard({
           >
             <X className="h-3.5 w-3.5" />
           </button>
-
           <div className="flex items-center gap-3 pr-8">
             <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
               <Navigation className="h-5 w-5 animate-pulse" />
@@ -98,7 +100,9 @@ export default function TvSpotlightCard({
                   RUTE TAKTIS DARURAT
                 </span>
                 <span className="text-[10px] text-teal-300 font-bold flex items-center gap-1 truncate">
-                  <ArrowRight className="h-3 w-3" /> {routeInfo.targetName}
+                  <span>Asal: Episentrum</span>
+                  <ArrowRight className="h-3 w-3 inline shrink-0" />
+                  <span className="truncate">{routeInfo.targetName}</span>
                 </span>
               </div>
 
@@ -139,7 +143,6 @@ export default function TvSpotlightCard({
   return (
     <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-30 max-w-sm sm:max-w-md 2xl:max-w-lg w-[calc(100vw-32px)] sm:w-auto pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="relative p-3 sm:p-3.5 rounded-2xl bg-white/95 backdrop-blur-2xl border border-teal-400 shadow-[0_12px_36px_rgba(4,125,120,0.18)] text-slate-800">
-        {/* Close button */}
         <button
           type="button"
           onClick={onClose}
@@ -149,53 +152,49 @@ export default function TvSpotlightCard({
           <X className="h-3.5 w-3.5" />
         </button>
 
-        <div className="flex items-start gap-2.5">
-          <div className={`p-2 rounded-xl border shadow-xs shrink-0 ${
-            isFaskes
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : isPosko
-              ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
-              : isEarthquake
-              ? 'bg-rose-50 text-rose-700 border-rose-200'
-              : 'bg-teal-50 text-[#047D78] border-teal-200'
-          }`}>
+        {/* Header Icon + Title */}
+        <div className="flex items-center gap-2.5 pr-8">
+          <div
+            className={`p-2 rounded-xl shrink-0 ${
+              isFaskes
+                ? 'bg-teal-50 text-[#047D78]'
+                : isPosko
+                ? 'bg-cyan-50 text-cyan-700'
+                : isEarthquake
+                ? 'bg-rose-50 text-rose-600'
+                : 'bg-red-50 text-red-600'
+            }`}
+          >
             {isFaskes ? (
               <Building2 className="h-5 w-5" />
             ) : isPosko ? (
               <Tent className="h-5 w-5" />
             ) : isEarthquake ? (
-              <Activity className="h-5 w-5" />
+              <ShieldAlert className="h-5 w-5" />
             ) : (
               <Flame className="h-5 w-5" />
             )}
           </div>
 
-          <div className="min-w-0 flex-1 pr-6">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
-                isFaskes
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : isPosko
-                  ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
-                  : isEarthquake
-                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                  : 'bg-red-50 text-red-700 border-red-200'
-              }`}>
-                {isFaskes ? 'FASILITAS KESEHATAN' : isPosko ? 'POS PENGUNGSIAN' : isEarthquake ? 'TITIK GEMPA' : 'FOKUS BENCANA'}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                  isFaskes
+                    ? 'bg-teal-100/70 text-[#047D78]'
+                    : isPosko
+                    ? 'bg-cyan-100/70 text-cyan-800'
+                    : isEarthquake
+                    ? 'bg-rose-100 text-rose-700'
+                    : 'bg-red-100 text-red-700'
+                }`}
+              >
+                {isFaskes ? 'FASILITAS KESEHATAN' : isPosko ? 'POSKO PENGUNGSIAN' : isEarthquake ? 'GEMPABUMI BMKG' : 'TITIK KEJADIAN'}
               </span>
-              <span className="text-[9.5px] font-mono font-bold text-slate-500">
-                {item.tgl_kejadian || item.time || 'Update Terkini'}
-              </span>
+              <span className="text-[10px] text-slate-400 font-semibold">{item.time || item.tgl_kejadian || 'NTT'}</span>
             </div>
-
-            <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
-              {title}
-            </h3>
-
-            <p className="text-[11px] text-slate-600 font-medium flex items-center gap-1 mt-0.5">
-              <MapPin className="h-3 w-3 text-[#047D78] shrink-0" />
-              <span className="truncate">{locationStr || item.place || 'Wilayah NTT'}</span>
-            </p>
+            <h4 className="font-extrabold text-sm text-slate-900 truncate mt-0.5">{title}</h4>
+            <p className="text-[11px] text-slate-500 font-medium truncate">{locationStr || item.place || 'Wilayah PROV. NUSA TENGGARA TIMUR'}</p>
           </div>
         </div>
 
@@ -244,7 +243,7 @@ export default function TvSpotlightCard({
               <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
                 <span className="text-[9px] text-slate-500 block font-bold">Koordinat</span>
                 <span className="font-mono text-[10px] font-black text-[#047D78] block truncate">
-                  {item.lat.toFixed(3)}, {item.lng.toFixed(3)}
+                  {item.lat ? item.lat.toFixed(3) : '-'}, {item.lng ? item.lng.toFixed(3) : '-'}
                 </span>
               </div>
               <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
@@ -267,20 +266,42 @@ export default function TvSpotlightCard({
         )}
 
         {isEarthquake && (
-          <div className="grid grid-cols-3 gap-1.5 mt-2.5 pt-2.5 border-t border-slate-200">
-            <div className="p-1.5 rounded-xl bg-rose-50 border border-rose-200 text-center">
-              <span className="text-[9px] text-rose-700 block font-bold">Magnitudo</span>
-              <span className="font-mono text-base font-black text-rose-800">
-                M {item.magnitude ? item.magnitude.toFixed(1) : '-'}
-              </span>
+          <div className="space-y-2 mt-2.5 pt-2.5 border-t border-slate-200">
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="p-1.5 rounded-xl bg-rose-50 border border-rose-200 text-center">
+                <span className="text-[9px] text-rose-700 block font-bold">Magnitudo</span>
+                <span className="font-mono text-base font-black text-rose-800">
+                  M {item.magnitude ? item.magnitude.toFixed(1) : '-'}
+                </span>
+              </div>
+              <div className="p-1.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
+                <span className="text-[9px] text-amber-700 block font-bold">Kedalaman</span>
+                <span className="font-mono text-sm font-black text-amber-800">{item.depth ? `${item.depth}` : '-'}</span>
+              </div>
+              <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                <span className="text-[9px] text-slate-500 block font-bold">Potensi / MMI</span>
+                <span className="text-[10px] font-black text-slate-800 block truncate">{item.potensi || item.mmi || '-'}</span>
+              </div>
             </div>
-            <div className="p-1.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
-              <span className="text-[9px] text-amber-700 block font-bold">Kedalaman</span>
-              <span className="font-mono text-sm font-black text-amber-800">{item.depth || 10} km</span>
-            </div>
-            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-              <span className="text-[9px] text-slate-500 block font-bold">Intensitas</span>
-              <span className="text-[10px] font-black text-slate-800 block truncate">{item.mmi || 'VII-VIII MMI'}</span>
+
+            {item.shakemapUrl && (
+              <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
+                <img
+                  src={item.shakemapUrl}
+                  alt="BMKG Shakemap"
+                  className="w-full h-28 object-contain bg-black/40"
+                  onError={(e) => {
+                    ;(e.target as HTMLElement).style.display = 'none'
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold px-1">
+              <span>{item.source || 'Sumber Data: BMKG (Badan Meteorologi, Klimatologi, dan Geofisika)'}</span>
+              {item.lat && item.lng && (
+                <span className="font-mono">{item.lat.toFixed(2)}°, {item.lng.toFixed(2)}°</span>
+              )}
             </div>
           </div>
         )}
