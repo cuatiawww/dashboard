@@ -46,18 +46,34 @@ export default function TvTopHud({
   autoProvinceTour,
   onToggleProvinceTour,
 }: TvTopHudProps) {
-  const [timeStr, setTimeStr] = useState('')
+  const [wibStr, setWibStr] = useState('')
+  const [witaStr, setWitaStr] = useState('')
+  const [witStr, setWitStr] = useState('')
   const [dateStr, setDateStr] = useState('')
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Realtime digital clock with seconds
+  // Realtime digital clock with 3 Indonesian timezones (WIB, WITA, WIT)
   useEffect(() => {
     const updateClock = () => {
       const now = new Date()
-      const hours = String(now.getHours()).padStart(2, '0')
-      const minutes = String(now.getMinutes()).padStart(2, '0')
-      const seconds = String(now.getSeconds()).padStart(2, '0')
-      setTimeStr(`${hours}:${minutes}:${seconds} WIB`)
+
+      const formatT = (tz: string) => {
+        try {
+          return new Intl.DateTimeFormat('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            timeZone: tz,
+          }).format(now)
+        } catch {
+          return ''
+        }
+      }
+
+      setWibStr(`${formatT('Asia/Jakarta')} WIB`)
+      setWitaStr(`${formatT('Asia/Makassar')} WITA`)
+      setWitStr(`${formatT('Asia/Jayapura')} WIT`)
 
       const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
       const months = [
@@ -120,19 +136,25 @@ export default function TvTopHud({
           <div className="h-7 w-px bg-slate-200 hidden sm:block" />
           <div className="flex flex-col">
             <span className="font-extrabold tracking-wider text-sm text-[#047D78]">
-              PEMANTAUAN EOC
+              {currentTourProvince && (currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR'))
+                ? 'DASHBOARD GEMPA BUMI - PROV. NTT'
+                : 'PEMANTAUAN EOC'}
             </span>
-            <span className="text-[11px] font-semibold text-slate-600">
-              Pusat Krisis Kesehatan • Kementerian Kesehatan RI
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-600 max-w-[480px] truncate">
+              {currentTourProvince && (currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR'))
+                ? 'Analisis spasial kejadian bencana dan dampaknya terhadap sumber daya kesehatan di wilayah PROV. NUSA TENGGARA TIMUR.'
+                : 'Pusat Krisis Kesehatan • Kementerian Kesehatan RI'}
             </span>
           </div>
         </div>
 
         {currentTourProvince ? (
           <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-slate-200">
-            <span className="text-[10px] text-[#047D78] font-extrabold uppercase tracking-wider">Pemantauan Provinsi:</span>
-            <span className="text-xs font-black text-[#047D78] bg-teal-50 border border-teal-300 px-2.5 py-0.5 rounded-xl truncate max-w-[220px]">
-              {currentTourProvince}
+            <span className="text-[10px] text-[#047D78] font-extrabold uppercase tracking-wider">Pemantauan Wilayah:</span>
+            <span className="text-xs font-black text-[#047D78] bg-teal-50 border border-teal-300 px-2.5 py-0.5 rounded-xl truncate max-w-[280px]">
+              {currentTourProvince.toUpperCase().includes('NTT') || currentTourProvince.toUpperCase().includes('NUSA TENGGARA TIMUR')
+                ? 'PROV. NTT (8 KABUPATEN TERDAMPAK)'
+                : currentTourProvince}
             </span>
           </div>
         ) : (
@@ -145,16 +167,17 @@ export default function TvTopHud({
         )}
       </div>
 
-      {/* ── Middle Live Digital Clock ── */}
-      <div className="pointer-events-auto hidden md:flex items-center gap-3 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl px-5 py-2 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
+      {/* ── Middle Live Digital Clock (3 Timezones: WIB, WITA, WIT without icon) ── */}
+      <div className="pointer-events-auto hidden md:flex items-center gap-3 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl px-4 py-1.5 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[#047D78] animate-pulse" />
-            <span className="font-mono text-lg font-black tracking-widest text-[#047D78]">
-              {timeStr || '--:--:-- WIB'}
-            </span>
+          <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-black tracking-wider text-[#047D78]">
+            <span>{wibStr || '--:--:-- WIB'}</span>
+            <span className="text-slate-300 font-normal">•</span>
+            <span>{witaStr || '--:--:-- WITA'}</span>
+            <span className="text-slate-300 font-normal">•</span>
+            <span>{witStr || '--:--:-- WIT'}</span>
           </div>
-          <span className="text-[11px] font-semibold text-slate-600">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-slate-600 mt-0.5">
             {dateStr || 'Memuat waktu...'}
           </span>
         </div>
@@ -162,66 +185,20 @@ export default function TvTopHud({
 
       {/* ── Right Quick Controls Deck ── */}
       <div className="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl p-1.5 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
-        {/* Province Tour Toggle (30s) */}
-        {onToggleProvinceTour && (
-          <button
-            type="button"
-            onClick={onToggleProvinceTour}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all shadow-xs cursor-pointer ${
-              autoProvinceTour
-                ? 'bg-gradient-to-r from-[#047D78] to-[#00B0AA] text-white shadow-md shadow-teal-700/20'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-            }`}
-            title={autoProvinceTour ? 'Jeda Rotasi Provinsi 30s' : 'Aktifkan Rotasi Provinsi Otomatis (30s)'}
-          >
-            <span>{autoProvinceTour ? 'Rotasi 30s: ON' : 'Rotasi 30s: OFF'}</span>
-          </button>
-        )}
 
-        {/* Auto Refresh with Countdown */}
-        <button
-          type="button"
-          onClick={onManualRefresh}
-          disabled={isLoading}
-          className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-[#047D78] text-xs font-bold transition-all overflow-hidden shadow-xs"
-          title={`Klik untuk refresh sekarang (Auto refresh dalam ${refreshCountdown}s)`}
-        >
-          {/* Progress bar background indicator */}
-          <div
-            className="absolute left-0 bottom-0 top-0 bg-teal-200/50 transition-all duration-1000 ease-linear pointer-events-none"
-            style={{ width: `${refreshPercent}%` }}
-          />
-          <RefreshCw className={`h-3.5 w-3.5 text-[#047D78] ${isLoading ? 'animate-spin' : ''}`} />
-          <span className="font-mono text-[11px] text-[#047D78] z-10">{refreshCountdown}s</span>
-        </button>
-
-        {/* Sound Toggle */}
-        <button
-          type="button"
-          onClick={onToggleSound}
-          className={`flex items-center justify-center h-8 w-8 rounded-xl border transition-all shadow-xs ${
-            soundEnabled
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
-              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-          }`}
-          title={soundEnabled ? 'Suara Sirine/Alert Aktif' : 'Suara Dimatikan (Mute)'}
-        >
-          {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-        </button>
-
-        {/* Layer Drawer Toggle */}
+        {/* Pengaturan Peta Drawer Toggle */}
         <button
           type="button"
           onClick={onToggleLayers}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold border transition-all shadow-xs cursor-pointer ${
             isLayersOpen
-              ? 'bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-600/20'
-              : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border-orange-200'
+              ? 'bg-[#047D78] text-white border-[#047D78] shadow-md shadow-[#047D78]/20'
+              : 'bg-teal-50 hover:bg-teal-100 text-[#047D78] border-teal-200'
           }`}
-          title="Buka / Tutup Pengaturan Layer"
+          title="Buka / Tutup Pengaturan Peta"
         >
-          <Layers className={`h-3.5 w-3.5 ${isLayersOpen ? 'text-white' : 'text-orange-600'}`} />
-          <span className="hidden lg:inline">Layer</span>
+          <Layers className={`h-3.5 w-3.5 ${isLayersOpen ? 'text-white' : 'text-[#047D78]'}`} />
+          <span className="hidden lg:inline">Pengaturan Peta</span>
         </button>
 
         {/* Fullscreen Button */}

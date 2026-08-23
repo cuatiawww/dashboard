@@ -35,17 +35,34 @@ const DEFAULT_LAYERS: TvLayerState = {
   bnpbKarhutla: false,
   bnpbHillshade: false,
   bnpbKepadatan: false,
-  bnpbAdmin: false,
+  bnpbAdmin: true,
   showWindy: true,
   showFaskes: true,
   showPosko: true,
   showTck: false,
   showChoropleth: true,
   showMarkers: true,
+  faskesRs: true,
+  faskesPuskesmas: true,
+  faskesKlinik: true,
+  faskesPustu: true,
+  faskesSiagaOnly: false,
+  impactRadiusKm: 1,
 }
 
 const REFRESH_INTERVAL_SECONDS = 60
 const PROVINCE_CYCLE_SECONDS = 30
+
+const NTT_KAB_COORDS: Record<string, { lat: number; lng: number; kecamatan?: string }> = {
+  'manggarai timur': { lat: -8.8033, lng: 120.5982, kecamatan: 'Borong, Lamba Leda, Kota Komba' },
+  'manggarai': { lat: -8.6148, lng: 120.4632, kecamatan: 'Ruteng, Reok, Cibal' },
+  'ende': { lat: -8.8415, lng: 121.6582, kecamatan: 'Ende, Ndona, Nangapanda' },
+  'sikka': { lat: -8.6214, lng: 122.2155, kecamatan: 'Maumere, Alok, Nita' },
+  'ngada': { lat: -8.7891, lng: 120.9664, kecamatan: 'Bajawa, Golewa, Aimere' },
+  'nagekeo': { lat: -8.6752, lng: 121.2891, kecamatan: 'Aesesa, Mauponggo, Boawae' },
+  'manggarai barat': { lat: -8.5142, lng: 119.8924, kecamatan: 'Komodo, Lembor, Kuwus' },
+  'flores timur': { lat: -8.3421, lng: 122.9814, kecamatan: 'Larantuka, Tanjung Bunga, Ile Mandiri, Adonara' },
+}
 
 const formatYmd = (d: Date) => {
   const y = d.getFullYear()
@@ -73,6 +90,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
   // ── States ──
   const [isLoading, setIsLoading] = useState(true)
+  const [isApiDisconnected, setIsApiDisconnected] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
   const [layers, setLayers] = useState<TvLayerState>(DEFAULT_LAYERS)
   const [soundEnabled, setSoundEnabled] = useState(false)
@@ -103,6 +121,47 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[] } | null>(null)
   const [peringatanDiniList, setPeringatanDiniList] = useState<any[]>([])
 
+  // Faskes Real API Counts for Layer Services Drawer
+  const faskesCounts = useMemo(() => {
+    const list = Array.isArray(faskesList) ? faskesList : []
+    let rs = 0
+    let puskesmas = 0
+    let klinik = 0
+    let pustu = 0
+    let siaga = 0
+
+    list.forEach((f) => {
+      const nameLower = (f.nama_rs || f.nama_faskes || f.nama || '').toLowerCase()
+      const jenisLower = (f.jenis_faskes || f.jenis || f.jenis_sarana || '').toLowerCase()
+
+      const isRS = jenisLower.includes('rs') || jenisLower.includes('rumah sakit') || nameLower.includes('rsud') || nameLower.includes('rumah sakit') || nameLower.startsWith('rs ')
+      const isPuskesmas = jenisLower.includes('puskesmas') || nameLower.includes('puskesmas') || nameLower.includes('pkm')
+      const isKlinik = jenisLower.includes('klinik') || nameLower.includes('klinik')
+      const isPustu = jenisLower.includes('pustu') || jenisLower.includes('pembantu') || nameLower.includes('pustu')
+
+      if (isRS) rs++
+      else if (isPuskesmas) puskesmas++
+      else if (isKlinik) klinik++
+      else if (isPustu) pustu++
+      else puskesmas++
+
+      const totalPatients = (f.triase_merah || 0) + (f.triase_kuning || 0) + (f.triase_hijau || 0) + (f.triase_hitam || 0) + (f.total || 0) + (f.total_pasien || 0)
+      if (totalPatients > 0) siaga++
+    })
+
+    return { rs, puskesmas, klinik, pustu, siaga }
+  }, [faskesList])
+
+  const handleBatchUpdateFaskes = (allOn: boolean) => {
+    setLayers((prev) => ({
+      ...prev,
+      faskesRs: allOn,
+      faskesPuskesmas: allOn,
+      faskesKlinik: allOn,
+      faskesPustu: allOn,
+    }))
+  }
+
   // Active Spotlight & Tactical Routing State
   const [spotlightItem, setSpotlightItem] = useState<SpotlightItem | null>(null)
   const [routeCoords, setRouteCoords] = useState<number[][]>([])
@@ -112,9 +171,10 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const handleStartRoute = async (target: SpotlightItem) => {
     if (!target.lat || !target.lng) return
 
-    // Origin: Episentrum Utama Laut Flores atau RS Rujukan terdekat
-    const startLat = -8.3421
-    const startLng = 122.9814
+    // Dynamic Origin: Mainshock epicenter from API or first active marker
+    const mainshock = earthquakePoints.find((eq) => eq.isMainshock) || earthquakePoints[0]
+    const startLat = mainshock?.lat || -8.6
+    const startLng = mainshock?.lng || 121.5
     const endLat = target.lat
     const endLng = target.lng
 
@@ -174,10 +234,10 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
       const endDate = formatYmd(now)
 
       if (isNttScope) {
-        // 1. Fetch direct from official Collector API (/dashboard-eoc/api/ntt-data & /api/ntt-data)
+        // 1. Fetch direct from official Collector API (/api/ntt-data & /dashboard-eoc/api/ntt-data)
         let nttData: any = null
         try {
-          const nttRes = await fetch('/dashboard-eoc/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
+          const nttRes = await fetch('/api/ntt-data', { cache: 'no-store' })
           if (nttRes.ok) {
             const nttJson = await nttRes.json()
             if (nttJson.success) {
@@ -185,8 +245,12 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             }
           }
         } catch {
+          // fallback to next endpoint
+        }
+
+        if (!nttData || (!nttData.pasien_rs && !nttData.situasi_kesehatan)) {
           try {
-            const nttRes2 = await fetch('/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
+            const nttRes2 = await fetch('/dashboard-eoc/api/ntt-data', { cache: 'no-store' })
             if (nttRes2.ok) {
               const nttJson2 = await nttRes2.json()
               if (nttJson2.success) {
@@ -194,28 +258,46 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
               }
             }
           } catch (err2) {
-            console.warn('[TV NTT] Failed to fetch /api/ntt-data:', err2)
+            console.warn('[TV NTT] Failed to fetch /dashboard-eoc/api/ntt-data:', err2)
           }
         }
 
-        // If no collector data received from API
-        if (!nttData) {
+        // Secondary fallback with explicit active date parameter if main fetch returns empty
+        if (!nttData || (!nttData.pasien_rs && !nttData.situasi_kesehatan)) {
           try {
-            const nttResScraped = await fetch('/api/gempa-ntt-scraped', { cache: 'no-store' })
-            if (nttResScraped.ok) {
-              const nttJsonScraped = await nttResScraped.json()
-              if (nttJsonScraped.success && nttJsonScraped.data) {
-                nttData = nttJsonScraped.data
+            const nttRes3 = await fetch('/dashboard-eoc/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
+            if (nttRes3.ok) {
+              const nttJson3 = await nttRes3.json()
+              if (nttJson3.success) {
+                nttData = nttJson3.tables || nttJson3.data
               }
             }
-          } catch (err) {
-            console.warn('[TV NTT] Fallback fetch failed:', err)
+          } catch (err3) {
+            console.warn('[TV NTT] Failed fallback fetch with tanggal:', err3)
           }
+        }
+
+        setIsApiDisconnected(!nttData)
+
+        // Fetch live BMKG earthquake parameter for NTT epicenter
+        try {
+          const bmkgRes = await fetch('/api/bmkg-gempa', { cache: 'no-store' })
+          if (bmkgRes.ok) {
+            const bmkgJson = await bmkgRes.json()
+            if (bmkgJson.success && bmkgJson.data) {
+              setBmkgData(bmkgJson.data)
+            }
+          }
+        } catch (e) {
+          console.warn('[TV NTT] BMKG fetch warning:', e)
         }
 
         const situasiList = Array.isArray(nttData?.situasi_kesehatan) ? nttData.situasi_kesehatan : []
         let sumMeninggal = 0
+        let sumLukaBerat = 0
+        let sumLukaRingan = 0
         let sumLuka = 0
+        let sumHilang = 0
         let sumPengungsi = 0
         let sumTerdampak = 0
 
@@ -223,15 +305,19 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
         if (situasiList.length > 0) {
           situasiList.forEach((s: any) => {
-            const m = Number(s.meninggal || 0)
-            const lb = Number(s.luka_berat || 0)
-            const lr = Number(s.luka_ringan || 0)
+            const m = Number(s.meninggal || s.korban_meninggal || 0)
+            const lb = Number(s.luka_berat || s.korban_luka_berat || 0)
+            const lr = Number(s.luka_ringan || s.korban_luka_ringan || 0)
             const lk = lb + lr
-            const p = Number(s.pengungsi || 0)
-            const ter = Number(s.populasi_terdampak || 0)
+            const p = Number(s.pengungsi || s.jumlah_pengungsi || 0)
+            const ter = Number(s.populasi_terdampak || s.penduduk_terdampak || 0)
+            const h = Number(s.hilang || s.korban_hilang || 0)
 
             sumMeninggal += m
+            sumLukaBerat += lb
+            sumLukaRingan += lr
             sumLuka += lk
+            sumHilang += h
             sumPengungsi += p
             sumTerdampak += ter
 
@@ -241,294 +327,174 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
               total_korban: lk + m,
               meninggal: m,
               luka: lk,
+              luka_berat: lb,
+              luka_ringan: lr,
               pengungsi: p,
               terdampak: ter,
             })
           })
-        } else {
-          sumMeninggal = 78
-          sumLuka = 970
-          sumPengungsi = 43686
-          sumTerdampak = 1917732
-          dynamicWilayahList.push(
-            { provinsi: 'Manggarai Timur', count: 643, total_korban: 669 },
-            { provinsi: 'Manggarai', count: 136, total_korban: 163 },
-            { provinsi: 'Ende', count: 72, total_korban: 74 },
-            { provinsi: 'Sikka', count: 55, total_korban: 61 },
-            { provinsi: 'Ngada', count: 36, total_korban: 38 },
-            { provinsi: 'Nagekeo', count: 22, total_korban: 35 },
-            { provinsi: 'Manggarai Barat', count: 6, total_korban: 8 },
-            { provinsi: 'Flores Timur', count: 44, total_korban: 44 }
-          )
         }
 
-        // ── 2. SEBARAN TITIK KEJADIAN BENCANA 8 KABUPATEN TERDAMPAK NTT ──
-        const ntt8KabMarkers: MarkerData[] = [
-          {
-            id: 'evt-ntt-manggarai-timur',
-            kode_trans: 'EVT-NTT-MATIM-01',
-            nama: 'Dampak Gempa - Manggarai Timur',
+        // ── 2. SEBARAN TITIK KEJADIAN BENCANA (100% Dynamic from API Collector) ──
+        const ntt8KabMarkers: MarkerData[] = situasiList.map((s: any, idx: number) => {
+          const kabName = String(s.kabupaten || '').trim()
+          const kabKey = kabName.toLowerCase()
+          const geo = NTT_KAB_COORDS[kabKey] || {
+            lat: Number(s.latitude || s.lat || -8.6),
+            lng: Number(s.longitude || s.lng || 121.5),
+            kecamatan: String(s.kecamatan || '-'),
+          }
+
+          const meninggal = Number(s.meninggal || s.korban_meninggal || 0)
+          const lb = Number(s.luka_berat || s.korban_luka_berat || 0)
+          const lr = Number(s.luka_ringan || s.korban_luka_ringan || 0)
+          const luka = lb + lr
+          const pengungsi = Number(s.pengungsi || s.jumlah_pengungsi || 0)
+          const terdampak = Number(s.populasi_terdampak || s.penduduk_terdampak || 0)
+          const titik_posko = Number(s.titik_pengungsian || s.titik_posko || 0)
+
+          return {
+            id: `evt-ntt-${kabKey.replace(/\s+/g, '-') || idx}`,
+            kode_trans: `EVT-NTT-${(idx + 1).toString().padStart(2, '0')}`,
+            nama: `Dampak Gempa - ${kabName}`,
             jenis_bencana: 'Gempa Bumi',
             provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Manggarai Timur',
-            kecamatan: 'Borong, Lamba Leda, Kota Komba',
-            lat: -8.8033,
-            lng: 120.5982,
-            total_korban: 669,
-            meninggal: 26,
-            luka: 643,
-            luka_berat: 239,
-            luka_ringan: 404,
-            pengungsi: 19330,
-            terdampak: 313876,
-            titik_posko: 246,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-manggarai',
-            kode_trans: 'EVT-NTT-MGR-02',
-            nama: 'Dampak Gempa - Manggarai',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Manggarai',
-            kecamatan: 'Ruteng, Reok, Cibal',
-            lat: -8.6148,
-            lng: 120.4632,
-            total_korban: 163,
-            meninggal: 27,
-            luka: 136,
-            luka_berat: 32,
-            luka_ringan: 104,
-            pengungsi: 10083,
-            terdampak: 340153,
-            titik_posko: 14,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-ende',
-            kode_trans: 'EVT-NTT-ENDE-03',
-            nama: 'Dampak Gempa - Ende',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Ende',
-            kecamatan: 'Ende, Ndona, Nangapanda',
-            lat: -8.8415,
-            lng: 121.6582,
-            total_korban: 74,
-            meninggal: 2,
-            luka: 72,
-            luka_berat: 5,
-            luka_ringan: 67,
-            pengungsi: 3144,
-            terdampak: 284165,
-            titik_posko: 25,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-sikka',
-            kode_trans: 'EVT-NTT-SIK-04',
-            nama: 'Dampak Gempa - Sikka',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Sikka',
-            kecamatan: 'Maumere, Alok, Nita',
-            lat: -8.6214,
-            lng: 122.2155,
-            total_korban: 61,
-            meninggal: 6,
-            luka: 55,
-            luka_berat: 23,
-            luka_ringan: 32,
-            pengungsi: 7104,
-            terdampak: 350715,
-            titik_posko: 9,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-ngada',
-            kode_trans: 'EVT-NTT-NGD-05',
-            nama: 'Dampak Gempa - Ngada',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Ngada',
-            kecamatan: 'Bajawa, Golewa, Aimere',
-            lat: -8.7891,
-            lng: 120.9664,
-            total_korban: 38,
-            meninggal: 2,
-            luka: 36,
-            luka_berat: 17,
-            luka_ringan: 19,
-            pengungsi: 1333,
-            terdampak: 176462,
-            titik_posko: 27,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-nagekeo',
-            kode_trans: 'EVT-NTT-NGK-06',
-            nama: 'Dampak Gempa - Nagekeo',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Nagekeo',
-            kecamatan: 'Aesesa, Mauponggo, Boawae',
-            lat: -8.6752,
-            lng: 121.2891,
-            total_korban: 35,
-            meninggal: 13,
-            luka: 22,
-            luka_berat: 13,
-            luka_ringan: 9,
-            pengungsi: 6221,
-            terdampak: 170669,
-            titik_posko: 70,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-manggarai-barat',
-            kode_trans: 'EVT-NTT-MGB-07',
-            nama: 'Dampak Gempa - Manggarai Barat',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Manggarai Barat',
-            kecamatan: 'Komodo, Lembor, Kuwus',
-            lat: -8.5142,
-            lng: 119.8924,
-            total_korban: 8,
-            meninggal: 2,
-            luka: 6,
-            luka_berat: 2,
-            luka_ringan: 4,
-            pengungsi: 1603,
-            terdampak: 281692,
-            titik_posko: 9,
-            tgl_kejadian: '2026-08-15 09:18 WIB',
-          },
-          {
-            id: 'evt-ntt-flores-timur',
-            kode_trans: 'EVT-NTT-FLOTIM-08',
-            nama: 'Episentrum Utama Laut Flores - Flores Timur',
-            jenis_bencana: 'Gempa Bumi',
-            provinsi: 'NUSA TENGGARA TIMUR',
-            kabupaten: 'Flores Timur',
-            kecamatan: 'Larantuka, Tanjung Bunga, Ile Mandiri, Adonara',
-            lat: -8.3421,
-            lng: 122.9814,
-            total_korban: 44,
-            meninggal: 0,
-            luka: 44,
-            luka_berat: 14,
-            luka_ringan: 30,
-            pengungsi: 0,
-            terdampak: 250000,
-            titik_posko: 0,
-            tgl_kejadian: '2026-08-15 09:18 WIB (M 7.7)',
-          },
-        ]
+            kabupaten: kabName,
+            kecamatan: geo.kecamatan || s.kecamatan || '-',
+            lat: geo.lat,
+            lng: geo.lng,
+            meninggal,
+            luka_berat: lb,
+            luka_ringan: lr,
+            luka,
+            total_korban: meninggal + luka,
+            pengungsi,
+            terdampak,
+            titik_posko,
+            tgl_kejadian: s.tgl_kejadian || '2026-08-15 09:18 WITA',
+          }
+        })
 
         setSummary({
-          total_bencana: 8,
-          total_krisis: 1,
+          total_bencana: situasiList.length > 0 ? situasiList.length : 0,
+          total_krisis: situasiList.length > 0 ? 1 : 0,
           total_meninggal: sumMeninggal,
           total_luka: sumLuka,
-          total_hilang: 3,
+          total_hilang: sumHilang,
           total_pengungsi: sumPengungsi,
           total_terdampak: sumTerdampak,
         })
 
         setMarkers(ntt8KabMarkers)
         setWilayahList(dynamicWilayahList)
-        setJenisBencanaList([
-          { jenis_bencana: 'Gempa Bumi', count: 8, total_korban: sumMeninggal + sumLuka }
-        ])
+        setJenisBencanaList(
+          situasiList.length > 0
+            ? [{ jenis_bencana: 'Gempa Bumi', count: situasiList.length, total_korban: sumMeninggal + sumLuka }]
+            : []
+        )
 
-        // ── 3. FASKES SIAGA NTT ──
-        const defaultFaskesNtt: FaskesItem[] = [
-          { nama_rs: 'RSUD Borong', kabupaten: 'Manggarai Timur', triase_merah: 12, triase_kuning: 17, triase_hijau: 8, triase_hitam: 1, total: 38, lat: -8.8033, lng: 120.5982, status: 'Operasional Penuh', igd: 'Trauma Center' },
-          { nama_rs: 'RSUD dr. TC Hillers Maumere', kabupaten: 'Sikka', triase_merah: 1, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total: 4, lat: -8.6214, lng: 122.2155, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD Ruteng', kabupaten: 'Manggarai', triase_merah: 2, triase_kuning: 8, triase_hijau: 1, triase_hitam: 0, total: 11, lat: -8.6148, lng: 120.4632, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD Ende', kabupaten: 'Ende', triase_merah: 1, triase_kuning: 7, triase_hijau: 0, triase_hitam: 0, total: 8, lat: -8.8415, lng: 121.6582, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD Aeramo', kabupaten: 'Nagekeo', triase_merah: 3, triase_kuning: 2, triase_hijau: 0, triase_hitam: 0, total: 5, lat: -8.6752, lng: 121.2891, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD Bajawa', kabupaten: 'Ngada', triase_merah: 0, triase_kuning: 3, triase_hijau: 0, triase_hitam: 0, total: 3, lat: -8.7891, lng: 120.9664, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD Komodo', kabupaten: 'Manggarai Barat', triase_merah: 0, triase_kuning: 9, triase_hijau: 0, triase_hitam: 0, total: 9, lat: -8.5142, lng: 119.8924, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-          { nama_rs: 'RSUD dr. Hendrikus Fernandez', kabupaten: 'Flores Timur', triase_merah: 0, triase_kuning: 4, triase_hijau: 2, triase_hitam: 0, total: 6, lat: -8.3411, lng: 122.9814, status: 'Siaga 24 Jam', igd: 'Buka Normal' },
-        ]
-
+        // ── 3. FASKES SIAGA NTT (Strictly from API Collector) ──
         const rawPasienRs = Array.isArray(nttData?.pasien_rs) ? nttData.pasien_rs : []
-        const parsedFaskes: FaskesItem[] = rawPasienRs.length > 0
-          ? rawPasienRs.map((r: any) => {
-              const def = defaultFaskesNtt.find(
-                (d) =>
-                  d.kabupaten.toLowerCase() === (r.kabupaten || '').toLowerCase() ||
-                  (d.nama_rs || '').toLowerCase().includes((r.nama_rs || '').toLowerCase())
-              )
-              return {
-                nama_rs: r.nama_rs || def?.nama_rs || 'RSUD Rujukan',
-                kabupaten: r.kabupaten || def?.kabupaten || 'NTT',
-                triase_merah: r.triase_merah !== undefined ? Number(r.triase_merah) : (def?.triase_merah || 0),
-                triase_kuning: r.triase_kuning !== undefined ? Number(r.triase_kuning) : (def?.triase_kuning || 0),
-                triase_hijau: r.triase_hijau !== undefined ? Number(r.triase_hijau) : (def?.triase_hijau || 0),
-                triase_hitam: r.triase_hitam !== undefined ? Number(r.triase_hitam) : (def?.triase_hitam || 0),
-                total: r.total !== undefined ? Number(r.total) : (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0)),
-                lat: def?.lat || -8.6,
-                lng: def?.lng || 121.5,
-                status: def?.status || 'Siaga 24 Jam',
-                igd: def?.igd || 'Buka Normal',
-              }
+        const rawPasienPkm = Array.isArray(nttData?.pasien_puskesmas) ? nttData.pasien_puskesmas : []
+
+        const parsedFaskes: FaskesItem[] = []
+
+        if (rawPasienRs.length > 0) {
+          rawPasienRs.forEach((r: any) => {
+            const tm = r.triase_merah !== undefined ? Number(r.triase_merah) : 0
+            const tk = r.triase_kuning !== undefined ? Number(r.triase_kuning) : 0
+            const th = r.triase_hijau !== undefined ? Number(r.triase_hijau) : 0
+            const tht = r.triase_hitam !== undefined ? Number(r.triase_hitam) : 0
+            const tot = r.total !== undefined ? Number(r.total) : (tm + tk + th + tht)
+            const name = r.nama_master || r.nama_resmi || r.nama_rs || r.rs || 'RSUD Rujukan'
+
+            parsedFaskes.push({
+              nama_rs: name,
+              nama_faskes: name,
+              kabupaten: r.nama_kab || r.kabupaten || 'NTT',
+              kecamatan: r.nama_kecamatan || r.kecamatan || '-',
+              triase_merah: tm,
+              triase_kuning: tk,
+              triase_hijau: th,
+              triase_hitam: tht,
+              total: tot,
+              lat: Number(r.latitude) || -8.6,
+              lng: Number(r.longitude) || 121.5,
+              status: r.status || 'Siaga 24 Jam',
+              igd: r.igd || 'Buka Normal',
             })
-          : defaultFaskesNtt
+          })
+        }
+
+        if (rawPasienPkm.length > 0) {
+          rawPasienPkm.forEach((pkm: any) => {
+            const tm = pkm.triase_merah !== undefined ? Number(pkm.triase_merah) : 0
+            const tk = pkm.triase_kuning !== undefined ? Number(pkm.triase_kuning) : 0
+            const th = pkm.triase_hijau !== undefined ? Number(pkm.triase_hijau) : 0
+            const tht = pkm.triase_hitam !== undefined ? Number(pkm.triase_hitam) : 0
+            const tot = pkm.total !== undefined ? Number(pkm.total) : (tm + tk + th + tht)
+            const name = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas')
+
+            parsedFaskes.push({
+              nama_rs: name,
+              nama_faskes: name,
+              kabupaten: pkm.nama_kab || pkm.kabupaten || 'NTT',
+              kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
+              triase_merah: tm,
+              triase_kuning: tk,
+              triase_hijau: th,
+              triase_hitam: tht,
+              total: tot,
+              lat: Number(pkm.latitude) || -8.6,
+              lng: Number(pkm.longitude) || 121.5,
+              status: pkm.status || 'Beroperasi Siaga',
+              igd: 'Pelayanan Dasar',
+            })
+          })
+        }
 
         setFaskesList(parsedFaskes)
 
-        // ── 4. KABUPATEN DETAIL DATA ──
-        const defaultKabDetail = [
-          { nama: 'Manggarai Timur', meninggal: 26, luka_berat: 239, luka_ringan: 404, total_luka: 643, pengungsi: 19330, terdampak: 313876, titik_posko: 246, lat: -8.8033, lng: 120.5982 },
-          { nama: 'Manggarai', meninggal: 27, luka_berat: 32, luka_ringan: 104, total_luka: 136, pengungsi: 10083, terdampak: 340153, titik_posko: 14, lat: -8.6148, lng: 120.4632 },
-          { nama: 'Ende', meninggal: 2, luka_berat: 5, luka_ringan: 67, total_luka: 72, pengungsi: 3144, terdampak: 284165, titik_posko: 25, lat: -8.8415, lng: 121.6582 },
-          { nama: 'Sikka', meninggal: 6, luka_berat: 23, luka_ringan: 32, total_luka: 55, pengungsi: 7104, terdampak: 350715, titik_posko: 9, lat: -8.6214, lng: 122.2155 },
-          { nama: 'Ngada', meninggal: 2, luka_berat: 17, luka_ringan: 19, total_luka: 36, pengungsi: 1333, terdampak: 176462, titik_posko: 27, lat: -8.7891, lng: 120.9664 },
-          { nama: 'Nagekeo', meninggal: 13, luka_berat: 13, luka_ringan: 9, total_luka: 22, pengungsi: 6221, terdampak: 170669, titik_posko: 70, lat: -8.6752, lng: 121.2891 },
-          { nama: 'Manggarai Barat', meninggal: 2, luka_berat: 2, luka_ringan: 4, total_luka: 6, pengungsi: 1603, terdampak: 281692, titik_posko: 9, lat: -8.5142, lng: 119.8924 },
-          { nama: 'Flores Timur', meninggal: 0, luka_berat: 0, luka_ringan: 0, total_luka: 44, pengungsi: 0, terdampak: 0, titik_posko: 0, lat: -8.3421, lng: 122.9814 },
-        ]
-
+        // ── 4. KABUPATEN DETAIL DATA (Strictly from API) ──
         const parsedKabDetail = situasiList.length > 0
           ? situasiList.map((s: any) => {
-              const def = defaultKabDetail.find((d) => d.nama.toLowerCase() === (s.kabupaten || '').toLowerCase())
-              const lb = Number(s.luka_berat || 0)
-              const lr = Number(s.luka_ringan || 0)
+              const lb = Number(s.luka_berat || s.korban_luka_berat || 0)
+              const lr = Number(s.luka_ringan || s.korban_luka_ringan || 0)
               return {
                 nama: s.kabupaten,
-                meninggal: Number(s.meninggal || 0),
+                meninggal: Number(s.meninggal || s.korban_meninggal || 0),
                 luka_berat: lb,
                 luka_ringan: lr,
-                total_luka: lb + lr || def?.total_luka || 0,
-                pengungsi: Number(s.pengungsi || 0),
-                terdampak: Number(s.populasi_terdampak || 0),
-                titik_posko: Number(s.titik_pengungsian || 0),
-                lat: def?.lat || -8.6,
-                lng: def?.lng || 121.5,
+                total_luka: lb + lr,
+                pengungsi: Number(s.pengungsi || s.jumlah_pengungsi || 0),
+                terdampak: Number(s.populasi_terdampak || s.penduduk_terdampak || 0),
+                titik_posko: Number(s.titik_pengungsian || s.titik_posko || 0),
+                lat: Number(s.latitude || s.lat || -8.6),
+                lng: Number(s.longitude || s.lng || 121.5),
               }
             })
-          : defaultKabDetail
+          : []
 
         setKabupatenDetailList(parsedKabDetail)
 
+        // Calculate Triase & Disease breakdown strictly from parsedFaskes
         const totalTriaseMerah = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_merah || 0), 0)
         const totalTriaseKuning = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_kuning || 0), 0)
         const totalTriaseHijau = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_hijau || 0), 0)
+        const totalTriaseHitam = parsedFaskes.reduce((s: number, r: any) => s + (r.triase_hitam || 0), 0)
 
         const triaseItems: any[] = []
-        if (totalTriaseMerah > 0) triaseItems.push({ nama_penyakit: 'Triase Merah (Gawat Darurat)', count: totalTriaseMerah })
+        if (totalTriaseMerah > 0) triaseItems.push({ nama_penyakit: 'Triase Merah (Gawat Darurat / Trauma)', count: totalTriaseMerah })
         if (totalTriaseKuning > 0) triaseItems.push({ nama_penyakit: 'Triase Kuning (Rawat Intensif)', count: totalTriaseKuning })
         if (totalTriaseHijau > 0) triaseItems.push({ nama_penyakit: 'Triase Hijau (Rawat Jalan)', count: totalTriaseHijau })
+        if (totalTriaseHitam > 0) triaseItems.push({ nama_penyakit: 'Triase Hitam (Meninggal di Faskes)', count: totalTriaseHitam })
 
         setPenyakitList(triaseItems)
 
-        // ── 5. SEISMIC AFTERSHOCKS POINTS ──
+        // ── 5. SEISMIC AFTERSHOCKS POINTS (Strictly from API) ──
         let eqPoints: EarthquakePoint[] = []
         try {
-          const seismicRes = await fetch('/api/bencana-seismic?lat=-8.3421&lng=122.9814&date=2026-08-15&kabupaten=FLORES%20TIMUR&provinsi=NUSA%20TENGGARA%20TIMUR&magnitudo=7.4&kedalaman=12&mmi=VII-VIII')
+          const seismicRes = await fetch('/api/bencana-seismic?provinsi=NUSA%20TENGGARA%20TIMUR', { cache: 'no-store' })
           if (seismicRes.ok) {
             const seismicJson = await seismicRes.json()
             if (seismicJson.success && Array.isArray(seismicJson.data?.earthquakeFeatures)) {
@@ -539,34 +505,34 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
           console.warn('[TV NTT] Failed to fetch /api/bencana-seismic:', e)
         }
 
-        if (eqPoints.length === 0) {
-          eqPoints = [
-            { lat: -8.3421, lng: 122.9814, magnitude: 7.7, depth: 15, place: 'Laut Flores - 30 km Timur Laut Mbay-Nagekeo', time: '09:18 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 0, isMainshock: true, mmi: 'VII-VIII' },
-            { lat: -8.412, lng: 122.891, magnitude: 5.6, depth: 10, place: 'Laut Flores - 95 km Barat Laut Larantuka', time: '09:42 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 18, isMainshock: false },
-            { lat: -8.489, lng: 122.754, magnitude: 5.2, depth: 15, place: 'Laut Flores - 80 km Barat Laut Maumere', time: '10:15 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 34, isMainshock: false },
-            { lat: -8.312, lng: 122.612, magnitude: 4.8, depth: 10, place: 'Laut Flores - 72 km Utara Maumere', time: '11:04 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 42, isMainshock: false },
-            { lat: -8.541, lng: 120.781, magnitude: 5.4, depth: 14, place: 'Laut Flores - 45 km Utara Borong', time: '12:30 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 78, isMainshock: false },
-            { lat: -8.589, lng: 120.412, magnitude: 4.9, depth: 16, place: 'Laut Flores - 38 km Utara Ruteng', time: '14:22 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 92, isMainshock: false },
-            { lat: -8.621, lng: 121.312, magnitude: 4.7, depth: 10, place: 'Laut Flores - 28 km Utara Mbay', time: '16:05 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 65, isMainshock: false },
-            { lat: -8.712, lng: 120.912, magnitude: 4.5, depth: 12, place: 'Laut Flores - 32 km Utara Bajawa', time: '18:40 WIB', dateStr: '2026-08-15', dateLabel: '15 Ags', distKm: 85, isMainshock: false },
-          ]
-        }
         setEarthquakePoints(eqPoints)
 
-        // ── 6. POSKO PENGUNGSIAN REPRESENTATIF NTT ──
-        const defaultPoskoNtt: PoskoItem[] = [
-          { id: 'p-1', nama: 'Posko Pengungsian Utama Aula Setda Manggarai Timur', nama_pos: 'Posko Utama Aula Setda', kabupaten: 'Manggarai Timur', kecamatan: 'Borong', latitude: -8.8062, longitude: 120.6012, lat: -8.8062, lng: 120.6012, pengungsi: 4500, jiwa: 4500, kapasitas: 5000, pj_kontak: 'BPBD Manggarai Timur' },
-          { id: 'p-2', nama: 'Posko Lapangan Stadion Golodukal Ruteng', nama_pos: 'Posko Lapangan Stadion Golodukal', kabupaten: 'Manggarai', kecamatan: 'Langke Rembong', latitude: -8.6189, longitude: 120.4688, lat: -8.6189, lng: 120.4688, pengungsi: 3200, jiwa: 3200, kapasitas: 4000, pj_kontak: 'Dinas Sosial Manggarai' },
-          { id: 'p-3', nama: 'Posko Pengungsian Gedung Pemuda Maumere', nama_pos: 'Posko Gedung Pemuda', kabupaten: 'Sikka', kecamatan: 'Alok', latitude: -8.6231, longitude: 122.2189, lat: -8.6231, lng: 122.2189, pengungsi: 1200, jiwa: 1200, kapasitas: 2000, pj_kontak: 'BPBD Sikka' },
-          { id: 'p-4', nama: 'Posko Lapangan Marilonga Ende', nama_pos: 'Posko Lapangan Marilonga', kabupaten: 'Ende', kecamatan: 'Ende Tengah', latitude: -8.8432, longitude: 121.6591, lat: -8.8432, lng: 121.6591, pengungsi: 1800, jiwa: 1800, kapasitas: 2500, pj_kontak: 'Dinkes Ende' },
-          { id: 'p-5', nama: 'Posko Pengungsian Lapangan Berdikari Mbay', nama_pos: 'Posko Lapangan Berdikari', kabupaten: 'Nagekeo', kecamatan: 'Aesesa', latitude: -8.6791, longitude: 121.2912, lat: -8.6791, lng: 121.2912, pengungsi: 2800, jiwa: 2800, kapasitas: 3500, pj_kontak: 'BPBD Nagekeo' },
-          { id: 'p-6', nama: 'Posko Pengungsian Lapangan Kartini Bajawa', nama_pos: 'Posko Lapangan Kartini', kabupaten: 'Ngada', kecamatan: 'Bajawa', latitude: -8.7912, longitude: 120.9689, lat: -8.7912, lng: 120.9689, pengungsi: 950, jiwa: 950, kapasitas: 1500, pj_kontak: 'Tagana Ngada' },
-          { id: 'p-7', nama: 'Posko Pengungsian Aula Paroki Larantuka', nama_pos: 'Posko Aula Paroki Larantuka', kabupaten: 'Flores Timur', kecamatan: 'Larantuka', latitude: -8.3445, longitude: 122.9867, lat: -8.3445, lng: 122.9867, pengungsi: 1450, jiwa: 1450, kapasitas: 2000, pj_kontak: 'BPBD Flores Timur' },
-        ]
-        setPoskoList(defaultPoskoNtt)
+        // ── 6. POSKO PENGUNGSIAN (Strictly from API) ──
+        const parsedPosko: PoskoItem[] = Array.isArray(nttData?.posko || nttData?.posko_pengungsian)
+          ? (nttData.posko || nttData.posko_pengungsian).map((p: any, idx: number) => ({
+              id: p.id || `posko-${idx}`,
+              nama: p.nama_pos || p.nama || 'Posko Pengungsian',
+              nama_pos: p.nama_pos || p.nama || 'Posko Pengungsian',
+              kabupaten: p.kabupaten || 'NTT',
+              kecamatan: p.kecamatan || '-',
+              latitude: Number(p.latitude || p.lat || -8.6),
+              longitude: Number(p.longitude || p.lng || 121.5),
+              lat: Number(p.latitude || p.lat || -8.6),
+              lng: Number(p.longitude || p.lng || 121.5),
+              pengungsi: Number(p.pengungsi || p.jiwa || 0),
+              jiwa: Number(p.pengungsi || p.jiwa || 0),
+              kapasitas: Number(p.kapasitas || 0),
+              pj_kontak: p.pj_kontak || 'BPBD / Dinsos Local',
+            }))
+          : []
+        setPoskoList(parsedPosko)
 
-        // Default initial spotlight (Manggarai Timur / Pusat Dampak)
-        setSpotlightItem(ntt8KabMarkers[0])
+        // Set initial spotlight item if markers exist
+        if (ntt8KabMarkers.length > 0) {
+          setSpotlightItem(ntt8KabMarkers[0])
+        } else {
+          setSpotlightItem(null)
+        }
       } else {
         // Mode Nasional: 30-day recent disaster feed
         const [dashRes, bmkgRes, alertsRes] = await Promise.allSettled([
@@ -730,6 +696,17 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onToggleProvinceTour={() => setAutoProvinceTour(!autoProvinceTour)}
       />
 
+      {/* ── 2.5 API DISCONNECTED ALERT BANNER (No Dummy Data Used) ── */}
+      {isApiDisconnected && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-red-600/95 backdrop-blur-md text-white font-extrabold text-xs rounded-full shadow-lg border border-red-400 flex items-center gap-2 animate-pulse">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+          </span>
+          <span>DATA API TERPUTUS — MENUNGGU RESPON /api/ntt-data (TIDAK MENGGUNAKAN DATA DUMMY)</span>
+        </div>
+      )}
+
       {/* ── 3. TOP FLOATING KPI STAT CARDS ── */}
       <TvKpiCards
         summary={summary}
@@ -759,13 +736,15 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onSelectLocation={handleSelectLocation}
       />
 
-      {/* ── 6. LAYER SERVICES DRAWER ── */}
+      {/* ── 6. PENGATURAN PETA DRAWER ── */}
       <TvLayerServicesDrawer
         isOpen={layersOpen}
         onClose={() => setLayersOpen(false)}
         layers={layers}
         onUpdateLayer={(key, val) => setLayers((prev) => ({ ...prev, [key]: val }))}
+        onBatchUpdateFaskes={handleBatchUpdateFaskes}
         onResetLayers={() => setLayers(DEFAULT_LAYERS)}
+        faskesCounts={faskesCounts}
       />
 
       {/* ── 7. BOTTOM CENTER FLOATING SPOTLIGHT & TACTICAL ROUTE BANNER ── */}

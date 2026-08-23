@@ -47,17 +47,6 @@ export default function TvKpiCards({
 
   const cards = [
     {
-      id: 'kejadian',
-      label: 'TOTAL KEJADIAN',
-      value: summary.total_bencana,
-      unit: 'Kejadian',
-      icon: Flame,
-      color: 'text-teal-700',
-      iconBg: 'bg-teal-50 text-teal-700 border-teal-200',
-      badgeBg: 'bg-teal-50 text-teal-800 border-teal-200',
-      tag: 'Bencana Terdata',
-    },
-    {
       id: 'meninggal',
       label: 'KORBAN MENINGGAL',
       value: summary.total_meninggal,
@@ -81,17 +70,6 @@ export default function TvKpiCards({
       tag: 'Rawat Inap/Jalan',
     },
     {
-      id: 'hilang',
-      label: 'KORBAN HILANG',
-      value: summary.total_hilang,
-      unit: 'Jiwa',
-      icon: HelpCircle,
-      color: 'text-indigo-600',
-      iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-      badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      tag: 'Dalam Pencarian',
-    },
-    {
       id: 'pengungsi',
       label: 'PENGUNGSI',
       value: summary.total_pengungsi,
@@ -113,17 +91,6 @@ export default function TvKpiCards({
       badgeBg: 'bg-teal-50 text-teal-800 border-teal-200',
       tag: 'Populasi Krisis',
     },
-    {
-      id: 'krisis',
-      label: 'KRISIS KESEHATAN',
-      value: summary.total_krisis ?? Math.round(summary.total_bencana * 0.4),
-      unit: 'Kluster',
-      icon: Hospital,
-      color: 'text-rose-600',
-      iconBg: 'bg-rose-50 text-rose-600 border-rose-200',
-      badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
-      tag: 'Respon Medis EOC',
-    },
   ]
 
   return (
@@ -140,7 +107,7 @@ export default function TvKpiCards({
         </button>
 
         {!isCollapsed && (
-          <div className="pointer-events-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 w-full animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="pointer-events-auto grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2 w-full animate-in fade-in slide-in-from-top-2 duration-200">
             {cards.map((card) => {
               const IconComponent = card.icon
               return (

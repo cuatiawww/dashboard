@@ -53,12 +53,12 @@ function maskPersonName(name: string): string {
 
 function destroyWindLayerSafely(wl: any) {
   if (!wl) return
-  try { wl.setVisible?.(false) } catch {}
+  try { wl.setVisible?.(false) } catch { }
   const obj = wl as unknown as Record<string, unknown>
   const tryCall = (k: string, arg?: unknown) => {
     const fn = obj[k]
     if (typeof fn === 'function') {
-      try { (fn as (a?: unknown) => void)(arg) } catch {}
+      try { (fn as (a?: unknown) => void)(arg) } catch { }
     }
   }
   tryCall('stop')
@@ -340,9 +340,9 @@ const getDistanceInKm = (lat1: number, lon1: number, lat2: number, lon2: number)
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2)
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
 }
@@ -450,7 +450,7 @@ export default function DisasterMap({
   const bnpbLongsorLayerRef = useRef<any>(null)
   const bnpbKarhutlaLayerRef = useRef<any>(null)
   const windLayerRef = useRef<any>(null)
-  
+
   // EOC Routing Refs
   const eocLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
 
@@ -1069,7 +1069,7 @@ export default function DisasterMap({
               rawItem,
               type: (itemType as any) || 'clinic',
               name: isEarthquake ? (rawItem.name || name) : name,
-              address: isEarthquake 
+              address: isEarthquake
                 ? (rawItem.place || 'Wilayah Episentrum Gempa NTT')
                 : (rawItem.alamat || rawItem.kecamatan || (rawItem.kab_kota ? `Kab. ${rawItem.kab_kota}` : '') || (rawItem.nama_desa ? `Desa ${rawItem.nama_desa}, Kec. ${rawItem.kecamatan || ''}` : '')),
               lat,
@@ -1318,13 +1318,13 @@ export default function DisasterMap({
           },
           fieldOptions: { wrapX: true },
         } as any)
-        // Default ON: langsung visible dan jalankan animasi partikel
-        ;(windLayer as any).setVisible?.(true)
+          // Default ON: langsung visible dan jalankan animasi partikel
+          ; (windLayer as any).setVisible?.(true)
         try {
           if (typeof (windLayer as any).start === 'function') {
-            ;(windLayer as any).start()
+            ; (windLayer as any).start()
           }
-        } catch {}
+        } catch { }
         map.addLayer(windLayer as any)
         windLayerRef.current = windLayer as any
       } catch (err) {
@@ -1339,13 +1339,13 @@ export default function DisasterMap({
       pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
       pulseOverlaysRef.current = []
       setMapInstance(null)
-      
+
       // Destroy Windy Layer safely
       if (windLayerRef.current) {
         destroyWindLayerSafely(windLayerRef.current)
         windLayerRef.current = null
       }
-      
+
       bnpbAdminLayerRef.current = null
       bnpbHillshadeLayerRef.current = null
       bnpbKepadatanLayerRef.current = null
@@ -1410,11 +1410,11 @@ export default function DisasterMap({
             wl.stop()
           }
         }
-      } catch (e) {}
+      } catch (e) { }
       // Force refresh map
       try {
         mapInstance?.renderSync?.()
-      } catch {}
+      } catch { }
     }
   }, [showWindy, mapInstance])
 
@@ -1743,30 +1743,30 @@ export default function DisasterMap({
           if (json.success && json.data?.Infogempa?.gempa) {
             const rawList = json.data.Infogempa.gempa
             const list = Array.isArray(rawList) ? rawList : [rawList]
-            
+
             if (active) {
               setBmkgGempas(list)
-              
+
               const latest = list[0]
               if (latest && latest.Coordinates) {
                 const [latStr, lngStr] = latest.Coordinates.split(',')
                 const gempaLat = parseFloat(latStr)
                 const gempaLng = parseFloat(lngStr)
-                
+
                 const savedCoords = localStorage.getItem('user_coords')
                 if (savedCoords) {
                   try {
                     const userCoords = JSON.parse(savedCoords)
                     if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lng === 'number') {
                       const dist = getDistanceInKm(userCoords.lat, userCoords.lng, gempaLat, gempaLng)
-                      
+
                       // EWS Trigger: within 150 km and magnitude >= 5.0
                       if (dist <= 150 && parseFloat(latest.Magnitude) >= 5.0) {
                         setActiveBmkgAlert({
                           gempa: latest,
                           distance: Math.round(dist)
                         })
-                        
+
                         if (typeof window !== 'undefined') {
                           const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
                           if (AudioContextClass) {
@@ -1799,7 +1799,7 @@ export default function DisasterMap({
         console.error('[BMKG EWS] Failed to fetch data:', e)
       }
     }
-    
+
     void fetchBmkg()
     const interval = setInterval(fetchBmkg, 120000)
     return () => {
@@ -1877,7 +1877,7 @@ export default function DisasterMap({
             const mLat = Number(m.lat)
             const mLng = Number(m.lng)
             const dist = getDistanceInKm(userCoords.lat, userCoords.lng, mLat, mLng)
-            
+
             if (dist <= 25) {
               // Dalam 25km: peringatan bahaya dekat (lingkaran 25km radius merah)
               drawRadius = 25000
@@ -2100,7 +2100,7 @@ export default function DisasterMap({
 
     // 1. Add disaster location pins and pulsing radius circle ONLY on the main epicenter/target
     const validDisasterMarkers = Array.isArray(markers) ? markers : []
-    
+
     // Clear old overlays if any
     if (map) {
       pulseOverlaysRef.current.forEach(ov => map.removeOverlay(ov))
@@ -2263,6 +2263,7 @@ export default function DisasterMap({
     }
 
     // 2. Add Faskes List (Filtered by Checkboxes: RS, Puskesmas, Klinik, Pustu, Siaga Only)
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
     const rawFaskesList = Array.isArray(faskesList) ? faskesList : []
     const hasAnyFaskesChecked = faskesTypeFilters.rs || faskesTypeFilters.puskesmas || faskesTypeFilters.klinik || faskesTypeFilters.pustu
     if (hasAnyFaskesChecked) {
@@ -2317,13 +2318,33 @@ export default function DisasterMap({
             rawItem: f,
             itemType: itemCategory
           })
-          fFeat.setStyle(new Style({
-            image: new Icon({
-              src: getSvgPin(pinColor, iconType),
-              scale: 0.88,
-              anchor: [0.5, 1]
-            })
-          }))
+          if (category === 'rs') {
+            fFeat.setStyle(new Style({
+              image: new Icon({
+                src: `${basePath}/hospital.svg`,
+                size: [500, 500],
+                scale: 0.08,
+                anchor: [0.5, 0.5]
+              })
+            }))
+          } else if (category === 'puskesmas') {
+            fFeat.setStyle(new Style({
+              image: new Icon({
+                src: `${basePath}/puskesmas.svg`,
+                size: [373, 373],
+                scale: 0.08,
+                anchor: [0.5, 0.5]
+              })
+            }))
+          } else {
+            fFeat.setStyle(new Style({
+              image: new Icon({
+                src: getSvgPin(pinColor, iconType),
+                scale: 0.88,
+                anchor: [0.5, 1]
+              })
+            }))
+          }
           source.addFeature(fFeat)
         }
       })
@@ -2584,7 +2605,7 @@ export default function DisasterMap({
                 <Compass className="h-3.5 w-3.5 text-teal-700" />
                 Info Rujukan Faskes &amp; Evakuasi
               </span>
-              <button 
+              <button
                 onClick={() => onSelectRouteTarget && onSelectRouteTarget(null, 'clinic')}
                 className="text-slate-400 hover:text-slate-650 p-0.5 rounded transition"
                 title="Tutup / Bersihkan Rute"
@@ -2592,7 +2613,7 @@ export default function DisasterMap({
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            
+
             <div className="space-y-2.5 text-xs text-slate-750">
               <div>
                 <h5 className="font-extrabold text-slate-900 text-sm leading-tight">{selectedRouteTarget.name}</h5>
@@ -2600,7 +2621,7 @@ export default function DisasterMap({
                   {selectedRouteTarget.type === 'hospital' ? 'Rumah Sakit Rujukan' : selectedRouteTarget.type === 'shelter' ? 'Posko Pengungsian' : selectedRouteTarget.type === 'tck' ? 'Relawan TCK Kemkes RI' : 'Puskesmas / Klinik'}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-2 py-2 border-y border-slate-200 bg-slate-50 px-2 rounded-lg">
                 <div>
                   <span className="text-[9px] text-slate-400 block uppercase font-bold">Jarak Tempuh</span>
@@ -2619,13 +2640,13 @@ export default function DisasterMap({
               <div className="space-y-1">
                 <span className="text-[9px] font-bold text-slate-455 uppercase block">Rute Taktis Darurat</span>
                 <p className="text-[11px] text-slate-650 leading-relaxed font-semibold">
-                  {selectedRouteTarget.type === 'hospital' 
+                  {selectedRouteTarget.type === 'hospital'
                     ? 'Rute evakuasi gawat darurat ambulans menuju Rumah Sakit rujukan utama.'
                     : selectedRouteTarget.type === 'shelter'
-                    ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
-                    : selectedRouteTarget.type === 'tck'
-                    ? 'Jalur koordinasi darurat & mobilisasi penugasan Tenaga Cadangan Kesehatan (TCK) / Tim EMT menuju lokasi bencana.'
-                    : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
+                      ? 'Jalur penyelamatan dan mobilisasi warga terdampak menuju posko pengungsian terdekat.'
+                      : selectedRouteTarget.type === 'tck'
+                        ? 'Jalur koordinasi darurat & mobilisasi penugasan Tenaga Cadangan Kesehatan (TCK) / Tim EMT menuju lokasi bencana.'
+                        : 'Akses pelayanan medis menuju Puskesmas / Klinik siaga setempat.'
                   }
                 </p>
               </div>
@@ -2645,7 +2666,7 @@ export default function DisasterMap({
                 <span className="text-[9px] font-black tracking-widest bg-white/20 px-2 py-0.5 rounded-full uppercase">BMKG EWS TERPADU</span>
                 <h4 className="text-xs font-black uppercase tracking-wide">GEMPA BUMI BAHAYA DEKAT</h4>
                 <p className="text-[11px] leading-relaxed opacity-95">
-                  Gempa kekuatan <strong className="font-extrabold">M {activeBmkgAlert.gempa.Magnitude}</strong> terdeteksi di {activeBmkgAlert.gempa.Wilayah}. 
+                  Gempa kekuatan <strong className="font-extrabold">M {activeBmkgAlert.gempa.Magnitude}</strong> terdeteksi di {activeBmkgAlert.gempa.Wilayah}.
                   Berjarak <strong className="font-extrabold">{activeBmkgAlert.distance} km</strong> dari posisi Anda! ({activeBmkgAlert.gempa.Potensi})
                 </p>
               </div>
@@ -2861,11 +2882,10 @@ export default function DisasterMap({
                         <button
                           key={opt.value}
                           onClick={() => setMarkerMonths(opt.value)}
-                          className={`rounded-lg py-1.5 text-[10px] font-bold transition-all duration-150 ${
-                            markerMonths === opt.value
+                          className={`rounded-lg py-1.5 text-[10px] font-bold transition-all duration-150 ${markerMonths === opt.value
                               ? 'bg-teal-600 text-white shadow-sm'
                               : 'bg-white border border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700'
-                          }`}
+                            }`}
                         >
                           {opt.label}
                         </button>
@@ -3103,11 +3123,10 @@ export default function DisasterMap({
                           key={opt.value}
                           type="button"
                           onClick={() => setPulseRadius(opt.value)}
-                          className={`rounded-lg py-1 text-[10px] font-black transition-all ${
-                            pulseRadius === opt.value
+                          className={`rounded-lg py-1 text-[10px] font-black transition-all ${pulseRadius === opt.value
                               ? 'bg-rose-500 text-white shadow-xs'
                               : 'bg-white text-slate-600 border border-slate-100 hover:bg-slate-100'
-                          }`}
+                            }`}
                         >
                           {opt.label}
                         </button>
@@ -3238,7 +3257,7 @@ export default function DisasterMap({
                 <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">
                   SUMBER DAYA & EWS TERPADU
                 </p>
-                
+
                 {/* Toggle Real USGS/BMKG Seismic Epicenters */}
                 <div
                   onClick={() => setShowSeismicLayer((v) => !v)}
@@ -3390,11 +3409,10 @@ export default function DisasterMap({
                   {/* Complete InaRISK Hazard Layers (All 4 Hazards Always Available) */}
                   <div
                     onClick={() => setShowBnpbBanjir((v) => !v)}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${
-                      disasterCategory === 'banjir'
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${disasterCategory === 'banjir'
                         ? 'border-blue-200 bg-blue-50/60 hover:bg-blue-100/60 shadow-xs'
                         : 'border-slate-100 bg-slate-50 hover:bg-teal-50/50 hover:border-teal-100'
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
@@ -3414,11 +3432,10 @@ export default function DisasterMap({
 
                   <div
                     onClick={() => setShowBnpbGempa((v) => !v)}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${
-                      disasterCategory === 'gempa'
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${disasterCategory === 'gempa'
                         ? 'border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 shadow-xs'
                         : 'border-slate-100 bg-slate-50 hover:bg-teal-50/50 hover:border-teal-100'
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
@@ -3438,11 +3455,10 @@ export default function DisasterMap({
 
                   <div
                     onClick={() => setShowBnpbLongsor((v) => !v)}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${
-                      disasterCategory === 'longsor'
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${disasterCategory === 'longsor'
                         ? 'border-stone-300 bg-amber-900/10 hover:bg-amber-900/20 shadow-xs'
                         : 'border-slate-100 bg-slate-50 hover:bg-teal-50/50 hover:border-teal-100'
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
@@ -3462,11 +3478,10 @@ export default function DisasterMap({
 
                   <div
                     onClick={() => setShowBnpbKarhutla((v) => !v)}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${
-                      disasterCategory === 'kebakaran'
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2 transition-all ${disasterCategory === 'kebakaran'
                         ? 'border-red-200 bg-red-50/60 hover:bg-red-100/60 shadow-xs'
                         : 'border-slate-100 bg-slate-50 hover:bg-teal-50/50 hover:border-teal-100'
-                    }`}
+                      }`}
                   >
                     <div>
                       <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
@@ -3729,39 +3744,38 @@ export default function DisasterMap({
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-100 p-3.5 pb-3 bg-slate-50/70">
             <div className="min-w-0 flex-1">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                eocPopup.isTerdampak
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${eocPopup.isTerdampak
                   ? 'bg-rose-50 text-rose-700 border border-rose-300'
                   : eocPopup.type === 'earthquake'
-                  ? 'bg-red-100 text-red-800 border border-red-300 font-black'
-                  : eocPopup.type === 'tck'
-                  ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                  : eocPopup.type === 'hospital'
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : eocPopup.type === 'shelter'
-                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                  : eocPopup.type === 'pustu'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                  : eocPopup.type === 'disaster'
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-              }`}>
+                    ? 'bg-red-100 text-red-800 border border-red-300 font-black'
+                    : eocPopup.type === 'tck'
+                      ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                      : eocPopup.type === 'hospital'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : eocPopup.type === 'shelter'
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                          : eocPopup.type === 'pustu'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : eocPopup.type === 'disaster'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}>
                 <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
                 {eocPopup.isTerdampak
                   ? '⚠ Faskes Terdampak Bencana'
                   : eocPopup.type === 'earthquake'
-                  ? (eocPopup.earthquakeInfo?.isMainshock ? '⚡ Episentrum Gempa Utama' : '⚡ Titik Gempa Susulan')
-                  : eocPopup.type === 'tck'
-                  ? 'Relawan TCK Kemkes RI'
-                  : eocPopup.type === 'hospital'
-                  ? 'Rumah Sakit Rujukan'
-                  : eocPopup.type === 'shelter'
-                  ? 'Posko Kesehatan & Darurat'
-                  : eocPopup.type === 'pustu'
-                  ? 'Puskesmas Pembantu'
-                  : eocPopup.type === 'disaster'
-                  ? 'Pusat Kejadian Bencana'
-                  : 'Puskesmas / Klinik Siaga'}
+                    ? (eocPopup.earthquakeInfo?.isMainshock ? '⚡ Episentrum Gempa Utama' : '⚡ Titik Gempa Susulan')
+                    : eocPopup.type === 'tck'
+                      ? 'Relawan TCK Kemkes RI'
+                      : eocPopup.type === 'hospital'
+                        ? 'Rumah Sakit Rujukan'
+                        : eocPopup.type === 'shelter'
+                          ? 'Posko Kesehatan & Darurat'
+                          : eocPopup.type === 'pustu'
+                            ? 'Puskesmas Pembantu'
+                            : eocPopup.type === 'disaster'
+                              ? 'Pusat Kejadian Bencana'
+                              : 'Puskesmas / Klinik Siaga'}
               </span>
               <h4 className="mt-1.5 text-sm font-black text-slate-900 leading-snug">
                 {eocPopup.type === 'tck' ? maskPersonName(eocPopup.name) : eocPopup.name}
@@ -3821,11 +3835,10 @@ export default function DisasterMap({
             )}
 
             {eocPopup.distance !== undefined && eocPopup.distance > 0 && (
-              <div className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold border ${
-                eocPopup.isTerdampak
+              <div className={`flex items-center justify-between rounded-xl px-2.5 py-1.5 text-[10px] font-bold border ${eocPopup.isTerdampak
                   ? 'bg-rose-50/70 border-rose-100/80 text-rose-900'
                   : 'bg-teal-50/70 border-teal-100/80 text-teal-900'
-              }`}>
+                }`}>
                 <span>Jarak dari Titik Bencana:</span>
                 <span className={`font-black text-[11px] ${eocPopup.isTerdampak ? 'text-rose-800' : 'text-teal-800'}`}>± {eocPopup.distance} km</span>
               </div>
@@ -3924,11 +3937,10 @@ export default function DisasterMap({
                   </div>
                   <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
                     <span className="text-slate-500 font-medium">Tipe Guncangan:</span>
-                    <span className={`px-2 py-0.2 rounded-full font-black text-[9px] border ${
-                      eocPopup.earthquakeInfo.isMainshock 
-                        ? 'bg-red-100 text-red-800 border-red-200' 
+                    <span className={`px-2 py-0.2 rounded-full font-black text-[9px] border ${eocPopup.earthquakeInfo.isMainshock
+                        ? 'bg-red-100 text-red-800 border-red-200'
                         : 'bg-amber-100 text-amber-800 border-amber-200'
-                    }`}>
+                      }`}>
                       {eocPopup.earthquakeInfo.isMainshock ? 'Gempa Utama (Mainshock)' : 'Gempa Susulan'}
                     </span>
                   </div>
@@ -4008,13 +4020,12 @@ export default function DisasterMap({
                       <Activity className="h-3.5 w-3.5 text-rose-600" />
                       Kondisi Pasien (Triase)
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${
-                      triage.merah > 0
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${triage.merah > 0
                         ? 'bg-rose-100 text-rose-800 border-rose-300'
                         : hasPatients
                           ? 'bg-amber-100 text-amber-800 border-amber-300'
                           : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    }`}>
+                      }`}>
                       {hasPatients ? `Total: ${totalPatients} Pasien` : '0 Pasien'}
                     </span>
                   </div>
@@ -4058,7 +4069,7 @@ export default function DisasterMap({
                 const occ = String(r.pekerjaan || '').toLowerCase()
                 const fName = String(eocPopup.name || '').toLowerCase()
                 return (occ && (fName.includes(occ) || occ.includes(fName))) ||
-                       (r.kab_kota && String(eocPopup.address || '').toLowerCase().includes(String(r.kab_kota).toLowerCase()))
+                  (r.kab_kota && String(eocPopup.address || '').toLowerCase().includes(String(r.kab_kota).toLowerCase()))
               })
 
               if (matchedTck.length === 0) return null
@@ -4464,7 +4475,7 @@ export default function DisasterMap({
                   Aliran &amp; Kecepatan Angin (GFS)
                 </span>
               </div>
-              
+
               {/* Gradient Bar */}
               <div className="h-2 w-full rounded-full bg-gradient-to-r from-[rgb(15,60,140)] via-[rgb(85,160,115)] via-[rgb(215,195,60)] via-[rgb(210,125,35)] to-[rgb(185,35,10)] shadow-inner" />
               <div className="flex justify-between text-[8.5px] font-bold text-slate-500 px-0.5">

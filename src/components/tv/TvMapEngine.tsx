@@ -76,6 +76,9 @@ export interface FaskesItem {
   nama_rs?: string
   nama_faskes?: string
   nama?: string
+  jenis_faskes?: string
+  jenis?: string
+  jenis_sarana?: string
   kabupaten: string
   kecamatan?: string
   lat: number
@@ -239,6 +242,54 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
   const earthquakeLayerRef = useRef<VectorLayer<any> | null>(null)
   const routeLayerRef = useRef<VectorLayer<any> | null>(null)
   const windLayerRef = useRef<any>(null)
+  const pulseOverlaysRef = useRef<Overlay[]>([])
+
+  // Dynamic animated radar pulse overlay creator (matching DisasterMap.tsx)
+  const createPulseOverlay = useCallback((lng: number, lat: number, type: 'danger' | 'warning' | 'gempa' = 'danger') => {
+    const map = mapInstanceRef.current
+    if (!map) return
+
+    const pulseEl = document.createElement('div')
+    pulseEl.className = 'ews-pulse-overlay pointer-events-none select-none'
+    pulseEl.style.position = 'relative'
+    pulseEl.style.width = '52px'
+    pulseEl.style.height = '52px'
+    pulseEl.style.display = 'flex'
+    pulseEl.style.alignItems = 'center'
+    pulseEl.style.justifyContent = 'center'
+
+    let colorHex = '#ef4444' // red
+    if (type === 'warning') colorHex = '#f97316' // orange
+    else if (type === 'gempa') colorHex = '#ea580c' // amber
+
+    pulseEl.innerHTML = `
+      <style>
+        @keyframes eocPulsePing {
+          0% { transform: scale(0.4); opacity: 0.95; }
+          60% { transform: scale(1.9); opacity: 0.15; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+        @keyframes eocPulseRadar {
+          0% { transform: scale(0.2); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 0.6; }
+          100% { transform: scale(2.1); opacity: 0; }
+        }
+      </style>
+      <div style="position: absolute; width: 44px; height: 44px; border-radius: 9999px; background: ${colorHex}; opacity: 0.55; animation: eocPulsePing 1.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;"></div>
+      <div style="position: absolute; width: 44px; height: 44px; border-radius: 9999px; border: 2.2px solid ${colorHex}; animation: eocPulseRadar 1.8s ease-out infinite; animation-delay: 0.45s;"></div>
+      <div style="position: relative; width: 10px; height: 10px; border-radius: 9999px; background: ${colorHex}; border: 2px solid #ffffff; box-shadow: 0 0 10px ${colorHex};"></div>
+    `
+
+    const overlay = new Overlay({
+      element: pulseEl,
+      positioning: 'center-center',
+      stopEvent: false,
+      position: fromLonLat([lng, lat]),
+    })
+
+    map.addOverlay(overlay)
+    pulseOverlaysRef.current.push(overlay)
+  }, [])
 
   // Expose flyTo, resetView & focusProvince methods to parent
   useImperativeHandle(ref, () => ({
@@ -320,7 +371,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       const name = getFeatureName(feature)
       const key = cleanKey(name)
       const count = provCountMap.get(key) || 0
-      const baseColor = choroplethColor(count, 0.75)
+      const baseColor = choroplethColor(count, 0.22)
 
       return new Style({
         fill: new Fill({ color: baseColor }),
@@ -359,6 +410,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/batas_administrasi/MapServer',
       }),
       visible: layers.bnpbAdmin,
+      opacity: 0.5,
       zIndex: 2,
     })
     bnpbAdminRef.current = bnpbAdmin
@@ -567,9 +619,10 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         if (!res.ok) return
         const windData = await res.json()
         const windLayer = new WindLayer(windData as any, {
+          zIndex: 9,
           windOptions: {
-            velocityScale: 0.012,
-            paths: 1400,
+            velocityScale: 0.015,
+            paths: 1600,
             colorScale: [
               'rgb(15,60,140)',
               'rgb(70,150,145)',
@@ -579,11 +632,15 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
               'rgb(185,35,10)',
               'rgb(155,8,12)',
             ],
-            lineWidth: 2,
+            lineWidth: 2.2,
             generateParticleOption: true,
           },
           fieldOptions: { wrapX: true },
         } as any)
+
+        if (typeof (windLayer as any).setZIndex === 'function') {
+          ;(windLayer as any).setZIndex(9)
+        }
 
         const isVisible = layers.showWindy
         ;(windLayer as any).setVisible?.(isVisible)
@@ -594,6 +651,9 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         } catch {}
 
         map.addLayer(windLayer as any)
+        if (typeof (windLayer as any).setZIndex === 'function') {
+          ;(windLayer as any).setZIndex(9)
+        }
         windLayerRef.current = windLayer as any
       } catch (err) {
         console.warn('[TvMapEngine] Windy load error:', err)
@@ -653,16 +713,82 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     updateProvinceStyles()
   }, [updateProvinceStyles])
 
-  // ── 1. Disaster Markers (All 8 affected kabupaten in NTT) ──
+  // ── 1. Disaster Markers (All 8 affected kabupaten in NTT) with Pulse Radar & Radius Rings ──
   useEffect(() => {
     const layer = markerLayerRef.current
     const source = layer?.getSource()
     if (!source) return
     source.clear()
 
+    const map = mapInstanceRef.current
+    if (map) {
+      pulseOverlaysRef.current.forEach((ov) => map.removeOverlay(ov))
+      pulseOverlaysRef.current = []
+    }
+
     const features: Feature[] = []
-    markers.forEach((m) => {
+    const pulseRadius = layers.impactRadiusKm !== undefined ? layers.impactRadiusKm : 1
+
+    markers.forEach((m, idx) => {
       if (!m.lat || !m.lng || isNaN(m.lat) || isNaN(m.lng)) return
+
+      const isEpicenter = idx === 0 || (m.total_korban || 0) > 30
+
+      // Draw pulsing radius circle & trigger radar overlay on disaster markers
+      if (pulseRadius !== 0) {
+        const radiusList: { km: number; stroke: string; fill: string }[] = []
+        if (pulseRadius === -1) {
+          // All 5 Rings (1km, 5km, 10km, 25km, 50km)
+          radiusList.push(
+            { km: 1, stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.22)' },
+            { km: 5, stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.18)' },
+            { km: 10, stroke: '#eab308', fill: 'rgba(234, 179, 8, 0.14)' },
+            { km: 25, stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.10)' },
+            { km: 50, stroke: '#047D78', fill: 'rgba(4, 125, 120, 0.08)' }
+          )
+        } else {
+          radiusList.push({
+            km: isEpicenter ? pulseRadius : Math.max(2, Math.min(pulseRadius * 0.5, 15)),
+            stroke: isEpicenter ? 'rgba(220, 38, 38, 0.85)' : 'rgba(234, 88, 12, 0.75)',
+            fill: isEpicenter ? 'rgba(239, 68, 68, 0.16)' : 'rgba(249, 115, 22, 0.12)',
+          })
+        }
+
+        radiusList.forEach((r) => {
+          const circleFeat = new Feature({
+            geometry: new CircleGeom(fromLonLat([m.lng, m.lat]), r.km * 1000),
+          })
+          circleFeat.setStyle(
+            new Style({
+              fill: new Fill({ color: r.fill }),
+              stroke: new Stroke({
+                color: r.stroke,
+                width: isEpicenter ? 2.4 : 1.8,
+                lineDash: isEpicenter ? [6, 6] : [4, 4],
+              }),
+            })
+          )
+          features.push(circleFeat)
+        })
+
+        // Inner Core Zone for major hotspot
+        if (isEpicenter && (pulseRadius >= 5 || pulseRadius === -1)) {
+          const innerCoreKm = pulseRadius === -1 ? 2 : Math.max(1, pulseRadius * 0.4)
+          const innerCircle = new Feature({
+            geometry: new CircleGeom(fromLonLat([m.lng, m.lat]), innerCoreKm * 1000),
+          })
+          innerCircle.setStyle(
+            new Style({
+              fill: new Fill({ color: 'rgba(220, 38, 38, 0.22)' }),
+              stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 }),
+            })
+          )
+          features.push(innerCircle)
+        }
+
+        // Animated Radar Pulse
+        createPulseOverlay(m.lng, m.lat, isEpicenter ? 'danger' : 'warning')
+      }
 
       const feat = new Feature({
         geometry: new Point(fromLonLat([m.lng, m.lat])),
@@ -680,34 +806,31 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
             fill: new Fill({ color: pinFill }),
             stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
           }),
-          text: new OlText({
-            text: m.kabupaten || m.nama || 'Bencana',
-            font: 'bold 11px Roboto, sans-serif',
-            fill: new Fill({ color: '#0f172a' }),
-            stroke: new Stroke({ color: '#ffffff', width: 3 }),
-            offsetY: -16,
-          }),
         })
       )
       features.push(feat)
     })
 
     source.addFeatures(features)
-  }, [markers])
+  }, [markers, layers.impactRadiusKm, createPulseOverlay])
 
-  // ── 2. Isoseismal Shaking Rings & Pulse on M 7.4 Epicenter ──
+  // ── 2. Isoseismal Shaking Rings & Dynamic Impact Radius Circle ──
   useEffect(() => {
     const layer = shakingZoneLayerRef.current
     const source = layer?.getSource()
     if (!source) return
     source.clear()
 
-    // Epicenter of Laut Flores Gempa (lat: -8.3421, lng: 122.9814)
-    const epicCenter = fromLonLat([122.9814, -8.3421])
+    const mainshock = (earthquakePoints || []).find((eq) => eq.isMainshock) || (earthquakePoints || [])[0]
+    if (!mainshock || !mainshock.lat || !mainshock.lng) return
 
-    // Outer Shaking Zone Circle (~65 km)
+    const epicCenter = fromLonLat([mainshock.lng, mainshock.lat])
+    const primaryRadiusKm = Math.min(80, Math.max(25, ((mainshock.magnitude || 7.0) - 3) * 12))
+    const innerRadiusKm = Math.max(10, primaryRadiusKm * 0.45)
+
+    // Outer Shaking Zone Circle
     const outerCircle = new Feature({
-      geometry: new CircleGeom(epicCenter, 65000),
+      geometry: new CircleGeom(epicCenter, primaryRadiusKm * 1000),
     })
     outerCircle.setStyle(
       new Style({
@@ -720,9 +843,9 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       })
     )
 
-    // Inner Severe Zone Circle (~28 km)
+    // Inner Severe Zone Circle
     const innerCircle = new Feature({
-      geometry: new CircleGeom(epicCenter, 28000),
+      geometry: new CircleGeom(epicCenter, innerRadiusKm * 1000),
     })
     innerCircle.setStyle(
       new Style({
@@ -734,19 +857,57 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       })
     )
 
+    // Dynamic Impact Radius Circle (if selected in Layer Services / Quick Control)
+    const dynamicCircles: Feature<any>[] = []
+    const radiusListToDraw: { km: number; stroke: string; fill: string }[] = []
+
+    if (layers.impactRadiusKm === -1) {
+      // All Concentric Impact Rings (1km, 5km, 10km, 25km, 50km)
+      radiusListToDraw.push(
+        { km: 1, stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.25)' },
+        { km: 5, stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.2)' },
+        { km: 10, stroke: '#eab308', fill: 'rgba(234, 179, 8, 0.15)' },
+        { km: 25, stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.12)' },
+        { km: 50, stroke: '#047D78', fill: 'rgba(4, 125, 120, 0.1)' }
+      )
+    } else if (layers.impactRadiusKm && layers.impactRadiusKm > 0) {
+      radiusListToDraw.push({
+        km: layers.impactRadiusKm,
+        stroke: '#047D78',
+        fill: 'rgba(4, 125, 120, 0.18)',
+      })
+    }
+
+    radiusListToDraw.forEach((r) => {
+      const circ = new Feature({
+        geometry: new CircleGeom(epicCenter, r.km * 1000),
+      })
+      circ.setStyle(
+        new Style({
+          fill: new Fill({ color: r.fill }),
+          stroke: new Stroke({
+            color: r.stroke,
+            width: 2.5,
+            lineDash: [6, 6],
+          }),
+        })
+      )
+      dynamicCircles.push(circ)
+    })
+
     // Epicenter Marker Point
     const epicPoint = new Feature({
       geometry: new Point(epicCenter),
       markerData: {
         type: 'earthquake',
-        nama: 'Episentrum Gempa Utama M 7.7 Laut Flores - Mbay-Nagekeo',
-        magnitude: 7.7,
-        depth: 15,
-        place: 'Laut Flores - 30 km Timur Laut Mbay-Nagekeo',
-        time: '09:18 WIB (15 Ags 2026)',
-        mmi: 'VII-VIII MMI',
-        lat: -8.3421,
-        lng: 122.9814,
+        nama: `Episentrum Gempa Utama M ${mainshock.magnitude || '7.4'} - ${mainshock.place || 'Laut Flores'}`,
+        magnitude: mainshock.magnitude,
+        depth: mainshock.depth,
+        place: mainshock.place || 'Laut Flores',
+        time: mainshock.time || mainshock.dateStr || 'WIB',
+        mmi: mainshock.mmi || '-',
+        lat: mainshock.lat,
+        lng: mainshock.lng,
       },
       itemType: 'earthquake',
     })
@@ -757,18 +918,12 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
           fill: new Fill({ color: '#dc2626' }),
           stroke: new Stroke({ color: '#ffffff', width: 3 }),
         }),
-        text: new OlText({
-          text: '★ EPISENTRUM M 7.7',
-          font: 'bold 12px Roboto, sans-serif',
-          fill: new Fill({ color: '#991b1b' }),
-          stroke: new Stroke({ color: '#ffffff', width: 3.5 }),
-          offsetY: -18,
-        }),
       })
     )
 
-    source.addFeatures([outerCircle, innerCircle, epicPoint])
-  }, [])
+    const featureList: Feature<any>[] = [outerCircle, innerCircle, ...dynamicCircles, epicPoint]
+    source.addFeatures(featureList)
+  }, [earthquakePoints, layers.impactRadiusKm])
 
   // ── 3. Earthquake Aftershocks Bubble Dots ──
   useEffect(() => {
@@ -797,13 +952,6 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
             fill: new Fill({ color: mag >= 5.5 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(245, 158, 11, 0.85)' }),
             stroke: new Stroke({ color: '#ffffff', width: 1.5 }),
           }),
-          text: new OlText({
-            text: `M ${mag.toFixed(1)}`,
-            font: 'bold 9.5px Roboto, sans-serif',
-            fill: new Fill({ color: '#7c2d12' }),
-            stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
-            offsetY: -12,
-          }),
         })
       )
       features.push(feat)
@@ -812,16 +960,36 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     source.addFeatures(features)
   }, [earthquakePoints])
 
-  // ── 4. Faskes Markers (RSUD & Puskesmas NTT with Triage) ──
+  // ── 4. Faskes Markers (RSUD & Puskesmas NTT with SVG Icons & Sub-Filters) ──
   useEffect(() => {
     const layer = faskesLayerRef.current
     const source = layer?.getSource()
     if (!source) return
     source.clear()
 
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+
     const features: Feature[] = []
     faskesList.forEach((f) => {
       if (!f.lat || !f.lng) return
+
+      const nameLower = (f.nama_rs || f.nama_faskes || f.nama || '').toLowerCase()
+      const jenisLower = (f.jenis_faskes || f.jenis || f.jenis_sarana || '').toLowerCase()
+
+      const isRS = jenisLower.includes('rs') || jenisLower.includes('rumah sakit') || nameLower.includes('rsud') || nameLower.includes('rumah sakit') || nameLower.startsWith('rs ')
+      const isPuskesmas = jenisLower.includes('puskesmas') || nameLower.includes('puskesmas') || nameLower.includes('pkm')
+      const isKlinik = jenisLower.includes('klinik') || nameLower.includes('klinik')
+      const isPustu = jenisLower.includes('pustu') || jenisLower.includes('pembantu') || nameLower.includes('pustu')
+
+      // Apply Faskes Type Checkboxes
+      if (isRS && layers.faskesRs === false) return
+      if (isPuskesmas && layers.faskesPuskesmas === false) return
+      if (isKlinik && layers.faskesKlinik === false) return
+      if (isPustu && layers.faskesPustu === false) return
+
+      // Apply Siaga Only Filter
+      const totalPatients = (f.triase_merah || 0) + (f.triase_kuning || 0) + (f.triase_hijau || 0) + (f.triase_hitam || 0) + (f.total || 0) + (f.total_pasien || 0)
+      if (layers.faskesSiagaOnly && totalPatients === 0) return
 
       const feat = new Feature({
         geometry: new Point(fromLonLat([f.lng, f.lat])),
@@ -829,30 +997,44 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         itemType: 'faskes',
       })
 
-      const hasMerah = Number(f.triase_merah || 0) > 0
-      const pFill = hasMerah ? '#e11d48' : '#059669'
+      if (isRS) {
+        // Rumah Sakit (Hospital): Prominent, larger SVG Hospital Building icon
+        feat.setStyle(
+          new Style({
+            image: new Icon({
+              src: `${basePath}/hospital.svg`,
+              size: [500, 500],
+              scale: 0.08, // ~40px x 40px (Visual Prominent)
+              anchor: [0.5, 0.5],
+            }),
+          })
+        )
+      } else {
+        // Puskesmas: Distinct Puskesmas SVG icon
+        feat.setStyle(
+          new Style({
+            image: new Icon({
+              src: `${basePath}/puskesmas.svg`,
+              size: [373, 373],
+              scale: 0.08, // ~30px x 30px
+              anchor: [0.5, 0.5],
+            }),
+          })
+        )
+      }
 
-      feat.setStyle(
-        new Style({
-          image: new CircleStyle({
-            radius: 8,
-            fill: new Fill({ color: pFill }),
-            stroke: new Stroke({ color: '#ffffff', width: 2 }),
-          }),
-          text: new OlText({
-            text: `🏥 ${f.nama_rs || f.nama || 'RSUD'}`,
-            font: 'bold 10.5px Roboto, sans-serif',
-            fill: new Fill({ color: '#065f46' }),
-            stroke: new Stroke({ color: '#ffffff', width: 3 }),
-            offsetY: 14,
-          }),
-        })
-      )
       features.push(feat)
     })
 
     source.addFeatures(features)
-  }, [faskesList])
+  }, [
+    faskesList,
+    layers.faskesRs,
+    layers.faskesPuskesmas,
+    layers.faskesKlinik,
+    layers.faskesPustu,
+    layers.faskesSiagaOnly,
+  ])
 
   // ── 5. Posko Markers ──
   useEffect(() => {
@@ -879,13 +1061,6 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
             radius: 7,
             fill: new Fill({ color: '#0284c7' }),
             stroke: new Stroke({ color: '#ffffff', width: 2 }),
-          }),
-          text: new OlText({
-            text: `⛺ ${p.nama_pos || p.nama || 'Posko'}`,
-            font: 'bold 10px Roboto, sans-serif',
-            fill: new Fill({ color: '#0369a1' }),
-            stroke: new Stroke({ color: '#ffffff', width: 2.5 }),
-            offsetY: 13,
           }),
         })
       )
