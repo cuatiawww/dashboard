@@ -79,6 +79,9 @@ export interface FaskesItem {
   jenis_faskes?: string
   jenis?: string
   jenis_sarana?: string
+  subjenis?: string
+  kode_sarana?: string
+  kode_satusehat?: string
   kabupaten: string
   kecamatan?: string
   lat: number
@@ -895,15 +898,27 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       dynamicCircles.push(circ)
     })
 
+    const getSvgMainshockPin = (mag: number) => {
+      const magText = mag > 0 ? (mag >= 10 ? mag.toFixed(0) : mag.toFixed(1)) : '7.7'
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="54" viewBox="0 0 46 54" fill="none">
+        <circle cx="23" cy="20" r="19" fill="rgba(220, 38, 38, 0.25)" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <path d="M23 4C14.16 4 7 11.16 7 20C7 31 23 50 23 50S39 31 39 20C39 11.16 31.84 4 23 4Z" fill="#dc2626" stroke="#ffffff" stroke-width="2.5"/>
+        <circle cx="23" cy="20" r="11" fill="#ffffff"/>
+        <text x="23" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="900" fill="#991b1b">M ${magText}</text>
+      </svg>`
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+    }
+
     // Epicenter Marker Point
+    const epicMag = Number(mainshock.magnitude || 7.7)
     const epicPoint = new Feature({
       geometry: new Point(epicCenter),
       markerData: {
         type: 'earthquake',
         nama: mainshock.place
-          ? `Episentrum Gempa Utama M ${mainshock.magnitude ? mainshock.magnitude.toFixed(1) : ''} - ${mainshock.place}`
-          : 'Episentrum Gempa Utama',
-        magnitude: mainshock.magnitude || undefined,
+          ? `Episentrum Gempa Utama M ${epicMag.toFixed(1)} - ${mainshock.place}`
+          : `Episentrum Gempa Utama M ${epicMag.toFixed(1)}`,
+        magnitude: epicMag,
         depth: mainshock.depth || undefined,
         place: mainshock.place || '',
         time: mainshock.time || mainshock.dateStr || '',
@@ -915,11 +930,12 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     })
     epicPoint.setStyle(
       new Style({
-        image: new CircleStyle({
-          radius: 11,
-          fill: new Fill({ color: '#dc2626' }),
-          stroke: new Stroke({ color: '#ffffff', width: 3 }),
+        image: new Icon({
+          src: getSvgMainshockPin(epicMag),
+          scale: 1.0,
+          anchor: [0.5, 0.92],
         }),
+        zIndex: 100,
       })
     )
 
@@ -937,12 +953,29 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     const features: Feature[] = []
     const seenPoints = new Set<string>()
 
-    const getSvgGempaBadge = (mag: number) => {
-      const color = mag >= 6.0 ? '#dc2626' : mag >= 5.0 ? '#ea580c' : '#f59e0b'
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,0.18)" stroke="#ffffff" stroke-width="1.5"/>
-        <circle cx="20" cy="20" r="15" fill="${color}" stroke="#ffffff" stroke-width="2.5"/>
-        <text x="20" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="900" fill="#ffffff">M ${mag.toFixed(1)}</text>
+    const getSvgAftershockNode = (mag: number) => {
+      if (mag >= 6.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" fill="#b91c1c" stroke="#ffffff" stroke-width="2.5"/>
+          <text x="12" y="15.5" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8.5" font-weight="900" fill="#ffffff">${mag.toFixed(1)}</text>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      if (mag >= 5.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+          <circle cx="10" cy="10" r="8" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+          <text x="10" y="13" text-anchor="middle" font-family="system-ui, sans-serif" font-size="7.5" font-weight="900" fill="#ffffff">${mag.toFixed(1)}</text>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      if (mag >= 4.0) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14">
+          <circle cx="7" cy="7" r="5.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.8"/>
+        </svg>`
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
+      }
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
+        <circle cx="5" cy="5" r="4" fill="#fbbf24" stroke="#ffffff" stroke-width="1.2"/>
       </svg>`
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg)
     }
@@ -992,12 +1025,12 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         markerData: {
           ...eq,
           type: 'earthquake',
-          nama: eq.place ? `Gempa M ${mag.toFixed(1)} - ${eq.place}` : `Gempa M ${mag.toFixed(1)}`,
+          nama: eq.place ? `Gempa Susulan M ${mag.toFixed(1)} - ${eq.place}` : `Gempa Susulan M ${mag.toFixed(1)}`,
           magnitude: mag,
           depth: eq.depth ?? '',
           place: eq.place || '',
           time: eq.time || '',
-          source: (eq as any).source || 'BMKG',
+          source: (eq as any).source || 'BMKG / USGS',
         },
         itemType: 'earthquake',
       })
@@ -1005,11 +1038,11 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       feat.setStyle(
         new Style({
           image: new Icon({
-            src: getSvgGempaBadge(mag),
-            size: [40, 40],
-            scale: 0.85,
+            src: getSvgAftershockNode(mag),
+            scale: 1.0,
             anchor: [0.5, 0.5],
           }),
+          zIndex: Math.round(mag * 10),
         })
       )
       features.push(feat)
@@ -1054,11 +1087,11 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         feat.setStyle(
           new Style({
             image: new Icon({
-              src: getSvgGempaBadge(mag),
-              size: [40, 40],
-              scale: 0.88,
+              src: getSvgAftershockNode(mag),
+              scale: 1.0,
               anchor: [0.5, 0.5],
             }),
+            zIndex: Math.round(mag * 10),
           })
         )
         features.push(feat)

@@ -393,74 +393,143 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             : []
         )
 
-        // ── 3. FASKES SIAGA NTT (Strictly from API Collector) ──
+        // ── 3. FASKES SIAGA NTT (Strictly from API Master & Collector) ──
+        const rawMasterFaskes = Array.isArray(nttData?.master_faskes) ? nttData.master_faskes : []
         const rawPasienRs = Array.isArray(nttData?.pasien_rs) ? nttData.pasien_rs : []
         const rawPasienPkm = Array.isArray(nttData?.pasien_puskesmas) ? nttData.pasien_puskesmas : []
 
         const parsedFaskes: FaskesItem[] = []
+        const seenFaskesKeys = new Set<string>()
 
-        if (rawPasienRs.length > 0) {
-          rawPasienRs.forEach((r: any) => {
-            const tm = r.triase_merah !== undefined ? Number(r.triase_merah) : 0
-            const tk = r.triase_kuning !== undefined ? Number(r.triase_kuning) : 0
-            const th = r.triase_hijau !== undefined ? Number(r.triase_hijau) : 0
-            const tht = r.triase_hitam !== undefined ? Number(r.triase_hitam) : 0
-            const tot = r.total !== undefined ? Number(r.total) : (tm + tk + th + tht)
-            const name = r.nama_master || r.nama_resmi || r.nama_rs || r.rs || r.nama || ''
-            if (!name) return
-
-            const lat = Number(r.latitude)
-            const lng = Number(r.longitude)
+        if (rawMasterFaskes.length > 0) {
+          rawMasterFaskes.forEach((f: any, idx: number) => {
+            const lat = Number(f.latitude ?? f.lat)
+            const lng = Number(f.longitude ?? f.lng)
             if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
 
+            const name = f.nama_master || f.nama_resmi || f.nama_faskes || f.nama_rs || f.nama || ''
+            if (!name) return
+
+            const dedupeKey = f.kode_sarana && f.kode_sarana !== '-' ? `f_${f.kode_sarana}` : `f_${name.toLowerCase().trim()}`
+            if (seenFaskesKeys.has(dedupeKey)) return
+            seenFaskesKeys.add(dedupeKey)
+
+            const tm = Number(f.triase_merah || 0)
+            const tk = Number(f.triase_kuning || 0)
+            const th = Number(f.triase_hijau || 0)
+            const tht = Number(f.triase_hitam || 0)
+            const tot = Number(f.total || f.total_pasien || (tm + tk + th + tht))
+
             parsedFaskes.push({
+              id: f.id || `faskes-${idx + 1}`,
               nama_rs: name,
               nama_faskes: name,
-              kabupaten: r.nama_kab || r.kabupaten || '',
-              kecamatan: r.nama_kecamatan || r.kecamatan || '',
+              nama: name,
+              jenis_faskes: f.jenis_faskes || f.jenis || f.subjenis || 'Rumah Sakit',
+              jenis: f.jenis || f.jenis_faskes || 'RS',
+              subjenis: f.subjenis || f.jenis_faskes || '',
+              kabupaten: f.nama_kab || f.kabupaten || '',
+              kecamatan: f.nama_kecamatan || f.kecamatan || '',
+              kode_sarana: f.kode_sarana || '-',
+              kode_satusehat: f.kode_satusehat || '-',
               triase_merah: tm,
               triase_kuning: tk,
               triase_hijau: th,
               triase_hitam: tht,
               total: tot,
+              total_pasien: tot,
               lat,
               lng,
-              status: r.status || '',
-              igd: r.igd || '',
+              status: f.status || '',
+              igd: f.igd || '',
             })
           })
-        }
+        } else {
+          if (rawPasienRs.length > 0) {
+            rawPasienRs.forEach((r: any, idx: number) => {
+              const tm = r.triase_merah !== undefined ? Number(r.triase_merah) : 0
+              const tk = r.triase_kuning !== undefined ? Number(r.triase_kuning) : 0
+              const th = r.triase_hijau !== undefined ? Number(r.triase_hijau) : 0
+              const tht = r.triase_hitam !== undefined ? Number(r.triase_hitam) : 0
+              const tot = r.total !== undefined ? Number(r.total) : (tm + tk + th + tht)
+              const name = r.nama_master || r.nama_resmi || r.nama_rs || r.rs || r.nama || ''
+              if (!name) return
 
-        if (rawPasienPkm.length > 0) {
-          rawPasienPkm.forEach((pkm: any) => {
-            const tm = pkm.triase_merah !== undefined ? Number(pkm.triase_merah) : 0
-            const tk = pkm.triase_kuning !== undefined ? Number(pkm.triase_kuning) : 0
-            const th = pkm.triase_hijau !== undefined ? Number(pkm.triase_hijau) : 0
-            const tht = pkm.triase_hitam !== undefined ? Number(pkm.triase_hitam) : 0
-            const tot = pkm.total !== undefined ? Number(pkm.total) : (tm + tk + th + tht)
-            const name = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || '')
-            if (!name) return
+              const lat = Number(r.latitude ?? r.lat)
+              const lng = Number(r.longitude ?? r.lng)
+              if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
 
-            const lat = Number(pkm.latitude)
-            const lng = Number(pkm.longitude)
-            if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
+              const dedupeKey = r.kode_sarana && r.kode_sarana !== '-' ? `rs_${r.kode_sarana}` : `rs_${name.toLowerCase().trim()}`
+              if (seenFaskesKeys.has(dedupeKey)) return
+              seenFaskesKeys.add(dedupeKey)
 
-            parsedFaskes.push({
-              nama_rs: name,
-              nama_faskes: name,
-              kabupaten: pkm.nama_kab || pkm.kabupaten || '',
-              kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '',
-              triase_merah: tm,
-              triase_kuning: tk,
-              triase_hijau: th,
-              triase_hitam: tht,
-              total: tot,
-              lat,
-              lng,
-              status: pkm.status || '',
-              igd: pkm.igd || '',
+              parsedFaskes.push({
+                id: `rs-${idx + 1}`,
+                nama_rs: name,
+                nama_faskes: name,
+                nama: name,
+                jenis_faskes: 'Rumah Sakit',
+                jenis: 'RS',
+                kabupaten: r.nama_kab || r.kabupaten || '',
+                kecamatan: r.nama_kecamatan || r.kecamatan || '',
+                kode_sarana: r.kode_sarana || '-',
+                kode_satusehat: r.kode_satusehat || '-',
+                triase_merah: tm,
+                triase_kuning: tk,
+                triase_hijau: th,
+                triase_hitam: tht,
+                total: tot,
+                total_pasien: tot,
+                lat,
+                lng,
+                status: r.status || '',
+                igd: r.igd || '',
+              })
             })
-          })
+          }
+
+          if (rawPasienPkm.length > 0) {
+            rawPasienPkm.forEach((pkm: any, idx: number) => {
+              const tm = pkm.triase_merah !== undefined ? Number(pkm.triase_merah) : 0
+              const tk = pkm.triase_kuning !== undefined ? Number(pkm.triase_kuning) : 0
+              const th = pkm.triase_hijau !== undefined ? Number(pkm.triase_hijau) : 0
+              const tht = pkm.triase_hitam !== undefined ? Number(pkm.triase_hitam) : 0
+              const tot = pkm.total !== undefined ? Number(pkm.total) : (tm + tk + th + tht)
+              const name = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || '')
+              if (!name) return
+
+              const lat = Number(pkm.latitude ?? pkm.lat)
+              const lng = Number(pkm.longitude ?? pkm.lng)
+              if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return
+
+              const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${name.toLowerCase().trim()}`
+              if (seenFaskesKeys.has(dedupeKey)) return
+              seenFaskesKeys.add(dedupeKey)
+
+              parsedFaskes.push({
+                id: `pkm-${idx + 1}`,
+                nama_rs: name,
+                nama_faskes: name,
+                nama: name,
+                jenis_faskes: 'Puskesmas',
+                jenis: 'Puskesmas',
+                kabupaten: pkm.nama_kab || pkm.kabupaten || '',
+                kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '',
+                kode_sarana: pkm.kode_sarana || '-',
+                kode_satusehat: pkm.kode_satusehat || '-',
+                triase_merah: tm,
+                triase_kuning: tk,
+                triase_hijau: th,
+                triase_hitam: tht,
+                total: tot,
+                total_pasien: tot,
+                lat,
+                lng,
+                status: pkm.status || '',
+                igd: pkm.igd || '',
+              })
+            })
+          }
         }
 
         setFaskesList(parsedFaskes)
@@ -501,11 +570,11 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
 
         setPenyakitList(triaseItems)
 
-        // ── 5. BMKG OPEN DATA GEMPA BUMI & SEISMIC POINTS (BMKG API) ──
+        // ── 5. BMKG & USGS REAL SEISMIC CATALOG POINTS (Kejadian 15 Agustus 2026) ──
         let eqPoints: EarthquakePoint[] = []
         try {
           const [seismicRes, bmkgRes] = await Promise.allSettled([
-            fetch('/api/bencana-seismic?provinsi=NUSA%20TENGGARA%20TIMUR', { cache: 'no-store' }),
+            fetch('/api/bencana-seismic?lat=-8.3421&lng=122.9814&date=2026-08-15&kabupaten=Flores%20Timur&provinsi=NUSA%20TENGGARA%20TIMUR&magnitudo=7.7&kedalaman=15&mmi=VII-VIII', { cache: 'no-store' }),
             fetch('/api/bmkg-gempa', { cache: 'no-store' }),
           ])
 
