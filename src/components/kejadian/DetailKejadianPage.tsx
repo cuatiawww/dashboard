@@ -3666,7 +3666,67 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [kabupatenMatrixData])
 
+  const filteredModalFaskesList = useMemo(() => {
+    return faskesMatrixData.filter((f: any) => {
+      // 1. Filter Type / Category
+      if (modalFaskesTypeFilter === 'rs') {
+        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+        if (!j.includes('rs') && !j.includes('rumah sakit')) return false
+      } else if (modalFaskesTypeFilter === 'puskesmas') {
+        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+        if ((!j.includes('puskesmas') && !j.includes('pkm')) || j.includes('pustu') || j.includes('pembantu')) return false
+      } else if (modalFaskesTypeFilter === 'pustu') {
+        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+        if (!j.includes('pustu') && !j.includes('pembantu')) return false
+      } else if (modalFaskesTypeFilter === 'klinik') {
+        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+        if (!j.includes('klinik')) return false
+      } else if (modalFaskesTypeFilter === 'merawat') {
+        const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
+        if (tot <= 0) return false
+      }
 
+      // 2. Search filter
+      if (kabupatenMatrixSearch) {
+        const q = kabupatenMatrixSearch.toLowerCase()
+        const matchName = String(f.nama || '').toLowerCase().includes(q)
+        const matchKab = String(f.kabupaten || '').toLowerCase().includes(q)
+        const matchKec = String(f.kecamatan || '').toLowerCase().includes(q)
+        const matchKode = String(f.kode_sarana || '').toLowerCase().includes(q) || String(f.kode_satusehat || '').toLowerCase().includes(q)
+        const matchPj = String(f.pj_medis || '').toLowerCase().includes(q)
+        if (!matchName && !matchKab && !matchKec && !matchKode && !matchPj) return false
+      }
+
+      return true
+    })
+  }, [faskesMatrixData, modalFaskesTypeFilter, kabupatenMatrixSearch])
+
+  const filteredModalFaskesTotals = useMemo(() => {
+    let merah = 0, kuning = 0, hijau = 0, hitam = 0, totalPasien = 0, aktifMerawat = 0
+    filteredModalFaskesList.forEach((row: any) => {
+      const m = safeParseInt(row.triase_merah)
+      const k = safeParseInt(row.triase_kuning)
+      const h = safeParseInt(row.triase_hijau)
+      const d = safeParseInt(row.triase_hitam)
+      const tot = safeParseInt(row.total_pasien) || (m + k + h + d)
+      merah += m
+      kuning += k
+      hijau += h
+      hitam += d
+      totalPasien += tot
+      if (tot > 0) aktifMerawat++
+    })
+    return {
+      merah,
+      kuning,
+      hijau,
+      hitam,
+      totalPasien,
+      aktifMerawat,
+      totalFaskes: filteredModalFaskesList.length,
+      disiagakan: Math.max(0, filteredModalFaskesList.length - aktifMerawat),
+    }
+  }, [filteredModalFaskesList])
 
   const penyakitMatrixData = useMemo(() => {
     const list = Array.isArray(eventData.penyakit_input) ? eventData.penyakit_input : []
@@ -7804,156 +7864,169 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </tfoot>
                 </table>
               ) : kabupatenMatrixTab === 'faskes' ? (
-                <table className="w-full text-left border-collapse text-xs" style={{ tableLayout: 'fixed' }}>
+                <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10 bg-slate-100 border-b border-slate-200 shadow-2xs">
                     <tr className="text-slate-700 font-black uppercase text-[11px]">
-                      <th className="py-3.5 px-4 text-center" style={{ width: isNttEvent ? '5%' : '5%' }}>No</th>
-                      <th className="py-3.5 px-4" style={{ width: isNttEvent ? '45%' : '35%' }}>Nama Fasilitas Kesehatan &amp; Master Data</th>
-                      <th className="py-3.5 px-4" style={{ width: isNttEvent ? '25%' : '20%' }}>Kabupaten &amp; Kecamatan</th>
-                      <th className="py-3.5 px-4 text-center" style={{ width: isNttEvent ? '25%' : '20%' }}>Triase Pasien</th>
-                      {!isNttEvent && <th className="py-3.5 px-4 text-center" style={{ width: '20%' }}>Kondisi &amp; Status Siaga</th>}
+                      <th className="py-3.5 px-4 text-center w-12">No</th>
+                      <th className="py-3.5 px-4">Nama Fasilitas Kesehatan &amp; Master Data</th>
+                      <th className="py-3.5 px-4 w-60">Kabupaten &amp; Kecamatan</th>
+                      <th className="py-3.5 px-4 text-center w-64">Triase Pasien</th>
+                      {!isNttEvent && <th className="py-3.5 px-4 text-center w-44">Kondisi &amp; Status Siaga</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {faskesMatrixData.length === 0 ? (
+                    {filteredModalFaskesList.length === 0 ? (
                       <tr>
                         <td colSpan={isNttEvent ? 4 : 5} className="py-8 text-center text-slate-400 font-semibold text-xs">
-                          Data fasilitas kesehatan tidak tersedia dari laporan lapangan.
+                          Tidak ada fasilitas kesehatan yang cocok dengan kriteria filter atau pencarian.
                         </td>
                       </tr>
                     ) : (
-                      faskesMatrixData
-                        .filter((f: any) => {
-                          // 1. Filter Type / Category
-                          if (modalFaskesTypeFilter === 'rs') {
-                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
-                            if (!j.includes('rs') && !j.includes('rumah sakit')) return false
-                          } else if (modalFaskesTypeFilter === 'puskesmas') {
-                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
-                            if ((!j.includes('puskesmas') && !j.includes('pkm')) || j.includes('pustu') || j.includes('pembantu')) return false
-                          } else if (modalFaskesTypeFilter === 'pustu') {
-                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
-                            if (!j.includes('pustu') && !j.includes('pembantu')) return false
-                          } else if (modalFaskesTypeFilter === 'klinik') {
-                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
-                            if (!j.includes('klinik')) return false
-                          } else if (modalFaskesTypeFilter === 'merawat') {
-                            const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
-                            if (tot <= 0) return false
-                          }
+                      filteredModalFaskesList.map((row: any, idx: number) => {
+                        const totalPasien = Number(row.total_pasien || (Number(row.triase_merah || 0) + Number(row.triase_kuning || 0) + Number(row.triase_hijau || 0) + Number(row.triase_hitam || 0)) || 0)
+                        const hasTriage = totalPasien > 0
 
-                          // 2. Search filter
-                          if (kabupatenMatrixSearch) {
-                            const q = kabupatenMatrixSearch.toLowerCase()
-                            const matchName = String(f.nama || '').toLowerCase().includes(q)
-                            const matchKab = String(f.kabupaten || '').toLowerCase().includes(q)
-                            const matchKec = String(f.kecamatan || '').toLowerCase().includes(q)
-                            const matchKode = String(f.kode_sarana || '').toLowerCase().includes(q) || String(f.kode_satusehat || '').toLowerCase().includes(q)
-                            const matchPj = String(f.pj_medis || '').toLowerCase().includes(q)
-                            if (!matchName && !matchKab && !matchKec && !matchKode && !matchPj) return false
-                          }
-
-                          return true
-                        })
-                        .map((row: any, idx: number) => {
-                          const totalPasien = Number(row.total_pasien || (Number(row.triase_merah || 0) + Number(row.triase_kuning || 0) + Number(row.triase_hijau || 0) + Number(row.triase_hitam || 0)) || 0)
-                          const hasTriage = totalPasien > 0
-
-                          return (
-                            <tr key={idx} className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                              <td className="py-3 px-4 font-bold text-slate-400 text-center">{idx + 1}</td>
-                              <td className="py-3 px-4">
-                                <div className="font-extrabold text-slate-900">{row.nama}</div>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                                  <span className="text-[10px] text-teal-700 font-bold">{row.jenis}</span>
-                                  {row.kode_sarana && row.kode_sarana !== '-' && (
-                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">
-                                      Sarana: {row.kode_sarana}
-                                    </span>
-                                  )}
-                                  {row.kode_satusehat && row.kode_satusehat !== '-' && (
-                                    <span className="px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 text-[9px] font-bold border border-teal-200">
-                                      SatuSehat: {row.kode_satusehat}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="font-bold text-slate-800">{row.kabupaten}</div>
-                                <div className="text-[10px] text-slate-500 font-semibold">Kec. {row.kecamatan}</div>
-                                {row.latitude && row.longitude && (
-                                  <div className="text-[9px] text-slate-400 font-medium">
-                                    {Number(row.latitude).toFixed(4)}, {Number(row.longitude).toFixed(4)}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                {hasTriage ? (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="font-black text-rose-800 text-xs px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200">
-                                      {totalPasien} Pasien Terawat
-                                    </span>
-                                    <div className="flex items-center justify-center flex-wrap gap-1 text-[10px] font-extrabold mt-0.5">
-                                      {Number(row.triase_merah || 0) > 0 && (
-                                        <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200" title="Triase Merah (Gawat Darurat)">
-                                          {row.triase_merah} Merah
-                                        </span>
-                                      )}
-                                      {Number(row.triase_kuning || 0) > 0 && (
-                                        <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200" title="Triase Kuning (Darurat Tidak Gawat)">
-                                          {row.triase_kuning} Kuning
-                                        </span>
-                                      )}
-                                      {Number(row.triase_hijau || 0) > 0 && (
-                                        <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200" title="Triase Hijau (Rawat Jalan / Ringan)">
-                                          {row.triase_hijau} Hijau
-                                        </span>
-                                      )}
-                                      {Number(row.triase_hitam || 0) > 0 && (
-                                        <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 border border-slate-300" title="Triase Hitam (Meninggal Dunia)">
-                                          {row.triase_hitam} Hitam
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 shadow-2xs">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    0 Pasien (Disiagakan)
+                        return (
+                          <tr key={idx} className={`hover:bg-teal-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                            <td className="py-3 px-4 font-bold text-slate-400 text-center">{idx + 1}</td>
+                            <td className="py-3 px-4">
+                              <div className="font-extrabold text-slate-900">{row.nama}</div>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-teal-700 font-bold">{row.jenis}</span>
+                                {row.kode_sarana && row.kode_sarana !== '-' && (
+                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">
+                                    Sarana: {row.kode_sarana}
                                   </span>
                                 )}
-                              </td>
-                              {!isNttEvent && (
-                                <td className="py-3 px-4 text-center">
-                                  <div className="space-y-1">
-                                    {hasTriage ? (
-                                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
-                                        Aktif Rawat Pasien
-                                      </span>
-                                    ) : (
-                                      <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                        Siaga Pelayanan
+                                {row.kode_satusehat && row.kode_satusehat !== '-' && (
+                                  <span className="px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 text-[9px] font-bold border border-teal-200">
+                                    SatuSehat: {row.kode_satusehat}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-slate-800">{row.kabupaten}</div>
+                              <div className="text-[10px] text-slate-500 font-semibold">Kec. {row.kecamatan}</div>
+                              {row.latitude && row.longitude && (
+                                <div className="text-[9px] text-slate-400 font-medium">
+                                  {Number(row.latitude).toFixed(4)}, {Number(row.longitude).toFixed(4)}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {hasTriage ? (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className="font-black text-rose-800 text-xs px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200">
+                                    {totalPasien} Pasien Terawat
+                                  </span>
+                                  <div className="flex items-center justify-center flex-wrap gap-1 text-[10px] font-extrabold mt-0.5">
+                                    {Number(row.triase_merah || 0) > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200" title="Triase Merah (Gawat Darurat)">
+                                        {row.triase_merah} Merah
                                       </span>
                                     )}
-                                    <div>
-                                      <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                                        {row.status || 'Operasional'}
+                                    {Number(row.triase_kuning || 0) > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200" title="Triase Kuning (Darurat Tidak Gawat)">
+                                        {row.triase_kuning} Kuning
                                       </span>
-                                    </div>
+                                    )}
+                                    {Number(row.triase_hijau || 0) > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200" title="Triase Hijau (Rawat Jalan / Ringan)">
+                                        {row.triase_hijau} Hijau
+                                      </span>
+                                    )}
+                                    {Number(row.triase_hitam || 0) > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 border border-slate-300" title="Triase Hitam (Meninggal Dunia)">
+                                        {row.triase_hitam} Hitam
+                                      </span>
+                                    )}
                                   </div>
-                                </td>
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  0 Pasien (Disiagakan)
+                                </span>
                               )}
-                            </tr>
-                          )
-                        })
+                            </td>
+                            {!isNttEvent && (
+                              <td className="py-3 px-4 text-center">
+                                <div className="space-y-1">
+                                  {hasTriage ? (
+                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs">
+                                      Aktif Rawat Pasien
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                      Siaga Pelayanan
+                                    </span>
+                                  )}
+                                  <div>
+                                    <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                      {row.status || 'Operasional'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })
                     )}
                   </tbody>
-                  <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900">
+                  <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900 sticky bottom-0 z-10 shadow-md">
                     <tr>
-                      <td className="py-3.5 px-4 text-center" colSpan={3}>TOTAL FASILITAS KESEHATAN</td>
-                      <td className="py-3.5 px-4 text-center text-rose-700">{faskesMatrixData.filter((f: any) => String(f.status || f.kondisi_bangunan || '').toLowerCase().includes('rusak')).length} Terdampak</td>
-                      <td className="py-3.5 px-4 text-center text-emerald-700">{faskesMatrixData.filter((f: any) => String(f.status || '').toLowerCase().includes('operasi') || String(f.status || '').toLowerCase().includes('siaga')).length} Operasional</td>
-                      <td className="py-3.5 px-4 text-teal-800 font-bold text-[11px]">{faskesMatrixData.length} Faskes Terdata</td>
+                      <td className="py-3.5 px-4 text-center text-xs font-black text-slate-700" colSpan={2}>
+                        TOTAL: {filteredModalFaskesTotals.totalFaskes.toLocaleString('id-ID')} FASILITAS KESEHATAN
+                      </td>
+                      <td className="py-3.5 px-4 text-xs font-bold text-emerald-800">
+                        <div className="flex flex-col">
+                          <span>{filteredModalFaskesTotals.aktifMerawat} Aktif Merawat Pasien</span>
+                          <span className="text-[10px] text-slate-500 font-semibold">{filteredModalFaskesTotals.disiagakan} Disiagakan (Normal)</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        {filteredModalFaskesTotals.totalPasien > 0 ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="font-black text-rose-800 text-xs px-2.5 py-0.5 rounded-full bg-rose-100 border border-rose-200">
+                              {filteredModalFaskesTotals.totalPasien.toLocaleString('id-ID')} Pasien Terawat
+                            </span>
+                            <div className="flex items-center justify-center flex-wrap gap-1 text-[10px] font-extrabold mt-0.5">
+                              {filteredModalFaskesTotals.merah > 0 && (
+                                <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                  🔴 {filteredModalFaskesTotals.merah} Merah
+                                </span>
+                              )}
+                              {filteredModalFaskesTotals.kuning > 0 && (
+                                <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                  🟡 {filteredModalFaskesTotals.kuning} Kuning
+                                </span>
+                              )}
+                              {filteredModalFaskesTotals.hijau > 0 && (
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  🟢 {filteredModalFaskesTotals.hijau} Hijau
+                                </span>
+                              )}
+                              {filteredModalFaskesTotals.hitam > 0 && (
+                                <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 border border-slate-300">
+                                  ⚫ {filteredModalFaskesTotals.hitam} Hitam
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            0 Pasien (100% Disiagakan)
+                          </span>
+                        )}
+                      </td>
+                      {!isNttEvent && (
+                        <td className="py-3.5 px-4 text-center text-xs font-bold text-emerald-700">
+                          Siaga Operasional
+                        </td>
+                      )}
                     </tr>
                   </tfoot>
                 </table>

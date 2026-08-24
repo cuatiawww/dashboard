@@ -337,10 +337,11 @@ export function getAllNttMasterFaskesWithCollectorOverlay(
   const masterList = getNttMasterFaskesList()
   if (!masterList || masterList.length === 0) return []
 
-  // Build lookup index from collector RS
+  // Build lookup index from collector RS & PKM
   const collectorMap = new Map<string, any>()
+  const matchedCollectorKeys = new Set<string>()
 
-  const registerCollectorItem = (item: any, defaultJenis: string) => {
+  const registerCollectorItem = (item: any, defaultJenis: string, itemIdx: number) => {
     if (!item) return
     const rawName = String(
       item.nama_rs ||
@@ -351,12 +352,15 @@ export function getAllNttMasterFaskesWithCollectorOverlay(
     ).trim()
     const rawKab = String(item.kabupaten || item.nama_kab || '').trim()
     const rawKode = String(item.kode_sarana || item.kode || '').trim()
+    const itemKey = `${defaultJenis}_${itemIdx}_${rawName}_${rawKab}`
 
     // Enrich with master match first
     const matchedMaster = findMasterFaskes(rawName, rawKab, rawKode)
-    const masterKey = matchedMaster ? (matchedMaster.kode_sarana || matchedMaster.nama_master.toLowerCase()) : null
 
     const dataObj = {
+      itemKey,
+      rawItem: item,
+      defaultJenis,
       has_collector_data: true,
       triase_merah: Number(item.triase_merah || item.merah || 0),
       triase_kuning: Number(item.triase_kuning || item.kuning || 0),
@@ -375,30 +379,44 @@ export function getAllNttMasterFaskesWithCollectorOverlay(
     if (rawKode && rawKode !== '-') {
       collectorMap.set(`code_${rawKode}`, dataObj)
     }
-    if (masterKey) {
-      collectorMap.set(`master_${masterKey}`, dataObj)
-    }
     if (rawName) {
       collectorMap.set(`name_${cleanLookupName(rawName)}`, dataObj)
+      if (rawKab) {
+        collectorMap.set(`kab_${cleanLookupName(rawKab)}_${cleanLookupName(rawName)}`, dataObj)
+      }
+    }
+    if (matchedMaster) {
+      if (matchedMaster.id) collectorMap.set(`id_${matchedMaster.id}`, dataObj)
+      if (matchedMaster.kode_sarana && matchedMaster.kode_sarana !== '-') collectorMap.set(`code_${matchedMaster.kode_sarana}`, dataObj)
+      if (matchedMaster.nama_master) {
+        collectorMap.set(`master_${matchedMaster.nama_master.toLowerCase()}`, dataObj)
+        collectorMap.set(`name_${cleanLookupName(matchedMaster.nama_master)}`, dataObj)
+      }
+      if (matchedMaster.alias_collector) collectorMap.set(`name_${cleanLookupName(matchedMaster.alias_collector)}`, dataObj)
     }
   }
 
   if (Array.isArray(collectorPasienRs)) {
-    collectorPasienRs.forEach(r => registerCollectorItem(r, 'Rumah Sakit'))
+    collectorPasienRs.forEach((r, idx) => registerCollectorItem(r, 'Rumah Sakit', idx))
   }
   if (Array.isArray(collectorPasienPkm)) {
-    collectorPasienPkm.forEach(p => registerCollectorItem(p, 'Puskesmas'))
+    collectorPasienPkm.forEach((p, idx) => registerCollectorItem(p, 'Puskesmas', idx))
   }
 
-  return masterList.map((m, idx) => {
+  const result: any[] = masterList.map((m, idx) => {
     // Find matching collector situation
     let coll = (
-      (m.kode_sarana && collectorMap.get(`code_${m.kode_sarana}`)) ||
-      (m.kode_sarana && collectorMap.get(`master_${m.kode_sarana}`)) ||
+      (m.id && collectorMap.get(`id_${m.id}`)) ||
+      (m.kode_sarana && m.kode_sarana !== '-' && collectorMap.get(`code_${m.kode_sarana}`)) ||
+      (m.nama_kab && collectorMap.get(`kab_${cleanLookupName(m.nama_kab)}_${cleanLookupName(m.nama_master)}`)) ||
       collectorMap.get(`master_${m.nama_master.toLowerCase()}`) ||
       collectorMap.get(`name_${cleanLookupName(m.nama_master)}`) ||
       collectorMap.get(`name_${cleanLookupName(m.alias_collector)}`)
     )
+
+    if (coll?.itemKey) {
+      matchedCollectorKeys.add(coll.itemKey)
+    }
 
     const prefix = m.jenis_faskes === 'Rumah Sakit' ? 'rs' : m.jenis_faskes === 'Puskesmas' ? 'pkm' : m.jenis_faskes === 'Klinik' ? 'klinik' : 'pustu'
     const id = m.id ? `${prefix}-${m.id}` : `${prefix}-${idx + 1}`
@@ -448,7 +466,7 @@ export function getAllNttMasterFaskesWithCollectorOverlay(
       triase_kuning: triaseKuning,
       triase_hijau: triaseHijau,
       triase_hitam: triaseHitam,
-      total_pasien: totalPasien,
+      total_pasien: totalPasien || (triaseMerah + triaseKuning + triaseHijau + triaseHitam),
       kapasitas_tersedia: coll?.kapasitas_tersedia || '-',
       stok_darah: coll?.stok_darah || '-',
       listrik: coll?.listrik || 'PLN / Genset Siaga',
@@ -456,6 +474,74 @@ export function getAllNttMasterFaskesWithCollectorOverlay(
       catatan_medis: coll?.catatan_medis || '',
     }
   })
+
+  // Append any collector items that did not match master so no reported faskes is ever omitted
+  const allCollectorItems = [
+    ...(Array.isArray(collectorPasienRs) ? collectorPasienRs.map((r, idx) => ({ item: r, type: 'Rumah Sakit', key: `Rumah Sakit_${idx}_${r.nama_rs || r.nama || ''}_${r.kabupaten || ''}` })) : []),
+    ...(Array.isArray(collectorPasienPkm) ? collectorPasienPkm.map((p, idx) => ({ item: p, type: 'Puskesmas', key: `Puskesmas_${idx}_${p.nama_puskesmas || p.nama || ''}_${p.kabupaten || ''}` })) : []),
+  ]
+
+  allCollectorItems.forEach(({ item, type, key }, cIdx) => {
+    if (!matchedCollectorKeys.has(key)) {
+      const rawName = String(item.nama_rs || item.nama_puskesmas || item.nama_faskes || item.nama || `${type} Siaga`).trim()
+      const rawKab = String(item.kabupaten || item.nama_kab || '').trim()
+      const rawKec = String(item.kecamatan || item.nama_kecamatan || '-').trim()
+      const rawKode = String(item.kode_sarana || item.kode || '-').trim()
+      const coords = cleanNttCoordinates(item.latitude, item.longitude)
+
+      const m = Number(item.triase_merah || item.merah || 0)
+      const k = Number(item.triase_kuning || item.kuning || 0)
+      const h = Number(item.triase_hijau || item.hijau || 0)
+      const d = Number(item.triase_hitam || item.hitam || 0)
+      const tot = Number(item.total || item.total_pasien || 0) || (m + k + h + d)
+
+      result.push({
+        id: `coll-${type === 'Rumah Sakit' ? 'rs' : 'pkm'}-${cIdx + 1}`,
+        nama: rawName,
+        nama_faskes: rawName,
+        nama_master: rawName,
+        kode_sarana: rawKode,
+        kode_satusehat: item.kode_satusehat || '-',
+        jenis: type,
+        jenis_faskes: type,
+        subjenis: type,
+        alamat: item.alamat || '-',
+        kode_prop: '53',
+        nama_prop: 'Nusa Tenggara Timur',
+        kode_kab: '',
+        nama_kab: rawKab,
+        kabupaten: rawKab,
+        kode_kecamatan: '',
+        nama_kecamatan: rawKec,
+        kecamatan: rawKec,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        lat: coords.lat,
+        lng: coords.lng,
+        telp: item.telp || '-',
+        email: item.email || '-',
+        website: '-',
+        status: item.status || 'Beroperasi',
+        status_operasional: item.status || 'Beroperasi',
+        status_aktif: 'Aktif',
+        kondisi_bangunan: item.kondisi_bangunan || 'Normal / Siaga',
+        has_collector_data: true,
+        status_bencana: 'Merawat Pasien Bencana (Terdata Collector)',
+        triase_merah: m,
+        triase_kuning: k,
+        triase_hijau: h,
+        triase_hitam: d,
+        total_pasien: tot,
+        kapasitas_tersedia: item.kapasitas_tersedia || '-',
+        stok_darah: item.stok_darah || '-',
+        listrik: item.listrik || 'PLN / Genset Siaga',
+        pj_medis: item.pj_medis || '-',
+        catatan_medis: item.catatan || '',
+      })
+    }
+  })
+
+  return result
 }
 
 /**
