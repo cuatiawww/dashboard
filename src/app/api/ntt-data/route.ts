@@ -130,12 +130,32 @@ export async function GET(request: NextRequest) {
   const manifestDir = await locateManifestDir()
   if (manifestDir) {
     try {
-      const manifest = await readManifest(manifestDir)
-      const allDates = Object.keys(manifest.dates ?? {}).sort()
+      const manifest = await readManifest(manifestDir).catch(() => ({ version: 1, dates: {} }))
+      const manifestDates = manifest.dates || {}
+
+      // Auto-discover all dated CSV files in directory so no historical dates are ever missed
+      try {
+        const dirEntries = await fs.readdir(manifestDir)
+        for (const filename of dirEntries) {
+          const match = filename.match(/^(\d{4}-\d{2}-\d{2})_(analisa_ringkasan_harian|situasi_kesehatan|pasien_rs|pasien_puskesmas)\.csv$/)
+          if (match) {
+            const [, dt, tableKey] = match
+            if (!manifestDates[dt]) manifestDates[dt] = {}
+            if (!manifestDates[dt][tableKey as TableName]) {
+              manifestDates[dt][tableKey as TableName] = filename
+            }
+          }
+        }
+      } catch (scanErr) {
+        console.warn('[API ntt-data] Directory scan fallback error:', scanErr)
+      }
+
+      manifest.dates = manifestDates
+      const allDates = Object.keys(manifestDates).sort()
       const targetDate = requestedDate || manifest.latest_date || allDates.at(-1) || ''
 
-      if (targetDate && manifest.dates?.[targetDate]) {
-        const files = manifest.dates[targetDate]
+      if (targetDate && manifestDates[targetDate]) {
+        const files = manifestDates[targetDate]
         const tables: Record<string, unknown[]> = {}
 
         // 1. Load active snapshot table rows for targetDate
