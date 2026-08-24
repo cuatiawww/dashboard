@@ -92,26 +92,76 @@ function getLargestPolygonInteriorPoint(feature: any) {
   return geom
 }
 
-function getFaskesTriageData(rawItem?: any, name?: string) {
+function cleanFaskesLookupName(name: string): string {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/^(rsud|rs\s*umum\s*daerah|rs\s*umum|rs|puskesmas|pkm|uptd|upt|klinik|pustu)\s+/i, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim()
+}
+
+function getFaskesTriageData(rawItem?: any, name?: string, faskesList?: any[]) {
+  let m = 0, k = 0, h = 0, ht = 0, total = 0, catatan = ''
+  let found = false
+
   // 1. Direct fields if present on rawItem
   if (rawItem) {
-    const merah = rawItem.triase_merah !== undefined ? Number(rawItem.triase_merah) : (rawItem.merah !== undefined ? Number(rawItem.merah) : -1)
-    const kuning = rawItem.triase_kuning !== undefined ? Number(rawItem.triase_kuning) : (rawItem.kuning !== undefined ? Number(rawItem.kuning) : -1)
-    const hijau = rawItem.triase_hijau !== undefined ? Number(rawItem.triase_hijau) : (rawItem.hijau !== undefined ? Number(rawItem.hijau) : -1)
-    const hitam = rawItem.triase_hitam !== undefined ? Number(rawItem.triase_hitam) : (rawItem.hitam !== undefined ? Number(rawItem.hitam) : -1)
+    const rawM = rawItem.triase_merah ?? rawItem.merah ?? rawItem.korban_luka_berat ?? rawItem.luka_berat
+    const rawK = rawItem.triase_kuning ?? rawItem.kuning
+    const rawH = rawItem.triase_hijau ?? rawItem.hijau ?? rawItem.korban_luka_ringan ?? rawItem.luka_ringan
+    const rawHt = rawItem.triase_hitam ?? rawItem.hitam ?? rawItem.korban_meninggal ?? rawItem.meninggal
+    const rawTot = rawItem.total_pasien ?? rawItem.total ?? rawItem.korban_tertangani ?? rawItem.total_korban
 
-    if (merah >= 0 || kuning >= 0 || hijau >= 0 || hitam >= 0) {
-      const m = Math.max(0, merah)
-      const k = Math.max(0, kuning)
-      const h = Math.max(0, hijau)
-      const ht = Math.max(0, hitam)
-      const total = Number(rawItem.total_pasien ?? rawItem.total ?? (m + k + h + ht))
-      const catatan = rawItem.catatan || rawItem.diagnosis || rawItem.catatan_triase || rawItem.catatan_pasien || ''
-      return { merah: m, kuning: k, hijau: h, hitam: ht, total, catatan }
+    if (rawM !== undefined || rawK !== undefined || rawH !== undefined || rawHt !== undefined || rawTot !== undefined) {
+      m = Math.max(0, Number(rawM || 0))
+      k = Math.max(0, Number(rawK || 0))
+      h = Math.max(0, Number(rawH || 0))
+      ht = Math.max(0, Number(rawHt || 0))
+      total = Number(rawTot ?? (m + k + h + ht))
+      catatan = rawItem.catatan || rawItem.diagnosis || rawItem.catatan_triase || rawItem.catatan_pasien || ''
+      if (m > 0 || k > 0 || h > 0 || ht > 0 || total > 0) {
+        found = true
+      }
     }
   }
 
-  return null
+  // 2. If triage breakdown is all 0 or not found, try cross-referencing with faskesList
+  if ((!found || (m === 0 && k === 0 && h === 0 && ht === 0 && total > 0)) && Array.isArray(faskesList) && name) {
+    const qName = cleanFaskesLookupName(name)
+    const matched = faskesList.find((f: any) => {
+      const fN = cleanFaskesLookupName(f.nama || f.nama_faskes || f.nama_master || '')
+      return fN && (fN === qName || fN.includes(qName) || qName.includes(fN))
+    })
+
+    if (matched) {
+      const fM = Number(matched.triase_merah || matched.merah || 0)
+      const fK = Number(matched.triase_kuning || matched.kuning || 0)
+      const fH = Number(matched.triase_hijau || matched.hijau || 0)
+      const fHt = Number(matched.triase_hitam || matched.hitam || 0)
+      const fTot = Number(matched.total_pasien || matched.total || (fM + fK + fH + fHt) || 0)
+
+      if (fM > 0 || fK > 0 || fH > 0 || fHt > 0 || fTot > 0) {
+        m = fM
+        k = fK
+        h = fH
+        ht = fHt
+        total = fTot || (m + k + h + ht)
+        catatan = catatan || matched.catatan || matched.catatan_medis || matched.diagnosis || ''
+        found = true
+      }
+    }
+  }
+
+  // If total > 0 but m, k, h, ht are all 0 (e.g. general casualty count only), assign to Hijau (Rawat Ringan/Jalan)
+  if (total > 0 && m === 0 && k === 0 && h === 0 && ht === 0) {
+    h = total
+  }
+
+  if (m === 0 && k === 0 && h === 0 && ht === 0 && total === 0 && !found) {
+    return null
+  }
+
+  return { merah: m, kuning: k, hijau: h, hitam: ht, total: total || (m + k + h + ht), catatan }
 }
 
 // ─────────────────────────────────────────────
@@ -4040,7 +4090,7 @@ export default function DisasterMap({
 
             {/* ─── Identifikasi Kondisi Pasien (Triase IGD & Rawat) ─── */}
             {(eocPopup.type === 'hospital' || eocPopup.type === 'clinic' || eocPopup.type === 'pustu' || eocPopup.isTerdampak) && (() => {
-              const triage = getFaskesTriageData(eocPopup.rawItem, eocPopup.name)
+              const triage = getFaskesTriageData(eocPopup.rawItem, eocPopup.name, faskesList)
               if (!triage) return null
 
               const totalPatients = triage.total || (triage.merah + triage.kuning + triage.hijau + triage.hitam)
