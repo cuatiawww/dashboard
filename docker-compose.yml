@@ -36,26 +36,29 @@ services:
     # networks:
     #   - proxy
     restart: unless-stopped
+    networks: collector
 
-  ntt-collector:
-    container_name: dashboard-eoc-ntt-collector
-    build:
-      context: ./collector
-      dockerfile: Dockerfile
-    environment:
-      SOURCE_URL: https://ntt.tanggap-bencana.go.id/
-      DATA_DIR: /data
-      INTERVAL_SECONDS: ${NTT_COLLECTOR_INTERVAL_SECONDS:-1800}
-      REQUEST_TIMEOUT_SECONDS: ${NTT_COLLECTOR_TIMEOUT_SECONDS:-30}
-      TZ: Asia/Jakarta
-    volumes:
-      - /home/pusatkrisis/docker/data-ntt:/data
-    restart: unless-stopped
+  # ntt-collector:
+    # container_name: dashboard-eoc-ntt-collector
+    # build:
+      # context: ./collector
+      # dockerfile: Dockerfile
+    # environment:
+      # SOURCE_URL: https://ntt.tanggap-bencana.go.id/
+      # DATA_DIR: /data
+      # INTERVAL_SECONDS: ${NTT_COLLECTOR_INTERVAL_SECONDS:-1800}
+      # REQUEST_TIMEOUT_SECONDS: ${NTT_COLLECTOR_TIMEOUT_SECONDS:-30}
+      # TZ: Asia/Jakarta
+    # volumes:
+      # - /home/pusatkrisis/docker/data-ntt:/data
+    # restart: unless-stopped
 
-# networks:
-#   proxy:
-#     name: ${PROXY_NETWORK:-proxynet}
-#     external: true
+networks:
+  # proxy:
+    # name: ${PROXY_NETWORK:-proxynet}
+    # external: true
+  collector:
+    external: true  
 
 volumes:
   dashboard-eoc-ai-node-modules-v2:
