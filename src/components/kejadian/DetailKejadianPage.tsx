@@ -231,8 +231,42 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [tckTab, setTckTab] = useState<'semua' | 'nakes' | 'emt'>('semua')
   const [tckDisplayLimit, setTckDisplayLimit] = useState<number>(30)
 
-  // ── Tren Korban Chart View Mode ──
+  // ── Tren Korban Chart View Mode & Interactive Series Filter ──
   const [trendMetricMode, setTrendMetricMode] = useState<'dual' | 'korban' | 'penduduk'>('dual')
+  const [visibleLines, setVisibleLines] = useState<{ [key: string]: boolean }>({
+    'Meninggal': true,
+    'Luka-luka': true,
+    'Total Pengungsi': true,
+    'Total Korban': true,
+    'Penduduk Terancam/Terdampak': true,
+  })
+
+  const toggleLine = (dataKey: string) => {
+    setVisibleLines(prev => ({
+      ...prev,
+      [dataKey]: prev[dataKey] === false ? true : false,
+    }))
+  }
+
+  const setOnlyLine = (dataKey: string) => {
+    setVisibleLines({
+      'Meninggal': dataKey === 'Meninggal',
+      'Luka-luka': dataKey === 'Luka-luka',
+      'Total Pengungsi': dataKey === 'Total Pengungsi',
+      'Total Korban': dataKey === 'Total Korban',
+      'Penduduk Terancam/Terdampak': dataKey === 'Penduduk Terancam/Terdampak',
+    })
+  }
+
+  const resetAllLines = () => {
+    setVisibleLines({
+      'Meninggal': true,
+      'Luka-luka': true,
+      'Total Pengungsi': true,
+      'Total Korban': true,
+      'Penduduk Terancam/Terdampak': true,
+    })
+  }
 
   const handleShare = async () => {
     const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
@@ -4158,117 +4192,273 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     )}
                   </div>
 
-                  {/* Sisi Kanan (70% / 8 cols): Big Spacious LineChart */}
-                  <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
-                    <div className="flex flex-wrap items-center justify-end gap-2 pb-3 mb-3 border-b border-slate-200/80">
-                      {/* Metric Toggle Tabs */}
-                      <div className="flex gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs text-xs font-bold">
-                        <button
-                          type="button"
-                          onClick={() => setTrendMetricMode('dual')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'dual' ? 'bg-[#047d78] text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                    {/* Sisi Kanan (70% / 8 cols): Big Spacious LineChart */}
+                    <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200/80">
+                        {/* Interactive Series Toggle Pills (User can toggle each line on/off) */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="text-[11px] font-bold text-slate-500 mr-1 hidden sm:inline">Filter Garis:</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleLine('Meninggal')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                              visibleLines['Meninggal'] !== false
+                                ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-2xs font-black'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
                             }`}
-                        >
-                          Dual Skala
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTrendMetricMode('korban')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#e11d48]"></span>
+                            Meninggal
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleLine('Luka-luka')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                              visibleLines['Luka-luka'] !== false
+                                ? 'bg-orange-50 text-orange-700 border-orange-300 shadow-2xs font-black'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
                             }`}
-                        >
-                          Fokus Korban
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTrendMetricMode('penduduk')}
-                          className={`px-3.5 py-1.5 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#ea580c]"></span>
+                            Luka-luka
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleLine('Total Pengungsi')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                              visibleLines['Total Pengungsi'] !== false
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs font-black'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
                             }`}
-                        >
-                          Fokus Penduduk
-                        </button>
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#d97706]"></span>
+                            Pengungsi
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleLine('Total Korban')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                              visibleLines['Total Korban'] !== false
+                                ? 'bg-slate-800 text-white border-slate-900 shadow-2xs font-black'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
+                            }`}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#334155]"></span>
+                            Total Korban
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => toggleLine('Penduduk Terancam/Terdampak')}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                              visibleLines['Penduduk Terancam/Terdampak'] !== false
+                                ? 'bg-teal-50 text-teal-800 border-teal-300 shadow-2xs font-black'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
+                            }`}
+                          >
+                            <span className="h-2 w-2 rounded-full bg-[#0f766e]"></span>
+                            Terdampak
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={resetAllLines}
+                            className="px-2 py-1 text-[11px] font-bold text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 transition cursor-pointer"
+                            title="Tampilkan semua garis"
+                          >
+                            Reset
+                          </button>
+                        </div>
+
+                        {/* Metric View Mode Toggle */}
+                        <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-2xs text-xs font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setTrendMetricMode('dual')}
+                            className={`px-3 py-1 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'dual' ? 'bg-[#047d78] text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                              }`}
+                          >
+                            Dual
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrendMetricMode('korban')}
+                            className={`px-3 py-1 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'korban' ? 'bg-rose-600 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                              }`}
+                          >
+                            Korban
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTrendMetricMode('penduduk')}
+                            className={`px-3 py-1 rounded-lg transition cursor-pointer border-none ${trendMetricMode === 'penduduk' ? 'bg-teal-700 text-white shadow-xs font-black' : 'bg-transparent text-slate-600 hover:text-slate-900'
+                              }`}
+                          >
+                            Penduduk
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Chart Container */}
+                      <div className="w-full flex-1 min-h-[320px] sm:min-h-[360px] text-xs font-semibold">
+                        {typeof window !== 'undefined' && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={victimTrendData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="date" stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
+
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                                <YAxis
+                                  yAxisId="left"
+                                  stroke="#e11d48"
+                                  tickLine={false}
+                                  style={{ fontSize: '12px', fontWeight: 'bold' }}
+                                  allowDecimals={false}
+                                />
+                              )}
+
+                              {trendMetricMode === 'dual' && (
+                                <YAxis
+                                  yAxisId="right"
+                                  orientation="right"
+                                  stroke="#0f766e"
+                                  tickLine={false}
+                                  style={{ fontSize: '12px', fontWeight: 'bold' }}
+                                  tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                                />
+                              )}
+
+                              {trendMetricMode === 'penduduk' && (
+                                <YAxis
+                                  yAxisId="right"
+                                  stroke="#0f766e"
+                                  tickLine={false}
+                                  style={{ fontSize: '12px', fontWeight: 'bold' }}
+                                  tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                                />
+                              )}
+
+                              <Tooltip
+                                contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '13px', fontWeight: 600 }}
+                                formatter={(value: any) => [Number(value || 0).toLocaleString('id-ID') + ' Jiwa']}
+                              />
+                              <Legend
+                                verticalAlign="top"
+                                height={38}
+                                iconType="circle"
+                                iconSize={10}
+                                wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                                onClick={(e: any) => e?.dataKey && toggleLine(e.dataKey)}
+                                formatter={(value) => {
+                                  const isHidden = visibleLines[value] === false
+                                  return (
+                                    <span
+                                      className={`mr-4 transition cursor-pointer select-none ${
+                                        isHidden
+                                          ? 'text-slate-300 line-through opacity-40'
+                                          : 'text-slate-800 font-bold hover:text-teal-700'
+                                      }`}
+                                      title="Klik untuk menyembunyikan / menampilkan grafik"
+                                    >
+                                      {value}
+                                    </span>
+                                  )
+                                }}
+                              />
+
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                                <Line
+                                  yAxisId="left"
+                                  type="monotone"
+                                  dataKey="Total Korban"
+                                  stroke="#334155"
+                                  strokeWidth={3}
+                                  dot={{ r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                  hide={visibleLines['Total Korban'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'penduduk') && (
+                                <Line
+                                  yAxisId="right"
+                                  type="monotone"
+                                  dataKey="Penduduk Terancam/Terdampak"
+                                  stroke="#0f766e"
+                                  strokeWidth={2.5}
+                                  strokeDasharray={trendMetricMode === 'dual' ? '4 4' : undefined}
+                                  dot={{ r: 3 }}
+                                  activeDot={{ r: 5 }}
+                                  hide={visibleLines['Penduduk Terancam/Terdampak'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                                <Line
+                                  yAxisId="left"
+                                  type="monotone"
+                                  dataKey="Total Pengungsi"
+                                  stroke="#d97706"
+                                  strokeWidth={2.5}
+                                  dot={{ r: 3 }}
+                                  activeDot={{ r: 5 }}
+                                  hide={visibleLines['Total Pengungsi'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                                <Line
+                                  yAxisId="left"
+                                  type="monotone"
+                                  dataKey="Meninggal"
+                                  stroke="#e11d48"
+                                  strokeWidth={2.5}
+                                  dot={{ r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                  hide={visibleLines['Meninggal'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
+                                <Line
+                                  yAxisId="left"
+                                  type="monotone"
+                                  dataKey="Luka-luka"
+                                  stroke="#ea580c"
+                                  strokeWidth={2.5}
+                                  dot={{ r: 4 }}
+                                  activeDot={{ r: 6 }}
+                                  hide={visibleLines['Luka-luka'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {victimTrendData.length > 2 && (
+                                <Brush
+                                  key={victimTrendData.map(d => d.date).join('-')}
+                                  dataKey="date"
+                                  height={26}
+                                  stroke="#047d78"
+                                  fill="#e6f4f3"
+                                  gap={1}
+                                  startIndex={0}
+                                  endIndex={Math.max(0, victimTrendData.length - 1)}
+                                />
+                              )}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
                       </div>
                     </div>
-
-                    {/* Chart Container */}
-                    <div className="w-full flex-1 min-h-[320px] sm:min-h-[360px] text-xs font-semibold">
-                      {typeof window !== 'undefined' && (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={victimTrendData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                            <XAxis dataKey="date" stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
-
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <YAxis
-                                yAxisId="left"
-                                stroke="#e11d48"
-                                tickLine={false}
-                                style={{ fontSize: '12px', fontWeight: 'bold' }}
-                                allowDecimals={false}
-                              />
-                            )}
-
-                            {trendMetricMode === 'dual' && (
-                              <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                stroke="#0f766e"
-                                tickLine={false}
-                                style={{ fontSize: '12px', fontWeight: 'bold' }}
-                                tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
-                              />
-                            )}
-
-                            {trendMetricMode === 'penduduk' && (
-                              <YAxis
-                                yAxisId="right"
-                                stroke="#0f766e"
-                                tickLine={false}
-                                style={{ fontSize: '12px', fontWeight: 'bold' }}
-                                tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
-                              />
-                            )}
-
-                            <Tooltip
-                              contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '13px', fontWeight: 600 }}
-                              formatter={(value: any) => [Number(value || 0).toLocaleString('id-ID') + ' Jiwa']}
-                            />
-                            <Legend verticalAlign="top" height={38} iconType="circle" iconSize={10} wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} formatter={(value) => <span className="mr-4 text-slate-800 font-bold">{value}</span>} />
-
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Total Korban" stroke="#334155" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
-                            )}
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'penduduk') && (
-                              <Line yAxisId="right" type="monotone" dataKey="Penduduk Terancam/Terdampak" stroke="#0f766e" strokeWidth={2.5} strokeDasharray={trendMetricMode === 'dual' ? '4 4' : undefined} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} />
-                            )}
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Total Pengungsi" stroke="#d97706" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={true} animationDuration={1000} />
-                            )}
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Meninggal" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
-                            )}
-                            {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
-                              <Line yAxisId="left" type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
-                            )}
-                            {victimTrendData.length > 2 && (
-                              <Brush
-                                key={victimTrendData.map(d => d.date).join('-')}
-                                dataKey="date"
-                                height={26}
-                                stroke="#047d78"
-                                fill="#e6f4f3"
-                                gap={1}
-                                startIndex={0}
-                                endIndex={Math.max(0, victimTrendData.length - 1)}
-                              />
-                            )}
-                          </LineChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
                   </div>
-                </div>
-              </article>
+                </article>
 
               {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
