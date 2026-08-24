@@ -36,7 +36,8 @@ services:
     # networks:
     #   - proxy
     restart: unless-stopped
-    networks: collector
+    networks: 
+      - collector
 
   # ntt-collector:
     # container_name: dashboard-eoc-ntt-collector
