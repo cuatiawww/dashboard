@@ -26,40 +26,30 @@ services:
       API_INDONESIA_KEY: ${API_INDONESIA_KEY:?API_INDONESIA_KEY is required}
       GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY is required}
       GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:?GOOGLE_AI_API_KEY is required}
+      NTT_DATA_DIR: ${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}
     # expose:
     #   - "3000"
     ports:
       - "3004:3000"  
     volumes:
       - dashboard-eoc-ai-node-modules-v2:/app/node_modules
-      - /home/pusatkrisis/docker/data-ntt:/app/public/data/ntt:ro
+      # API membaca folder host pada path absolut yang sama, read-only.
+      - ${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}:${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}:ro
+      # Tetap expose CSV sebagai asset public bila dibutuhkan frontend.
+      - ${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}:/app/public/data/ntt:ro
     # networks:
     #   - proxy
     restart: unless-stopped
     networks: 
       - collector
 
-  # ntt-collector:
-    # container_name: dashboard-eoc-ntt-collector
-    # build:
-      # context: ./collector
-      # dockerfile: Dockerfile
-    # environment:
-      # SOURCE_URL: https://ntt.tanggap-bencana.go.id/
-      # DATA_DIR: /data
-      # INTERVAL_SECONDS: ${NTT_COLLECTOR_INTERVAL_SECONDS:-1800}
-      # REQUEST_TIMEOUT_SECONDS: ${NTT_COLLECTOR_TIMEOUT_SECONDS:-30}
-      # TZ: Asia/Jakarta
-    # volumes:
-      # - /home/pusatkrisis/docker/data-ntt:/data
-    # restart: unless-stopped
-
 networks:
-  # proxy:
-    # name: ${PROXY_NETWORK:-proxynet}
-    # external: true
   collector:
     external: true  
+# networks:
+#   proxy:
+#     name: ${PROXY_NETWORK:-proxynet}
+#     external: true
 
 volumes:
   dashboard-eoc-ai-node-modules-v2:

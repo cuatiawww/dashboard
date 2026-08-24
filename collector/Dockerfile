@@ -5,7 +5,7 @@ WORKDIR /collector
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY collector.py ./
+COPY collector.py postgres.py ./
 
 ENV SOURCE_URL=https://ntt.tanggap-bencana.go.id/ \
     DATA_DIR=/data \

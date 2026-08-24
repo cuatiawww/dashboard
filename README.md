@@ -122,11 +122,38 @@ DEMO_LOGIN_PASSWORD=demo12345
 
 ## Collector Data NTT
 
-Compose menjalankan service `ntt-collector` yang mengambil empat tabel publik dari
+Compose terpisah `collector/docker-compose.yml` menjalankan service `ntt-collector` yang mengambil empat tabel publik dari
 `https://ntt.tanggap-bencana.go.id/` setiap 30 menit. Bagian Tim Pendukung Kesehatan
 tidak diproses.
 
-File hasil disimpan di `data/ntt/` sebagai backup lokal:
+Alur penyimpanan datanya:
+
+```text
+collector container /data
+        │ bind mount
+        ▼
+host ${NTT_DATA_DIR}
+        │ read-only mount
+        ▼
+dashboard/API container ${NTT_DATA_DIR}
+```
+
+Folder host collector ditentukan oleh `NTT_DATA_DIR` pada `collector/.env.collector`.
+Dashboard juga membutuhkan nilai `NTT_DATA_DIR` di env utama untuk mount read-only
+ke API; keduanya harus menunjuk ke folder host yang sama:
+
+```bash
+NTT_DATA_DIR=/home/pusatkrisis/docker/data-ntt
+```
+
+Collector selalu menggunakan `/data` di dalam containernya. API Next.js membaca
+folder host tersebut melalui path `NTT_DATA_DIR` yang sama di dalam container.
+
+Jika salah satu tabel pada halaman sumber kosong, collector tidak menimpa CSV
+sebelumnya. CSV lama dipertahankan sebagai backup; jika belum ada CSV sebelumnya,
+file untuk tabel tersebut tidak dibuat.
+
+Contoh isi folder:
 
 ```text
 2026-08-20_analisa_ringkasan_harian.csv
@@ -145,4 +172,18 @@ GET /dashboard-eoc/api/ntt-data?tanggal=2026-08-20&tabel=pasien_rs
 ```
 
 Saat development, jalankan Next.js dengan `yarn dev` dan gunakan base path yang sama.
-Collector tetap dapat dijalankan melalui `docker compose up -d ntt-collector`.
+Dashboard dan collector dijalankan terpisah. Collector menggunakan env sendiri:
+
+```bash
+docker compose up -d --build
+(cd collector && docker compose --env-file .env.collector up -d --build)
+```
+
+Untuk melihat log collector:
+
+```bash
+(cd collector && docker compose --env-file .env.collector logs -f ntt-collector)
+```
+
+Salin `collector/.env.collector.example` menjadi `collector/.env.collector`, lalu isi
+`POSTGRES_PASSWORD` sesuai password user PostgreSQL. File tersebut tidak di-commit.

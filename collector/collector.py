@@ -16,6 +16,8 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from postgres import PostgresStore
+
 
 LOGGER = logging.getLogger("ntt-collector")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -117,6 +119,9 @@ def extract_table(
         if not is_valid_date(date_value):
             LOGGER.warning("%s: melewati baris dengan tanggal tidak valid: %r", table_name, date_value)
             continue
+        if not any(value.strip() for value in values[1:]):
+            LOGGER.warning("%s: melewati baris kosong untuk tanggal %s", table_name, date_value)
+            continue
 
         row_data = dict(zip(headers, values))
         rows_by_date.setdefault(date_value, []).append(row_data)
@@ -191,11 +196,31 @@ def scrape_once(session: requests.Session, source_url: str, data_dir: Path) -> d
     dates = dict(manifest.get("dates", {}))
 
     for date_value in sorted(all_dates):
-        files: dict[str, str] = {}
+        files: dict[str, str] = dict(dates.get(date_value, {}))
         for table_name, (headers, rows_by_date) in parsed.items():
             filename = f"{date_value}_{table_name}.csv"
-            write_csv(data_dir / filename, headers, rows_by_date.get(date_value, []))
-            files[table_name] = filename
+            rows = rows_by_date.get(date_value, [])
+            if rows:
+                write_csv(data_dir / filename, headers, rows)
+                files[table_name] = filename
+                continue
+
+            previous_filename = files.get(table_name, filename)
+            if (data_dir / previous_filename).exists():
+                files[table_name] = previous_filename
+                LOGGER.warning(
+                    "%s %s kosong; CSV lama dipertahankan: %s",
+                    date_value,
+                    table_name,
+                    previous_filename,
+                )
+            else:
+                files.pop(table_name, None)
+                LOGGER.warning(
+                    "%s %s kosong dan belum memiliki CSV lama; file tidak dibuat",
+                    date_value,
+                    table_name,
+                )
         dates[date_value] = files
 
     # Pastikan riwayat file per tanggal yang sudah ada di folder tetap terindeks
@@ -242,13 +267,20 @@ def main() -> None:
     LOGGER.info("Source URL   : %s", source_url)
     LOGGER.info("Interval     : %s detik", interval)
 
+    postgres = PostgresStore()
+    postgres.initialize()
+    migration = postgres.import_csv_directory(data_dir)
+    LOGGER.info("migrasi awal CSV: %s", migration)
+
     while True:
         try:
             manifest = scrape_once(session, source_url, data_dir)
+            migration = postgres.import_csv_directory(data_dir)
             LOGGER.info(
-                "berhasil memperbarui data: latest_date=%s, total_tanggal=%s, manifest=%s",
+                "berhasil memperbarui data: latest_date=%s, total_tanggal=%s, migrasi=%s, manifest=%s",
                 manifest["latest_date"],
                 len(manifest["dates"]),
+                migration,
                 data_dir / "manifest.json",
             )
             for date_key, files in sorted(manifest["dates"].items()):
