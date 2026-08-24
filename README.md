@@ -174,6 +174,11 @@ GET /dashboard-eoc/api/ntt-data?tanggal=2026-08-20
 GET /dashboard-eoc/api/ntt-data?tanggal=2026-08-20&tabel=pasien_rs
 ```
 
+API memprioritaskan data PostgreSQL `collector_bencana_ntt` dari tabel
+`ntt_records`. Jika database belum tersedia atau belum berisi data, API otomatis
+fallback ke CSV lokal. Isi `POSTGRES_PASSWORD` pada `.env` dashboard dengan
+kredensial PostgreSQL yang sama dengan collector.
+
 Saat development, jalankan Next.js dengan `yarn dev` dan gunakan base path yang sama.
 Dashboard dan collector dijalankan sebagai dua repository sibling:
 

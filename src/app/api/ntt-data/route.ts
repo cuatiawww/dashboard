@@ -7,6 +7,7 @@ import {
   getAllNttMasterFaskesWithCollectorOverlay,
   getNttMasterFaskesSummary,
 } from '@/lib/nttFaskesMasterMapper'
+import { readNttDatabase } from '@/lib/nttDatabase'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -91,10 +92,10 @@ async function parseCsv(filePath: string): Promise<Record<string, string>[]> {
  * Normalize CSV rows: convert any header format ("Luka Berat", "Nama RS", etc.)
  * to consistent snake_case lowercase keys so all frontend consumers work uniformly.
  */
-function normalizeTableRows(rows: Record<string, string>[]): Record<string, string | number>[] {
+function normalizeTableRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
   if (!Array.isArray(rows) || rows.length === 0) return rows
   return rows.map(row => {
-    const out: Record<string, string | number> = {}
+    const out: Record<string, unknown> = {}
     Object.entries(row).forEach(([k, v]) => {
       const key = k.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
       out[key] = v
@@ -126,7 +127,64 @@ export async function GET(request: NextRequest) {
     ? [requestedTable as TableName]
     : [...TABLES]
 
-  // ─── Priority 1: Manifest-based per-date CSVs from collector.py ───────────
+  // ─── Priority 1: PostgreSQL records imported by the collector ─────────────
+  const databaseSnapshot = await readNttDatabase()
+  if (databaseSnapshot && (!requestedDate || databaseSnapshot.dates.includes(requestedDate))) {
+    const targetDate = requestedDate || databaseSnapshot.dates.at(-1) || ''
+    const targetRows = databaseSnapshot.rows.filter((row) => row.tanggal === targetDate)
+    const tables: Record<string, unknown[]> = {}
+
+    for (const tableName of tableNames) {
+      if (tableName === 'master_faskes') continue
+      tables[tableName] = normalizeTableRows(
+        targetRows
+          .filter((row) => row.dataset === tableName)
+          .map((row) => ({ tanggal: row.tanggal, ...row.row_data })),
+      )
+    }
+
+    if (Array.isArray(tables.pasien_rs)) {
+      tables.pasien_rs = enrichNttFaskesTable(tables.pasien_rs, 'rs')
+    }
+    if (Array.isArray(tables.pasien_puskesmas)) {
+      tables.pasien_puskesmas = enrichNttFaskesTable(tables.pasien_puskesmas, 'puskesmas')
+    }
+
+    const timeline = (dataset: string) =>
+      normalizeTableRows(
+        databaseSnapshot.rows
+          .filter((row) => row.dataset === dataset)
+          .map((row) => ({ tanggal: row.tanggal, ...row.row_data })),
+      )
+
+    const timelineSituasi = timeline('situasi_kesehatan')
+    const timelineAnalisa = timeline('analisa_ringkasan_harian')
+    const timelinePasienRs = enrichNttFaskesTable(timeline('pasien_rs'), 'rs')
+    const timelinePasienPkm = enrichNttFaskesTable(timeline('pasien_puskesmas'), 'puskesmas')
+    const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(
+      tables.pasien_rs || [],
+      tables.pasien_puskesmas || [],
+    )
+    const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
+    tables.master_faskes = masterFaskes
+
+    return jsonResponse({
+      success: true,
+      source: 'postgresql',
+      tanggal: targetDate,
+      dates_available: databaseSnapshot.dates,
+      timeline_situasi_kesehatan: timelineSituasi,
+      timeline_analisa_ringkasan: timelineAnalisa,
+      timeline_pasien_rs: timelinePasienRs,
+      timeline_pasien_puskesmas: timelinePasienPkm,
+      updated_at: databaseSnapshot.updated_at,
+      source_url: 'https://ntt.tanggap-bencana.go.id/',
+      tables,
+      summary_faskes: summaryFaskes,
+    })
+  }
+
+  // ─── Priority 2: Manifest-based per-date CSV fallback ─────────────────────
   const manifestDir = await locateManifestDir()
   if (manifestDir) {
     try {
