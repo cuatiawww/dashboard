@@ -45,6 +45,7 @@ next-env.d.ts
 
 # docker
 docker-compose.yml
+!collector/docker-compose.yml
 # Dockerfile
 
 # NTT collector runtime data

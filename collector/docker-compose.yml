@@ -1,0 +1,24 @@
+services:
+  ntt-collector:
+    container_name: dashboard-eoc-ntt-collector
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.collector
+    environment:
+      SOURCE_URL: https://ntt.tanggap-bencana.go.id/
+      DATA_DIR: /data
+      INTERVAL_SECONDS: ${NTT_COLLECTOR_INTERVAL_SECONDS:-1800}
+      REQUEST_TIMEOUT_SECONDS: ${NTT_COLLECTOR_TIMEOUT_SECONDS:-30}
+      TZ: Asia/Jakarta
+    volumes:
+      - ${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}:/data
+    networks:
+      - default
+      - db_db
+    restart: unless-stopped
+
+networks:
+  db_db:
+    external: true
