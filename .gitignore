@@ -34,7 +34,6 @@ docker-compose.yml
 
 # env files (can opt-in for committing if needed)
 .env
-collector/.env.collector
 
 # vercel
 .vercel
@@ -45,7 +44,6 @@ next-env.d.ts
 
 # docker
 docker-compose.yml
-!collector/docker-compose.yml
 # Dockerfile
 
 # NTT collector runtime data
