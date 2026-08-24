@@ -2365,26 +2365,55 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
     if (isNttEvent) {
-      return [
-        {
-          date: '20 Agu',
-          'Total Korban': 1048,
-          'Penduduk Terancam/Terdampak': 1917732,
-          'Total Pengungsi': 58788,
-          'Meninggal': 78,
-          'Luka-luka': 970,
-          'Hilang': 0,
-        },
-        {
-          date: '21 Agu',
-          'Total Korban': 1048,
-          'Penduduk Terancam/Terdampak': 1917732,
-          'Total Pengungsi': 95871,
-          'Meninggal': 78,
-          'Luka-luka': 970,
-          'Hilang': 0,
+      const situSource = Array.isArray(nttApiData?.timeline_situasi_kesehatan) && nttApiData.timeline_situasi_kesehatan.length > 0
+        ? nttApiData.timeline_situasi_kesehatan
+        : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
+
+      if (situSource.length > 0) {
+        const dateGroups: { [dateStr: string]: any[] } = {}
+        situSource.forEach((row: any) => {
+          const dt = String(row.tanggal || row.tgl || row.tgl_laporan || '').trim()
+          if (!dt) return
+          if (!dateGroups[dt]) dateGroups[dt] = []
+          dateGroups[dt].push(row)
+        })
+
+        const sortedDates = Object.keys(dateGroups).sort()
+        if (sortedDates.length > 0) {
+          return sortedDates.map(dateKey => {
+            const rows = dateGroups[dateKey]
+            let totMen = 0
+            let totLuka = 0
+            let totPeng = 0
+            let totPop = 0
+
+            rows.forEach(r => {
+              totMen += safeParseInt(r.meninggal)
+              totLuka += (safeParseInt(r.luka_berat) + safeParseInt(r.luka_ringan))
+              totPeng += safeParseInt(r.pengungsi)
+              totPop += safeParseInt(r.populasi_terdampak || r.penduduk_terdampak)
+            })
+
+            const dObj = new Date(dateKey)
+            const formattedLabel = !isNaN(dObj.getTime())
+              ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+              : dateKey
+
+            const totalK = totMen + totLuka
+            const popVal = totPop > 0 ? totPop : 1917732
+
+            return {
+              date: formattedLabel,
+              'Total Korban': totalK,
+              'Penduduk Terancam/Terdampak': popVal,
+              'Total Pengungsi': totPeng,
+              'Meninggal': totMen,
+              'Luka-luka': totLuka,
+              'Hilang': 0,
+            }
+          })
         }
-      ]
+      }
     }
 
     // 2. Jika ada multi-log perkembangan nyata dari database (> 1 laporan perkembangan)

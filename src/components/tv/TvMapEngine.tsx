@@ -237,6 +237,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
   const bnpbGempaRef = useRef<TileLayer<any> | null>(null)
   const bnpbLongsorRef = useRef<TileLayer<any> | null>(null)
   const bnpbKarhutlaRef = useRef<TileLayer<any> | null>(null)
+  const indonesiaMaskLayerRef = useRef<VectorLayer<any> | null>(null)
   const provinceLayerRef = useRef<VectorLayer<any> | null>(null)
   const shakingZoneLayerRef = useRef<VectorLayer<any> | null>(null)
   const markerLayerRef = useRef<VectorLayer<any> | null>(null)
@@ -354,6 +355,28 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
 
   // ── Sync Province / Kabupaten Choropleth Styles ──
   const updateProvinceStyles = useCallback(() => {
+    // 1. Style Indonesia Mask Layer (Muted Gray for non-NTT provinces)
+    const maskLayer = indonesiaMaskLayerRef.current
+    if (maskLayer) {
+      maskLayer.setStyle((feature: any) => {
+        const name = (getFeatureName(feature) || '').toLowerCase()
+        const isNtt = name.includes('nusa tenggara timur') || name.includes('ntt')
+        if (isNtt) {
+          return new Style({
+            fill: new Fill({ color: 'rgba(0, 0, 0, 0)' }),
+            stroke: new Stroke({ color: '#047D78', width: 2.6 }),
+          })
+        }
+        // Shaded muted slate-gray overlay for all other provinces in Indonesia
+        return new Style({
+          fill: new Fill({ color: 'rgba(51, 65, 85, 0.42)' }),
+          stroke: new Stroke({ color: 'rgba(100, 116, 139, 0.35)', width: 1.0 }),
+        })
+      })
+      maskLayer.changed()
+    }
+
+    // 2. Style Focused NTT Kabupaten Layer (Vibrant Choropleth & Prominent Labels)
     const layer = provinceLayerRef.current
     if (!layer) return
 
@@ -379,14 +402,14 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       return new Style({
         fill: new Fill({ color: baseColor }),
         stroke: new Stroke({
-          color: count > 0 ? '#047D78' : '#64748b',
-          width: count > 0 ? 2.2 : 1.2,
+          color: count > 0 ? '#047D78' : '#047D78',
+          width: count > 0 ? 2.4 : 1.8,
         }),
         text: new OlText({
           text: count > 0 ? `${name}\n(${count})` : name,
           font: count > 0 ? 'bold 11px Roboto, sans-serif' : 'bold 9.5px Roboto, sans-serif',
-          fill: new Fill({ color: count > 0 ? '#ffffff' : '#1e293b' }),
-          stroke: new Stroke({ color: count > 0 ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)', width: 3 }),
+          fill: new Fill({ color: '#ffffff' }),
+          stroke: new Stroke({ color: 'rgba(15, 23, 42, 0.92)', width: 3.2 }),
           textAlign: 'center',
           textBaseline: 'middle',
           offsetY: 0,
@@ -453,7 +476,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         url: 'https://gis.bnpb.go.id/server/rest/services/inarisk/layer_bahaya_gempabumi/ImageServer',
       }),
       visible: layers.bnpbGempa,
-      opacity: 0.6,
+      opacity: 0.7,
       zIndex: 6,
     })
     bnpbGempaRef.current = bnpbGempa
@@ -478,7 +501,15 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
     })
     bnpbKarhutlaRef.current = bnpbKarhutla
 
-    // 3. Province / Kabupaten Boundary Layer
+    // 2.5. Indonesia Mask Layer (Muted Gray Shading for non-NTT provinces)
+    const indonesiaMaskLayer = new VectorLayer({
+      source: new VectorSource(),
+      visible: true,
+      zIndex: 9,
+    })
+    indonesiaMaskLayerRef.current = indonesiaMaskLayer
+
+    // 3. Province / Kabupaten Boundary Layer (NTT Focus)
     const provinceLayer = new VectorLayer({
       source: new VectorSource(),
       visible: layers.showChoropleth,
@@ -543,6 +574,7 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         bnpbGempa,
         bnpbLongsor,
         bnpbKarhutla,
+        indonesiaMaskLayer,
         provinceLayer,
         shakingZoneLayer,
         routeLayer,
@@ -566,14 +598,35 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
 
     mapInstanceRef.current = map
 
-    // Load GeoJSON Boundaries (prioritize NTT kabupaten, fallback to Indonesia)
+    // Load GeoJSON Boundaries (Nationwide Non-NTT Gray Shading + NTT Kabupaten Focus)
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
-    const loadGeoJsonFeatures = (geoData: any) => {
-      if (!geoData || !provinceLayerRef.current) return
-      try {
-        const format = new GeoJSON()
-        const rawFeatures = geoData.features ? geoData : geoData.geojson || geoData
-        const features = format.readFeatures(rawFeatures, {
+    const format = new GeoJSON()
+
+    // 1. Load Indonesia Provinces for non-NTT gray shading
+    fetch(`${basePath}/indonesia-provinces.geojson`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((geoData) => {
+        if (!geoData || !indonesiaMaskLayerRef.current) return
+        const features = format.readFeatures(geoData, {
+          featureProjection: 'EPSG:3857',
+          dataProjection: 'EPSG:4326',
+        })
+        const source = indonesiaMaskLayerRef.current.getSource()
+        source?.clear()
+        source?.addFeatures(features)
+        updateProvinceStyles()
+      })
+      .catch((e) => console.warn('[TV Map] Indonesia mask boundary fetch:', e))
+
+    // 2. Load NTT Kabupaten for focused high-res boundaries & choropleth
+    fetch(`${basePath}/data/ntt-kabupaten.geojson`)
+      .then((res) => {
+        if (!res.ok) throw new Error('NTT GeoJSON not found')
+        return res.json()
+      })
+      .then((geoData) => {
+        if (!geoData || !provinceLayerRef.current) return
+        const features = format.readFeatures(geoData, {
           featureProjection: 'EPSG:3857',
           dataProjection: 'EPSG:4326',
         })
@@ -581,22 +634,9 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
         source?.clear()
         source?.addFeatures(features)
         updateProvinceStyles()
-      } catch (err) {
-        console.error('[TV Map] Error parsing GeoJSON:', err)
-      }
-    }
-
-    fetch(`${basePath}/data/geojson/ntt-kabupaten.geojson`)
-      .then((res) => {
-        if (!res.ok) throw new Error('NTT GeoJSON not found')
-        return res.json()
       })
-      .then(loadGeoJsonFeatures)
-      .catch(() => {
-        fetch(`${basePath}/indonesia-provinces.geojson`)
-          .then((r) => r.json())
-          .then(loadGeoJsonFeatures)
-          .catch((e) => console.warn('[TV Map] Boundary fallback:', e))
+      .catch((err) => {
+        console.warn('[TV Map] NTT kabupaten boundary fetch error:', err)
       })
 
     // Map Click Interaction: Select feature and trigger bottom card

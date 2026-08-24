@@ -2113,6 +2113,9 @@ export default function DisasterMap({
         const lng = Number(m.lng)
         const isEpicenter = !!m.isEpicenter || idx === 0
 
+        // In Disaster / EOC Mode, skip duplicate non-epicenter drop-pins to keep map clean
+        if (isFloodEocMode && !isEpicenter) return
+
         // Draw pin marker
         const disasterFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
@@ -2272,8 +2275,6 @@ export default function DisasterMap({
         const fLng = Number(f.longitude || f.lng || 0)
         if (fLat !== 0 && fLng !== 0) {
           // Strict NTT Bounding Box check when in NTT event / provincial mode:
-          // NTT Latitude: -11.6 to -7.5 (South)
-          // NTT Longitude: 118.5 to 125.5 (East)
           if (isFloodEocMode) {
             if (fLat < -11.6 || fLat > -7.5 || fLng < 118.5 || fLng > 125.5) {
               return // Skip faskes located outside NTT province
@@ -2293,21 +2294,12 @@ export default function DisasterMap({
           const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
           if (faskesTypeFilters.siagaOnly && !hasTriage) return
 
-          let pinColor = '#059669' // emerald for Puskesmas
-          let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'clinic'
           let itemCategory: 'hospital' | 'clinic' | 'pustu' = 'clinic'
-
           if (category === 'rs') {
-            pinColor = '#2563eb' // blue for RS
-            iconType = 'hospital'
             itemCategory = 'hospital'
           } else if (category === 'pustu') {
-            pinColor = '#d97706' // amber/orange for Pustu
-            iconType = 'pustu'
             itemCategory = 'pustu'
           } else if (category === 'klinik') {
-            pinColor = '#0891b2' // cyan for Klinik
-            iconType = 'clinic'
             itemCategory = 'clinic'
           }
 
@@ -2327,7 +2319,7 @@ export default function DisasterMap({
                 anchor: [0.5, 0.5]
               })
             }))
-          } else if (category === 'puskesmas') {
+          } else {
             fFeat.setStyle(new Style({
               image: new Icon({
                 src: `${basePath}/puskesmas.svg`,
@@ -2336,18 +2328,11 @@ export default function DisasterMap({
                 anchor: [0.5, 0.5]
               })
             }))
-          } else {
-            fFeat.setStyle(new Style({
-              image: new Icon({
-                src: getSvgPin(pinColor, iconType),
-                scale: 0.88,
-                anchor: [0.5, 1]
-              })
-            }))
           }
           source.addFeature(fFeat)
         }
       })
+    }
 
       // 2b. Add Faskes Terdampak/Rusak (pin merah — dari data inputan RHA)
       const fRusakList = Array.isArray(faskesRusakList) ? faskesRusakList : []
@@ -2387,15 +2372,15 @@ export default function DisasterMap({
           })
           fFeat.setStyle(new Style({
             image: new Icon({
-              src: getSvgPin(pinColor, 'clinic'),
-              scale: 0.95,
-              anchor: [0.5, 1]
+              src: category === 'rs' ? `${basePath}/hospital.svg` : `${basePath}/puskesmas.svg`,
+              size: category === 'rs' ? [500, 500] : [373, 373],
+              scale: 0.08,
+              anchor: [0.5, 0.5]
             })
           }))
           source.addFeature(fFeat)
         }
       })
-    }
 
     // 3. Add Posko List
     const pList = Array.isArray(poskoList) ? poskoList : []
@@ -2408,17 +2393,6 @@ export default function DisasterMap({
             return
           }
         }
-        const jenisPos = String(pos.jenis_pos || 'Pos Pengungsian').toLowerCase()
-        let pinColor = '#7c3aed' // purple for Pos Pengungsian
-        let iconType: 'hospital' | 'clinic' | 'pustu' | 'shelter' = 'shelter'
-
-        if (jenisPos.includes('kesehatan & pengungsian') || jenisPos.includes('kesehatan dan pengungsian')) {
-          pinColor = '#ea580c'
-          iconType = 'shelter'
-        } else if (jenisPos.includes('kesehatan')) {
-          pinColor = '#059669'
-          iconType = 'clinic'
-        }
 
         const pFeat = new Feature({
           geometry: new Point(fromLonLat([pLng, pLat])),
@@ -2429,9 +2403,9 @@ export default function DisasterMap({
         })
         pFeat.setStyle(new Style({
           image: new Icon({
-            src: getSvgPin(pinColor, iconType),
-            scale: 0.88,
-            anchor: [0.5, 1]
+            src: `${basePath}/posyandu.svg`,
+            scale: 0.08,
+            anchor: [0.5, 0.5]
           })
         }))
         source.addFeature(pFeat)

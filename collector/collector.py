@@ -198,12 +198,21 @@ def scrape_once(session: requests.Session, source_url: str, data_dir: Path) -> d
             files[table_name] = filename
         dates[date_value] = files
 
+    # Pastikan riwayat file per tanggal yang sudah ada di folder tetap terindeks
+    for p in data_dir.glob("????-??-??_*.csv"):
+        m = re.match(r"^(\d{4}-\d{2}-\d{2})_(.+)\.csv$", p.name)
+        if m:
+            d_val, t_name = m.group(1), m.group(2)
+            if d_val not in dates:
+                dates[d_val] = {}
+            dates[d_val][t_name] = p.name
+
     ordered_dates = {date: dates[date] for date in sorted(dates)}
     updated = {
         "version": 1,
         "source_url": source_url,
         "updated_at": now_iso(),
-        "latest_date": max(ordered_dates),
+        "latest_date": max(ordered_dates) if ordered_dates else "",
         "dates": ordered_dates,
     }
     atomic_write_text(manifest_path, json.dumps(updated, ensure_ascii=False, indent=2) + "\n")
@@ -216,7 +225,6 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     source_url = os.getenv("SOURCE_URL", "https://ntt.tanggap-bencana.go.id/")
-    # Default: write to public/data/ntt next to the collector directory so Next.js API can find it
     _default_data_dir = Path(__file__).parent.parent / "public" / "data" / "ntt"
     data_dir = Path(os.getenv("DATA_DIR", str(_default_data_dir)))
     interval = max(env_int("INTERVAL_SECONDS", 1800), 60)
