@@ -402,25 +402,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               // faskes / pasien columns
               nama_rs: out.nama_rs || out.nama_rumah_sakit || out.rs || out.nama || '',
               nama_puskesmas: out.nama_puskesmas || out.puskesmas || out.nama || '',
-              triase_merah: Number(out.triase_merah || out.merah || 0),
-              triase_kuning: Number(out.triase_kuning || out.kuning || 0),
-              triase_hijau: Number(out.triase_hijau || out.hijau || 0),
-              triase_hitam: Number(out.triase_hitam || out.hitam || 0),
-              total: Number(out.total || out.total_pasien || 0),
+              triase_merah: safeParseInt(out.triase_merah || out.merah),
+              triase_kuning: safeParseInt(out.triase_kuning || out.kuning),
+              triase_hijau: safeParseInt(out.triase_hijau || out.hijau),
+              triase_hitam: safeParseInt(out.triase_hitam || out.hitam),
+              total: safeParseInt(out.total || out.total_pasien),
               // situasi_kesehatan columns
               kabupaten: out.kabupaten || '',
               tanggal: out.tanggal || '',
-              meninggal: Number(out.meninggal || 0),
-              luka_berat: Number(out.luka_berat || 0),
-              luka_ringan: Number(out.luka_ringan || 0),
-              pengungsi: Number(out.pengungsi || 0),
-              titik_pengungsian: Number(out.titik_pengungsian || 0),
-              populasi_terdampak: Number(out.populasi_terdampak || out.penduduk_terdampak || 0),
+              meninggal: safeParseInt(out.meninggal),
+              luka_berat: safeParseInt(out.luka_berat),
+              luka_ringan: safeParseInt(out.luka_ringan),
+              pengungsi: safeParseInt(out.pengungsi),
+              titik_pengungsian: safeParseInt(out.titik_pengungsian),
+              populasi_terdampak: safeParseInt(out.populasi_terdampak || out.penduduk_terdampak),
               // analisa_ringkasan_harian columns
-              korban_luka: Number(out.korban_luka || 0),
-              pasien_rs: Number(out.pasien_rs || 0),
-              pasien_pkm: Number(out.pasien_pkm || out.pasien_puskesmas || 0),
-              total_fasyankes: Number(out.total_fasyankes || 0),
+              korban_luka: safeParseInt(out.korban_luka),
+              pasien_rs: safeParseInt(out.pasien_rs),
+              pasien_pkm: safeParseInt(out.pasien_pkm || out.pasien_puskesmas),
+              total_fasyankes: safeParseInt(out.total_fasyankes),
             }
           })
         }
@@ -3501,16 +3501,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const rowsToUse = activeRows.length > 0 ? activeRows : nttSitu
 
       return rowsToUse.map((item: any) => {
-        const meninggal = Number(item.meninggal || item.korban_meninggal || 0)
-        const lukaBerat = Number(item.luka_berat || item.korban_luka_berat || 0)
-        const lukaRingan = Number(item.luka_ringan || item.korban_luka_ringan || 0)
-        const totalLuka = Number(item.total_luka || item.luka || (lukaBerat + lukaRingan))
-        const pengungsi = Number(item.pengungsi || item.jumlah_pengungsi || 0)
-        const titikPosko = Number(item.titik_pengungsian || item.titik_posko || 0)
-        const populasi = Number(item.populasi_terdampak || item.penduduk_terdampak || 0)
-        const balita = Number(item.balita || 0)
-        const lansia = Number(item.lansia || 0)
-        const bumil = Number(item.bumil || 0)
+        const meninggal = safeParseInt(item.meninggal || item.korban_meninggal)
+        const lukaBerat = safeParseInt(item.luka_berat || item.korban_luka_berat)
+        const lukaRingan = safeParseInt(item.luka_ringan || item.korban_luka_ringan)
+        const totalLuka = safeParseInt(item.total_luka || item.luka) || (lukaBerat + lukaRingan)
+        const pengungsi = safeParseInt(item.pengungsi || item.jumlah_pengungsi)
+        const titikPosko = safeParseInt(item.titik_pengungsian || item.titik_posko)
+        const populasi = safeParseInt(item.populasi_terdampak || item.penduduk_terdampak)
+        const balita = safeParseInt(item.balita)
+        const lansia = safeParseInt(item.lansia)
+        const bumil = safeParseInt(item.bumil)
 
         const zona = meninggal > 10 ? 'Zona Merah' : meninggal > 0 ? 'Zona Oranye' : 'Zona Kuning'
         const zonaColor = meninggal > 10 ? 'bg-rose-50 text-rose-700 border-rose-200' : meninggal > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-yellow-50 text-yellow-800 border-yellow-200'
@@ -3524,19 +3524,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           luka_berat: lukaBerat,
           luka_ringan: lukaRingan,
           total_luka: totalLuka,
-          hilang: Number(item.hilang || item.korban_hilang || 0),
+          hilang: safeParseInt(item.hilang || item.korban_hilang),
           pengungsi,
           titik_posko: titikPosko,
           populasi_terdampak: populasi,
           balita,
           lansia,
           bumil,
-          faskes_rusak_berat: Number(item.faskes_rusak_berat || 0),
-          faskes_rusak_sedang: Number(item.faskes_rusak_sedang || 0),
-          faskes_rusak_ringan: Number(item.faskes_rusak_ringan || 0),
-          faskes_terdampak_total: Number(item.faskes_terdampak_total || 0),
-          faskes_operasional: Number(item.faskes_operasional || 0),
-          faskes_total: Number(item.faskes_total || 0),
+          faskes_rusak_berat: safeParseInt(item.faskes_rusak_berat),
+          faskes_rusak_sedang: safeParseInt(item.faskes_rusak_sedang),
+          faskes_rusak_ringan: safeParseInt(item.faskes_rusak_ringan),
+          faskes_terdampak_total: safeParseInt(item.faskes_terdampak_total),
+          faskes_operasional: safeParseInt(item.faskes_operasional),
+          faskes_total: safeParseInt(item.faskes_total),
         }
       })
     }

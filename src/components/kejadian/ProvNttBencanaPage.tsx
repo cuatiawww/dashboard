@@ -5,6 +5,20 @@ import { useRouter } from 'next/navigation'
 import DetailKejadianPage from './DetailKejadianPage'
 import { useHeaderStore } from '@/lib/headerStore'
 
+const safeParseInt = (val: any): number => {
+  if (val === null || val === undefined) return 0
+  if (typeof val === 'number') {
+    return isNaN(val) ? 0 : Math.floor(val)
+  }
+  const clean = String(val)
+    .replace(/\s*[a-zA-Z]+/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .trim()
+  const parsed = parseInt(clean, 10)
+  return isNaN(parsed) ? 0 : parsed
+}
+
 // Data Dasar Struktur Gempa NTT (Sinkron dengan BMKG & API Collector /api/ntt-data)
 const NTT_KRONOLOGIS_TEXT = 'Telah terjadi gempa bumi dengan M 7.7 pada kedalaman 15 km. Gempa berpusat di Laut 30 km Timur laut Mbay-Nagekeo-NTT, Provinsi Nusa Tenggara Timur. Gempa berpotensi Tsunami dengan Status Siaga: Kabupaten Manggarai, Ngada, Manggarai Barat, Selayar, Ende, Sikka , Jeneponto, Banteang dan Status Waspada:Kabupaten Bima, Kota-bima, Flores-timur, Dompu, Kota-bau-bau, Takalar, Bone, Wajo, Luwu,  dan Kota-palopo.'
 
@@ -192,13 +206,13 @@ export default function ProvNttBencanaPage() {
             const rows = json.tables.situasi_kesehatan
             let sm = 0, slb = 0, slr = 0, sp = 0, stp = 0, sterdampak = 0, shilang = 0
             rows.forEach((r: any) => {
-              const meninggal = Number(r.meninggal || r.korban_meninggal || 0)
-              const lukaBerat = Number(r.luka_berat || r.korban_luka_berat || 0)
-              const lukaRingan = Number(r.luka_ringan || r.korban_luka_ringan || 0)
-              const pengungsi = Number(r.pengungsi || r.jumlah_pengungsi || 0)
-              const titikPosko = Number(r.titik_pengungsian || r.titik_posko || 0)
-              const terdampak = Number(r.populasi_terdampak || r.penduduk_terdampak || 0)
-              const hilang = Number(r.hilang || r.korban_hilang || 0)
+              const meninggal = safeParseInt(r.meninggal || r.korban_meninggal)
+              const lukaBerat = safeParseInt(r.luka_berat || r.korban_luka_berat)
+              const lukaRingan = safeParseInt(r.luka_ringan || r.korban_luka_ringan)
+              const pengungsi = safeParseInt(r.pengungsi || r.jumlah_pengungsi)
+              const titikPosko = safeParseInt(r.titik_pengungsian || r.titik_posko)
+              const terdampak = safeParseInt(r.populasi_terdampak || r.penduduk_terdampak)
+              const hilang = safeParseInt(r.hilang || r.korban_hilang)
 
               sm += meninggal
               slb += lukaBerat
