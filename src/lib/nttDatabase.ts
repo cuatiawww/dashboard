@@ -1,3 +1,4 @@
+// @ts-ignore
 import { Pool } from 'pg'
 
 const DATASETS = [
@@ -55,10 +56,14 @@ export async function readNttDatabase(): Promise<NttDatabaseSnapshot | null> {
 
     if (result.rows.length === 0) return null
 
-    const dates = [...new Set(result.rows.map((row) => row.tanggal))].sort()
+    const dateSet = new Set<string>()
+    result.rows.forEach((row: NttDatabaseRow) => {
+      if (row.tanggal) dateSet.add(String(row.tanggal))
+    })
+    const dates = Array.from(dateSet).sort()
     const latestImport = result.rows
-      .map((row) => row.imported_at)
-      .filter((value): value is string => Boolean(value))
+      .map((row: NttDatabaseRow) => row.imported_at)
+      .filter((value: string | null): value is string => Boolean(value))
       .sort()
       .at(-1)
 

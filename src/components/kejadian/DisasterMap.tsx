@@ -527,17 +527,33 @@ export default function DisasterMap({
   const faskesCountsByType = useMemo(() => {
     const list = Array.isArray(faskesList) ? faskesList : []
     let rs = 0, puskesmas = 0, klinik = 0, pustu = 0, siaga = 0
+    let rsSiaga = 0, pkmSiaga = 0, klinikSiaga = 0, pustuSiaga = 0
+
     list.forEach((f: any) => {
-      const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
+      const totPasien = Number(f.total_pasien || 0) || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0))
+      const hasTriage = totPasien > 0
+
       if (hasTriage) siaga++
 
       const cat = categorizeFaskes(f)
-      if (cat === 'rs') rs++
-      else if (cat === 'pustu') pustu++
-      else if (cat === 'klinik') klinik++
-      else puskesmas++
+      if (cat === 'rs') {
+        rs++
+        if (hasTriage) rsSiaga++
+      } else if (cat === 'pustu') {
+        pustu++
+        if (hasTriage) pustuSiaga++
+      } else if (cat === 'klinik') {
+        klinik++
+        if (hasTriage) klinikSiaga++
+      } else {
+        puskesmas++
+        if (hasTriage) pkmSiaga++
+      }
     })
-    return { rs, puskesmas, klinik, pustu, siaga, total: list.length }
+    return {
+      rs, puskesmas, klinik, pustu, siaga, total: list.length,
+      rsSiaga, pkmSiaga, klinikSiaga, pustuSiaga
+    }
   }, [faskesList])
 
   // Auto-enable EOC Routing layer when a route target is selected
@@ -2268,8 +2284,9 @@ export default function DisasterMap({
     // 2. Add Faskes List (Filtered by Checkboxes: RS, Puskesmas, Klinik, Pustu, Siaga Only)
     const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
     const rawFaskesList = Array.isArray(faskesList) ? faskesList : []
-    const hasAnyFaskesChecked = faskesTypeFilters.rs || faskesTypeFilters.puskesmas || faskesTypeFilters.klinik || faskesTypeFilters.pustu
-    if (hasAnyFaskesChecked) {
+    const hasAnyCategoryChecked = faskesTypeFilters.rs || faskesTypeFilters.puskesmas || faskesTypeFilters.klinik || faskesTypeFilters.pustu
+
+    if (hasAnyCategoryChecked || faskesTypeFilters.siagaOnly) {
       rawFaskesList.forEach((f: any, idx: number) => {
         const fLat = Number(f.latitude || f.lat || 0)
         const fLng = Number(f.longitude || f.lng || 0)
@@ -2284,15 +2301,20 @@ export default function DisasterMap({
           // Categorize using shared helper for consistency with count display
           const category = categorizeFaskes(f)
 
-          // Filter based on checkboxes
-          if (category === 'rs' && !faskesTypeFilters.rs) return
-          if (category === 'puskesmas' && !faskesTypeFilters.puskesmas) return
-          if (category === 'klinik' && !faskesTypeFilters.klinik) return
-          if (category === 'pustu' && !faskesTypeFilters.pustu) return
+          // Patient triage check (merawat pasien bencana)
+          const totPasien = Number(f.total_pasien || 0) || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0))
+          const hasTriage = totPasien > 0
 
-          // Filter for Siaga only (merawat pasien bencana)
-          const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
+          // If Siaga Only is active, must have triage patients
           if (faskesTypeFilters.siagaOnly && !hasTriage) return
+
+          // Category filtering:
+          if (hasAnyCategoryChecked) {
+            if (category === 'rs' && !faskesTypeFilters.rs) return
+            if (category === 'puskesmas' && !faskesTypeFilters.puskesmas) return
+            if (category === 'klinik' && !faskesTypeFilters.klinik) return
+            if (category === 'pustu' && !faskesTypeFilters.pustu) return
+          }
 
           let itemCategory: 'hospital' | 'clinic' | 'pustu' = 'clinic'
           if (category === 'rs') {
@@ -2350,15 +2372,18 @@ export default function DisasterMap({
           // Categorize using shared helper for consistency
           const category = categorizeFaskes(f)
 
-          // Filter based on checkboxes
-          if (category === 'rs' && !faskesTypeFilters.rs) return
-          if (category === 'puskesmas' && !faskesTypeFilters.puskesmas) return
-          if (category === 'klinik' && !faskesTypeFilters.klinik) return
-          if (category === 'pustu' && !faskesTypeFilters.pustu) return
+          // Patient triage check
+          const totPasien = Number(f.total_pasien || 0) || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0))
+          const hasTriage = totPasien > 0
 
-          // Filter for Siaga only — juga berlaku untuk faskes terdampak
-          const hasTriage = f.has_collector_data || Number(f.total_pasien || 0) > 0 || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) > 0
           if (faskesTypeFilters.siagaOnly && !hasTriage) return
+
+          if (hasAnyCategoryChecked) {
+            if (category === 'rs' && !faskesTypeFilters.rs) return
+            if (category === 'puskesmas' && !faskesTypeFilters.puskesmas) return
+            if (category === 'klinik' && !faskesTypeFilters.klinik) return
+            if (category === 'pustu' && !faskesTypeFilters.pustu) return
+          }
 
           const hasBerat = Number(f.rusak_berat || 0) > 0
           const hasSedang = Number(f.rusak_sedang || 0) > 0
@@ -2993,8 +3018,12 @@ export default function DisasterMap({
                           />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Rumah Sakit (RS)</span>
                         </div>
-                        <span className="text-[10px] font-extrabold text-slate-400">
-                          {faskesCountsByType.rs}
+                        <span className={`text-[10px] font-extrabold ${faskesTypeFilters.siagaOnly ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {faskesTypeFilters.siagaOnly ? (
+                            <span>{faskesCountsByType.rsSiaga} <span className="text-slate-300 font-normal">/ {faskesCountsByType.rs}</span></span>
+                          ) : (
+                            faskesCountsByType.rs
+                          )}
                         </span>
                       </label>
 
@@ -3011,8 +3040,12 @@ export default function DisasterMap({
                           />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas</span>
                         </div>
-                        <span className="text-[10px] font-extrabold text-slate-400">
-                          {faskesCountsByType.puskesmas}
+                        <span className={`text-[10px] font-extrabold ${faskesTypeFilters.siagaOnly ? 'text-rose-600' : 'text-slate-400'}`}>
+                          {faskesTypeFilters.siagaOnly ? (
+                            <span>{faskesCountsByType.pkmSiaga} <span className="text-slate-300 font-normal">/ {faskesCountsByType.puskesmas}</span></span>
+                          ) : (
+                            faskesCountsByType.puskesmas
+                          )}
                         </span>
                       </label>
 
@@ -3030,7 +3063,11 @@ export default function DisasterMap({
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Klinik</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-slate-400">
-                          {faskesCountsByType.klinik}
+                          {faskesTypeFilters.siagaOnly ? (
+                            <span>{faskesCountsByType.klinikSiaga} <span className="text-slate-300 font-normal">/ {faskesCountsByType.klinik}</span></span>
+                          ) : (
+                            faskesCountsByType.klinik
+                          )}
                         </span>
                       </label>
 
@@ -3048,7 +3085,11 @@ export default function DisasterMap({
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas Pembantu (Pustu)</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-slate-400">
-                          {faskesCountsByType.pustu.toLocaleString('id-ID')}
+                          {faskesTypeFilters.siagaOnly ? (
+                            <span>{faskesCountsByType.pustuSiaga} <span className="text-slate-300 font-normal">/ {faskesCountsByType.pustu.toLocaleString('id-ID')}</span></span>
+                          ) : (
+                            faskesCountsByType.pustu.toLocaleString('id-ID')
+                          )}
                         </span>
                       </label>
 
@@ -3060,7 +3101,25 @@ export default function DisasterMap({
                           <input
                             type="checkbox"
                             checked={faskesTypeFilters.siagaOnly}
-                            onChange={(e) => setFaskesTypeFilters((prev) => ({ ...prev, siagaOnly: e.target.checked }))}
+                            onChange={(e) => {
+                              const checked = e.target.checked
+                              setFaskesTypeFilters((prev) => {
+                                if (checked) {
+                                  return {
+                                    ...prev,
+                                    siagaOnly: true,
+                                    rs: true,
+                                    puskesmas: true,
+                                    klinik: true,
+                                    pustu: true,
+                                  }
+                                }
+                                return {
+                                  ...prev,
+                                  siagaOnly: false,
+                                }
+                              })
+                            }}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer"
                           />
                           <span className={`text-[11px] font-bold truncate ${faskesTypeFilters.siagaOnly ? 'text-rose-700 font-extrabold' : 'text-slate-700'}`}>
