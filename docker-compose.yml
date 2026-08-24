@@ -32,7 +32,7 @@ services:
       - "3004:3000"  
     volumes:
       - dashboard-eoc-ai-node-modules-v2:/app/node_modules
-      - ./data/ntt:/app/public/data/ntt:ro
+      - /home/pusatkrisis/docker/data-ntt:/app/public/data/ntt:ro
     # networks:
     #   - proxy
     restart: unless-stopped
@@ -49,7 +49,7 @@ services:
       REQUEST_TIMEOUT_SECONDS: ${NTT_COLLECTOR_TIMEOUT_SECONDS:-30}
       TZ: Asia/Jakarta
     volumes:
-      - ./data/ntt:/data
+      - /home/pusatkrisis/docker/data-ntt:/data
     restart: unless-stopped
 
 # networks:
