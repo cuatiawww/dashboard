@@ -11,6 +11,13 @@ stages:
   - 'export API_INDONESIA_KEY=${API_INDONESIA_KEY}'
   - 'export GEMINI_API_KEY=${GEMINI_API_KEY}'
   - 'export GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}'
+  - 'export POSTGRES_HOST=${POSTGRES_HOST:-db-postgres}'
+  - 'export POSTGRES_PORT=${POSTGRES_PORT:-5432}'
+  - 'export POSTGRES_DB=${POSTGRES_DB:-collector_bencana_ntt}'
+  - 'export POSTGRES_USER=${POSTGRES_USER:-postgres}'
+  - 'export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
+  - 'export POSTGRES_CONNECT_TIMEOUT_SECONDS=${POSTGRES_CONNECT_TIMEOUT_SECONDS:-10}'
+  - 'export NTT_DATA_DIR=${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}'
   - docker compose -f docker-compose.yml up -d --build
   - docker image prune -f
 
