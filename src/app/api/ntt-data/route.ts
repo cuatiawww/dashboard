@@ -130,8 +130,8 @@ export async function GET(request: NextRequest) {
   const manifestDir = await locateManifestDir()
   if (manifestDir) {
     try {
-      const manifest = await readManifest(manifestDir).catch(() => ({ version: 1, dates: {} }))
-      const manifestDates = manifest.dates || {}
+      const manifest: Manifest = await readManifest(manifestDir).catch(() => ({ version: 1, latest_date: '', dates: {} } as Manifest))
+      const manifestDates: Record<string, Record<string, string>> = (manifest.dates as unknown as Record<string, Record<string, string>>) || {}
 
       // Auto-discover all dated CSV files in directory so no historical dates are ever missed
       try {
@@ -141,8 +141,8 @@ export async function GET(request: NextRequest) {
           if (match) {
             const [, dt, tableKey] = match
             if (!manifestDates[dt]) manifestDates[dt] = {}
-            if (!manifestDates[dt][tableKey as TableName]) {
-              manifestDates[dt][tableKey as TableName] = filename
+            if (!manifestDates[dt][tableKey]) {
+              manifestDates[dt][tableKey] = filename
             }
           }
         }
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         console.warn('[API ntt-data] Directory scan fallback error:', scanErr)
       }
 
-      manifest.dates = manifestDates
+      manifest.dates = manifestDates as unknown as Manifest['dates']
       const allDates = Object.keys(manifestDates).sort()
       const targetDate = requestedDate || manifest.latest_date || allDates.at(-1) || ''
 

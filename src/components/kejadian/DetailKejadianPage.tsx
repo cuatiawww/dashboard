@@ -353,6 +353,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [showKabupatenMatrixModal, setShowKabupatenMatrixModal] = useState<boolean>(false)
   const [kabupatenMatrixTab, setKabupatenMatrixTab] = useState<'all' | 'korban' | 'faskes' | 'pengungsi' | 'penyakit'>('all')
   const [kabupatenMatrixSearch, setKabupatenMatrixSearch] = useState<string>('')
+  const [kabupatenMatrixDate, setKabupatenMatrixDate] = useState<string>('')
 
   // Master Data Faskes Filtering & Pagination State
   const [masterFaskesTypeFilter, setMasterFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu'>('all')
@@ -685,6 +686,35 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
   }, [detail, eventData]);
 
+  const modalAvailableDates = useMemo(() => {
+    const set = new Set<string>()
+    if (Array.isArray(nttApiData?.timeline_situasi_kesehatan)) {
+      nttApiData.timeline_situasi_kesehatan.forEach((r: any) => {
+        const dt = String(r.tanggal || r.tgl || '').trim()
+        if (dt) set.add(dt)
+      })
+    }
+    if (Array.isArray(nttApiData?.situasi_kesehatan)) {
+      nttApiData.situasi_kesehatan.forEach((r: any) => {
+        const dt = String(r.tanggal || r.tgl || '').trim()
+        if (dt) set.add(dt)
+      })
+    }
+    if (nttApiData?.tanggal) set.add(nttApiData.tanggal)
+    
+    if (set.size === 0) {
+      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'].forEach(d => set.add(d))
+    }
+    return Array.from(set).sort()
+  }, [nttApiData?.timeline_situasi_kesehatan, nttApiData?.situasi_kesehatan, nttApiData?.tanggal])
+
+  const activeModalDate = useMemo(() => {
+    if (kabupatenMatrixDate && modalAvailableDates.includes(kabupatenMatrixDate)) {
+      return kabupatenMatrixDate
+    }
+    return nttApiData.tanggal || modalAvailableDates[modalAvailableDates.length - 1] || '2026-08-23'
+  }, [kabupatenMatrixDate, modalAvailableDates, nttApiData.tanggal])
+
   const faskesMatrixData = useMemo(() => {
     // 1. Data master_faskes dari API /api/ntt-data jika ada (1.818 faskes se-NTT)
     if (Array.isArray(nttApiData.master_faskes) && nttApiData.master_faskes.length > 0) {
@@ -705,8 +735,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const combinedFaskes: any[] = []
     const seenKeys = new Set<string>()
 
-    if (Array.isArray(nttApiData.pasien_rs) && nttApiData.pasien_rs.length > 0) {
-      nttApiData.pasien_rs.forEach((rs: any, idx: number) => {
+    const allRs = Array.isArray(nttApiData.timeline_pasien_rs) && nttApiData.timeline_pasien_rs.length > 0
+      ? nttApiData.timeline_pasien_rs
+      : (Array.isArray(nttApiData.pasien_rs) ? nttApiData.pasien_rs : [])
+    const allPkm = Array.isArray(nttApiData.timeline_pasien_puskesmas) && nttApiData.timeline_pasien_puskesmas.length > 0
+      ? nttApiData.timeline_pasien_puskesmas
+      : (Array.isArray(nttApiData.pasien_puskesmas) ? nttApiData.pasien_puskesmas : [])
+
+    const activeRs = activeModalDate ? allRs.filter((r: any) => r.tanggal === activeModalDate) : allRs
+    const activePkm = activeModalDate ? allPkm.filter((p: any) => p.tanggal === activeModalDate) : allPkm
+
+    const rsRowsToUse = activeRs.length > 0 ? activeRs : allRs
+    const pkmRowsToUse = activePkm.length > 0 ? activePkm : allPkm
+
+    if (rsRowsToUse.length > 0) {
+      rsRowsToUse.forEach((rs: any, idx: number) => {
         const rawName = rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
         const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${rawName.toLowerCase().trim()}`
         if (seenKeys.has(dedupeKey)) return
@@ -733,11 +776,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           lng: fLng,
           status: rs.status || 'Beroperasi Siaga Bencana',
           kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
-          triase_merah: Number(rs.triase_merah || 0),
-          triase_kuning: Number(rs.triase_kuning || 0),
-          triase_hijau: Number(rs.triase_hijau || 0),
-          triase_hitam: Number(rs.triase_hitam || 0),
-          total_pasien: Number(rs.total || 0),
+          triase_merah: safeParseInt(rs.triase_merah),
+          triase_kuning: safeParseInt(rs.triase_kuning),
+          triase_hijau: safeParseInt(rs.triase_hijau),
+          triase_hitam: safeParseInt(rs.triase_hitam),
+          total_pasien: safeParseInt(rs.total) || (safeParseInt(rs.triase_merah) + safeParseInt(rs.triase_kuning) + safeParseInt(rs.triase_hijau) + safeParseInt(rs.triase_hitam)),
           kapasitas_tersedia: rs.kapasitas_tersedia || '-',
           stok_darah: rs.stok_darah || '-',
           listrik: rs.listrik || 'PLN / Genset Siaga',
@@ -750,8 +793,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       })
     }
 
-    if (Array.isArray(nttApiData.pasien_puskesmas) && nttApiData.pasien_puskesmas.length > 0) {
-      nttApiData.pasien_puskesmas.forEach((pkm: any, idx: number) => {
+    if (pkmRowsToUse.length > 0) {
+      pkmRowsToUse.forEach((pkm: any, idx: number) => {
         const rawName = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga')
         const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${rawName.toLowerCase().trim()}`
         if (seenKeys.has(dedupeKey)) return
@@ -778,11 +821,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           lng: fLng,
           status: pkm.status || 'Beroperasi',
           kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
-          triase_merah: Number(pkm.triase_merah || 0),
-          triase_kuning: Number(pkm.triase_kuning || 0),
-          triase_hijau: Number(pkm.triase_hijau || 0),
-          triase_hitam: Number(pkm.triase_hitam || 0),
-          total_pasien: Number(pkm.total || 0),
+          triase_merah: safeParseInt(pkm.triase_merah),
+          triase_kuning: safeParseInt(pkm.triase_kuning),
+          triase_hijau: safeParseInt(pkm.triase_hijau),
+          triase_hitam: safeParseInt(pkm.triase_hitam),
+          total_pasien: safeParseInt(pkm.total) || (safeParseInt(pkm.triase_merah) + safeParseInt(pkm.triase_kuning) + safeParseInt(pkm.triase_hijau) + safeParseInt(pkm.triase_hitam)),
           kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
           stok_darah: '-',
           listrik: pkm.listrik || 'PLN',
@@ -796,7 +839,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
 
     return combinedFaskes
-  }, [detail, nttApiData.master_faskes, nttApiData.pasien_rs, nttApiData.pasien_puskesmas])
+  }, [detail, nttApiData.master_faskes, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, activeModalDate])
 
   const effectiveFaskesList = useMemo(() => {
     if (isNttEvent && faskesMatrixData.length > 0) {
@@ -3525,12 +3568,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const kabupatenMatrixData = useMemo(() => {
     // 1. Prioritas NTT: Data riil dari API collector (/api/ntt-data)
-    const nttSitu = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
-      ? nttApiData.situasi_kesehatan
-      : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
+    const nttSitu = Array.isArray(nttApiData?.timeline_situasi_kesehatan) && nttApiData.timeline_situasi_kesehatan.length > 0
+      ? nttApiData.timeline_situasi_kesehatan
+      : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
 
     if (isNttEvent && nttSitu.length > 0) {
-      const targetDate = nttApiData.tanggal || nttSitu[nttSitu.length - 1]?.tanggal || ''
+      const targetDate = activeModalDate || nttApiData.tanggal || nttSitu[nttSitu.length - 1]?.tanggal || ''
       const activeRows = targetDate ? nttSitu.filter((r: any) => r.tanggal === targetDate) : nttSitu
       const rowsToUse = activeRows.length > 0 ? activeRows : nttSitu
 
@@ -3581,7 +3624,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
 
     return []
-  }, [detail, isNttEvent, nttApiData.situasi_kesehatan, nttApiData.timeline_situasi_kesehatan, nttApiData.tanggal])
+  }, [detail, isNttEvent, nttApiData.situasi_kesehatan, nttApiData.timeline_situasi_kesehatan, activeModalDate, nttApiData.tanggal])
+
+  const modalTotals = useMemo(() => {
+    let sm = 0, slb = 0, slr = 0, sp = 0, stp = 0, sterdampak = 0
+    kabupatenMatrixData.forEach((row: any) => {
+      sm += safeParseInt(row.meninggal)
+      slb += safeParseInt(row.luka_berat)
+      slr += safeParseInt(row.luka_ringan)
+      sp += safeParseInt(row.pengungsi)
+      stp += safeParseInt(row.titik_posko)
+      sterdampak += safeParseInt(row.populasi_terdampak)
+    })
+    return {
+      meninggal: sm,
+      luka_berat: slb,
+      luka_ringan: slr,
+      total_luka: slb + slr,
+      pengungsi: sp,
+      titik_posko: stp,
+      populasi_terdampak: sterdampak,
+      total_korban: sm + slb + slr,
+    }
+  }, [kabupatenMatrixData])
 
 
 
@@ -7362,34 +7427,34 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <>
                   <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200">
                     <div className="text-[10px] font-black uppercase text-teal-800">Populasi Terdampak</div>
-                    <div className="text-xl sm:text-2xl font-black text-teal-950 mt-0.5">{(totalPendudukTerancam || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-teal-700">Jiwa</span></div>
-                    <div className="text-[10px] font-bold text-teal-700 mt-0.5">Total 7 Kabupaten</div>
+                    <div className="text-xl sm:text-2xl font-black text-teal-950 mt-0.5">{(modalTotals.populasi_terdampak || totalPendudukTerancam || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-teal-700">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-teal-700 mt-0.5">Laporan: {activeModalDate}</div>
                   </div>
                   <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200">
                     <div className="text-[10px] font-black uppercase text-blue-800">Total Pengungsi</div>
-                    <div className="text-xl sm:text-2xl font-black text-blue-950 mt-0.5">{(breakdown.pengungsi || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-blue-700">Jiwa</span></div>
-                    <div className="text-[10px] font-bold text-blue-700 mt-0.5">Titik Posko Terdata</div>
+                    <div className="text-xl sm:text-2xl font-black text-blue-950 mt-0.5">{(modalTotals.pengungsi || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-blue-700">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-blue-700 mt-0.5">{modalTotals.titik_posko || 0} Titik Posko</div>
                   </div>
                   <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
                     <div className="text-[10px] font-black uppercase text-rose-700">Meninggal</div>
-                    <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{breakdown.meninggal || 0} <span className="text-xs font-bold text-rose-600">Jiwa</span></div>
+                    <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{modalTotals.meninggal || 0} <span className="text-xs font-bold text-rose-600">Jiwa</span></div>
                     <div className="text-[10px] font-bold text-rose-600 mt-0.5">Laporan Lapangan</div>
                   </div>
                   <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
                     <div className="text-[10px] font-black uppercase text-amber-700">Luka Berat</div>
-                    <div className="text-xl sm:text-2xl font-black text-amber-700 mt-0.5">{breakdown.luka_berat || 0} <span className="text-xs font-bold text-amber-600">Jiwa</span></div>
+                    <div className="text-xl sm:text-2xl font-black text-amber-700 mt-0.5">{modalTotals.luka_berat || 0} <span className="text-xs font-bold text-amber-600">Jiwa</span></div>
                     <div className="text-[10px] font-bold text-amber-600 mt-0.5">Rujukan RSUD Siaga</div>
                   </div>
                   <div className="bg-orange-50/70 p-3 rounded-2xl border border-orange-200">
                     <div className="text-[10px] font-black uppercase text-orange-700">Luka Ringan</div>
-                    <div className="text-xl sm:text-2xl font-black text-orange-700 mt-0.5">{breakdown.luka_ringan || 0} <span className="text-xs font-bold text-orange-600">Jiwa</span></div>
+                    <div className="text-xl sm:text-2xl font-black text-orange-700 mt-0.5">{modalTotals.luka_ringan || 0} <span className="text-xs font-bold text-orange-600">Jiwa</span></div>
                     <div className="text-[10px] font-bold text-orange-600 mt-0.5">EMT &amp; Posko</div>
                   </div>
                 </>
               ) : kabupatenMatrixTab === 'faskes' ? (
                 <>
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 col-span-2 sm:col-span-5">
-                    <div className="text-[10px] font-black uppercase text-slate-500">Total Faskes Terpantau</div>
+                    <div className="text-[10px] font-black uppercase text-slate-500">Total Faskes Terpantau ({activeModalDate})</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{faskesMatrixData.length || totalFaskes} <span className="text-xs font-bold text-slate-500">Unit</span></div>
                     <div className="text-[11px] font-bold text-slate-600 mt-0.5">RS, Puskesmas, Klinik, Pustu se-Provinsi NTT</div>
                   </div>
@@ -7444,9 +7509,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             </div>
 
             {/* Search & Context Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-3 py-1.5 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
                   ? 'bg-rose-50 text-rose-700 border-rose-200'
                   : kabupatenMatrixTab === 'faskes'
                     ? 'bg-teal-50 text-teal-800 border-teal-200'
@@ -7473,22 +7538,50 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </span>
               </div>
 
-              <div className="w-full sm:w-80">
-                <input
-                  type="text"
-                  placeholder={
-                    kabupatenMatrixTab === 'korban'
-                      ? "Cari nama kabupaten / kota..."
-                      : kabupatenMatrixTab === 'faskes'
-                        ? "Cari faskes, kabupaten, atau dokter PJ..."
-                        : kabupatenMatrixTab === 'penyakit'
-                          ? "Cari jenis penyakit, posko, atau tindakan medis..."
-                          : "Cari kabupaten..."
-                  }
-                  value={kabupatenMatrixSearch}
-                  onChange={(e) => setKabupatenMatrixSearch(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium"
-                />
+              {/* Filter Tanggal & Search Input */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {isNttEvent && modalAvailableDates.length > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+                    <Clock className="w-3.5 h-3.5 text-[#047d78]" />
+                    <span className="text-slate-500">Tanggal:</span>
+                    <select
+                      value={activeModalDate}
+                      onChange={(e) => setKabupatenMatrixDate(e.target.value)}
+                      className="bg-transparent font-black text-slate-900 border-none outline-none cursor-pointer pr-1"
+                    >
+                      {modalAvailableDates.map((dt) => {
+                        const dObj = new Date(dt)
+                        const label = !isNaN(dObj.getTime())
+                          ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : dt
+                        const isLatest = dt === modalAvailableDates[modalAvailableDates.length - 1]
+                        return (
+                          <option key={dt} value={dt}>
+                            {label} {isLatest ? '★ (Terbaru)' : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  </div>
+                )}
+
+                <div className="w-full sm:w-72">
+                  <input
+                    type="text"
+                    placeholder={
+                      kabupatenMatrixTab === 'korban'
+                        ? "Cari nama kabupaten / kota..."
+                        : kabupatenMatrixTab === 'faskes'
+                          ? "Cari faskes, kabupaten, atau dokter PJ..."
+                          : kabupatenMatrixTab === 'penyakit'
+                            ? "Cari jenis penyakit, posko, atau tindakan medis..."
+                            : "Cari kabupaten..."
+                    }
+                    value={kabupatenMatrixSearch}
+                    onChange={(e) => setKabupatenMatrixSearch(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium"
+                  />
+                </div>
               </div>
             </div>
 
@@ -7515,7 +7608,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     {kabupatenMatrixData.length === 0 ? (
                       <tr>
                         <td colSpan={isNttEvent ? 9 : 11} className="py-8 text-center text-slate-400 font-semibold text-xs">
-                          Data per kabupaten tidak tersedia atau belum dilaporkan.
+                          Data per kabupaten tidak tersedia atau belum dilaporkan untuk tanggal ini.
                         </td>
                       </tr>
                     ) : (
@@ -7553,15 +7646,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </tbody>
                   <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900">
                     <tr>
-                      <td className="py-3.5 px-4 text-center" colSpan={2}>TOTAL WILAYAH</td>
-                      <td className="py-3.5 px-4 text-center text-teal-950 font-black">{(totalPendudukTerancam || kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.populasi_terdampak) || 0), 0)).toLocaleString('id-ID')}</td>
-                      <td className="py-3.5 px-4 text-center text-rose-700">{breakdown.meninggal}</td>
-                      <td className="py-3.5 px-4 text-center text-amber-700">{breakdown.luka_berat || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_berat) || 0), 0))}</td>
-                      <td className="py-3.5 px-4 text-center text-amber-600">{breakdown.luka_ringan || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_ringan) || 0), 0))}</td>
-                      <td className="py-3.5 px-4 text-center text-amber-800">{breakdown.luka || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.total_luka) || 0), 0))}</td>
+                      <td className="py-3.5 px-4 text-center" colSpan={2}>TOTAL ({activeModalDate})</td>
+                      <td className="py-3.5 px-4 text-center text-teal-950 font-black">{(modalTotals.populasi_terdampak || totalPendudukTerancam).toLocaleString('id-ID')}</td>
+                      <td className="py-3.5 px-4 text-center text-rose-700">{modalTotals.meninggal}</td>
+                      <td className="py-3.5 px-4 text-center text-amber-700">{modalTotals.luka_berat}</td>
+                      <td className="py-3.5 px-4 text-center text-amber-600">{modalTotals.luka_ringan}</td>
+                      <td className="py-3.5 px-4 text-center text-amber-800">{modalTotals.total_luka}</td>
                       {!isNttEvent && <td className="py-3.5 px-4 text-center text-slate-600">{breakdown.hilang}</td>}
-                      <td className="py-3.5 px-4 text-center text-blue-900">{(breakdown.pengungsi || kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.pengungsi) || 0), 0)).toLocaleString('id-ID')}</td>
-                      <td className="py-3.5 px-4 text-center text-blue-700">{kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.titik_posko) || 0), 0) || '-'}</td>
+                      <td className="py-3.5 px-4 text-center text-blue-900">{modalTotals.pengungsi.toLocaleString('id-ID')}</td>
+                      <td className="py-3.5 px-4 text-center text-blue-700">{modalTotals.titik_posko || '-'}</td>
                       {!isNttEvent && (
                         <td className="py-3.5 px-4 text-center">
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
