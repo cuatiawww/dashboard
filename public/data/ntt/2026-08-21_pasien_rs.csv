@@ -1,8 +1,8 @@
-﻿tanggal,kabupaten,nama_rs,triase_merah,triase_kuning,triase_hijau,triase_hitam,total
-2026-08-21,Kab. Sikka,RSUD dr. TC Hillers Maumere,2,3,0,0,5
-2026-08-21,Kab. Manggarai Timur,RSUD Borong,5,33,11,0,49
-2026-08-21,Kab. Ngada,RSUD Bajawa,0,2,0,0,2
-2026-08-21,Kab. Nagekeo,RSUD Aeramo,0,3,0,0,3
-2026-08-21,Kab. Ende,RSUD Ende,1,9,0,0,10
-2026-08-21,Kab. Manggarai Barat,RSUD Komodo,0,6,0,0,6
-2026-08-21,Kab. Manggarai,RSUD Ruteng,1,2,0,0,3
+﻿tanggal,kabupaten,nama_rs,merah,kuning,hijau,hitam,total
+2026-08-21,Sikka,RSUD dr. TC Hillers Maumere,2,0,3,0,5
+2026-08-21,Manggarai Timur,RSUD Borong,12,22,12,1,47
+2026-08-21,Manggarai,RSUD Ruteng,0,2,1,0,3
+2026-08-21,Ngada,RSUD Bajawa,0,2,0,0,2
+2026-08-21,Nagekeo,RSUD Aeramo,3,0,0,0,3
+2026-08-21,Ende,RSUD Ende,1,9,0,0,10
+2026-08-21,Manggarai Barat,RSUD Komodo,0,6,0,0,6
