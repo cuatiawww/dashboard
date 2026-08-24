@@ -37,15 +37,15 @@ const BASE_NTT_GEMPA_EVENT = {
   tsunami: 'Berpotensi Tsunami (Status Siaga & Waspada)',
   skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
 
-  // Data Korban Ringkasan (Sinkron dengan collector)
-  meninggal: 78,
-  luka_berat: 331,
-  luka_ringan: 639,
-  luka: 970,
+  // Data Korban Ringkasan (Sinkron secara dinamis dengan collector)
+  meninggal: 0,
+  luka_berat: 0,
+  luka_ringan: 0,
+  luka: 0,
   hilang: 0,
-  pengungsi: 95871,
-  titik_pengungsian: 400,
-  penduduk_terdampak: 1917732,
+  pengungsi: 0,
+  titik_pengungsian: 0,
+  penduduk_terdampak: 0,
 
   detailData: {
     id: 'EVT-NTT-2026-0819-01',
@@ -58,8 +58,8 @@ const BASE_NTT_GEMPA_EVENT = {
     waktu_kejadian_bmkg: '15 Agu 2026, 09:18:22 WITA (M 7.7)',
     tgl_kejadian_riil: '2026-08-15 09:18:22',
     tgl_kejadian: '2026-08-15 09:18:22',
-    tgl_laporan: '22 Agustus 2026, 01:47 WIB',
-    updated_at: '2026-08-22 01:47:00',
+    tgl_laporan: '',
+    updated_at: '',
     latitude: -8.3421,
     longitude: 122.9814,
     deskripsi: NTT_KRONOLOGIS_TEXT,
@@ -75,20 +75,20 @@ const BASE_NTT_GEMPA_EVENT = {
     skala_mmi: 'VII - VIII MMI (Mbay-Nagekeo, Flores Timur, Alor, Sikka, Manggarai)',
     status_tanggap_darurat: 'Tanggap Darurat (Level Provinsi & Nasional)',
 
-    korban_meninggal: 78,
-    korban_luka_berat: 331,
-    korban_luka_ringan: 639,
-    korban_luka: 970,
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_luka: 0,
     korban_hilang: 0,
-    pengungsi: 43686,
-    titik_pengungsian: 400,
-    populasi_terdampak: 1917732,
-    meninggal: 78,
-    luka_berat: 331,
-    luka_ringan: 639,
-    luka: 970,
+    pengungsi: 0,
+    titik_pengungsian: 0,
+    populasi_terdampak: 0,
+    meninggal: 0,
+    luka_berat: 0,
+    luka_ringan: 0,
+    luka: 0,
     hilang: 0,
-    penduduk_terdampak: 1917732,
+    penduduk_terdampak: 0,
 
     breakdown_kabupaten: [],
     faskes_terdampak: [],
@@ -112,7 +112,7 @@ export default function ProvNttBencanaPage() {
   const router = useRouter()
   const { setHeader, resetHeader } = useHeaderStore()
   const [eventData, setEventData] = useState<any>(BASE_NTT_GEMPA_EVENT)
-  const [selectedDate, setSelectedDate] = useState<string>('2026-08-21')
+  const [selectedDate, setSelectedDate] = useState<string>('')
   const [isLoadingDate, setIsLoadingDate] = useState<boolean>(false)
 
   useEffect(() => {

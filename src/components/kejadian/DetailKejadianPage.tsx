@@ -1170,12 +1170,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       let db_hilang = safeParseInt(detail?.hilang ?? detail?.korban_hilang ?? eventData?.hilang ?? eventData?.korban_hilang) || (lastPerkembangan ? safeParseInt(lastPerkembangan.hilang || lastPerkembangan.hilang_total) : 0)
       let db_pengungsi = safeParseInt(detail?.pengungsi ?? eventData?.pengungsi) || (lastPerkembangan ? safeParseInt(lastPerkembangan.pengungsi || lastPerkembangan.pengungsi_total) : 0)
 
-      if (isNttEvent && db_meninggal === 0 && db_luka === 0) {
-        db_meninggal = 78
-        db_luka_berat = 331
-        db_luka_ringan = 639
-        db_luka = 970
-        db_pengungsi = 43686
+      if (isNttEvent) {
+        const situList = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
+          ? nttApiData.situasi_kesehatan
+          : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
+
+        if (situList.length > 0) {
+          const targetDate = nttApiData.tanggal || situList[situList.length - 1]?.tanggal || ''
+          const activeRows = targetDate ? situList.filter((r: any) => r.tanggal === targetDate) : situList
+          const rowsToUse = activeRows.length > 0 ? activeRows : situList
+
+          let sMen = 0, sLb = 0, sLr = 0, sPeng = 0
+          rowsToUse.forEach((r: any) => {
+            sMen += safeParseInt(r.meninggal)
+            sLb += safeParseInt(r.luka_berat)
+            sLr += safeParseInt(r.luka_ringan)
+            sPeng += safeParseInt(r.pengungsi)
+          })
+
+          if (sMen > 0 || sLb > 0 || sLr > 0 || sPeng > 0) {
+            db_meninggal = sMen
+            db_luka_berat = sLb
+            db_luka_ringan = sLr
+            db_luka = sLb + sLr
+            db_pengungsi = sPeng
+          }
+        } else if (db_meninggal === 0 && db_luka === 0) {
+          db_meninggal = 91
+          db_luka_berat = 331
+          db_luka_ringan = 639
+          db_luka = 970
+          db_pengungsi = 161874
+        }
       }
 
       return {
@@ -1188,8 +1214,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
-    return getKorbanBreakdown(selectedEvent?.total_korban || (isNttEvent ? 1047 : 0), selectedEvent?.jenis_bencana || '')
-  }, [hasDetail, detail, eventData, selectedEvent, isNttEvent])
+    return getKorbanBreakdown(selectedEvent?.total_korban || (isNttEvent ? 1061 : 0), selectedEvent?.jenis_bencana || '')
+  }, [hasDetail, detail, eventData, selectedEvent, isNttEvent, nttApiData?.situasi_kesehatan, nttApiData?.timeline_situasi_kesehatan, nttApiData?.tanggal])
 
   const totalKorbanReal = useMemo(() => {
     return (breakdown.meninggal + breakdown.hilang + breakdown.luka)
@@ -2191,14 +2217,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.pos_pengungsi]);
 
   const totalPendudukTerancam = useMemo(() => {
-    if (isNttEvent) return 1917732
     const situList = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
       ? nttApiData.situasi_kesehatan
-      : (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0
-        ? detail.breakdown_kabupaten
-        : (Array.isArray(eventData.detailData?.breakdown_kabupaten) ? eventData.detailData.breakdown_kabupaten : []))
-    const situSum = situList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
-    if (situSum > 0) return situSum
+      : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
+
+    if (situList.length > 0) {
+      const targetDate = nttApiData.tanggal || situList[situList.length - 1]?.tanggal || ''
+      const activeRows = targetDate ? situList.filter((r: any) => r.tanggal === targetDate) : situList
+      const rowsToUse = activeRows.length > 0 ? activeRows : situList
+      const situSum = rowsToUse.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
+      if (situSum > 0) return situSum
+    }
+
+    const locList = Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0
+      ? detail.breakdown_kabupaten
+      : (Array.isArray(eventData.detailData?.breakdown_kabupaten) ? eventData.detailData.breakdown_kabupaten : [])
+    const locSum = locList.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
+    if (locSum > 0) return locSum
 
     const lokasiList = Array.isArray(detail?.lokasi) ? detail.lokasi : (Array.isArray(eventData.detailData?.lokasi) ? eventData.detailData.lokasi : [])
     const sum = lokasiList.reduce((acc: number, loc: any) => acc + safeParseInt(loc.jml_terancam), 0)
@@ -2206,20 +2241,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak || eventData.detailData?.populasi_terdampak || eventData.detailData?.penduduk_terdampak
     return safeParseInt(val) || 0
-  }, [detail?.lokasi, detail?.breakdown_kabupaten, nttApiData?.situasi_kesehatan, eventData, isNttEvent])
+  }, [detail?.lokasi, detail?.breakdown_kabupaten, nttApiData?.situasi_kesehatan, nttApiData?.timeline_situasi_kesehatan, nttApiData?.tanggal, eventData])
 
   const pendudukTerdampakDisplay = useMemo(() => {
-    if (isNttEvent) return (1917732).toLocaleString('id-ID')
-    const sumTerancam = totalPendudukTerancam
-    if (sumTerancam > 0) {
-      return sumTerancam.toLocaleString('id-ID')
+    if (totalPendudukTerancam > 0) {
+      return totalPendudukTerancam.toLocaleString('id-ID')
     }
     const val = eventData.penduduk_terdampak || eventData.populasi_terdampak || detail?.populasi_terdampak || detail?.penduduk_terdampak || eventData.detailData?.populasi_terdampak || eventData.detailData?.penduduk_terdampak
     if (val && safeParseInt(val) > 0) {
       return safeParseInt(val).toLocaleString('id-ID')
     }
-    return '1.917.732'
-  }, [eventData, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam, isNttEvent])
+    return '-'
+  }, [eventData, detail?.populasi_terdampak, detail?.penduduk_terdampak, totalPendudukTerancam])
 
   // Vulnerable group counts (Murni NA jika tidak ada kolom eksplisit di API / database)
   const balitaDisplay = useMemo(() => {
@@ -2400,7 +2433,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               : dateKey
 
             const totalK = totMen + totLuka
-            const popVal = totPop > 0 ? totPop : 1917732
+            const popVal = totPop > 0 ? totPop : finalTerdampak
 
             return {
               date: formattedLabel,
@@ -3457,14 +3490,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [selectedEvent, detail, isNttEvent])
 
   const kabupatenMatrixData = useMemo(() => {
-    // 1. Data breakdown kabupaten dari detail database kejadian
-    if (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0) {
-      return detail.breakdown_kabupaten
-    }
+    // 1. Prioritas NTT: Data riil dari API collector (/api/ntt-data)
+    const nttSitu = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
+      ? nttApiData.situasi_kesehatan
+      : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
 
-    // 2. Data riil dari API collector (/api/ntt-data)
-    if (Array.isArray(nttApiData.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0) {
-      return nttApiData.situasi_kesehatan.map((item: any) => {
+    if (isNttEvent && nttSitu.length > 0) {
+      const targetDate = nttApiData.tanggal || nttSitu[nttSitu.length - 1]?.tanggal || ''
+      const activeRows = targetDate ? nttSitu.filter((r: any) => r.tanggal === targetDate) : nttSitu
+      const rowsToUse = activeRows.length > 0 ? activeRows : nttSitu
+
+      return rowsToUse.map((item: any) => {
         const meninggal = Number(item.meninggal || item.korban_meninggal || 0)
         const lukaBerat = Number(item.luka_berat || item.korban_luka_berat || 0)
         const lukaRingan = Number(item.luka_ringan || item.korban_luka_ringan || 0)
@@ -3505,8 +3541,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       })
     }
 
+    // 2. Data breakdown kabupaten dari detail database kejadian
+    if (Array.isArray(detail?.breakdown_kabupaten) && detail.breakdown_kabupaten.length > 0) {
+      return detail.breakdown_kabupaten
+    }
+
     return []
-  }, [detail, nttApiData.situasi_kesehatan])
+  }, [detail, isNttEvent, nttApiData.situasi_kesehatan, nttApiData.timeline_situasi_kesehatan, nttApiData.tanggal])
 
 
 
@@ -4209,7 +4250,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             {(trendMetricMode === 'dual' || trendMetricMode === 'korban') && (
                               <Line yAxisId="left" type="monotone" dataKey="Luka-luka" stroke="#ea580c" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={true} animationDuration={1000} />
                             )}
-                            <Brush dataKey="date" height={26} stroke="#047d78" fill="#e6f4f3" gap={1} />
+                            {victimTrendData.length > 2 && (
+                              <Brush
+                                key={victimTrendData.map(d => d.date).join('-')}
+                                dataKey="date"
+                                height={26}
+                                stroke="#047d78"
+                                fill="#e6f4f3"
+                                gap={1}
+                                startIndex={0}
+                                endIndex={Math.max(0, victimTrendData.length - 1)}
+                              />
+                            )}
                           </LineChart>
                         </ResponsiveContainer>
                       )}
