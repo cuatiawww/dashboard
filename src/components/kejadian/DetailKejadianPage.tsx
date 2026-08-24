@@ -7167,33 +7167,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             </div>
 
             {/* Top Stat Highlights Bar Sesuai Card yang Diklik */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 shrink-0">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 shrink-0">
               {kabupatenMatrixTab === 'korban' ? (
                 <>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                    <div className="text-[10px] font-black uppercase text-slate-500">Total Korban Jiwa</div>
-                    <div className="text-2xl font-black text-slate-900 mt-1">{totalKorbanReal.toLocaleString('id-ID')} <span className="text-xs font-bold text-slate-500">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">{isNttEvent ? 'Meninggal + Luka' : 'Meninggal + Luka + Hilang'}</div>
+                  <div className="bg-teal-50/70 p-3 rounded-2xl border border-teal-200">
+                    <div className="text-[10px] font-black uppercase text-teal-800">Populasi Terdampak</div>
+                    <div className="text-xl sm:text-2xl font-black text-teal-950 mt-0.5">{(totalPendudukTerancam || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-teal-700">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-teal-700 mt-0.5">Total 7 Kabupaten</div>
                   </div>
-                  <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200">
-                    <div className="text-[10px] font-black uppercase text-rose-700">Korban Meninggal</div>
-                    <div className="text-2xl font-black text-rose-700 mt-1">{breakdown.meninggal} <span className="text-xs font-bold text-rose-600">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-rose-600 mt-0.5">{kabupatenMatrixData.length > 0 ? `Terdata di ${kabupatenMatrixData.length} Kabupaten` : 'Berdasarkan Laporan Riil'}</div>
+                  <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200">
+                    <div className="text-[10px] font-black uppercase text-blue-800">Total Pengungsi</div>
+                    <div className="text-xl sm:text-2xl font-black text-blue-950 mt-0.5">{(breakdown.pengungsi || 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-blue-700">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-blue-700 mt-0.5">Titik Posko Terdata</div>
                   </div>
-                  <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200">
+                  <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
+                    <div className="text-[10px] font-black uppercase text-rose-700">Meninggal</div>
+                    <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{breakdown.meninggal || 0} <span className="text-xs font-bold text-rose-600">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-rose-600 mt-0.5">Laporan Lapangan</div>
+                  </div>
+                  <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
                     <div className="text-[10px] font-black uppercase text-amber-700">Luka Berat</div>
-                    <div className="text-2xl font-black text-amber-700 mt-1">{breakdown.luka_berat || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_berat) || 0), 0))} <span className="text-xs font-bold text-amber-600">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-amber-600 mt-0.5">Dirujuk ke RSUD / Faskes Siaga</div>
+                    <div className="text-xl sm:text-2xl font-black text-amber-700 mt-0.5">{breakdown.luka_berat || 0} <span className="text-xs font-bold text-amber-600">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-amber-600 mt-0.5">Rujukan RSUD Siaga</div>
                   </div>
-                  <div className="bg-blue-50/60 p-3.5 rounded-2xl border border-blue-200">
-                    <div className="text-[10px] font-black uppercase text-blue-700">Luka Ringan</div>
-                    <div className="text-2xl font-black text-blue-700 mt-1">{breakdown.luka_ringan || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_ringan) || 0), 0))} <span className="text-xs font-bold text-blue-600">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-blue-600 mt-0.5">Ditangani Posko &amp; EMT Lapangan</div>
+                  <div className="bg-orange-50/70 p-3 rounded-2xl border border-orange-200">
+                    <div className="text-[10px] font-black uppercase text-orange-700">Luka Ringan</div>
+                    <div className="text-xl sm:text-2xl font-black text-orange-700 mt-0.5">{breakdown.luka_ringan || 0} <span className="text-xs font-bold text-orange-600">Jiwa</span></div>
+                    <div className="text-[10px] font-bold text-orange-600 mt-0.5">EMT &amp; Posko</div>
                   </div>
                 </>
               ) : kabupatenMatrixTab === 'faskes' ? (
                 <>
-                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 col-span-2 sm:col-span-4">
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 col-span-2 sm:col-span-5">
                     <div className="text-[10px] font-black uppercase text-slate-500">Total Faskes Terpantau</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{faskesMatrixData.length || totalFaskes} <span className="text-xs font-bold text-slate-500">Unit</span></div>
                     <div className="text-[11px] font-bold text-slate-600 mt-0.5">RS, Puskesmas, Klinik, Pustu se-Provinsi NTT</div>
@@ -7227,7 +7232,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                     <div className="text-[10px] font-black uppercase text-slate-500">Penduduk Terancam</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">{pendudukTerdampakDisplay} <span className="text-xs font-bold text-slate-500">Jiwa</span></div>
-                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">6 Kabupaten Terpapar Gempa</div>
+                    <div className="text-[11px] font-bold text-slate-600 mt-0.5">7 Kabupaten Terpapar Gempa</div>
                   </div>
                   <div className="bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200">
                     <div className="text-[10px] font-black uppercase text-amber-700">Kelompok Balita (&lt;5 Thn)</div>
@@ -7260,7 +7265,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       : 'bg-blue-50 text-blue-800 border-blue-200'
                   }`}>
                   {kabupatenMatrixTab === 'korban'
-                    ? 'Data Rincian Korban Jiwa'
+                    ? 'Data Situasi Kesehatan & Populasi Terdampak'
                     : kabupatenMatrixTab === 'faskes'
                       ? 'Data Kesiapan Fasilitas Kesehatan'
                       : kabupatenMatrixTab === 'penyakit'
@@ -7305,6 +7310,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <tr className="text-slate-700 font-black uppercase text-[11px]">
                       <th className="py-3.5 px-4 text-center">No</th>
                       <th className="py-3.5 px-4">Kabupaten / Kota</th>
+                      <th className="py-3.5 px-4 text-center text-teal-800">Populasi Terdampak</th>
                       <th className="py-3.5 px-4 text-center text-rose-700">Meninggal</th>
                       <th className="py-3.5 px-4 text-center text-amber-700">Luka Berat</th>
                       <th className="py-3.5 px-4 text-center text-amber-600">Luka Ringan</th>
@@ -7318,7 +7324,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <tbody className="divide-y divide-slate-100">
                     {kabupatenMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={isNttEvent ? 8 : 10} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                        <td colSpan={isNttEvent ? 9 : 11} className="py-8 text-center text-slate-400 font-semibold text-xs">
                           Data per kabupaten tidak tersedia atau belum dilaporkan.
                         </td>
                       </tr>
@@ -7336,6 +7342,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               <div className="font-extrabold text-slate-900">{row.kabupaten}</div>
                               <div className="text-[10px] text-slate-400 font-semibold">{row.ibukota ? `Pusat: ${row.ibukota}` : ''}</div>
                             </td>
+                            <td className="py-3 px-4 text-center font-extrabold text-teal-900 bg-teal-50/30">{(row.populasi_terdampak || 0).toLocaleString('id-ID')}</td>
                             <td className="py-3 px-4 text-center font-black text-rose-600 bg-rose-50/40">{row.meninggal || 0}</td>
                             <td className="py-3 px-4 text-center font-bold text-amber-700">{row.luka_berat || 0}</td>
                             <td className="py-3 px-4 text-center font-bold text-slate-600">{row.luka_ringan || 0}</td>
@@ -7357,6 +7364,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900">
                     <tr>
                       <td className="py-3.5 px-4 text-center" colSpan={2}>TOTAL WILAYAH</td>
+                      <td className="py-3.5 px-4 text-center text-teal-950 font-black">{(totalPendudukTerancam || kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.populasi_terdampak) || 0), 0)).toLocaleString('id-ID')}</td>
                       <td className="py-3.5 px-4 text-center text-rose-700">{breakdown.meninggal}</td>
                       <td className="py-3.5 px-4 text-center text-amber-700">{breakdown.luka_berat || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_berat) || 0), 0))}</td>
                       <td className="py-3.5 px-4 text-center text-amber-600">{breakdown.luka_ringan || (kabupatenMatrixData.reduce((s: number, r: any) => s + (Number(r.luka_ringan) || 0), 0))}</td>
