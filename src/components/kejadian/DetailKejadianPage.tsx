@@ -356,6 +356,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [kabupatenMatrixTab, setKabupatenMatrixTab] = useState<'all' | 'korban' | 'faskes' | 'pengungsi' | 'penyakit'>('all')
   const [kabupatenMatrixSearch, setKabupatenMatrixSearch] = useState<string>('')
   const [kabupatenMatrixDate, setKabupatenMatrixDate] = useState<string>('')
+  const [modalFaskesTypeFilter, setModalFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu' | 'merawat'>('all')
 
   // Master Data Faskes Filtering & Pagination State
   const [masterFaskesTypeFilter, setMasterFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu'>('all')
@@ -4682,17 +4683,26 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <div className={`mt-2 pt-2.5 border-t border-slate-100 grid ${isNttEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-[11px] font-bold text-center`}>
                               {!isNttEvent && (
                                 <div className="text-slate-600">
-                                  <span className="block text-rose-600 font-black leading-none">{cat.terdampak}</span>
-                                  <span className="text-[9.5px] font-semibold text-slate-400">Rusak</span>
+                                  <div className="flex items-baseline justify-center gap-1">
+                                    <span className="block text-rose-600 font-black leading-none text-xs sm:text-sm">{cat.terdampak}</span>
+                                    <span className="text-[10px] font-bold text-rose-500">| {cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0}%</span>
+                                  </div>
+                                  <span className="text-[9.5px] font-semibold text-slate-400 block mt-0.5">Rusak</span>
                                 </div>
                               )}
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
-                                <span className="block text-blue-600 font-black leading-none">{cat.rawatPasien}</span>
-                                <span className="text-[9.5px] font-semibold text-blue-600">Sedang Merawat Korban</span>
+                                <div className="flex items-baseline justify-center gap-1">
+                                  <span className="block text-blue-600 font-black leading-none text-xs sm:text-sm">{cat.rawatPasien}</span>
+                                  <span className="text-[10px] font-bold text-blue-500">| {cat.totalMaster > 0 ? Math.round((cat.rawatPasien / cat.totalMaster) * 100) : 0}%</span>
+                                </div>
+                                <span className="text-[9.5px] font-semibold text-blue-600 block mt-0.5">Sedang Merawat</span>
                               </div>
                               <div className="text-emerald-700">
-                                <span className="block text-emerald-600 font-black leading-none">{cat.standby}</span>
-                                <span className="text-[9.5px] font-semibold text-emerald-600">Disiagakan</span>
+                                <div className="flex items-baseline justify-center gap-1">
+                                  <span className="block text-emerald-600 font-black leading-none text-xs sm:text-sm">{cat.standby}</span>
+                                  <span className="text-[10px] font-bold text-emerald-500">| {cat.totalMaster > 0 ? Math.round((cat.standby / cat.totalMaster) * 100) : 0}%</span>
+                                </div>
+                                <span className="text-[9.5px] font-semibold text-emerald-600 block mt-0.5">Disiagakan</span>
                               </div>
                             </div>
                           </div>
@@ -7547,80 +7557,170 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             </div>
 
             {/* Search & Context Controls */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 shrink-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`px-3 py-1.5 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
-                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                  : kabupatenMatrixTab === 'faskes'
-                    ? 'bg-teal-50 text-teal-800 border-teal-200'
-                    : kabupatenMatrixTab === 'penyakit'
-                      ? 'bg-amber-50 text-amber-800 border-amber-200'
-                      : 'bg-blue-50 text-blue-800 border-blue-200'
-                  }`}>
-                  {kabupatenMatrixTab === 'korban'
-                    ? 'Data Situasi Kesehatan & Populasi Terdampak'
+            <div className="flex flex-col gap-2.5 shrink-0">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`px-3 py-1.5 rounded-xl text-xs font-black border ${kabupatenMatrixTab === 'korban'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
                     : kabupatenMatrixTab === 'faskes'
-                      ? 'Data Kesiapan Fasilitas Kesehatan'
+                      ? 'bg-teal-50 text-teal-800 border-teal-200'
                       : kabupatenMatrixTab === 'penyakit'
-                        ? 'Data Surveilans Penyakit & SKDR'
-                        : 'Data Penduduk Terdampak'}
-                </span>
-                <span className="text-xs text-slate-500 font-semibold">
-                  {kabupatenMatrixTab === 'korban'
-                    ? `${kabupatenMatrixData.length} Kabupaten Terdampak`
-                    : kabupatenMatrixTab === 'faskes'
-                      ? `${faskesMatrixData.length} Faskes Terpantau`
-                      : kabupatenMatrixTab === 'penyakit'
-                        ? `${penyakitMatrixData.length} Jenis Diagnosis Penyakit`
-                        : `${kabupatenMatrixData.length} Wilayah`}
-                </span>
-              </div>
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-blue-50 text-blue-800 border-blue-200'
+                    }`}>
+                    {kabupatenMatrixTab === 'korban'
+                      ? 'Data Situasi Kesehatan & Populasi Terdampak'
+                      : kabupatenMatrixTab === 'faskes'
+                        ? 'Data Kesiapan Fasilitas Kesehatan'
+                        : kabupatenMatrixTab === 'penyakit'
+                          ? 'Data Surveilans Penyakit & SKDR'
+                          : 'Data Penduduk Terdampak'}
+                  </span>
+                  <span className="text-xs text-slate-500 font-semibold">
+                    {kabupatenMatrixTab === 'korban'
+                      ? `${kabupatenMatrixData.length} Kabupaten Terdampak`
+                      : kabupatenMatrixTab === 'faskes'
+                        ? `${faskesMatrixData.length} Faskes Terpantau`
+                        : kabupatenMatrixTab === 'penyakit'
+                          ? `${penyakitMatrixData.length} Jenis Diagnosis Penyakit`
+                          : `${kabupatenMatrixData.length} Wilayah`}
+                  </span>
+                </div>
 
-              {/* Filter Tanggal & Search Input */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {isNttEvent && modalAvailableDates.length > 0 && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
-                    <Clock className="w-3.5 h-3.5 text-[#047d78]" />
-                    <span className="text-slate-500">Tanggal:</span>
-                    <select
-                      value={activeModalDate}
-                      onChange={(e) => setKabupatenMatrixDate(e.target.value)}
-                      className="bg-transparent font-black text-slate-900 border-none outline-none cursor-pointer pr-1"
-                    >
-                      {modalAvailableDates.map((dt) => {
-                        const dObj = new Date(dt)
-                        const label = !isNaN(dObj.getTime())
-                          ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                          : dt
-                        const isLatest = dt === modalAvailableDates[modalAvailableDates.length - 1]
-                        return (
-                          <option key={dt} value={dt}>
-                            {label} {isLatest ? '★ (Terbaru)' : ''}
-                          </option>
-                        )
-                      })}
-                    </select>
+                {/* Filter Tanggal & Search Input */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {isNttEvent && modalAvailableDates.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+                      <Clock className="w-3.5 h-3.5 text-[#047d78]" />
+                      <span className="text-slate-500">Tanggal:</span>
+                      <select
+                        value={activeModalDate}
+                        onChange={(e) => setKabupatenMatrixDate(e.target.value)}
+                        className="bg-transparent font-black text-slate-900 border-none outline-none cursor-pointer pr-1"
+                      >
+                        {modalAvailableDates.map((dt) => {
+                          const dObj = new Date(dt)
+                          const label = !isNaN(dObj.getTime())
+                            ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : dt
+                          const isLatest = dt === modalAvailableDates[modalAvailableDates.length - 1]
+                          return (
+                            <option key={dt} value={dt}>
+                              {label} {isLatest ? '★ (Terbaru)' : ''}
+                            </option>
+                          )
+                        })}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="w-full sm:w-72">
+                    <input
+                      type="text"
+                      placeholder={
+                        kabupatenMatrixTab === 'korban'
+                          ? "Cari nama kabupaten / kota..."
+                          : kabupatenMatrixTab === 'faskes'
+                            ? "Cari faskes, kabupaten, atau dokter PJ..."
+                            : kabupatenMatrixTab === 'penyakit'
+                              ? "Cari jenis penyakit, posko, atau tindakan medis..."
+                              : "Cari kabupaten..."
+                      }
+                      value={kabupatenMatrixSearch}
+                      onChange={(e) => setKabupatenMatrixSearch(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium"
+                    />
                   </div>
-                )}
-
-                <div className="w-full sm:w-72">
-                  <input
-                    type="text"
-                    placeholder={
-                      kabupatenMatrixTab === 'korban'
-                        ? "Cari nama kabupaten / kota..."
-                        : kabupatenMatrixTab === 'faskes'
-                          ? "Cari faskes, kabupaten, atau dokter PJ..."
-                          : kabupatenMatrixTab === 'penyakit'
-                            ? "Cari jenis penyakit, posko, atau tindakan medis..."
-                            : "Cari kabupaten..."
-                    }
-                    value={kabupatenMatrixSearch}
-                    onChange={(e) => setKabupatenMatrixSearch(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs font-medium"
-                  />
                 </div>
               </div>
+
+              {/* Faskes Category Filter Pills (When Tab Faskes Active) */}
+              {kabupatenMatrixTab === 'faskes' && (
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  <span className="text-[11px] font-bold text-slate-500 shrink-0 mr-1">Filter Kategori:</span>
+                  {[
+                    {
+                      id: 'all',
+                      label: 'Semua Faskes',
+                      count: faskesMatrixData.length,
+                      icon: Building2,
+                    },
+                    {
+                      id: 'rs',
+                      label: 'Rumah Sakit',
+                      count: faskesMatrixData.filter((f: any) => {
+                        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                        return j.includes('rs') || j.includes('rumah sakit')
+                      }).length,
+                      icon: Building2,
+                    },
+                    {
+                      id: 'puskesmas',
+                      label: 'Puskesmas',
+                      count: faskesMatrixData.filter((f: any) => {
+                        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                        return (j.includes('puskesmas') || j.includes('pkm')) && !j.includes('pustu') && !j.includes('pembantu')
+                      }).length,
+                      icon: Stethoscope,
+                    },
+                    {
+                      id: 'pustu',
+                      label: 'Pustu',
+                      count: faskesMatrixData.filter((f: any) => {
+                        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                        return j.includes('pustu') || j.includes('pembantu')
+                      }).length,
+                      icon: Home,
+                    },
+                    {
+                      id: 'klinik',
+                      label: 'Klinik & Poskes',
+                      count: faskesMatrixData.filter((f: any) => {
+                        const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                        return j.includes('klinik')
+                      }).length,
+                      icon: PlusSquare,
+                    },
+                    {
+                      id: 'merawat',
+                      label: 'Sedang Merawat Pasien',
+                      count: faskesMatrixData.filter((f: any) => {
+                        const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
+                        return tot > 0
+                      }).length,
+                      icon: Activity,
+                      highlight: true,
+                    },
+                  ].map((btn) => {
+                    const IconC = btn.icon
+                    const isActive = modalFaskesTypeFilter === btn.id
+                    return (
+                      <button
+                        key={btn.id}
+                        type="button"
+                        onClick={() => setModalFaskesTypeFilter(btn.id as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 border ${
+                          isActive
+                            ? btn.highlight
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-sm scale-[1.02]'
+                              : 'bg-teal-700 text-white border-teal-700 shadow-sm scale-[1.02]'
+                            : btn.highlight
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <IconC className="h-3.5 w-3.5" />
+                        <span>{btn.label}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                          isActive ? 'bg-white/25 text-white' : btn.highlight ? 'bg-rose-200/70 text-rose-900' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {btn.count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Modal Body: High-density Matrix Table dengan Padding dan Margin Rapi */}
@@ -7723,14 +7823,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       </tr>
                     ) : (
                       faskesMatrixData
-                        .filter((f: any) =>
-                          !kabupatenMatrixSearch ||
-                          f.nama.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()) ||
-                          f.kabupaten.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()) ||
-                          (f.kecamatan && f.kecamatan.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())) ||
-                          (f.kode_sarana && f.kode_sarana.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())) ||
-                          (f.pj_medis && f.pj_medis.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()))
-                        )
+                        .filter((f: any) => {
+                          // 1. Filter Type / Category
+                          if (modalFaskesTypeFilter === 'rs') {
+                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                            if (!j.includes('rs') && !j.includes('rumah sakit')) return false
+                          } else if (modalFaskesTypeFilter === 'puskesmas') {
+                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                            if ((!j.includes('puskesmas') && !j.includes('pkm')) || j.includes('pustu') || j.includes('pembantu')) return false
+                          } else if (modalFaskesTypeFilter === 'pustu') {
+                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                            if (!j.includes('pustu') && !j.includes('pembantu')) return false
+                          } else if (modalFaskesTypeFilter === 'klinik') {
+                            const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
+                            if (!j.includes('klinik')) return false
+                          } else if (modalFaskesTypeFilter === 'merawat') {
+                            const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
+                            if (tot <= 0) return false
+                          }
+
+                          // 2. Search filter
+                          if (kabupatenMatrixSearch) {
+                            const q = kabupatenMatrixSearch.toLowerCase()
+                            const matchName = String(f.nama || '').toLowerCase().includes(q)
+                            const matchKab = String(f.kabupaten || '').toLowerCase().includes(q)
+                            const matchKec = String(f.kecamatan || '').toLowerCase().includes(q)
+                            const matchKode = String(f.kode_sarana || '').toLowerCase().includes(q) || String(f.kode_satusehat || '').toLowerCase().includes(q)
+                            const matchPj = String(f.pj_medis || '').toLowerCase().includes(q)
+                            if (!matchName && !matchKab && !matchKec && !matchKode && !matchPj) return false
+                          }
+
+                          return true
+                        })
                         .map((row: any, idx: number) => {
                           const totalPasien = Number(row.total_pasien || (Number(row.triase_merah || 0) + Number(row.triase_kuning || 0) + Number(row.triase_hijau || 0) + Number(row.triase_hitam || 0)) || 0)
                           const hasTriage = totalPasien > 0
