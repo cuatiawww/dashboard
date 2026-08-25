@@ -13,6 +13,7 @@ import {
   VolumeX,
   ArrowLeft,
   Radio,
+  BellRing,
 } from 'lucide-react'
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
@@ -20,6 +21,9 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 interface TvTopHudProps {
   onToggleLayers: () => void
   isLayersOpen: boolean
+  onToggleAlerts?: () => void
+  isAlertsOpen?: boolean
+  alertsCount?: number
   soundEnabled: boolean
   onToggleSound: () => void
   refreshCountdown: number
@@ -35,6 +39,9 @@ interface TvTopHudProps {
 export default function TvTopHud({
   onToggleLayers,
   isLayersOpen,
+  onToggleAlerts,
+  isAlertsOpen = false,
+  alertsCount = 0,
   soundEnabled,
   onToggleSound,
   refreshCountdown,
@@ -170,6 +177,38 @@ export default function TvTopHud({
 
       {/* ── Right Quick Controls Deck ── */}
       <div className="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-xl border border-[#bedbda] rounded-2xl p-1.5 shadow-[0_8px_24px_rgba(4,125,120,0.09)] text-slate-800">
+
+        {/* Tombol Notifikasi Peringatan Dini BMKG */}
+        <button
+          type="button"
+          onClick={onToggleAlerts}
+          className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold border transition-all shadow-xs cursor-pointer ${
+            isAlertsOpen
+              ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-600/20 ring-2 ring-rose-300'
+              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 hover:border-rose-300'
+          }`}
+          title="Buka / Tutup Notifikasi Peringatan Dini BMKG"
+        >
+          <div className="relative flex items-center justify-center">
+            <BellRing className={`h-3.5 w-3.5 ${isAlertsOpen ? 'text-white' : 'text-rose-600'}`} />
+            {alertsCount > 0 && !isAlertsOpen && (
+              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+              </span>
+            )}
+          </div>
+          <span className="hidden lg:inline">Peringatan Dini</span>
+          {alertsCount > 0 && (
+            <span
+              className={`flex items-center justify-center h-4 min-w-[18px] px-1 text-[9.5px] font-black rounded-full shadow-2xs ${
+                isAlertsOpen ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
+              }`}
+            >
+              {alertsCount}
+            </span>
+          )}
+        </button>
 
         {/* Pengaturan Peta Drawer Toggle */}
         <button

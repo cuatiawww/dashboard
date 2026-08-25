@@ -5,9 +5,10 @@ import dynamic from 'next/dynamic'
 import { Loader2 } from 'lucide-react'
 import TvTopHud from './TvTopHud'
 import TvKpiCards from './TvKpiCards'
-import TvLiveFeedDeck from './TvLiveFeedDeck'
+import TvDisasterFeedDeck from './TvDisasterFeedDeck'
 import TvAnalyticsDeck from './TvAnalyticsDeck'
 import TvLayerServicesDrawer, { TvLayerState } from './TvLayerServicesDrawer'
+import TvPeringatanDiniDrawer from './TvPeringatanDiniDrawer'
 import TvBottomTicker from './TvBottomTicker'
 import TvSpotlightCard, { SpotlightItem, RouteInfo } from './TvSpotlightCard'
 import type { TvMapEngineRef, MarkerData, FaskesItem, PoskoItem, EarthquakePoint } from './TvMapEngine'
@@ -92,6 +93,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [isLoading, setIsLoading] = useState(true)
   const [isApiDisconnected, setIsApiDisconnected] = useState(false)
   const [layersOpen, setLayersOpen] = useState(false)
+  const [alertsOpen, setAlertsOpen] = useState(false)
   const [layers, setLayers] = useState<TvLayerState>(DEFAULT_LAYERS)
   const [soundEnabled, setSoundEnabled] = useState(false)
   const [refreshCountdown, setRefreshCountdown] = useState(REFRESH_INTERVAL_SECONDS)
@@ -790,6 +792,9 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
       <TvTopHud
         onToggleLayers={() => setLayersOpen(!layersOpen)}
         isLayersOpen={layersOpen}
+        onToggleAlerts={() => setAlertsOpen(!alertsOpen)}
+        isAlertsOpen={alertsOpen}
+        alertsCount={peringatanDiniList.length}
         soundEnabled={soundEnabled}
         onToggleSound={() => {
           setSoundEnabled(!soundEnabled)
@@ -830,10 +835,17 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onToggleCollapse={() => setIsKpiCollapsed(!isKpiCollapsed)}
       />
 
-      {/* ── 4. LEFT FLOATING PERINGATAN DINI CUACA (CAP) DECK ── */}
-      <TvLiveFeedDeck
-        peringatanDiniList={peringatanDiniList}
+      {/* ── 4. LEFT FLOATING KEJADIAN BENCANA WILAYAH / DAERAH DECK ── */}
+      <TvDisasterFeedDeck
+        markers={markers}
+        kabupatenDetailList={kabupatenDetailList}
+        wilayahList={wilayahList}
+        earthquakePoints={earthquakePoints}
+        summary={summary}
+        isNttScope={isNttScope}
         isKpiCollapsed={isKpiCollapsed}
+        onSelectDisaster={handleSelectFeature}
+        onSelectLocation={handleSelectLocation}
         onSelectProvince={handleSelectProvince}
       />
 
@@ -863,6 +875,15 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onBatchUpdateFaskes={handleBatchUpdateFaskes}
         onResetLayers={() => setLayers(DEFAULT_LAYERS)}
         faskesCounts={faskesCounts}
+      />
+
+      {/* ── 6.5 PERINGATAN DINI CUACA & BENCANA DRAWER ── */}
+      <TvPeringatanDiniDrawer
+        isOpen={alertsOpen}
+        onClose={() => setAlertsOpen(false)}
+        peringatanDiniList={peringatanDiniList}
+        onSelectProvince={handleSelectProvince}
+        onSelectLocation={handleSelectLocation}
       />
 
       {/* ── 7. BOTTOM CENTER FLOATING SPOTLIGHT & TACTICAL ROUTE BANNER ── */}
