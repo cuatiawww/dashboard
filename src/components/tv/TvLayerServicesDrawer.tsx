@@ -237,6 +237,7 @@ export default function TvLayerServicesDrawer({
                     onChange={(e) => onUpdateLayer('faskesRs', e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78] cursor-pointer"
                   />
+                  <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/rs.svg`} alt="RS" className="w-4 h-4 shrink-0" />
                   <span className="font-bold text-slate-800 text-xs">Rumah Sakit (RS)</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-slate-500">
@@ -253,6 +254,7 @@ export default function TvLayerServicesDrawer({
                     onChange={(e) => onUpdateLayer('faskesPuskesmas', e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78] cursor-pointer"
                   />
+                  <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/puskes.svg`} alt="Puskesmas" className="w-4 h-4 shrink-0" />
                   <span className="font-bold text-slate-800 text-xs">Puskesmas</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-slate-500">
@@ -269,6 +271,7 @@ export default function TvLayerServicesDrawer({
                     onChange={(e) => onUpdateLayer('faskesKlinik', e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78] cursor-pointer"
                   />
+                  <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/klinik.svg`} alt="Klinik" className="w-4 h-4 shrink-0" />
                   <span className="font-bold text-slate-800 text-xs">Klinik</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-slate-500">
@@ -285,6 +288,7 @@ export default function TvLayerServicesDrawer({
                     onChange={(e) => onUpdateLayer('faskesPustu', e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-[#047D78] focus:ring-[#047D78] cursor-pointer"
                   />
+                  <img src={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/pustu.svg`} alt="Pustu" className="w-4 h-4 shrink-0" />
                   <span className="font-bold text-slate-800 text-xs">Puskesmas Pembantu (Pustu)</span>
                 </div>
                 <span className="font-mono text-xs font-bold text-slate-500">

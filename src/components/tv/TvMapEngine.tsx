@@ -1179,25 +1179,49 @@ const TvMapEngine = forwardRef<TvMapEngineRef, TvMapEngineProps>(function TvMapE
       })
 
       if (isRS) {
-        // Rumah Sakit (Hospital): Prominent, larger SVG Hospital Building icon
+        // Rumah Sakit (RS)
         feat.setStyle(
           new Style({
             image: new Icon({
-              src: `${basePath}/hospital.svg`,
-              size: [500, 500],
-              scale: 0.08, // ~40px x 40px (Visual Prominent)
+              src: `${basePath}/rs.svg`,
+              size: [102.46, 102.46],
+              scale: 0.28,
+              anchor: [0.5, 0.5],
+            }),
+          })
+        )
+      } else if (isPustu) {
+        // Puskesmas Pembantu (Pustu)
+        feat.setStyle(
+          new Style({
+            image: new Icon({
+              src: `${basePath}/pustu.svg`,
+              size: [102.46, 102.46],
+              scale: 0.28,
+              anchor: [0.5, 0.5],
+            }),
+          })
+        )
+      } else if (isKlinik) {
+        // Klinik
+        feat.setStyle(
+          new Style({
+            image: new Icon({
+              src: `${basePath}/klinik.svg`,
+              size: [102.46, 102.46],
+              scale: 0.28,
               anchor: [0.5, 0.5],
             }),
           })
         )
       } else {
-        // Puskesmas: Distinct Puskesmas SVG icon
+        // Puskesmas
         feat.setStyle(
           new Style({
             image: new Icon({
-              src: `${basePath}/puskesmas.svg`,
-              size: [373, 373],
-              scale: 0.08, // ~30px x 30px
+              src: `${basePath}/puskes.svg`,
+              size: [102.46, 102.46],
+              scale: 0.28,
               anchor: [0.5, 0.5],
             }),
           })

@@ -462,6 +462,7 @@ export default function DisasterMap({
 }: DisasterMapProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = propIsGuest || storeIsGuest || !token || !user
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
   const [showTckLayer, setShowTckLayer] = useState(true) // Toggle layer TCK Kemkes
   const [showSeismicLayer, setShowSeismicLayer] = useState(true) // Toggle layer Titik Gempa USGS/BMKG
@@ -1128,7 +1129,15 @@ export default function DisasterMap({
             const originLng = firstMarker ? Number(firstMarker.lng) : lng
             const distKm = getDistanceInKm(originLat, originLng, lat, lng)
 
-            const isTerdampak = !!rawItem._isTerdampak
+            const hasStructuralDamage = Number(rawItem.rusak_berat || 0) > 0 || 
+                                       Number(rawItem.rusak_sedang || 0) > 0 || 
+                                       Number(rawItem.rusak_ringan || 0) > 0 ||
+                                       String(rawItem.kondisi_bangunan || '').toLowerCase().includes('rusak') ||
+                                       String(rawItem.kondisi_faskes || '').toLowerCase().includes('rusak') ||
+                                       String(rawItem.status || '').toLowerCase().includes('rusak') ||
+                                       String(rawItem.status || '').toLowerCase().includes('tutup')
+
+            const isTerdampak = (!!rawItem._isTerdampak && hasStructuralDamage) || hasStructuralDamage
             const isEarthquake = itemType === 'earthquake'
 
             setEocPopup({
@@ -2179,61 +2188,63 @@ export default function DisasterMap({
         const lng = Number(m.lng)
         const isEpicenter = !!m.isEpicenter || idx === 0
 
-        // In Disaster / EOC Mode, skip duplicate non-epicenter drop-pins to keep map clean
-        if (isFloodEocMode && !isEpicenter) return
-
         // Draw pin marker
         const disasterFeat = new Feature({
           geometry: new Point(fromLonLat([lng, lat])),
           id: `disaster-${idx}`,
-          name: m.nama || (m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : 'Titik Dampak Bencana'),
+          name: m.nama || (m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : (isEpicenter ? 'Pusat Episentrum Gempa NTT' : `Titik Dampak - ${m.kabupaten || 'Kabupaten'}`)),
           rawItem: m,
           itemType: 'disaster'
         })
         disasterFeat.setStyle(new Style({
           image: new Icon({
             src: getSvgPin(isEpicenter ? '#dc2626' : '#ea580c', 'disaster'),
-            scale: isEpicenter ? 1.05 : 0.88,
+            scale: isEpicenter ? 1.05 : 0.78,
             anchor: [0.5, 1]
-          })
+          }),
+          zIndex: isEpicenter ? 100 : 50
         }))
         source.addFeature(disasterFeat)
 
-        // Draw pulsing radius circle & trigger radar overlay on all disaster markers
-        if (pulseRadius > 0) {
-          const currentRadiusKm = isEpicenter ? pulseRadius : Math.max(3, Math.min(pulseRadius * 0.5, 15))
-          const radiusInMeters = currentRadiusKm * 1000
+        // Draw concentric impact radius rings on epicenter and radar pulse overlay on all disaster points
+        if (isEpicenter) {
+          const concentricRings = [
+            { km: 5, stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.20)' },
+            { km: 15, stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.15)' },
+            { km: 35, stroke: '#eab308', fill: 'rgba(234, 179, 8, 0.10)' },
+            { km: 60, stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.08)' }
+          ]
 
-          const circleFeat = new Feature({
-            geometry: new CircleGeom(fromLonLat([lng, lat]), radiusInMeters),
-            id: `pulse-circle-${idx}`
-          })
-          circleFeat.setStyle(new Style({
-            fill: new Fill({ color: isEpicenter ? 'rgba(239, 68, 68, 0.16)' : 'rgba(249, 115, 22, 0.12)' }),
-            stroke: new Stroke({
-              color: isEpicenter ? 'rgba(220, 38, 38, 0.85)' : 'rgba(234, 88, 12, 0.75)',
-              width: isEpicenter ? 2.4 : 1.8,
-              lineDash: isEpicenter ? [6, 6] : [4, 4]
+          concentricRings.forEach((r) => {
+            const circleFeat = new Feature({
+              geometry: new CircleGeom(fromLonLat([lng, lat]), r.km * 1000),
+              id: `pulse-circle-${idx}-${r.km}`
             })
-          }))
-          source.addFeature(circleFeat)
+            circleFeat.setStyle(new Style({
+              fill: new Fill({ color: r.fill }),
+              stroke: new Stroke({
+                color: r.stroke,
+                width: 2.0,
+                lineDash: [6, 6]
+              })
+            }))
+            source.addFeature(circleFeat)
+          })
 
           // Inner core zone for epicenter
-          if (isEpicenter && pulseRadius >= 5) {
-            const innerCircle = new Feature({
-              geometry: new CircleGeom(fromLonLat([lng, lat]), (radiusInMeters * 0.4)),
-              id: `pulse-inner-${idx}`
-            })
-            innerCircle.setStyle(new Style({
-              fill: new Fill({ color: 'rgba(220, 38, 38, 0.22)' }),
-              stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 })
-            }))
-            source.addFeature(innerCircle)
-          }
-
-          // Trigger radar overlay bip-bip denyut
-          createPulseOverlay(lng, lat, isEpicenter ? 'danger' : 'warning')
+          const innerCircle = new Feature({
+            geometry: new CircleGeom(fromLonLat([lng, lat]), 2500),
+            id: `pulse-inner-${idx}`
+          })
+          innerCircle.setStyle(new Style({
+            fill: new Fill({ color: 'rgba(220, 38, 38, 0.28)' }),
+            stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 })
+          }))
+          source.addFeature(innerCircle)
         }
+
+        // Trigger radar overlay bip-bip denyut (always active like on TV display)
+        createPulseOverlay(lng, lat, isEpicenter ? 'danger' : 'warning')
       }
     })
 
@@ -2382,25 +2393,26 @@ export default function DisasterMap({
             rawItem: f,
             itemType: itemCategory
           })
+
+          let faskesIconSrc = `${basePath}/puskes.svg`
           if (category === 'rs') {
-            fFeat.setStyle(new Style({
-              image: new Icon({
-                src: `${basePath}/hospital.svg`,
-                size: [500, 500],
-                scale: 0.08,
-                anchor: [0.5, 0.5]
-              })
-            }))
-          } else {
-            fFeat.setStyle(new Style({
-              image: new Icon({
-                src: `${basePath}/puskesmas.svg`,
-                size: [373, 373],
-                scale: 0.08,
-                anchor: [0.5, 0.5]
-              })
-            }))
+            faskesIconSrc = `${basePath}/rs.svg`
+          } else if (category === 'puskesmas') {
+            faskesIconSrc = `${basePath}/puskes.svg`
+          } else if (category === 'klinik') {
+            faskesIconSrc = `${basePath}/klinik.svg`
+          } else if (category === 'pustu') {
+            faskesIconSrc = `${basePath}/pustu.svg`
           }
+
+          fFeat.setStyle(new Style({
+            image: new Icon({
+              src: faskesIconSrc,
+              size: [102.46, 102.46],
+              scale: 0.28,
+              anchor: [0.5, 0.5]
+            })
+          }))
           source.addFeature(fFeat)
         }
       })
@@ -2435,21 +2447,37 @@ export default function DisasterMap({
             if (category === 'pustu' && !faskesTypeFilters.pustu) return
           }
 
-          const hasBerat = Number(f.rusak_berat || 0) > 0
-          const hasSedang = Number(f.rusak_sedang || 0) > 0
-          const pinColor = hasBerat ? '#dc2626' : hasSedang ? '#ea580c' : '#f59e0b' // red / orange / amber
+          const hasDamage = Number(f.rusak_berat || 0) > 0 || 
+                            Number(f.rusak_sedang || 0) > 0 || 
+                            Number(f.rusak_ringan || 0) > 0 || 
+                            String(f.kondisi_bangunan || '').toLowerCase().includes('rusak') || 
+                            String(f.kondisi_faskes || '').toLowerCase().includes('rusak') ||
+                            String(f.status || '').toLowerCase().includes('rusak') ||
+                            String(f.status || '').toLowerCase().includes('tutup')
           const fFeat = new Feature({
             geometry: new Point(fromLonLat([fLng, fLat])),
             id: `rusak-${f.nama_faskes || f.nama || idx}`,
-            name: f.nama_faskes || f.nama || 'Faskes Terdampak',
-            rawItem: { ...f, _isTerdampak: true },
-            itemType: 'clinic'
+            name: f.nama_faskes || f.nama || (hasDamage ? 'Faskes Terdampak' : 'Faskes Siaga'),
+            rawItem: { ...f, _isTerdampak: hasDamage },
+            itemType: category === 'rs' ? 'hospital' : category === 'pustu' ? 'pustu' : 'clinic'
           })
+
+          let rusakIconSrc = `${basePath}/puskes.svg`
+          if (category === 'rs') {
+            rusakIconSrc = `${basePath}/rs.svg`
+          } else if (category === 'puskesmas') {
+            rusakIconSrc = `${basePath}/puskes.svg`
+          } else if (category === 'klinik') {
+            rusakIconSrc = `${basePath}/klinik.svg`
+          } else if (category === 'pustu') {
+            rusakIconSrc = `${basePath}/pustu.svg`
+          }
+
           fFeat.setStyle(new Style({
             image: new Icon({
-              src: category === 'rs' ? `${basePath}/hospital.svg` : `${basePath}/puskesmas.svg`,
-              size: category === 'rs' ? [500, 500] : [373, 373],
-              scale: 0.08,
+              src: rusakIconSrc,
+              size: [102.46, 102.46],
+              scale: 0.28,
               anchor: [0.5, 0.5]
             })
           }))
@@ -2561,9 +2589,10 @@ export default function DisasterMap({
           })
           tFeat.setStyle(new Style({
             image: new Icon({
-              src: getSvgPin('#0d9488', 'tck'),
-              scale: 0.9,
-              anchor: [0.5, 1]
+              src: `${basePath}/tck.svg`,
+              size: [102.46, 102.46],
+              scale: 0.28,
+              anchor: [0.5, 0.5]
             })
           }))
           source.addFeature(tFeat)
@@ -3066,6 +3095,7 @@ export default function DisasterMap({
                             onChange={(e) => setFaskesTypeFilters((prev) => ({ ...prev, rs: e.target.checked }))}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                           />
+                          <img src={`${basePath}/rs.svg`} alt="RS" className="w-4 h-4 shrink-0" />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Rumah Sakit (RS)</span>
                         </div>
                         <span className={`text-[10px] font-extrabold ${faskesTypeFilters.siagaOnly ? 'text-rose-600' : 'text-slate-400'}`}>
@@ -3088,6 +3118,7 @@ export default function DisasterMap({
                             onChange={(e) => setFaskesTypeFilters((prev) => ({ ...prev, puskesmas: e.target.checked }))}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                           />
+                          <img src={`${basePath}/puskes.svg`} alt="Puskesmas" className="w-4 h-4 shrink-0" />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas</span>
                         </div>
                         <span className={`text-[10px] font-extrabold ${faskesTypeFilters.siagaOnly ? 'text-rose-600' : 'text-slate-400'}`}>
@@ -3110,6 +3141,7 @@ export default function DisasterMap({
                             onChange={(e) => setFaskesTypeFilters((prev) => ({ ...prev, klinik: e.target.checked }))}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                           />
+                          <img src={`${basePath}/klinik.svg`} alt="Klinik" className="w-4 h-4 shrink-0" />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Klinik</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-slate-400">
@@ -3132,6 +3164,7 @@ export default function DisasterMap({
                             onChange={(e) => setFaskesTypeFilters((prev) => ({ ...prev, pustu: e.target.checked }))}
                             className="h-3.5 w-3.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer"
                           />
+                          <img src={`${basePath}/pustu.svg`} alt="Pustu" className="w-4 h-4 shrink-0" />
                           <span className="text-[11px] font-semibold text-slate-700 truncate">Puskesmas Pembantu (Pustu)</span>
                         </div>
                         <span className="text-[10px] font-extrabold text-slate-400">
@@ -3374,7 +3407,7 @@ export default function DisasterMap({
                 >
                   <div>
                     <p className="text-xs font-semibold text-teal-900 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-teal-600 animate-pulse" />
+                      <img src={`${basePath}/tck.svg`} alt="TCK" className="w-4 h-4 shrink-0" />
                       TCK Terregistrasi Wilayah
                       {tckList && tckList.length > 0 && (
                         <span className="text-[9px] font-bold px-1.5 py-0.2 bg-teal-700 text-white rounded-full">
@@ -3827,40 +3860,24 @@ export default function DisasterMap({
           {/* Header */}
           <div className="flex items-start justify-between border-b border-slate-100 p-3.5 pb-3 bg-slate-50/70">
             <div className="min-w-0 flex-1">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${eocPopup.isTerdampak
-                  ? 'bg-rose-50 text-rose-700 border border-rose-300'
-                  : eocPopup.type === 'earthquake'
+              {/* Only show badge for Earthquake, TCK, or Shelter. Faskes/RS badges removed as requested */}
+              {(eocPopup.type === 'earthquake' || eocPopup.type === 'tck' || eocPopup.type === 'shelter') && (
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
+                  eocPopup.type === 'earthquake'
                     ? 'bg-red-100 text-red-800 border border-red-300 font-black'
                     : eocPopup.type === 'tck'
                       ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                      : eocPopup.type === 'hospital'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : eocPopup.type === 'shelter'
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                          : eocPopup.type === 'pustu'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : eocPopup.type === 'disaster'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-purple-50 text-purple-700 border border-purple-200'
                 }`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                {eocPopup.isTerdampak
-                  ? '⚠ Faskes Terdampak Bencana'
-                  : eocPopup.type === 'earthquake'
+                  <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                  {eocPopup.type === 'earthquake'
                     ? (eocPopup.earthquakeInfo?.isMainshock ? '⚡ Episentrum Gempa Utama' : '⚡ Titik Gempa Susulan')
                     : eocPopup.type === 'tck'
                       ? 'Relawan TCK Kemkes RI'
-                      : eocPopup.type === 'hospital'
-                        ? 'Rumah Sakit Rujukan'
-                        : eocPopup.type === 'shelter'
-                          ? 'Posko Kesehatan & Darurat'
-                          : eocPopup.type === 'pustu'
-                            ? 'Puskesmas Pembantu'
-                            : eocPopup.type === 'disaster'
-                              ? 'Pusat Kejadian Bencana'
-                              : 'Puskesmas / Klinik Siaga'}
-              </span>
-              <h4 className="mt-1.5 text-sm font-black text-slate-900 leading-snug">
+                      : 'Posko Kesehatan & Darurat'}
+                </span>
+              )}
+              <h4 className={`text-sm font-black text-slate-900 leading-snug ${(eocPopup.type === 'earthquake' || eocPopup.type === 'tck' || eocPopup.type === 'shelter') ? 'mt-1.5' : 'mt-0'}`}>
                 {eocPopup.type === 'tck' ? maskPersonName(eocPopup.name) : eocPopup.name}
               </h4>
               {eocPopup.type === 'tck' && eocPopup.details?.golongan && (
@@ -4166,15 +4183,23 @@ export default function DisasterMap({
                     </span>
                     <span className="text-[9px] text-slate-400 font-medium">TCK Kemkes RI</span>
                   </div>
-                  <div className="max-h-28 overflow-y-auto space-y-1 pr-0.5">
-                    {matchedTck.slice(0, 5).map((tck: any, tIdx: number) => {
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 divide-y divide-teal-50">
+                    {matchedTck.map((tck: any, tIdx: number) => {
                       const cleanPhone = String(tck.nomor_telp || '081234567890').replace(/[^0-9]/g, '')
-                      const waUrl = `https://wa.me/${cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone}?text=Halo%20${encodeURIComponent(tck.nama || 'Relawan TCK')},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes%20terkait%20penanganan%20kejadian%20bencana.`
+                      const displayName = tck.nama && String(tck.nama).trim() !== '' && tck.nama !== '-'
+                        ? tck.nama
+                        : (tck.nama_relawan || tck.nama_lengkap || (tck.spesifikasi && tck.spesifikasi !== '-' ? `Relawan (${tck.spesifikasi})` : `Relawan TCK #${tIdx + 1}`))
+                      const displayRole = (tck.spesifikasi && tck.spesifikasi !== '-')
+                        ? tck.spesifikasi
+                        : (tck.golongan && tck.golongan !== '-'
+                          ? tck.golongan
+                          : (tck.pekerjaan && tck.pekerjaan !== '-' ? tck.pekerjaan : 'Tenaga Medis'))
+                      const waUrl = `https://wa.me/${cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone}?text=Halo%20${encodeURIComponent(displayName)},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes%20terkait%20penanganan%20kejadian%20bencana.`
                       return (
-                        <div key={tIdx} className="flex items-center justify-between p-1.5 rounded-lg bg-teal-50/60 border border-teal-100 text-[10px]">
-                          <div className="min-w-0 pr-1">
-                            <strong className="text-slate-800 truncate block font-bold">{tck.nama}</strong>
-                            <span className="text-teal-700 text-[9px] block truncate">{tck.spesifikasi || tck.golongan}</span>
+                        <div key={tIdx} className="flex items-center justify-between p-2 rounded-lg bg-teal-50/60 hover:bg-teal-50 border border-teal-100/80 text-[10px] transition">
+                          <div className="min-w-0 pr-1.5 flex-1">
+                            <strong className="text-slate-800 truncate block font-bold leading-tight">{displayName}</strong>
+                            <span className="text-teal-700 text-[9px] block truncate font-medium mt-0.5">{displayRole}</span>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <button
@@ -4188,7 +4213,7 @@ export default function DisasterMap({
                                 }
                                 setEocPopup(null)
                               }}
-                              className="px-1.5 py-0.5 rounded bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9px] transition"
+                              className="px-2 py-1 rounded-md bg-teal-600 hover:bg-teal-700 text-white font-bold text-[9.5px] transition shadow-xs"
                               title="Set Rute ke Dokter/Relawan Ini"
                             >
                               Rute
@@ -4197,7 +4222,7 @@ export default function DisasterMap({
                               href={waUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="px-1.5 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] transition"
+                              className="px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9.5px] transition shadow-xs"
                               title="Chat WhatsApp"
                             >
                               WA
