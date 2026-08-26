@@ -32,6 +32,7 @@
     "papaparse": "^5.5.3",
     "pg": "^8.20.0",
     "prisma": "^7.6.0",
+    "puppeteer-core": "^25.9.0",
     "react": "19.2.4",
     "react-apexcharts": "^2.1.0",
     "react-chartjs-2": "^5.3.1",

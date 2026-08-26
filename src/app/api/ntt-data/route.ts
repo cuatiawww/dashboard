@@ -29,6 +29,7 @@ const TABLES = [
   'situasi_kesehatan',
   'pasien_rs',
   'pasien_puskesmas',
+  'surveilans_penyakit',
   'master_faskes',
 ] as const
 
@@ -366,6 +367,17 @@ export async function GET(request: NextRequest) {
       const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(cumPasienRs, cumPasienPkm)
       const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
 
+      // Surveilans Penyakit dari Collector NTT
+      let surveilansPenyakitList: any[] = []
+      try {
+        const pFile = path.join(process.cwd(), 'src', 'data', 'penyakit_surveilans.json')
+        const rawP = await fs.readFile(pFile, 'utf8')
+        const jsonP = JSON.parse(rawP)
+        if (jsonP && Array.isArray(jsonP.data_penyakit_kumulatif)) {
+          surveilansPenyakitList = jsonP.data_penyakit_kumulatif
+        }
+      } catch {}
+
       const responsePayload = {
         success: true,
         source: 'google_sheets_spreadsheet_api',
@@ -385,6 +397,7 @@ export async function GET(request: NextRequest) {
           analisa_ringkasan_harian: [],
           pasien_rs: pasienRsTarget,
           pasien_puskesmas: pasienPkmTarget,
+          surveilans_penyakit: surveilansPenyakitList,
           faskes_terdampak: rawKorbanJson.faskes_terdampak || rawKorbanJson.faskes?.data || [],
           master_faskes: masterFaskes,
         },
