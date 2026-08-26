@@ -2970,31 +2970,43 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const penyakitTotalData = useMemo(() => {
     // 1. Live Summary Ranking Chart dari Google Sheets API
     if (livePenyakitData && Array.isArray(livePenyakitData.summary_chart) && livePenyakitData.summary_chart.length > 0) {
-      return livePenyakitData.summary_chart.map(item => ({
-        name: item.name,
-        total: item.total
-      }))
+      const normMap: { [key: string]: { name: string; total: number } } = {};
+      livePenyakitData.summary_chart.forEach(item => {
+        const rawName = String(item.name || '').trim();
+        const key = rawName.toUpperCase();
+        if (!normMap[key]) {
+          normMap[key] = { name: rawName, total: 0 };
+        }
+        normMap[key].total += safeParseInt(item.total);
+      });
+      return Object.values(normMap).sort((a, b) => b.total - a.total);
     }
     const list = effectivePenyakitList;
     if (list.length === 0) {
       return [];
     }
 
-    const totals: { [name: string]: number } = {};
+    const totals: { [key: string]: { name: string; total: number } } = {};
     list.forEach((p: any) => {
-      const rawName = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim();
+      const rawName = String(p.jenis_penyakit || p.nama_penyakit || p.nama_asli_sheet || p.id_penyakit || 'Penyakit Lainnya').trim();
       const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
+      const key = disease.toUpperCase();
       const count = safeParseInt(p.jumlah_kasus || p.jml);
       if (count > 0) {
-        totals[disease] = (totals[disease] || 0) + count;
+        if (!totals[key]) {
+          totals[key] = { name: disease, total: 0 };
+        }
+        totals[key].total += count;
       }
     });
 
-    return Object.entries(totals).map(([name, total]) => ({
-      name,
-      total
-    })).sort((a, b) => b.total - a.total);
+    return Object.values(totals).sort((a, b) => b.total - a.total);
   }, [livePenyakitData, effectivePenyakitList]);
+
+  // Top 10 Kasus Terbanyak untuk Grafik Bar agar rapi, mudah dibaca, dan tidak bertumpuk
+  const penyakitChartData = useMemo(() => {
+    return penyakitTotalData.slice(0, 10);
+  }, [penyakitTotalData]);
 
   const totalPenyakitCases = useMemo(() => {
     if (livePenyakitData?.total_kasus_se_ntt !== undefined && livePenyakitData.total_kasus_se_ntt > 0) {
@@ -5189,24 +5201,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </div>
                       </div>
                     </div>
-
-                    {/* Insight Box di Sisi Kiri */}
-                    <div className="rounded-2xl bg-amber-50/80 border border-amber-200/90 p-4 text-xs sm:text-sm text-amber-950 leading-relaxed font-medium">
-                      <div className="flex items-center gap-2 text-amber-900 font-black text-xs sm:text-sm mb-1.5">
-                        <HeartPulse className="h-4 w-4 text-amber-700 shrink-0" />
-                        <span>Insight Epidemiologi Klinis:</span>
-                      </div>
-                      <p className="text-amber-950 font-medium m-0 text-xs leading-relaxed">
-                        {dominantDiseaseObj ? `Dampak kesehatan paling dominan adalah ${dominantDiseaseObj.name} dengan ${dominantDiseaseObj.total?.toLocaleString('id-ID')} kasus. Total akumulasi kasus penyakit di posko pengungsian & fasilitas kesehatan ${displayRegion} tercatat sebanyak ${totalPenyakitCases.toLocaleString('id-ID')} kasus terlaporkan.` : (penyakitNarrative || 'Pemantauan surveilans harian terus diperkuat di seluruh pos kesehatan darurat dan posko pengungsian guna mencegah penularan penyakit pasca bencana.')}
-                      </p>
-                    </div>
                   </div>
 
-                  {/* Sisi Kanan (8 cols / ~67%): Big BarChart */}
+                  {/* Sisi Kanan (8 cols / ~67%): Big BarChart Top 10 */}
                   <div className="lg:col-span-8 flex flex-col bg-slate-50/50 rounded-2xl p-4 sm:p-5 border border-slate-200/90">
                     <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/70">
                       <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                        Grafik Kasus Penyakit Terlaporkan
+                        Top 10 Kasus Penyakit Terbanyak
                       </span>
                       <span className="px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs font-bold shadow-2xs">
                         {totalPenyakitCases > 0 ? `${totalPenyakitCases.toLocaleString('id-ID')} Total Pasien Kasus` : 'Belum Ada Laporan Kasus'}
@@ -5215,12 +5216,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
                     {/* BarChart or Empty State */}
                     <div className="w-full flex-1 min-h-[280px] sm:min-h-[300px] text-xs font-semibold flex items-center justify-center">
-                      {penyakitTotalData.length > 0 ? (
+                      {penyakitChartData.length > 0 ? (
                         typeof window !== 'undefined' && (
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={penyakitTotalData} margin={{ top: 15, right: 15, left: -5, bottom: 25 }}>
+                            <BarChart data={penyakitChartData} margin={{ top: 15, right: 15, left: -5, bottom: 25 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                              <XAxis dataKey="name" stroke="#475569" tickLine={false} interval={0} angle={-10} textAnchor="end" height={45} tick={{ fontSize: 11, fontWeight: 700 }} />
+                              <XAxis dataKey="name" stroke="#475569" tickLine={false} interval={0} angle={-15} textAnchor="end" height={45} tick={{ fontSize: 11, fontWeight: 700 }} />
                               <YAxis stroke="#475569" tickLine={false} style={{ fontSize: '11px', fontWeight: 'bold' }} allowDecimals={false} />
                               <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 700 }} formatter={(value) => [`${Number(value).toLocaleString('id-ID')} Kasus`, 'Total Pasien']} />
                               <Bar
@@ -5230,8 +5231,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 isAnimationActive={true}
                                 animationDuration={800}
                               >
-                                {penyakitTotalData.map((entry, idx) => {
-                                  const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#14b8a6', '#f43f5e', '#a855f7'];
+                                {penyakitChartData.map((entry, idx) => {
+                                  const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#14b8a6', '#f43f5e', '#a855f7', '#0284c7'];
                                   return <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />;
                                 })}
                               </Bar>
