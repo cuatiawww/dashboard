@@ -1417,39 +1417,39 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       let db_pengungsi = safeParseInt(detail?.pengungsi ?? eventData?.pengungsi) || (lastPerkembangan ? safeParseInt(lastPerkembangan.pengungsi || lastPerkembangan.pengungsi_total) : 0)
 
       if (isNttEvent) {
-        if (nttApiData?.summary_korban) {
-          db_meninggal = safeParseInt(nttApiData.summary_korban.meninggal) || 105
-          db_luka_berat = safeParseInt(nttApiData.summary_korban.luka_berat) || 385
-          db_luka_ringan = safeParseInt(nttApiData.summary_korban.luka_ringan) || 1287
-          db_luka = safeParseInt(nttApiData.summary_korban.total_luka) || (db_luka_berat + db_luka_ringan)
-          db_pengungsi = safeParseInt(nttApiData.summary_korban.pengungsi) || 185131
+        const sum = nttApiData?.summary_korban
+        if (sum && (sum.total_meninggal !== undefined || sum.meninggal !== undefined)) {
+          db_meninggal = safeParseInt(sum.total_meninggal ?? sum.meninggal)
+          db_luka_berat = safeParseInt(sum.total_luka_berat ?? sum.luka_berat)
+          db_luka_ringan = safeParseInt(sum.total_luka_ringan ?? sum.luka_ringan)
+          db_luka = safeParseInt(sum.total_korban_luka ?? sum.total_luka) || (db_luka_berat + db_luka_ringan)
+          db_pengungsi = safeParseInt(sum.total_pengungsi ?? sum.pengungsi)
         } else {
+          // Ambil HANYA dari tanggal terakhir (snapshot terbaru), jangan menjumlahkan seluruh 11 hari
           const situList = Array.isArray(nttApiData?.timeline_situasi_kesehatan) && nttApiData.timeline_situasi_kesehatan.length > 0
             ? nttApiData.timeline_situasi_kesehatan
             : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
 
           if (situList.length > 0) {
+            const availableDates = Array.from(new Set(situList.map((r: any) => r.tanggal).filter(Boolean))).sort()
+            const latestDate = nttApiData?.tanggal && availableDates.includes(nttApiData.tanggal)
+              ? nttApiData.tanggal
+              : availableDates[availableDates.length - 1]
+
+            const rowsToUse = situList.filter((r: any) => r.tanggal === latestDate)
             let sMen = 0, sLb = 0, sLr = 0, sPeng = 0
-            situList.forEach((r: any) => {
+            rowsToUse.forEach((r: any) => {
               sMen += safeParseInt(r.meninggal)
               sLb += safeParseInt(r.luka_berat)
               sLr += safeParseInt(r.luka_ringan)
               sPeng += safeParseInt(r.pengungsi)
             })
 
-            if (sMen > 0 || sLb > 0 || sLr > 0 || sPeng > 0) {
-              db_meninggal = sMen
-              db_luka_berat = sLb
-              db_luka_ringan = sLr
-              db_luka = sLb + sLr
-              db_pengungsi = sPeng
-            }
-          } else if (db_meninggal === 0 && db_luka === 0) {
-            db_meninggal = 105
-            db_luka_berat = 385
-            db_luka_ringan = 1287
-            db_luka = 1672
-            db_pengungsi = 185131
+            db_meninggal = sMen
+            db_luka_berat = sLb
+            db_luka_ringan = sLr
+            db_luka = sLb + sLr
+            db_pengungsi = sPeng
           }
         }
       }
@@ -1464,8 +1464,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
-    return getKorbanBreakdown(selectedEvent?.total_korban || (isNttEvent ? 1061 : 0), selectedEvent?.jenis_bencana || '')
-  }, [hasDetail, detail, eventData, selectedEvent, isNttEvent, nttApiData?.situasi_kesehatan, nttApiData?.timeline_situasi_kesehatan, nttApiData?.tanggal])
+    return getKorbanBreakdown(selectedEvent?.total_korban || (isNttEvent ? 1777 : 0), selectedEvent?.jenis_bencana || '')
+  }, [hasDetail, detail, eventData, selectedEvent, isNttEvent, nttApiData?.summary_korban, nttApiData?.situasi_kesehatan, nttApiData?.timeline_situasi_kesehatan, nttApiData?.tanggal])
 
   const totalKorbanReal = useMemo(() => {
     return (breakdown.meninggal + breakdown.hilang + breakdown.luka)
@@ -2536,6 +2536,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.pos_pengungsi]);
 
   const totalPendudukTerancam = useMemo(() => {
+    if (isNttEvent && nttApiData?.summary_korban) {
+      const sumPop = safeParseInt(nttApiData.summary_korban.total_populasi_terdampak ?? nttApiData.summary_korban.populasi_terdampak)
+      if (sumPop > 0) return sumPop
+    }
+
     const situList = Array.isArray(nttApiData?.situasi_kesehatan) && nttApiData.situasi_kesehatan.length > 0
       ? nttApiData.situasi_kesehatan
       : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
