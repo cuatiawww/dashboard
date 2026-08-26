@@ -827,6 +827,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return 'kumulatif'
   }, [kabupatenMatrixDate, modalAvailableDates])
 
+  const activeDateFormatted = useMemo(() => {
+    if (activeModalDate === 'kumulatif') return 'Kumulatif'
+    const d = new Date(activeModalDate)
+    return !isNaN(d.getTime()) ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : activeModalDate
+  }, [activeModalDate])
+
   const faskesMatrixData = useMemo(() => {
     // 1. Data master_faskes dari API /api/ntt-data jika ada (1.818 faskes se-NTT)
     if (Array.isArray(nttApiData.master_faskes) && nttApiData.master_faskes.length > 0) {
@@ -7984,7 +7990,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="text-[10px] font-black uppercase text-teal-800">Populasi Terdampak</div>
                     <div className="text-xl sm:text-2xl font-black text-teal-950 mt-0.5">{(modalTotals.populasi_terdampak || totalPendudukTerancam || 1917732).toLocaleString('id-ID')} <span className="text-xs font-bold text-teal-700">Jiwa</span></div>
                     <div className="text-[10px] font-bold text-teal-700 mt-0.5">
-                      {activeModalDate === 'kumulatif' ? 'Total Kumulatif Seluruh Wilayah' : `Laporan Tanggal: ${activeModalDate}`}
+                      {activeModalDate === 'kumulatif' ? 'Total Kumulatif Seluruh Wilayah' : `Laporan: ${activeDateFormatted}`}
                     </div>
                   </div>
                   <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200">
@@ -7994,8 +8000,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {activeModalDate === 'kumulatif'
                         ? `${modalTotals.titik_posko || 397} Titik Posko Terdata`
                         : (modalTotals.delta_pengungsi && modalTotals.delta_pengungsi > 0)
-                          ? `+${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa Tambahan Hari Ini • ${modalTotals.titik_posko || 0} Posko`
-                          : `Nihil Tambahan Pengungsi Hari Ini • ${modalTotals.titik_posko || 0} Posko`}
+                          ? `+${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa Tambahan (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`
+                          : `Nihil Tambahan (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`}
                     </div>
                   </div>
                   <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
@@ -8005,8 +8011,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {activeModalDate === 'kumulatif'
                         ? 'Total Akumulasi Lapangan'
                         : (modalTotals.delta_meninggal && modalTotals.delta_meninggal > 0)
-                          ? `+${modalTotals.delta_meninggal} Jiwa Tambahan Hari Ini`
-                          : 'Nihil Penambahan Korban Hari Ini'}
+                          ? `+${modalTotals.delta_meninggal} Jiwa Tambahan (${activeDateFormatted})`
+                          : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                   <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
@@ -8016,8 +8022,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {activeModalDate === 'kumulatif'
                         ? 'Rujukan RSUD Siaga'
                         : (modalTotals.delta_luka_berat && modalTotals.delta_luka_berat > 0)
-                          ? `+${modalTotals.delta_luka_berat} Pasien Tambahan Hari Ini`
-                          : 'Nihil Penambahan Pasien Hari Ini'}
+                          ? `+${modalTotals.delta_luka_berat} Pasien Tambahan (${activeDateFormatted})`
+                          : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                   <div className="bg-orange-50/70 p-3 rounded-2xl border border-orange-200">
@@ -8027,8 +8033,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {activeModalDate === 'kumulatif'
                         ? 'EMT & Posko Pelayanan'
                         : (modalTotals.delta_luka_ringan && modalTotals.delta_luka_ringan > 0)
-                          ? `+${modalTotals.delta_luka_ringan} Pasien Tambahan Hari Ini`
-                          : 'Nihil Penambahan Pasien Hari Ini'}
+                          ? `+${modalTotals.delta_luka_ringan} Pasien Tambahan (${activeDateFormatted})`
+                          : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                 </>
@@ -8735,7 +8741,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="text-rose-700 font-black text-sm">{modalTotals.meninggal}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_meninggal > 0 ? 'text-rose-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_meninggal > 0 ? `▲ +${modalTotals.delta_meninggal} Jiwa Hari Ini` : 'Nihil Tambahan'}
+                            {modalTotals.delta_meninggal > 0 ? `▲ +${modalTotals.delta_meninggal} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -8743,7 +8749,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="text-amber-700 font-black text-sm">{modalTotals.luka_berat}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_berat > 0 ? 'text-amber-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_luka_berat > 0 ? `▲ +${modalTotals.delta_luka_berat} Pasien Hari Ini` : 'Nihil Tambahan'}
+                            {modalTotals.delta_luka_berat > 0 ? `▲ +${modalTotals.delta_luka_berat} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -8751,7 +8757,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="text-orange-700 font-black text-sm">{modalTotals.luka_ringan}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_ringan > 0 ? 'text-orange-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_luka_ringan > 0 ? `▲ +${modalTotals.delta_luka_ringan} Pasien Hari Ini` : 'Nihil Tambahan'}
+                            {modalTotals.delta_luka_ringan > 0 ? `▲ +${modalTotals.delta_luka_ringan} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -8759,7 +8765,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="text-amber-800 font-black text-sm">{modalTotals.total_luka}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_total_luka > 0 ? 'text-amber-900 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_total_luka > 0 ? `▲ +${modalTotals.delta_total_luka} Pasien Hari Ini` : 'Nihil Tambahan'}
+                            {modalTotals.delta_total_luka > 0 ? `▲ +${modalTotals.delta_total_luka} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -8768,7 +8774,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="text-blue-900 font-black text-sm">{modalTotals.pengungsi.toLocaleString('id-ID')}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_pengungsi > 0 ? 'text-blue-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_pengungsi > 0 ? `▲ +${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa Hari Ini` : 'Nihil Tambahan'}
+                            {modalTotals.delta_pengungsi > 0 ? `▲ +${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -8776,7 +8782,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div>{modalTotals.titik_posko || '-'}</div>
                         {activeModalDate !== 'kumulatif' && (
                           <div className={`text-[10px] mt-0.5 ${modalTotals.delta_titik_posko > 0 ? 'text-blue-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_titik_posko > 0 ? `+${modalTotals.delta_titik_posko} Posko Baru` : 'Nihil Tambahan'}
+                            {modalTotals.delta_titik_posko > 0 ? `+${modalTotals.delta_titik_posko} Posko (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
