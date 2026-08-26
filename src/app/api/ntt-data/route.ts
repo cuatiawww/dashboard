@@ -108,7 +108,7 @@ function normalizeTableRows(rows: Record<string, unknown>[]): Record<string, unk
 const GOOGLE_APPS_SCRIPT_KORBAN_URL =
   process.env.GOOGLE_APPS_SCRIPT_KORBAN_URL ||
   process.env.NEXT_PUBLIC_NTT_APPS_SCRIPT_URL ||
-  ''
+  'https://script.google.com/macros/s/AKfycbwt-VTU0wNteo_03CyCJIALO2KZ8I6cyya049A16OnslSal6nKqzw7e-y_JIYPIjUZn/exec'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
