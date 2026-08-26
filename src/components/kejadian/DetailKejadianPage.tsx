@@ -4864,12 +4864,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {faskesPieBreakdown.map((cat) => {
                         return (
                           <div key={cat.key} className="rounded-xl border border-slate-200 bg-white p-3.5 flex flex-col justify-between shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all">
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className="text-xs sm:text-sm font-black text-slate-900 truncate flex items-center gap-1.5" title={cat.title}>
-                                <img src={cat.svgIcon} alt={cat.title} className="h-4.5 w-4.5 object-contain shrink-0" />
-                                <span className="truncate">{cat.title}</span>
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0">
+                            <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <img
+                                  src={cat.svgIcon}
+                                  alt={cat.title}
+                                  className="w-5 h-5 shrink-0 object-contain"
+                                  style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+                                />
+                                <span className="text-xs sm:text-sm font-black text-slate-900 truncate" title={cat.title}>
+                                  {cat.title}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0 border border-slate-200/60">
                                 {cat.totalMaster} Unit
                               </span>
                             </div>
