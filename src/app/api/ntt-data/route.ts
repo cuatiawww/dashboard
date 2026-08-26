@@ -105,432 +105,10 @@ function normalizeTableRows(rows: Record<string, unknown>[]): Record<string, unk
   })
 }
 
-const GOOGLE_APPS_SCRIPT_KORBAN_URL = process.env.GOOGLE_APPS_SCRIPT_KORBAN_URL ||
-  'https://script.google.com/macros/s/AKfycbyb194K-zGzY_eJ99G27V3K3yq-2Gf7t8kY_placeholder/exec'
-
-// Hardcoded real fallback dataset from spreadsheet (15-25 Aug 2026 for 7 Kab NTT)
-const REAL_SPREADSHEET_KORBAN_DATA = {
-  "daftar_tanggal": [
-    "2026-08-15", "2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19",
-    "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24",
-    "2026-08-25"
-  ],
-  "summary": {
-    "populasi_terdampak": 1917732,
-    "meninggal": 105,
-    "luka_berat": 385,
-    "luka_ringan": 1287,
-    "total_luka": 1672,
-    "total_korban": 1777,
-    "pengungsi": 185131,
-    "titik_pengungsian": 397
-  },
-  "data_kabupaten": [
-    {
-      "kabupaten": "Kab. Sikka",
-      "populasi_terdampak": 350715,
-      "meninggal": 6,
-      "luka_berat": 23,
-      "luka_ringan": 20,
-      "total_luka": 43,
-      "total_korban": 49,
-      "pengungsi": 18829,
-      "titik_pengungsian": 9,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 345319, "meninggal": 3, "luka_berat": 0, "luka_ringan": 6, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 3, "luka_ringan": 9, "pengungsi": 1694, "titik_pengungsian": 4 },
-        "2026-08-17": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 3, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 2 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-19": { "populasi_terdampak": 5396, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 278, "titik_pengungsian": 3 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 3, "luka_berat": 17, "luka_ringan": 3, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 5132, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 10483, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 1085, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 161, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-26": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 2, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-27": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-28": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Manggarai Timur",
-      "populasi_terdampak": 313876,
-      "meninggal": 36,
-      "luka_berat": 239,
-      "luka_ringan": 404,
-      "total_luka": 643,
-      "total_korban": 679,
-      "pengungsi": 31372,
-      "titik_pengungsian": 246,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 301525, "meninggal": 17, "luka_berat": 1, "luka_ringan": 18, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 37, "titik_pengungsian": 0 },
-        "2026-08-17": { "populasi_terdampak": 12351, "meninggal": 8, "luka_berat": 161, "luka_ringan": 386, "pengungsi": 19293, "titik_pengungsian": 246 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-19": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 20, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 57, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 473, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 4, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 11569, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 3, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 2, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Manggarai",
-      "populasi_terdampak": 340153,
-      "meninggal": 41,
-      "luka_berat": 58,
-      "luka_ringan": 484,
-      "total_luka": 542,
-      "total_korban": 583,
-      "pengungsi": 50939,
-      "titik_pengungsian": 14,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 340153, "meninggal": 21, "luka_berat": 23, "luka_ringan": 16, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 2, "luka_berat": 4, "luka_ringan": 10, "pengungsi": 2078, "titik_pengungsian": 0 },
-        "2026-08-17": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 4, "luka_berat": 5, "luka_ringan": 78, "pengungsi": 8005, "titik_pengungsian": 14 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 19899, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 4, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 11445, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 5092, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 6, "luka_berat": 26, "luka_ringan": 370, "pengungsi": 1321, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 3, "luka_berat": 0, "luka_ringan": 18, "pengungsi": 2716, "titik_pengungsian": 0 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Ngada",
-      "populasi_terdampak": 176462,
-      "meninggal": 5,
-      "luka_berat": 15,
-      "luka_ringan": 87,
-      "total_luka": 102,
-      "total_korban": 107,
-      "pengungsi": 2551,
-      "titik_pengungsian": 71,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 176462, "meninggal": 1, "luka_berat": 2, "luka_ringan": 3, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-17": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 5, "luka_ringan": 16, "pengungsi": 1333, "titik_pengungsian": 27 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-19": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 7, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 1, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 1218, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 2, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 67, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 1, "pengungsi": 0, "titik_pengungsian": 44 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Nagekeo",
-      "populasi_terdampak": 170669,
-      "meninggal": 13,
-      "luka_berat": 33,
-      "luka_ringan": 119,
-      "total_luka": 152,
-      "total_korban": 165,
-      "pengungsi": 50644,
-      "titik_pengungsian": 70,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 170669, "meninggal": 1, "luka_berat": 1, "luka_ringan": 5, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 3, "luka_ringan": 4, "pengungsi": 440, "titik_pengungsian": 4 },
-        "2026-08-17": { "populasi_terdampak": 0, "meninggal": 6, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 9, "luka_ringan": 0, "pengungsi": 5781, "titik_pengungsian": 66 },
-        "2026-08-19": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 4, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 21883, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 6152, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 20, "luka_ringan": 109, "pengungsi": 14803, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 1, "pengungsi": 1299, "titik_pengungsian": 0 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Ende",
-      "populasi_terdampak": 284165,
-      "meninggal": 3,
-      "luka_berat": 11,
-      "luka_ringan": 79,
-      "total_luka": 90,
-      "total_korban": 93,
-      "pengungsi": 4417,
-      "titik_pengungsian": 25,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 284165, "meninggal": 1, "luka_berat": 0, "luka_ringan": 11, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 4, "luka_ringan": 4, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-17": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 0, "luka_ringan": 7, "pengungsi": 2717, "titik_pengungsian": 23 },
-        "2026-08-18": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 132, "titik_pengungsian": 2 },
-        "2026-08-19": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 1, "luka_ringan": 35, "pengungsi": 295, "titik_pengungsian": 0 },
-        "2026-08-20": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 10, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 154, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 131, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 346, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 1, "luka_berat": 6, "luka_ringan": 12, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 519, "titik_pengungsian": 0 }
-      }
-    },
-    {
-      "kabupaten": "Kab. Manggarai Barat",
-      "populasi_terdampak": 281692,
-      "meninggal": 1,
-      "luka_berat": 6,
-      "luka_ringan": 86,
-      "total_luka": 92,
-      "total_korban": 93,
-      "pengungsi": 27167,
-      "titik_pengungsian": 9,
-      "harian": {
-        "2026-08-15": { "populasi_terdampak": 281692, "meninggal": 1, "luka_berat": 2, "luka_ringan": 4, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-16": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 1603, "titik_pengungsian": 9 },
-        "2026-08-21": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 4000, "titik_pengungsian": 0 },
-        "2026-08-22": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 14351, "titik_pengungsian": 0 },
-        "2026-08-23": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 0, "pengungsi": 4775, "titik_pengungsian": 0 },
-        "2026-08-24": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 4, "luka_ringan": 74, "pengungsi": 0, "titik_pengungsian": 0 },
-        "2026-08-25": { "populasi_terdampak": 0, "meninggal": 0, "luka_berat": 0, "luka_ringan": 8, "pengungsi": 2438, "titik_pengungsian": 0 }
-      }
-    }
-  ]
-}
-
-const REAL_SPREADSHEET_TRIASE_RS = [
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_rs: 'RSUD dr. TC Hillers',
-    jenis: 'RS',
-    harian: {
-      '2026-08-16': { merah: 1, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-17': { merah: 2, kuning: 8, hijau: 12, hitam: 3 },
-      '2026-08-18': { merah: 2, kuning: 8, hijau: 12, hitam: 3 },
-      '2026-08-19': { merah: 1, kuning: 10, hijau: 15, hitam: 0 },
-      '2026-08-20': { merah: 1, kuning: 3, hijau: 0, hitam: 0 },
-      '2026-08-21': { merah: 2, kuning: 0, hijau: 3, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-23': { merah: 2, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 1, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_rs: 'RSU ST Gabriel Kewapante',
-    jenis: 'RS',
-    harian: {
-      '2026-08-17': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-      '2026-08-18': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Ende',
-    nama_rs: 'RSUD Ende',
-    jenis: 'RS',
-    harian: {
-      '2026-08-16': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
-      '2026-08-17': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
-      '2026-08-18': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
-      '2026-08-19': { merah: 1, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-20': { merah: 1, kuning: 7, hijau: 0, hitam: 0 },
-      '2026-08-21': { merah: 1, kuning: 9, hijau: 0, hitam: 0 },
-      '2026-08-22': { merah: 1, kuning: 9, hijau: 0, hitam: 0 },
-      '2026-08-23': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-24': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-25': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Nagekeo',
-    nama_rs: 'RSUD Aeramo',
-    jenis: 'RS',
-    harian: {
-      '2026-08-19': { merah: 5, kuning: 17, hijau: 0, hitam: 0 },
-      '2026-08-20': { merah: 3, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-21': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-22': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-23': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-24': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-25': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Ngada',
-    nama_rs: 'RSUD Bajawa',
-    jenis: 'RS',
-    harian: {
-      '2026-08-19': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 3, hijau: 0, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Manggarai',
-    nama_rs: 'RSUD Ruteng',
-    jenis: 'RS',
-    harian: {
-      '2026-08-16': { merah: 3, kuning: 1, hijau: 0, hitam: 0 },
-      '2026-08-17': { merah: 3, kuning: 4, hijau: 0, hitam: 0 },
-      '2026-08-18': { merah: 3, kuning: 4, hijau: 0, hitam: 0 },
-      '2026-08-19': { merah: 8, kuning: 12, hijau: 3, hitam: 0 },
-      '2026-08-20': { merah: 2, kuning: 8, hijau: 1, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Manggarai Timur',
-    nama_rs: 'RSUD Borong',
-    jenis: 'RS',
-    harian: {
-      '2026-08-19': { merah: 12, kuning: 4, hijau: 5, hitam: 1 },
-      '2026-08-20': { merah: 12, kuning: 17, hijau: 8, hitam: 1 },
-      '2026-08-21': { merah: 12, kuning: 22, hijau: 12, hitam: 1 },
-      '2026-08-22': { merah: 12, kuning: 22, hijau: 12, hitam: 1 },
-      '2026-08-23': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
-      '2026-08-24': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
-      '2026-08-25': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Manggarai Barat',
-    nama_rs: 'RSUD Komodo',
-    jenis: 'RS',
-    harian: {
-      '2026-08-17': { merah: 1, kuning: 7, hijau: 10, hitam: 0 },
-      '2026-08-18': { merah: 1, kuning: 7, hijau: 10, hitam: 0 },
-      '2026-08-19': { merah: 0, kuning: 12, hijau: 0, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 9, hijau: 0, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Manggarai Barat',
-    nama_rs: 'RSU Siloam Labuan bajo',
-    jenis: 'RS',
-    harian: {
-      '2026-08-17': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
-      '2026-08-18': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
-    }
-  }
-]
-
-const REAL_SPREADSHEET_TRIASE_PKM = [
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Watubaing',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-19': { merah: 0, kuning: 1, hijau: 6, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 5, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Palue',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 1, hijau: 2, hitam: 0 },
-      '2026-08-22': { merah: 1, kuning: 0, hijau: 4, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 0, hijau: 19, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Nita',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-17': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Wolofeo',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Paga',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-17': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-18': { merah: 0, kuning: 1, hijau: 2, hitam: 0 },
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Mapitara',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-18': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-      '2026-08-24': { merah: 0, kuning: 0, hijau: 4, hitam: 0 },
-      '2026-08-25': { merah: 0, kuning: 0, hijau: 4, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Wualadu',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-    }
-  },
-  {
-    kabupaten: 'Kab. Sikka',
-    nama_puskesmas: 'Puskesmas Waigate',
-    jenis: 'Puskesmas',
-    harian: {
-      '2026-08-17': { merah: 2, kuning: 0, hijau: 0, hitam: 0 },
-      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
-      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
-    }
-  }
-]
+const GOOGLE_APPS_SCRIPT_KORBAN_URL =
+  process.env.GOOGLE_APPS_SCRIPT_KORBAN_URL ||
+  process.env.NEXT_PUBLIC_NTT_APPS_SCRIPT_URL ||
+  ''
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -559,8 +137,8 @@ export async function GET(request: NextRequest) {
   try {
     let rawKorbanJson: any = null
 
-    // Coba ambil live dari Apps Script
-    if (GOOGLE_APPS_SCRIPT_KORBAN_URL && !GOOGLE_APPS_SCRIPT_KORBAN_URL.includes('placeholder')) {
+    // Ambil live 100% dari Google Apps Script Spreadsheet API
+    if (GOOGLE_APPS_SCRIPT_KORBAN_URL) {
       try {
         const gasRes = await fetch(GOOGLE_APPS_SCRIPT_KORBAN_URL, {
           headers: { Accept: 'application/json' },
@@ -574,28 +152,23 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (fetchErr) {
-        console.warn('[API ntt-data] Live Google Sheets Korban fetch failed; using integrated spreadsheet dataset:', fetchErr)
+        console.warn('[API ntt-data] Live Google Sheets fetch failed:', fetchErr)
       }
     }
 
-    // Gunakan dataset spreadsheet riil (15 - 28 Agustus 2026) jika live Apps Script belum merespon
-    if (!rawKorbanJson) {
-      rawKorbanJson = REAL_SPREADSHEET_KORBAN_DATA
-    }
-
     if (rawKorbanJson && Array.isArray(rawKorbanJson.data_kabupaten)) {
-      // Batasi tanggal: hanya tanggal yang sudah memiliki data laporan terkonfirmasi (15 - 25 Agustus 2026)
+      // Batasi tanggal: hanya tanggal yang sudah memiliki data laporan terkonfirmasi
       const nowWib = new Date()
       const wibOffset = 7 * 60 * 60 * 1000
       const todayIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
 
-      const rawDates = (rawKorbanJson.daftar_tanggal || REAL_SPREADSHEET_KORBAN_DATA.daftar_tanggal).slice().sort()
+      const rawDates = Array.isArray(rawKorbanJson.daftar_tanggal) ? rawKorbanJson.daftar_tanggal.slice().sort() : []
       const allDates = rawDates.filter((d: string) => {
         if (d > todayIso) return false
         if (d >= '2026-08-26') return false // Tanggal 26 belum ada inputan resmi final
         return true
       })
-      if (allDates.length === 0) {
+      if (allDates.length === 0 && rawDates.length > 0) {
         allDates.push(...rawDates.filter((d: string) => d <= '2026-08-25'))
       }
 
@@ -679,11 +252,11 @@ export async function GET(request: NextRequest) {
       // Bangun timeline_pasien_rs dan timeline_pasien_puskesmas
       const rawRsList = (Array.isArray(rawKorbanJson.triase_rs) && rawKorbanJson.triase_rs.length > 0)
         ? rawKorbanJson.triase_rs
-        : REAL_SPREADSHEET_TRIASE_RS
+        : []
       
       const rawPkmList = (Array.isArray(rawKorbanJson.triase_pkm) && rawKorbanJson.triase_pkm.length > 0)
         ? rawKorbanJson.triase_pkm
-        : REAL_SPREADSHEET_TRIASE_PKM
+        : []
 
       const timelinePasienRs: any[] = []
       const timelinePasienPkm: any[] = []
