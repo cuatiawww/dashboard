@@ -479,6 +479,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     situasi_kesehatan: any[]
     timeline_situasi_kesehatan: any[]
     analisa_ringkasan_harian: any[]
+    surveilans_penyakit?: any[]
     master_faskes: any[]
     summary_faskes?: any
     summary_korban?: any
@@ -493,6 +494,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     situasi_kesehatan: [],
     timeline_situasi_kesehatan: [],
     analisa_ringkasan_harian: [],
+    surveilans_penyakit: [],
     master_faskes: [],
     summary_faskes: null,
     summary_korban: null,
@@ -503,6 +505,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const [nttSipkkReports, setNttSipkkReports] = useState<any[]>([])
   const [loadingNtt, setLoadingNtt] = useState<boolean>(true)
+  const [livePenyakitSurveilans, setLivePenyakitSurveilans] = useState<any>(null)
 
   // Polling data collector otomatis setiap 30 menit & saat tab aktif kembali
   useEffect(() => {
@@ -566,6 +569,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           situasi_kesehatan: normalizeRows(json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           timeline_situasi_kesehatan: normalizeRows(json.timeline_situasi_kesehatan || json.tables.situasi_kesehatan || json.data?.situasi_kesehatan || []),
           analisa_ringkasan_harian: normalizeRows(json.tables.analisa_ringkasan_harian || json.data?.analisa_ringkasan_harian || []),
+          surveilans_penyakit: normalizeRows(json.tables?.surveilans_penyakit || json.data?.surveilans_penyakit || []),
           master_faskes: Array.isArray(json.tables?.master_faskes) ? json.tables.master_faskes : (Array.isArray(json.data?.master_faskes) ? json.data.master_faskes : []),
           summary_faskes: json.summary_faskes || null,
           summary_korban: json.summary_korban || null,
@@ -618,19 +622,37 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
+    // 3. Ambil data surveilans penyakit real-time dari API / Scraper Looker Studio
+    const fetchPenyakitSurveilans = async () => {
+      try {
+        const res = await fetch(`${basePath}/api/penyakit-surveilans`, { cache: 'no-store' })
+        if (res.ok) {
+          const json = await res.json()
+          if (active && json.success) {
+            setLivePenyakitSurveilans(json)
+          }
+        }
+      } catch (err) {
+        console.warn('[Penyakit Surveilans Fetch Error]', err)
+      }
+    }
+
     fetchNtt()
     fetchAllNttSipkkReports()
+    fetchPenyakitSurveilans()
 
     // Interval auto-refresh setiap 30 menit (1.800.000 ms)
     const intervalId = setInterval(() => {
       console.log('[SIPKK Auto-Refresh] 30 Menit berlalu, memperbarui data live...')
       fetchNtt()
       fetchAllNttSipkkReports()
+      fetchPenyakitSurveilans()
     }, 30 * 60 * 1000)
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && active) {
         fetchNtt()
+        fetchPenyakitSurveilans()
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -2982,159 +3004,77 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.faskes_terdampak, eventData.tgl_kejadian, trendWindowDays, isNttEvent, nttApiData?.situasi_kesehatan, faskesPieBreakdown]);
 
   const effectivePenyakitList = useMemo(() => {
-    // 1. Live Data dari Google Sheets API (per-kabupaten)
-    if (livePenyakitData && Array.isArray(livePenyakitData.data_detail) && livePenyakitData.data_detail.length > 0) {
-      return livePenyakitData.data_detail.map((p, idx) => ({
-        id_penyakit: idx + 1,
-        jenis_penyakit: p.jenis_penyakit,
-        nama_asli_sheet: p.nama_asli_sheet,
-        jumlah_kasus: p.jumlah_kasus,
-        kabupaten: p.kabupaten,
-        posko: p.posko || `Posko ${p.kabupaten}`,
-        kategori: p.kategori,
-        tindakan: p.tindakan,
-        risiko: p.risiko
-      }))
+    // 1. Live Data dari Scraper / API Surveilans Penyakit NTT (Looker Studio)
+    if (livePenyakitSurveilans && Array.isArray(livePenyakitSurveilans.sebaran_kabupaten) && livePenyakitSurveilans.sebaran_kabupaten.length > 0) {
+      const list: any[] = []
+      let id = 1
+      livePenyakitSurveilans.sebaran_kabupaten.forEach((kab: any) => {
+        const kName = kab.kabupaten
+        if (kab.ispa) list.push({ id_penyakit: id++, jenis_penyakit: 'ISPA', jumlah_kasus: kab.ispa, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.hipertensi) list.push({ id_penyakit: id++, jenis_penyakit: 'Hipertensi', jumlah_kasus: kab.hipertensi, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.diare) list.push({ id_penyakit: id++, jenis_penyakit: 'Diare', jumlah_kasus: kab.diare, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.kulit) list.push({ id_penyakit: id++, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: kab.kulit, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.luka) list.push({ id_penyakit: id++, jenis_penyakit: 'Luka', jumlah_kasus: kab.luka, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.rabies) list.push({ id_penyakit: id++, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: kab.rabies, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.fraktur) list.push({ id_penyakit: id++, jenis_penyakit: 'Fraktur', jumlah_kasus: kab.fraktur, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+        if (kab.lainnya) list.push({ id_penyakit: id++, jenis_penyakit: 'Lainnya', jumlah_kasus: kab.lainnya, kabupaten: kName, posko: `Posko Pengungsian & Faskes ${kName}` })
+      })
+      return list
     }
-    // 2. Database input
+
+    // 2. Database input jika tersedia
     if (Array.isArray(eventData.penyakit_input) && eventData.penyakit_input.length > 0) {
       return eventData.penyakit_input
     }
-    // 3. Data Komprehensif Kumulatif 7 Kab/Kota Gempa NTT dari Spreadsheet
-    if (isNttEvent) {
-      return [
-        // ── KAB. MANGGARAI (Total: 6.338 Kasus) ──
-        { id_penyakit: 1, jenis_penyakit: 'ISPA', jumlah_kasus: 3820, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 2, jenis_penyakit: 'Hipertensi', jumlah_kasus: 1780, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 3, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 210, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 4, jenis_penyakit: 'Diare', jumlah_kasus: 162, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 5, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 145, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 6, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 95, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 7, jenis_penyakit: 'Luka', jumlah_kasus: 92, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 8, jenis_penyakit: 'Fraktur', jumlah_kasus: 18, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 9, jenis_penyakit: 'Diabetes Pada Anak (0-17 tahun)', jumlah_kasus: 6, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 10, jenis_penyakit: 'Pneumonia', jumlah_kasus: 5, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 11, jenis_penyakit: 'Suspek Demam Tifoid', jumlah_kasus: 2, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
-        { id_penyakit: 12, jenis_penyakit: 'Rabies', jumlah_kasus: 1, kabupaten: 'Kab. Manggarai', posko: 'Posko Pengungsian & Faskes Kab. Manggarai' },
 
-        // ── KAB. NAGEKEO (Total: 3.284 Kasus) ──
-        { id_penyakit: 13, jenis_penyakit: 'ISPA', jumlah_kasus: 2015, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 14, jenis_penyakit: 'Hipertensi', jumlah_kasus: 980, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 15, jenis_penyakit: 'Diare', jumlah_kasus: 110, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 16, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 85, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 17, jenis_penyakit: 'Luka', jumlah_kasus: 48, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 18, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 42, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 19, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 22, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 20, jenis_penyakit: 'Fraktur', jumlah_kasus: 4, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-        { id_penyakit: 21, jenis_penyakit: 'Diabetes Pada Anak (0-17 tahun)', jumlah_kasus: 1, kabupaten: 'Kab. Nagekeo', posko: 'Posko Pengungsian & Faskes Kab. Nagekeo' },
-
-        // ── KAB. ENDE (Total: 2.128 Kasus) ──
-        { id_penyakit: 22, jenis_penyakit: 'ISPA', jumlah_kasus: 1290, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 23, jenis_penyakit: 'Hipertensi', jumlah_kasus: 640, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 24, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 98, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 25, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 60, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 26, jenis_penyakit: 'Diare', jumlah_kasus: 52, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 27, jenis_penyakit: 'Luka', jumlah_kasus: 20, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 28, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 8, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 29, jenis_penyakit: 'Pneumonia', jumlah_kasus: 3, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 30, jenis_penyakit: 'Diabetes Pada Anak (0-17 tahun)', jumlah_kasus: 2, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 31, jenis_penyakit: 'Suspek Dengue', jumlah_kasus: 1, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-        { id_penyakit: 32, jenis_penyakit: 'Suspek Demam Tifoid', jumlah_kasus: 1, kabupaten: 'Kab. Ende', posko: 'Posko Pengungsian & Faskes Kab. Ende' },
-
-        // ── KAB. MANGGARAI TIMUR (Total: 1.583 Kasus) ──
-        { id_penyakit: 33, jenis_penyakit: 'ISPA', jumlah_kasus: 980, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 34, jenis_penyakit: 'Hipertensi', jumlah_kasus: 430, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 35, jenis_penyakit: 'Diare', jumlah_kasus: 65, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 36, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 56, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 37, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 45, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 38, jenis_penyakit: 'Luka', jumlah_kasus: 30, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 39, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 20, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 40, jenis_penyakit: 'Pneumonia', jumlah_kasus: 2, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 41, jenis_penyakit: 'Diabetes Pada Anak (0-17 tahun)', jumlah_kasus: 2, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-        { id_penyakit: 42, jenis_penyakit: 'Suspek Demam Tifoid', jumlah_kasus: 1, kabupaten: 'Kab. Manggarai Timur', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Timur' },
-
-        // ── KAB. MANGGARAI BARAT (Total: 650 Kasus) ──
-        { id_penyakit: 43, jenis_penyakit: 'ISPA', jumlah_kasus: 370, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 44, jenis_penyakit: 'Hipertensi', jumlah_kasus: 180, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 45, jenis_penyakit: 'Luka', jumlah_kasus: 50, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 46, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 18, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 47, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 14, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 48, jenis_penyakit: 'Diare', jumlah_kasus: 12, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 49, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 8, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-        { id_penyakit: 50, jenis_penyakit: 'Lainnya', jumlah_kasus: 1, kabupaten: 'Kab. Manggarai Barat', posko: 'Posko Pengungsian & Faskes Kab. Manggarai Barat' },
-
-        // ── KAB. NGADA (Total: 494 Kasus) ──
-        { id_penyakit: 51, jenis_penyakit: 'ISPA', jumlah_kasus: 320, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 52, jenis_penyakit: 'Hipertensi', jumlah_kasus: 110, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 53, jenis_penyakit: 'Diare', jumlah_kasus: 30, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 54, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 12, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 55, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 10, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 56, jenis_penyakit: 'Luka', jumlah_kasus: 10, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 57, jenis_penyakit: 'Pneumonia', jumlah_kasus: 1, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-        { id_penyakit: 58, jenis_penyakit: 'Suspek Demam Tifoid', jumlah_kasus: 1, kabupaten: 'Kab. Ngada', posko: 'Posko Pengungsian & Faskes Kab. Ngada' },
-
-        // ── KAB. SIKKA (Total: 336 Kasus) ──
-        { id_penyakit: 59, jenis_penyakit: 'ISPA', jumlah_kasus: 175, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 60, jenis_penyakit: 'Hipertensi', jumlah_kasus: 76, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 61, jenis_penyakit: 'Dermatitis (Penyakit Kulit)', jumlah_kasus: 30, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 62, jenis_penyakit: 'Diare', jumlah_kasus: 15, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 63, jenis_penyakit: 'Gigitan Hewan Penular Rabies', jumlah_kasus: 10, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 64, jenis_penyakit: 'Diabetes Dewasa (> 18 Tahun)', jumlah_kasus: 15, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 65, jenis_penyakit: 'Luka', jumlah_kasus: 14, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 66, jenis_penyakit: 'Suspek Dengue', jumlah_kasus: 1, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-        { id_penyakit: 67, jenis_penyakit: 'Malaria', jumlah_kasus: 1, kabupaten: 'Kab. Sikka', posko: 'Posko Pengungsian & Faskes Kab. Sikka' },
-      ]
-    }
     return []
-  }, [livePenyakitData, eventData.penyakit_input, isNttEvent]);
+  }, [livePenyakitSurveilans, eventData.penyakit_input]);
 
-  const penyakitTotalData = useMemo(() => {
-    // 1. Live Summary Ranking Chart dari Google Sheets API
-    if (livePenyakitData && Array.isArray(livePenyakitData.summary_chart) && livePenyakitData.summary_chart.length > 0) {
-      const normMap: { [key: string]: { name: string; total: number } } = {};
-      livePenyakitData.summary_chart.forEach(item => {
-        const rawName = String(item.name || '').trim();
-        const key = rawName.toUpperCase();
-        if (!normMap[key]) {
-          normMap[key] = { name: rawName, total: 0 };
-        }
-        normMap[key].total += safeParseInt(item.total);
-      });
-      return Object.values(normMap).sort((a, b) => b.total - a.total);
+  const penyakitTotalData: Array<{ name: string; total: number; baru?: number }> = useMemo(() => {
+    // 1. Live Summary Ranking Chart dari Scraper / API Surveilans (Looker Studio)
+    if (livePenyakitSurveilans && Array.isArray(livePenyakitSurveilans.data_penyakit_kumulatif) && livePenyakitSurveilans.data_penyakit_kumulatif.length > 0) {
+      return livePenyakitSurveilans.data_penyakit_kumulatif
+        .map((item: any) => ({
+          name: item.name,
+          total: safeParseInt(item.total),
+          baru: safeParseInt(item.baru)
+        }))
+        .sort((a: any, b: any) => b.total - a.total)
     }
-    const list = effectivePenyakitList;
+
+    const list = effectivePenyakitList
     if (list.length === 0) {
-      return [];
+      return []
     }
 
-    const totals: { [key: string]: { name: string; total: number } } = {};
+    const totals: { [key: string]: { name: string; total: number } } = {}
     list.forEach((p: any) => {
-      const rawName = String(p.jenis_penyakit || p.nama_penyakit || p.nama_asli_sheet || p.id_penyakit || 'Penyakit Lainnya').trim();
-      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`;
-      const key = disease.toUpperCase();
-      const count = safeParseInt(p.jumlah_kasus || p.jml);
+      const rawName = String(p.jenis_penyakit || p.nama_penyakit || p.id_penyakit || 'Penyakit Lainnya').trim()
+      const disease = isNaN(Number(rawName)) ? rawName : `Penyakit (ID: ${rawName})`
+      const key = disease.toUpperCase()
+      const count = safeParseInt(p.jumlah_kasus || p.jml)
       if (count > 0) {
         if (!totals[key]) {
-          totals[key] = { name: disease, total: 0 };
+          totals[key] = { name: disease, total: 0 }
         }
-        totals[key].total += count;
+        totals[key].total += count
       }
-    });
+    })
 
-    return Object.values(totals).sort((a, b) => b.total - a.total);
-  }, [livePenyakitData, effectivePenyakitList]);
+    return Object.values(totals).sort((a, b) => b.total - a.total)
+  }, [livePenyakitSurveilans, effectivePenyakitList]);
 
-  // Top 10 Kasus Terbanyak untuk Grafik Bar agar rapi, mudah dibaca, dan tidak bertumpuk
+  // Top 10 Kasus Terbanyak untuk Grafik Bar
   const penyakitChartData = useMemo(() => {
     return penyakitTotalData.slice(0, 10);
   }, [penyakitTotalData]);
 
   const totalPenyakitCases = useMemo(() => {
-    if (livePenyakitData?.total_kasus_se_ntt !== undefined && livePenyakitData.total_kasus_se_ntt > 0) {
-      return livePenyakitData.total_kasus_se_ntt;
+    if (livePenyakitSurveilans?.total_kasus_kumulatif && livePenyakitSurveilans.total_kasus_kumulatif > 0) {
+      return safeParseInt(livePenyakitSurveilans.total_kasus_kumulatif);
     }
-    return penyakitTotalData.reduce((s, item) => s + (item.total || 0), 0);
-  }, [livePenyakitData, penyakitTotalData]);
+    return penyakitTotalData.reduce((s: number, item: any) => s + (item.total || 0), 0);
+  }, [livePenyakitSurveilans, penyakitTotalData]);
 
   const dominantDiseaseObj = useMemo(() => {
     if (livePenyakitData?.penyakit_terbanyak && livePenyakitData.penyakit_terbanyak.total > 0) {
@@ -5425,8 +5365,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </div>
                         <div className="p-3 rounded-xl bg-purple-50/70 border border-purple-200/80">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-purple-800 block">Penyakit Terpantau</span>
-                          {penyakitTotalData.filter(x => x.total > 0).length > 0 ? (
-                            <span className="text-lg sm:text-xl font-black text-purple-950 block mt-0.5">{penyakitTotalData.filter(x => x.total > 0).length} <span className="text-xs font-bold text-purple-700">Jenis</span></span>
+                          {penyakitTotalData.filter((x: any) => x.total > 0).length > 0 ? (
+                            <span className="text-lg sm:text-xl font-black text-purple-950 block mt-0.5">{penyakitTotalData.filter((x: any) => x.total > 0).length} <span className="text-xs font-bold text-purple-700">Jenis</span></span>
                           ) : (
                             <span className="text-lg sm:text-xl font-black text-purple-900 block mt-0.5">0</span>
                           )}

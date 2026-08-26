@@ -7,6 +7,7 @@ export const NTT_DATASETS = [
   'situasi_kesehatan',
   'pasien_rs',
   'pasien_puskesmas',
+  'surveilans_penyakit',
 ] as const
 
 export type NttDatasetName = (typeof NTT_DATASETS)[number]

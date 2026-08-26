@@ -1,0 +1,115 @@
+{
+  "success": true,
+  "last_updated": "2026-08-26T17:30:59.955Z",
+  "source_url": "https://datastudio.google.com/reporting/541be3b0-2553-46d6-ac23-09a504c498cd/page/V756F",
+  "page_title": "Dashboard Pemantauan Penyakit Potensial KLB Gempa Bumi NTT",
+  "total_kasus_kumulatif": 0,
+  "total_kasus_baru": 0,
+  "data_penyakit_kumulatif": [
+    {
+      "name": "ISPA",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Hipertensi",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Diare",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Diabetes Dewasa (> 18 Tahun)",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Dermatitis (Penyakit Kulit)",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Luka",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Gigitan Hewan Penular Rabies",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Fraktur",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Diabetes Pada Anak (0-17 tahun)",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Pneumonia",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Suspek Demam Tifoid",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Suspek Dengue",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Rabies",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Malaria",
+      "total": 0,
+      "baru": 0
+    },
+    {
+      "name": "Lainnya",
+      "total": 0,
+      "baru": 0
+    }
+  ],
+  "sebaran_kabupaten": [
+    {
+      "kabupaten": "Kab. Manggarai",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Nagekeo",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Ende",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Manggarai Timur",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Manggarai Barat",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Ngada",
+      "total": 0
+    },
+    {
+      "kabupaten": "Kab. Sikka",
+      "total": 0
+    }
+  ]
+}
