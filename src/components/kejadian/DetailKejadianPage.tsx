@@ -837,25 +837,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [activeModalDate])
 
   const faskesMatrixData = useMemo(() => {
-    // 1. Data master_faskes dari API /api/ntt-data jika ada (1.818 faskes se-NTT)
-    if (Array.isArray(nttApiData.master_faskes) && nttApiData.master_faskes.length > 0) {
-      return nttApiData.master_faskes
-    }
-
-    // 2. Data faskes_terdekat dari detail jika sudah memuat master lengkap
-    if (Array.isArray(detail?.faskes_terdekat) && detail.faskes_terdekat.length > 50) {
-      return detail.faskes_terdekat
-    }
-
-    // 3. Data faskes terdampak dari database kejadian
-    if (Array.isArray(detail?.faskes_terdampak) && detail.faskes_terdampak.length > 0) {
-      return detail.faskes_terdampak
-    }
-
-    // 4. Data faskes riil dari API Collector (/api/ntt-data) yang dipetakan ke Master Data Faskes
-    const combinedFaskes: any[] = []
-    const seenKeys = new Set<string>()
-
     const allRs = Array.isArray(nttApiData.timeline_pasien_rs) && nttApiData.timeline_pasien_rs.length > 0
       ? nttApiData.timeline_pasien_rs
       : (Array.isArray(nttApiData.pasien_rs) ? nttApiData.pasien_rs : [])
@@ -863,137 +844,119 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ? nttApiData.timeline_pasien_puskesmas
       : (Array.isArray(nttApiData.pasien_puskesmas) ? nttApiData.pasien_puskesmas : [])
 
-    const rsDates = Array.from(new Set(allRs.map((r: any) => r.tanggal).filter(Boolean))).sort()
-    const pkmDates = Array.from(new Set(allPkm.map((r: any) => r.tanggal).filter(Boolean))).sort()
-
     const isKumulatif = activeModalDate === 'kumulatif' || !activeModalDate
-    const targetRsDate = (!isKumulatif && rsDates.includes(activeModalDate)) ? activeModalDate : ''
-    const targetPkmDate = (!isKumulatif && pkmDates.includes(activeModalDate)) ? activeModalDate : ''
+    const targetDate = (!isKumulatif && activeModalDate) ? activeModalDate : ''
 
-    const rsRowsToUse = targetRsDate ? allRs.filter((r: any) => r.tanggal === targetRsDate) : allRs
-    const pkmRowsToUse = targetPkmDate ? allPkm.filter((p: any) => p.tanggal === targetPkmDate) : allPkm
+    const rsRowsToUse = targetDate ? allRs.filter((r: any) => r.tanggal === targetDate) : allRs
+    const pkmRowsToUse = targetDate ? allPkm.filter((p: any) => p.tanggal === targetDate) : allPkm
 
-    if (rsRowsToUse.length > 0) {
-      rsRowsToUse.forEach((rs: any, idx: number) => {
-        const rawName = rs.nama_display || rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
-        const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${(rs.nama_rs || rawName).toLowerCase().trim()}`
-        
-        if (seenKeys.has(dedupeKey)) {
-          if (isKumulatif) {
-            const existing = combinedFaskes.find(f => f.dedupeKey === dedupeKey)
-            if (existing) {
-              existing.triase_merah += safeParseInt(rs.triase_merah)
-              existing.triase_kuning += safeParseInt(rs.triase_kuning)
-              existing.triase_hijau += safeParseInt(rs.triase_hijau)
-              existing.triase_hitam += safeParseInt(rs.triase_hitam)
-              existing.total_pasien = existing.triase_merah + existing.triase_kuning + existing.triase_hijau + existing.triase_hitam
-            }
-          }
-          return
+    // Peta pasien aktif sesuai tanggal / periode yang dipilih di modal
+    const activePatientMap: Record<string, { merah: number; kuning: number; hijau: number; hitam: number; total: number; matched: boolean }> = {}
+
+    const normalizeKey = (name: string, kab: string) => {
+      const cleanN = String(name || '').toLowerCase().replace(/^(rsud|rs|puskesmas|pkm|pustu|klinik)\s+/i, '').replace(/[^a-z0-9]/g, '').trim()
+      const cleanK = String(kab || '').toLowerCase().replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()
+      return `${cleanK}__${cleanN}`
+    }
+
+    rsRowsToUse.forEach((rs: any) => {
+      const key = normalizeKey(rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.nama_faskes || rs.nama, rs.kabupaten || rs.nama_kab)
+      const m = safeParseInt(rs.triase_merah)
+      const k = safeParseInt(rs.triase_kuning)
+      const h = safeParseInt(rs.triase_hijau)
+      const hit = safeParseInt(rs.triase_hitam)
+      const tot = safeParseInt(rs.total) || (m + k + h + hit)
+
+      if (!activePatientMap[key]) {
+        activePatientMap[key] = { merah: 0, kuning: 0, hijau: 0, hitam: 0, total: 0, matched: true }
+      }
+      activePatientMap[key].merah += m
+      activePatientMap[key].kuning += k
+      activePatientMap[key].hijau += h
+      activePatientMap[key].hitam += hit
+      activePatientMap[key].total += tot
+    })
+
+    pkmRowsToUse.forEach((pkm: any) => {
+      const key = normalizeKey(pkm.nama_master || pkm.nama_puskesmas || pkm.nama_faskes || pkm.nama, pkm.kabupaten || pkm.nama_kab)
+      const m = safeParseInt(pkm.triase_merah)
+      const k = safeParseInt(pkm.triase_kuning)
+      const h = safeParseInt(pkm.triase_hijau)
+      const hit = safeParseInt(pkm.triase_hitam)
+      const tot = safeParseInt(pkm.total) || (m + k + h + hit)
+
+      if (!activePatientMap[key]) {
+        activePatientMap[key] = { merah: 0, kuning: 0, hijau: 0, hitam: 0, total: 0, matched: true }
+      }
+      activePatientMap[key].merah += m
+      activePatientMap[key].kuning += k
+      activePatientMap[key].hijau += h
+      activePatientMap[key].hitam += hit
+      activePatientMap[key].total += tot
+    })
+
+    const masterList = (Array.isArray(nttApiData.master_faskes) && nttApiData.master_faskes.length > 0)
+      ? nttApiData.master_faskes
+      : (Array.isArray(detail?.faskes_terdekat) && detail.faskes_terdekat.length > 50 ? detail.faskes_terdekat : [])
+
+    if (masterList.length > 0) {
+      return masterList.map((f: any) => {
+        const key = normalizeKey(f.nama_master || f.nama_faskes || f.nama, f.nama_kab || f.kabupaten)
+        const patientData = activePatientMap[key]
+        const m = patientData ? patientData.merah : 0
+        const k = patientData ? patientData.kuning : 0
+        const h = patientData ? patientData.hijau : 0
+        const hit = patientData ? patientData.hitam : 0
+        const tot = patientData ? patientData.total : 0
+
+        return {
+          ...f,
+          triase_merah: m,
+          triase_kuning: k,
+          triase_hijau: h,
+          triase_hitam: hit,
+          total_pasien: tot,
+          has_collector_data: tot > 0,
+          status_bencana: tot > 0 ? 'Sedang Merawat Pasien Bencana' : 'Siaga Bencana (Standby)',
         }
-        seenKeys.add(dedupeKey)
-
-        const fLat = rs.latitude !== null && rs.latitude !== undefined && rs.latitude !== '' ? Number(rs.latitude) : null
-        const fLng = rs.longitude !== null && rs.longitude !== undefined && rs.longitude !== '' ? Number(rs.longitude) : null
-
-        combinedFaskes.push({
-          id: `rs-${idx + 1}`,
-          dedupeKey,
-          nama: rawName,
-          nama_faskes: rawName,
-          nama_master: rs.nama_master || '',
-          kode_sarana: rs.kode_sarana || '-',
-          kode_satusehat: rs.kode_satusehat || '-',
-          jenis: rs.subjenis || rs.jenis_faskes || 'Rumah Sakit Umum Daerah',
-          subjenis: rs.subjenis || 'Rumah Sakit Umum',
-          kabupaten: rs.nama_kab || rs.kabupaten || '',
-          kecamatan: rs.nama_kecamatan || rs.kecamatan || '-',
-          alamat: rs.alamat || '-',
-          latitude: fLat,
-          longitude: fLng,
-          lat: fLat,
-          lng: fLng,
-          status: rs.status || 'Beroperasi Siaga Bencana',
-          kondisi_bangunan: rs.kondisi_bangunan || 'Terpantau EOC',
-          triase_merah: safeParseInt(rs.triase_merah),
-          triase_kuning: safeParseInt(rs.triase_kuning),
-          triase_hijau: safeParseInt(rs.triase_hijau),
-          triase_hitam: safeParseInt(rs.triase_hitam),
-          total_pasien: safeParseInt(rs.total) || (safeParseInt(rs.triase_merah) + safeParseInt(rs.triase_kuning) + safeParseInt(rs.triase_hijau) + safeParseInt(rs.triase_hitam)),
-          kapasitas_tersedia: rs.kapasitas_tersedia || '-',
-          stok_darah: rs.stok_darah || '-',
-          listrik: rs.listrik || 'PLN / Genset Siaga',
-          pj_medis: rs.pj_medis || '-',
-          petugas: rs.pj_medis || '-',
-          telp: rs.telp || '-',
-          email: rs.email || '-',
-          has_collector_data: true,
-          master_matched: rs.master_matched,
-        })
       })
     }
 
-    if (pkmRowsToUse.length > 0) {
-      pkmRowsToUse.forEach((pkm: any, idx: number) => {
-        const rawName = pkm.nama_display || (pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga'))
-        const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${(pkm.nama_puskesmas || rawName).toLowerCase().trim()}`
-        
-        if (seenKeys.has(dedupeKey)) {
-          if (isKumulatif) {
-            const existing = combinedFaskes.find(f => f.dedupeKey === dedupeKey)
-            if (existing) {
-              existing.triase_merah += safeParseInt(pkm.triase_merah)
-              existing.triase_kuning += safeParseInt(pkm.triase_kuning)
-              existing.triase_hijau += safeParseInt(pkm.triase_hijau)
-              existing.triase_hitam += safeParseInt(pkm.triase_hitam)
-              existing.total_pasien = existing.triase_merah + existing.triase_kuning + existing.triase_hijau + existing.triase_hitam
-            }
-          }
-          return
-        }
-        seenKeys.add(dedupeKey)
-
-        const fLat = pkm.latitude !== null && pkm.latitude !== undefined && pkm.latitude !== '' ? Number(pkm.latitude) : null
-        const fLng = pkm.longitude !== null && pkm.longitude !== undefined && pkm.longitude !== '' ? Number(pkm.longitude) : null
-
-        combinedFaskes.push({
-          id: `pkm-${idx + 1}`,
-          dedupeKey,
-          nama: rawName,
-          nama_faskes: rawName,
-          nama_master: pkm.nama_master || '',
-          kode_sarana: pkm.kode_sarana || '-',
-          kode_satusehat: pkm.kode_satusehat || '-',
-          jenis: pkm.subjenis || pkm.jenis_faskes || 'Puskesmas',
-          subjenis: pkm.subjenis || 'Puskesmas',
-          kabupaten: pkm.nama_kab || pkm.kabupaten || '',
-          kecamatan: pkm.nama_kecamatan || pkm.kecamatan || '-',
-          alamat: pkm.alamat || '-',
-          latitude: fLat,
-          longitude: fLng,
-          lat: fLat,
-          lng: fLng,
-          status: pkm.status || 'Beroperasi',
-          kondisi_bangunan: pkm.kondisi_bangunan || 'Normal',
-          triase_merah: safeParseInt(pkm.triase_merah),
-          triase_kuning: safeParseInt(pkm.triase_kuning),
-          triase_hijau: safeParseInt(pkm.triase_hijau),
-          triase_hitam: safeParseInt(pkm.triase_hitam),
-          total_pasien: safeParseInt(pkm.total) || (safeParseInt(pkm.triase_merah) + safeParseInt(pkm.triase_kuning) + safeParseInt(pkm.triase_hijau) + safeParseInt(pkm.triase_hitam)),
-          kapasitas_tersedia: pkm.kapasitas_tersedia || '-',
-          stok_darah: '-',
-          listrik: pkm.listrik || 'PLN',
-          pj_medis: pkm.pj_medis || '-',
-          petugas: pkm.pj_medis || '-',
-          telp: pkm.telp || '-',
-          email: pkm.email || '-',
-          has_collector_data: true,
-          master_matched: pkm.master_matched,
-        })
+    // Fallback bila data master belum siap
+    const fallbackList: any[] = []
+    rsRowsToUse.forEach((rs: any, idx: number) => {
+      fallbackList.push({
+        id: `rs-${idx + 1}`,
+        nama: rs.nama_display || rs.nama_rs,
+        nama_faskes: rs.nama_display || rs.nama_rs,
+        jenis: 'Rumah Sakit',
+        jenis_faskes: 'Rumah Sakit',
+        kabupaten: rs.kabupaten,
+        triase_merah: safeParseInt(rs.triase_merah),
+        triase_kuning: safeParseInt(rs.triase_kuning),
+        triase_hijau: safeParseInt(rs.triase_hijau),
+        triase_hitam: safeParseInt(rs.triase_hitam),
+        total_pasien: safeParseInt(rs.total) || (safeParseInt(rs.triase_merah) + safeParseInt(rs.triase_kuning) + safeParseInt(rs.triase_hijau) + safeParseInt(rs.triase_hitam)),
+        has_collector_data: true,
       })
-    }
-
-    return combinedFaskes
+    })
+    pkmRowsToUse.forEach((pkm: any, idx: number) => {
+      fallbackList.push({
+        id: `pkm-${idx + 1}`,
+        nama: pkm.nama_display || pkm.nama_puskesmas,
+        nama_faskes: pkm.nama_display || pkm.nama_puskesmas,
+        jenis: 'Puskesmas',
+        jenis_faskes: 'Puskesmas',
+        kabupaten: pkm.kabupaten,
+        triase_merah: safeParseInt(pkm.triase_merah),
+        triase_kuning: safeParseInt(pkm.triase_kuning),
+        triase_hijau: safeParseInt(pkm.triase_hijau),
+        triase_hitam: safeParseInt(pkm.triase_hitam),
+        total_pasien: safeParseInt(pkm.total) || (safeParseInt(pkm.triase_merah) + safeParseInt(pkm.triase_kuning) + safeParseInt(pkm.triase_hijau) + safeParseInt(pkm.triase_hitam)),
+        has_collector_data: true,
+      })
+    })
+    return fallbackList
   }, [detail, nttApiData.master_faskes, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, activeModalDate])
 
   const effectiveFaskesList = useMemo(() => {
@@ -1004,7 +967,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [isNttEvent, faskesMatrixData, detail?.faskes_terdekat])
 
   const masterFaskesCounts = useMemo(() => {
-    let rs = 0, pkm = 0, klinik = 0, pustu = 0
+    let rs = 0, pkm = 0, klinik = 0, pustu = 0, merawat = 0
     effectiveFaskesList.forEach((f: any) => {
       const j = String(f.jenis_faskes || f.jenis || f.subjenis || '').toLowerCase()
       if (j.includes('rumah sakit') || j.includes('rs')) rs++
@@ -1012,11 +975,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       else if (j.includes('puskesmas') || j.includes('pkm')) pkm++
       else if (j.includes('klinik')) klinik++
       else pustu++
-    })
 
-    const rsRawat = Array.isArray(nttApiData.pasien_rs) ? nttApiData.pasien_rs.length : 7
-    const pkmRawat = Array.isArray(nttApiData.pasien_puskesmas) ? nttApiData.pasien_puskesmas.length : 121
-    const totalMerawat = isNttEvent ? (rsRawat + pkmRawat) : 0
+      if (Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0) > 0) {
+        merawat++
+      }
+    })
 
     return {
       all: effectiveFaskesList.length || 1811,
@@ -1024,9 +987,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       puskesmas: pkm || 430,
       klinik: klinik || 196,
       pustu: pustu || 1121,
-      totalMerawat,
+      totalMerawat: isNttEvent ? merawat : 0,
     }
-  }, [effectiveFaskesList, isNttEvent, nttApiData.pasien_rs, nttApiData.pasien_puskesmas])
+  }, [effectiveFaskesList, isNttEvent])
 
   const rsCount = isNttEvent
     ? (nttApiData?.pasien_rs?.length || 7)
@@ -1216,8 +1179,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       })
     }
 
-    const rsRawat = isNttEvent ? (nttApiData.pasien_rs?.length || rsCount || 7) : 0
-    const pkmRawat = isNttEvent ? (nttApiData.pasien_puskesmas?.length || pkmCount || 83) : 0
+    const rsRawat = isNttEvent
+      ? effectiveFaskesList.filter((f: any) => {
+          const j = String(f.jenis_faskes || f.jenis || '').toLowerCase()
+          return (j.includes('rs') || j.includes('rumah sakit')) && Number(f.total_pasien || 0) > 0
+        }).length
+      : 0
+    const pkmRawat = isNttEvent
+      ? effectiveFaskesList.filter((f: any) => {
+          const j = String(f.jenis_faskes || f.jenis || '').toLowerCase()
+          return (j.includes('pkm') || j.includes('puskesmas')) && !j.includes('pustu') && Number(f.total_pasien || 0) > 0
+        }).length
+      : 0
     const pustuRawat = 0
     const klinikRawat = 0
 
