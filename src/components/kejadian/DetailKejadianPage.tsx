@@ -903,14 +903,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (dt) set.add(dt)
       })
     }
+    if (Array.isArray(nttApiData?.situasi_kesehatan)) {
+      nttApiData.situasi_kesehatan.forEach((r: any) => {
+        const dt = String(r.tanggal || r.tgl || '').trim()
+        if (dt) set.add(dt)
+      })
+    }
     if (nttApiData?.tanggal) set.add(nttApiData.tanggal)
-    
+
+    if (set.size === 0) {
+      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25']
+        .forEach(d => set.add(d))
+    }
     return Array.from(set).sort()
   }, [
     nttApiData?.dates_available,
     nttApiData?.timeline_situasi_kesehatan,
     nttApiData?.timeline_pasien_rs,
     nttApiData?.timeline_pasien_puskesmas,
+    nttApiData?.situasi_kesehatan,
     nttApiData?.tanggal
   ])
 
