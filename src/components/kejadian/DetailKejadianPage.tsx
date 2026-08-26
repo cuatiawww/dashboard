@@ -502,8 +502,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   })
 
   const [nttSipkkReports, setNttSipkkReports] = useState<any[]>([])
+  const [loadingNtt, setLoadingNtt] = useState<boolean>(true)
 
-  // Polling data collector otomatis setiap 30 menit
+  // Polling data collector otomatis setiap 30 menit & saat tab aktif kembali
   useEffect(() => {
     if (!isNttEvent) return
     let active = true
@@ -574,6 +575,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         })
       } catch (err) {
         console.warn('[NTT Data Fetch Error]', err)
+      } finally {
+        if (active) setLoadingNtt(false)
       }
     }
 
@@ -617,14 +620,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     fetchNtt()
     fetchAllNttSipkkReports()
+
+    // Interval auto-refresh setiap 30 menit (1.800.000 ms)
     const intervalId = setInterval(() => {
+      console.log('[SIPKK Auto-Refresh] 30 Menit berlalu, memperbarui data live...')
       fetchNtt()
       fetchAllNttSipkkReports()
     }, 30 * 60 * 1000)
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && active) {
+        fetchNtt()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       active = false
       clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [isNttEvent])
 
@@ -4372,7 +4386,65 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       </div>
 
       {/* EOC Top Section Layout (Responsive Flex Container containing Merged Header & Metrics) */}
-      {true && (
+      {(isNttEvent && loadingNtt && !nttApiData.summary_korban && (!detail || Number(detail.meninggal || 0) === 0)) ? (
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch animate-pulse">
+          {/* Skeleton Card 1 & 5 */}
+          <div className="w-full lg:w-[61%] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between min-h-[220px]">
+            <div className="flex flex-col md:flex-row gap-4 flex-1">
+              <div className="w-full md:w-[26%] space-y-3 pr-2 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-slate-200" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-3 w-16 bg-slate-200 rounded" />
+                    <div className="h-5 w-24 bg-slate-200 rounded" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 pt-2">
+                  <div className="h-4 w-full bg-slate-200 rounded" />
+                  <div className="h-3 w-3/4 bg-slate-100 rounded" />
+                </div>
+              </div>
+              <div className="w-full md:w-[30%] space-y-2.5 px-0 md:px-2 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-xl bg-slate-200 shrink-0" />
+                    <div className="space-y-1 flex-1">
+                      <div className="h-2.5 w-14 bg-slate-200 rounded" />
+                      <div className="h-3 w-20 bg-slate-100 rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="w-full md:w-[44%] space-y-2 pl-0 md:pl-2">
+                <div className="h-3 w-44 bg-slate-200 rounded mb-2" />
+                <div className="grid grid-cols-7 gap-1.5 flex-1">
+                  {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                    <div key={i} className="h-20 rounded-xl bg-slate-100 border border-slate-200/60" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 h-8 rounded-xl bg-slate-100 border border-slate-200/60" />
+          </div>
+
+          {/* Skeleton Cards 2, 3, 4 */}
+          <div className="w-full lg:w-[39%] grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-stretch">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm flex flex-col justify-between min-h-[220px]">
+                <div className="space-y-2 text-center flex flex-col items-center justify-center flex-1">
+                  <div className="h-3 w-20 bg-slate-200 rounded" />
+                  <div className="h-8 w-24 bg-slate-200 rounded mt-2" />
+                  <div className="h-4 w-16 bg-slate-100 rounded mt-1" />
+                </div>
+                <div className="border-t border-slate-100 pt-2.5 space-y-1 text-center">
+                  <div className="h-4 w-14 bg-slate-200 rounded mx-auto" />
+                  <div className="h-2.5 w-20 bg-slate-100 rounded mx-auto" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
         <div className="flex flex-col lg:flex-row gap-4 items-stretch animate-in fade-in slide-in-from-top-3 duration-300">
 
           {/* Card 1 & 5 Merged: Disaster Header & Characteristics Bulletin (Expanded Width ~60%) */}
