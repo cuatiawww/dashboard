@@ -788,36 +788,40 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [detail, eventData]);
 
   const modalAvailableDates = useMemo(() => {
-    const nowWib = new Date()
-    const wibOffset = 7 * 60 * 60 * 1000
-    const todayIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
-
     const set = new Set<string>()
     if (Array.isArray(nttApiData?.dates_available)) {
       nttApiData.dates_available.forEach((d: string) => {
-        if (d && d <= todayIso && d <= '2026-08-25') set.add(d)
+        if (d) set.add(d)
       })
     }
     if (Array.isArray(nttApiData?.timeline_situasi_kesehatan)) {
       nttApiData.timeline_situasi_kesehatan.forEach((r: any) => {
         const dt = String(r.tanggal || r.tgl || '').trim()
-        if (dt && dt <= todayIso && dt <= '2026-08-25') set.add(dt)
+        if (dt) set.add(dt)
       })
     }
-    if (Array.isArray(nttApiData?.situasi_kesehatan)) {
-      nttApiData.situasi_kesehatan.forEach((r: any) => {
-        const dt = String(r.tanggal || r.tgl || '').trim()
-        if (dt && dt <= todayIso && dt <= '2026-08-25') set.add(dt)
+    if (Array.isArray(nttApiData?.timeline_pasien_rs)) {
+      nttApiData.timeline_pasien_rs.forEach((r: any) => {
+        const dt = String(r.tanggal || '').trim()
+        if (dt) set.add(dt)
       })
     }
-    if (nttApiData?.tanggal && nttApiData.tanggal <= todayIso && nttApiData.tanggal <= '2026-08-25') set.add(nttApiData.tanggal)
+    if (Array.isArray(nttApiData?.timeline_pasien_puskesmas)) {
+      nttApiData.timeline_pasien_puskesmas.forEach((r: any) => {
+        const dt = String(r.tanggal || '').trim()
+        if (dt) set.add(dt)
+      })
+    }
+    if (nttApiData?.tanggal) set.add(nttApiData.tanggal)
     
-    if (set.size === 0) {
-      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25']
-        .forEach(d => set.add(d))
-    }
     return Array.from(set).sort()
-  }, [nttApiData?.dates_available, nttApiData?.timeline_situasi_kesehatan, nttApiData?.situasi_kesehatan, nttApiData?.tanggal])
+  }, [
+    nttApiData?.dates_available,
+    nttApiData?.timeline_situasi_kesehatan,
+    nttApiData?.timeline_pasien_rs,
+    nttApiData?.timeline_pasien_puskesmas,
+    nttApiData?.tanggal
+  ])
 
   const activeModalDate = useMemo(() => {
     if (kabupatenMatrixDate && (kabupatenMatrixDate === 'kumulatif' || modalAvailableDates.includes(kabupatenMatrixDate))) {
