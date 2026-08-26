@@ -862,17 +862,31 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const rsDates = Array.from(new Set(allRs.map((r: any) => r.tanggal).filter(Boolean))).sort()
     const pkmDates = Array.from(new Set(allPkm.map((r: any) => r.tanggal).filter(Boolean))).sort()
 
-    const targetRsDate = (activeModalDate && rsDates.includes(activeModalDate)) ? activeModalDate : rsDates[rsDates.length - 1]
-    const targetPkmDate = (activeModalDate && pkmDates.includes(activeModalDate)) ? activeModalDate : pkmDates[pkmDates.length - 1]
+    const isKumulatif = activeModalDate === 'kumulatif' || !activeModalDate
+    const targetRsDate = (!isKumulatif && rsDates.includes(activeModalDate)) ? activeModalDate : ''
+    const targetPkmDate = (!isKumulatif && pkmDates.includes(activeModalDate)) ? activeModalDate : ''
 
     const rsRowsToUse = targetRsDate ? allRs.filter((r: any) => r.tanggal === targetRsDate) : allRs
     const pkmRowsToUse = targetPkmDate ? allPkm.filter((p: any) => p.tanggal === targetPkmDate) : allPkm
 
     if (rsRowsToUse.length > 0) {
       rsRowsToUse.forEach((rs: any, idx: number) => {
-        const rawName = rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
-        const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${rawName.toLowerCase().trim()}`
-        if (seenKeys.has(dedupeKey)) return
+        const rawName = rs.nama_display || rs.nama_master || rs.nama_resmi || rs.nama_rs || rs.rs || rs.nama || 'RS Rujukan'
+        const dedupeKey = rs.kode_sarana && rs.kode_sarana !== '-' ? `rs_${rs.kode_sarana}` : `rs_${(rs.nama_rs || rawName).toLowerCase().trim()}`
+        
+        if (seenKeys.has(dedupeKey)) {
+          if (isKumulatif) {
+            const existing = combinedFaskes.find(f => f.dedupeKey === dedupeKey)
+            if (existing) {
+              existing.triase_merah += safeParseInt(rs.triase_merah)
+              existing.triase_kuning += safeParseInt(rs.triase_kuning)
+              existing.triase_hijau += safeParseInt(rs.triase_hijau)
+              existing.triase_hitam += safeParseInt(rs.triase_hitam)
+              existing.total_pasien = existing.triase_merah + existing.triase_kuning + existing.triase_hijau + existing.triase_hitam
+            }
+          }
+          return
+        }
         seenKeys.add(dedupeKey)
 
         const fLat = rs.latitude !== null && rs.latitude !== undefined && rs.latitude !== '' ? Number(rs.latitude) : null
@@ -880,6 +894,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
         combinedFaskes.push({
           id: `rs-${idx + 1}`,
+          dedupeKey,
           nama: rawName,
           nama_faskes: rawName,
           nama_master: rs.nama_master || '',
@@ -909,15 +924,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           telp: rs.telp || '-',
           email: rs.email || '-',
           has_collector_data: true,
+          master_matched: rs.master_matched,
         })
       })
     }
 
     if (pkmRowsToUse.length > 0) {
       pkmRowsToUse.forEach((pkm: any, idx: number) => {
-        const rawName = pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga')
-        const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${rawName.toLowerCase().trim()}`
-        if (seenKeys.has(dedupeKey)) return
+        const rawName = pkm.nama_display || (pkm.nama_master ? `Puskesmas ${pkm.nama_master}` : (pkm.nama_puskesmas || pkm.puskesmas || pkm.nama || 'Puskesmas Siaga'))
+        const dedupeKey = pkm.kode_sarana && pkm.kode_sarana !== '-' ? `pkm_${pkm.kode_sarana}` : `pkm_${(pkm.nama_puskesmas || rawName).toLowerCase().trim()}`
+        
+        if (seenKeys.has(dedupeKey)) {
+          if (isKumulatif) {
+            const existing = combinedFaskes.find(f => f.dedupeKey === dedupeKey)
+            if (existing) {
+              existing.triase_merah += safeParseInt(pkm.triase_merah)
+              existing.triase_kuning += safeParseInt(pkm.triase_kuning)
+              existing.triase_hijau += safeParseInt(pkm.triase_hijau)
+              existing.triase_hitam += safeParseInt(pkm.triase_hitam)
+              existing.total_pasien = existing.triase_merah + existing.triase_kuning + existing.triase_hijau + existing.triase_hitam
+            }
+          }
+          return
+        }
         seenKeys.add(dedupeKey)
 
         const fLat = pkm.latitude !== null && pkm.latitude !== undefined && pkm.latitude !== '' ? Number(pkm.latitude) : null
@@ -925,6 +954,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
         combinedFaskes.push({
           id: `pkm-${idx + 1}`,
+          dedupeKey,
           nama: rawName,
           nama_faskes: rawName,
           nama_master: pkm.nama_master || '',
@@ -954,6 +984,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           telp: pkm.telp || '-',
           email: pkm.email || '-',
           has_collector_data: true,
+          master_matched: pkm.master_matched,
         })
       })
     }

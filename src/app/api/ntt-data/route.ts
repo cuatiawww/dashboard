@@ -751,8 +751,37 @@ export async function GET(request: NextRequest) {
       const pasienRsTarget = timelinePasienRs.filter((r: any) => r.tanggal === targetDate)
       const pasienPkmTarget = timelinePasienPkm.filter((r: any) => r.tanggal === targetDate)
 
-      // Master faskes fallback
-      const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(pasienRsTarget, pasienPkmTarget)
+      // Hitung kumulatif seluruh faskes aktif (9 RS + 8 PKM = 17 Faskes) untuk Master Overlay
+      const cumRsMap: Record<string, any> = {}
+      timelinePasienRs.forEach(r => {
+        const key = `${r.kabupaten}__${r.nama_rs}`
+        if (!cumRsMap[key]) {
+          cumRsMap[key] = { ...r, triase_merah: 0, triase_kuning: 0, triase_hijau: 0, triase_hitam: 0, total: 0 }
+        }
+        cumRsMap[key].triase_merah += Number(r.triase_merah || 0)
+        cumRsMap[key].triase_kuning += Number(r.triase_kuning || 0)
+        cumRsMap[key].triase_hijau += Number(r.triase_hijau || 0)
+        cumRsMap[key].triase_hitam += Number(r.triase_hitam || 0)
+        cumRsMap[key].total = cumRsMap[key].triase_merah + cumRsMap[key].triase_kuning + cumRsMap[key].triase_hijau + cumRsMap[key].triase_hitam
+      })
+      const cumPasienRs = Object.values(cumRsMap)
+
+      const cumPkmMap: Record<string, any> = {}
+      timelinePasienPkm.forEach(p => {
+        const key = `${p.kabupaten}__${p.nama_puskesmas}`
+        if (!cumPkmMap[key]) {
+          cumPkmMap[key] = { ...p, triase_merah: 0, triase_kuning: 0, triase_hijau: 0, triase_hitam: 0, total: 0 }
+        }
+        cumPkmMap[key].triase_merah += Number(p.triase_merah || 0)
+        cumPkmMap[key].triase_kuning += Number(p.triase_kuning || 0)
+        cumPkmMap[key].triase_hijau += Number(p.triase_hijau || 0)
+        cumPkmMap[key].triase_hitam += Number(p.triase_hitam || 0)
+        cumPkmMap[key].total = cumPkmMap[key].triase_merah + cumPkmMap[key].triase_kuning + cumPkmMap[key].triase_hijau + cumPkmMap[key].triase_hitam
+      })
+      const cumPasienPkm = Object.values(cumPkmMap)
+
+      // Master faskes fallback dengan overlay 17 faskes aktif
+      const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(cumPasienRs, cumPasienPkm)
       const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
 
       const responsePayload = {
