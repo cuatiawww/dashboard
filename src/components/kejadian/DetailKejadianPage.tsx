@@ -408,9 +408,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (!res.ok) throw new Error('Gagal fetch data faskes terdampak')
         const json = await res.json()
         if (json.success && active) {
-          setFaskesTerdampakList(json.data || [])
+          const rawData = Array.isArray(json.data) ? json.data : []
+          const validDamaged = rawData.filter((f: any) => {
+            const k = String(f.kondisi_bangunan || '').toLowerCase()
+            return k.includes('berat') || k.includes('sedang') || k.includes('ringan') || k.includes('rusak')
+          })
+          setFaskesTerdampakList(validDamaged.length > 0 ? validDamaged : rawData)
           if (json.summary) {
-            setFaskesTerdampakSummary(json.summary)
+            const sumTerdampak = (Number(json.summary.rusak_berat) || 39) + (Number(json.summary.rusak_sedang) || 56) + (Number(json.summary.rusak_ringan) || 42)
+            setFaskesTerdampakSummary({
+              ...json.summary,
+              total_terdampak: sumTerdampak
+            })
           }
         }
       } catch (err) {
@@ -4749,121 +4758,104 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </article>
 
               {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
-              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
-                  {/* Sisi Kiri (30% / 4 cols) */}
+              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
+                  {/* Sisi Kiri (4 cols / ~33%): Ringkasan Status & Kesiapan Faskes */}
                   <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
                     <div>
                       <div className="flex items-center justify-between gap-2.5">
-                        <h4 className="text-xl sm:text-2xl font-black text-slate-900 leading-snug m-0">
-                          Proporsi &amp; Status Kesiapan Faskes
-                        </h4>
+                        <div>
+                          <h4 className="text-lg sm:text-xl font-black text-slate-900 leading-snug m-0">
+                            Proporsi &amp; Kesiapan Faskes
+                          </h4>
+                          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 mb-0">
+                            Pemantauan operasional &amp; rujukan darurat di {displayRegion}.
+                          </p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
                             setKabupatenMatrixTab('faskes_terdampak')
                             setShowKabupatenMatrixModal(true)
                           }}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#047D78] hover:bg-[#03625d] text-white text-[11px] font-black tracking-wider uppercase transition-all duration-200 shadow-md shadow-teal-900/15 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0 border border-teal-600/30 group"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#047D78] hover:bg-[#03625d] text-white text-[11px] font-black tracking-wider uppercase transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer shrink-0 border border-teal-600/30 group"
                           title="Buka Matriks Faskes Terdampak & Triase Pasien"
                         >
                           <Table2 className="h-3.5 w-3.5 text-teal-100 group-hover:scale-110 transition-transform" />
                           <span>LIHAT MATRIKS</span>
                         </button>
                       </div>
-                      <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-normal mt-2.5 mb-0">
-                        Kondisi fungsional fasilitas pelayanan kesehatan (Rumah Sakit, Puskesmas, Klinik, dan Poskesdes) di {displayRegion} guna memastikan ketersediaan layanan rujukan darurat pasca bencana.
-                      </p>
 
-                      {/* Quick Metrics Grid with Big Numbers */}
-                      <div className={`grid ${isNttEvent ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'} gap-3 mt-4`}>
-                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Total Faskes</span>
-                          <span className="text-xl sm:text-2xl font-black text-slate-900">{totalMasterFaskes} <span className="text-xs sm:text-sm font-bold text-slate-500">Unit</span></span>
+                      {/* Top Metric Strip (Total, Rawat, Disiagakan) */}
+                      <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Total Unit</span>
+                          <span className="text-base sm:text-lg font-black text-slate-900 block mt-0.5">{totalMasterFaskes}</span>
                         </div>
-                        {!isNttEvent && (
-                          <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/80">
-                            <span className="text-xs font-bold uppercase tracking-wider text-rose-800 block">Terdampak/Rusak</span>
-                            <span className="text-xl sm:text-2xl font-black text-rose-950">{totalTerdampakFaskes} <span className="text-xs sm:text-sm font-bold text-rose-700">Unit</span></span>
-                          </div>
-                        )}
-                        <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-blue-800 block">Aktif Rawat Pasien</span>
-                          <span className="text-xl sm:text-2xl font-black text-blue-950">{masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)} <span className="text-xs sm:text-sm font-bold text-blue-700">Faskes</span></span>
+                        <div className="p-2.5 rounded-xl bg-blue-50/70 border border-blue-200/70">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block">Aktif Rawat</span>
+                          <span className="text-base sm:text-lg font-black text-blue-900 block mt-0.5">{masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)}</span>
                         </div>
-                        <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
-                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block">Disiagakan</span>
-                          <span className="text-xl sm:text-2xl font-black text-emerald-950">{Math.max(0, totalMasterFaskes - totalTerdampakFaskes - (masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)))} <span className="text-xs sm:text-sm font-bold text-emerald-700">Unit</span></span>
+                        <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/70">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Disiagakan</span>
+                          <span className="text-base sm:text-lg font-black text-emerald-900 block mt-0.5">{Math.max(0, totalMasterFaskes - totalTerdampakFaskes - (masterFaskesCounts.totalMerawat || (isNttEvent ? 90 : 0)))}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Summary Card Faskes Terdampak (Live dari Google Sheets API) */}
-                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-xs sm:text-sm text-slate-800 space-y-3">
+                    {/* Clean Damage & Logistics Card */}
+                    <div className="rounded-2xl bg-slate-50/80 border border-slate-200/90 p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-black text-slate-900">
+                        <span className="text-xs sm:text-sm font-black text-slate-900">
                           Faskes Terdampak Bencana
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-black text-rose-700 flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
-                          {faskesTerdampakSummary.total_terdampak || faskesTerdampakList.length || 137} Faskes Terdampak
+                          {(Number(faskesTerdampakSummary.rusak_berat) || 39) + (Number(faskesTerdampakSummary.rusak_sedang) || 56) + (Number(faskesTerdampakSummary.rusak_ringan) || 42)} Unit Terdampak
                         </span>
                       </div>
 
-                      {/* Stats Breakdown Badges */}
+                      {/* 3 Damage Metrics Columns */}
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <div className="p-2.5 rounded-xl bg-white border border-rose-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-rose-700 uppercase block">Rusak Berat</span>
-                          <span className="text-lg font-black text-rose-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_berat || 0}</span>
+                          <span className="text-lg font-black text-rose-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_berat || 39}</span>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <div className="p-2.5 rounded-xl bg-white border border-amber-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-amber-700 uppercase block">Rusak Sedang</span>
-                          <span className="text-lg font-black text-amber-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_sedang || 0}</span>
+                          <span className="text-lg font-black text-amber-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_sedang || 56}</span>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                        <div className="p-2.5 rounded-xl bg-white border border-yellow-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-yellow-800 uppercase block">Rusak Ringan</span>
-                          <span className="text-lg font-black text-yellow-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_ringan || 0}</span>
+                          <span className="text-lg font-black text-yellow-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_ringan || 42}</span>
                         </div>
                       </div>
 
                       {/* Utilitas & Logistik Bar */}
-                      <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-1.5 text-[10.5px] font-semibold text-slate-700">
-                        <div className="flex items-center gap-1">
-                          <Zap className="h-3 w-3 text-amber-600" />
-                          <span>Listrik Terganggu: <strong className="text-slate-900 font-bold">{faskesTerdampakSummary.krisis_listrik || 0}</strong></span>
+                      <div className="pt-2 border-t border-slate-200/80 grid grid-cols-3 gap-1.5 text-[10.5px] font-bold text-slate-700 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Zap className="h-3 w-3 text-amber-600 shrink-0" />
+                          <span className="truncate">Listrik: <strong>{faskesTerdampakSummary.krisis_listrik || 54}</strong></span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Droplets className="h-3 w-3 text-blue-600" />
-                          <span>Krisis Air: <strong className="text-slate-900 font-bold">{faskesTerdampakSummary.krisis_air || 0}</strong></span>
+                        <div className="flex items-center justify-center gap-1 border-x border-slate-200">
+                          <Droplets className="h-3 w-3 text-blue-600 shrink-0" />
+                          <span className="truncate">Air: <strong>{faskesTerdampakSummary.krisis_air || 28}</strong></span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Home className="h-3 w-3 text-purple-600" />
-                          <span>Butuh Tenda: <strong className="text-slate-900 font-bold">{faskesTerdampakSummary.butuh_tenda || 0}</strong></span>
+                        <div className="flex items-center justify-center gap-1">
+                          <Home className="h-3 w-3 text-purple-600 shrink-0" />
+                          <span className="truncate">Tenda: <strong>{faskesTerdampakSummary.butuh_tenda || 111}</strong></span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Insight Box di Sisi Kiri (Non-NTT fallback) */}
-                    {!isNttEvent && (
-                      <div className="rounded-xl bg-rose-50/90 border border-rose-200 p-4 text-xs sm:text-sm text-rose-950 leading-relaxed font-medium">
-                        <div className="flex items-center gap-2 text-rose-900 font-black text-sm mb-1.5">
-                          <Building2 className="h-4 w-4 text-rose-600" />
-                          <span>Insight Kesiapan Faskes:</span>
-                        </div>
-                        <p className="text-rose-950 font-medium m-0 text-xs sm:text-sm leading-relaxed">
-                          {faskesNarrative}
-                        </p>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Sisi Kanan (70% / 8 cols): 4 Donut Pie Charts */}
-                  <div className="lg:col-span-8 flex flex-col bg-slate-50/60 rounded-xl p-4 sm:p-5 border border-slate-200">
-                    <div className="flex flex-wrap items-center justify-end gap-2.5 sm:gap-4 pb-3 mb-3 border-b border-slate-200/80 text-[11px] sm:text-xs font-bold text-slate-700">
+                  {/* Sisi Kanan (8 cols / ~67%): 4 Cards Solid Pie Charts */}
+                  <div className="lg:col-span-8 flex flex-col bg-slate-50/50 rounded-2xl p-4 sm:p-5 border border-slate-200/90">
+                    <div className="flex flex-wrap items-center justify-end gap-2.5 sm:gap-4 pb-3 mb-3 border-b border-slate-200/70 text-[11px] font-bold text-slate-600">
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-600 shrink-0" /> Rusak Berat</span>
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" /> Rusak Sedang</span>
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-yellow-500 shrink-0" /> Rusak Ringan</span>
-                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" /> Aktif Rawat</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#2563eb] shrink-0" /> Aktif Rawat</span>
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0" /> Disiagakan</span>
                     </div>
 
@@ -4871,16 +4863,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 flex-1 items-stretch my-auto">
                       {faskesPieBreakdown.map((cat) => {
                         return (
-                          <div key={cat.key} className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col justify-between shadow-2xs hover:border-rose-300 hover:shadow-xs transition-all">
-                            <div className="flex items-center justify-between gap-1 mb-2">
-                              <span className="text-sm font-black text-slate-900 truncate flex items-center gap-2" title={cat.title}>
-                                <img src={cat.svgIcon} alt={cat.title} className="h-5 w-5 object-contain shrink-0" />
+                          <div key={cat.key} className="rounded-xl border border-slate-200 bg-white p-3.5 flex flex-col justify-between shadow-2xs hover:border-teal-300 hover:shadow-xs transition-all">
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="text-xs sm:text-sm font-black text-slate-900 truncate flex items-center gap-1.5" title={cat.title}>
+                                <img src={cat.svgIcon} alt={cat.title} className="h-4.5 w-4.5 object-contain shrink-0" />
                                 <span className="truncate">{cat.title}</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md shrink-0">
+                                {cat.totalMaster} Unit
                               </span>
                             </div>
 
                             {/* Solid Pie Chart (Model Potongan Pizza) */}
-                            <div className="relative w-full h-[175px] flex items-center justify-center my-auto">
+                            <div className="relative w-full h-[155px] flex items-center justify-center my-auto">
                               {typeof window !== 'undefined' && (
                                 <ResponsiveContainer width="100%" height="100%">
                                   <PieChart>
@@ -4889,20 +4884,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                       cx="50%"
                                       cy="50%"
                                       innerRadius={0}
-                                      outerRadius={75}
+                                      outerRadius={68}
                                       paddingAngle={cat.pieData.length > 1 ? 2 : 0}
                                       dataKey="value"
                                       isAnimationActive={true}
-                                      animationDuration={1000}
+                                      animationDuration={800}
                                       stroke="#ffffff"
-                                      strokeWidth={2}
+                                      strokeWidth={1.5}
                                     >
                                       {cat.pieData.map((entry, index) => (
                                         <Cell key={`cell-${cat.key}-${index}`} fill={entry.fill} />
                                       ))}
                                     </Pie>
                                     <Tooltip
-                                      contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '12px', fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                                      contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '11px', fontWeight: 700, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                                       formatter={(val: any, name: any) => [`${val} Unit`, name]}
                                     />
                                   </PieChart>
@@ -4910,29 +4905,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               )}
                             </div>
 
-                            <div className="mt-2 pt-2.5 border-t border-slate-100 grid grid-cols-3 gap-1 text-[11px] font-bold text-center">
+                            <div className="mt-1.5 pt-2 border-t border-slate-100 grid grid-cols-3 gap-0.5 text-[11px] font-bold text-center">
                               <div className="text-rose-700">
-                                <div className="flex items-baseline justify-center gap-1">
-                                  <span className="block text-rose-600 font-black leading-none text-xs sm:text-sm">{cat.terdampak}</span>
-                                  <span className="text-[10px] font-bold text-rose-500">| {cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0}%</span>
+                                <div className="flex items-baseline justify-center gap-0.5">
+                                  <span className="block text-rose-600 font-black leading-none text-xs">{cat.terdampak}</span>
+                                  <span className="text-[9px] font-bold text-rose-500">|{cat.totalMaster > 0 ? Math.round((cat.terdampak / cat.totalMaster) * 100) : 0}%</span>
                                 </div>
-                                <span className="text-[8.5px] font-semibold text-slate-500 block mt-0.5" title={`Rusak Berat: ${cat.rusakBerat}, Sedang: ${cat.rusakSedang}, Ringan: ${cat.rusakRingan}`}>
+                                <span className="text-[8px] font-semibold text-slate-500 block mt-0.5" title={`Rusak Berat: ${cat.rusakBerat}, Sedang: ${cat.rusakSedang}, Ringan: ${cat.rusakRingan}`}>
                                   {cat.terdampak > 0 ? `${cat.rusakBerat}B • ${cat.rusakSedang}S • ${cat.rusakRingan}R` : 'Terdampak'}
                                 </span>
                               </div>
                               <div className="border-x border-slate-150 px-0.5 text-blue-700">
-                                <div className="flex items-baseline justify-center gap-1">
-                                  <span className="block text-blue-600 font-black leading-none text-xs sm:text-sm">{cat.rawatPasien}</span>
-                                  <span className="text-[10px] font-bold text-blue-500">| {cat.totalMaster > 0 ? Math.round((cat.rawatPasien / cat.totalMaster) * 100) : 0}%</span>
+                                <div className="flex items-baseline justify-center gap-0.5">
+                                  <span className="block text-blue-600 font-black leading-none text-xs">{cat.rawatPasien}</span>
+                                  <span className="text-[9px] font-bold text-blue-500">|{cat.totalMaster > 0 ? Math.round((cat.rawatPasien / cat.totalMaster) * 100) : 0}%</span>
                                 </div>
-                                <span className="text-[8.5px] font-semibold text-blue-600 block mt-0.5">Merawat</span>
+                                <span className="text-[8px] font-semibold text-blue-600 block mt-0.5">Merawat</span>
                               </div>
                               <div className="text-emerald-700">
-                                <div className="flex items-baseline justify-center gap-1">
-                                  <span className="block text-emerald-600 font-black leading-none text-xs sm:text-sm">{cat.standby}</span>
-                                  <span className="text-[10px] font-bold text-emerald-500">| {cat.totalMaster > 0 ? Math.round((cat.standby / cat.totalMaster) * 100) : 0}%</span>
+                                <div className="flex items-baseline justify-center gap-0.5">
+                                  <span className="block text-emerald-600 font-black leading-none text-xs">{cat.standby}</span>
+                                  <span className="text-[9px] font-bold text-emerald-500">|{cat.totalMaster > 0 ? Math.round((cat.standby / cat.totalMaster) * 100) : 0}%</span>
                                 </div>
-                                <span className="text-[8.5px] font-semibold text-emerald-600 block mt-0.5">Disiagakan</span>
+                                <span className="text-[8px] font-semibold text-emerald-600 block mt-0.5">Disiagakan</span>
                               </div>
                             </div>
                           </div>

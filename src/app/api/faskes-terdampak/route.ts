@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { findMasterFaskes, getNttMasterFaskesList } from '@/lib/nttFaskesMasterMapper'
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 30 // Cache for 30 seconds
+export const revalidate = 0
 
 const GOOGLE_APPS_SCRIPT_URL =
   process.env.GOOGLE_APPS_SCRIPT_FASKES_URL ||
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     // 1. Fetch from Google Apps Script Web App
     const res = await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      next: { revalidate: 30 },
+      cache: 'no-store',
       headers: {
         Accept: 'application/json',
       },
@@ -143,13 +143,11 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    // Hanya ambil faskes yang benar-benar terdampak (memiliki kerusakan fisik / gangguan operasional)
+    // Hanya ambil faskes yang benar-benar mengalami kerusakan fisik (Rusak Berat, Rusak Sedang, Rusak Ringan). Faskes berkondisi Normal TIDAK boleh masuk.
     const terdampakOnlyRows = enrichedRows.filter((r: any) => {
-      const k = String(r.kondisi_bangunan || '').toLowerCase()
-      const op = String(r.status_operasional || '').toLowerCase()
-      const isDamaged = k.includes('berat') || k.includes('sedang') || k.includes('ringan') || k.includes('rusak')
-      const isDisrupted = op.includes('tenda') || op.includes('luar gedung') || op.includes('tidak') || op.includes('tutup')
-      return isDamaged || isDisrupted
+      const k = String(r.kondisi_bangunan || '').toLowerCase().trim()
+      if (k.includes('normal') || !k) return false
+      return k.includes('berat') || k.includes('sedang') || k.includes('ringan') || k.includes('rusak')
     })
 
     // Filter jika ada query parameter
@@ -168,7 +166,7 @@ export async function GET(req: NextRequest) {
 
     const summary = {
       total_faskes_terpantau: rawRows.length,
-      total_terdampak: terdampakOnlyRows.length,
+      total_terdampak: rusakBerat + rusakSedang + rusakRingan,
       rusak_berat: rusakBerat,
       rusak_sedang: rusakSedang,
       rusak_ringan: rusakRingan,
