@@ -129,22 +129,33 @@ export async function GET(request: NextRequest) {
 
   const databaseSnapshot = await readNttDatabase()
   if (databaseSnapshot && (!requestedDate || databaseSnapshot.dates.includes(requestedDate))) {
-    const validDates = databaseSnapshot.dates.filter((d) =>
-      databaseSnapshot.rows.some(
-        (r) => r.tanggal === d && (r.dataset === 'situasi_kesehatan' || r.dataset === 'pasien_rs' || r.dataset === 'analisa_ringkasan_harian'),
-      ),
+    // 1. Prioritaskan tanggal terbaru yang memiliki data lengkap situasi_kesehatan
+    const datesWithSituasi = databaseSnapshot.dates.filter((d) =>
+      databaseSnapshot.rows.some((r) => r.tanggal === d && r.dataset === 'situasi_kesehatan'),
     )
-    const targetDate = requestedDate || validDates.at(-1) || databaseSnapshot.dates.at(-1) || ''
+    const targetDate = requestedDate || datesWithSituasi.at(-1) || databaseSnapshot.dates.at(-1) || ''
     const targetRows = databaseSnapshot.rows.filter((row) => row.tanggal === targetDate)
     const tables: Record<string, unknown[]> = {}
 
     for (const tableName of tableNames) {
       if (tableName === 'master_faskes') continue
-      tables[tableName] = normalizeTableRows(
-        targetRows
-          .filter((row) => row.dataset === tableName)
-          .map((row) => ({ tanggal: row.tanggal, ...row.row_data })),
-      )
+      let matchedRows = targetRows
+        .filter((row) => row.dataset === tableName)
+        .map((row) => ({ tanggal: row.tanggal, ...row.row_data }))
+
+      // Fallback cerdas: Jika tanggal target belum memiliki tabel ini (misal baru upload 1 dari 4 file CSV),
+      // gunakan snapshot terakhir yang tersedia agar metrik dashboard tetap utuh dan akurat
+      if (matchedRows.length === 0) {
+        const prevRowsWithTable = databaseSnapshot.rows.filter((r) => r.dataset === tableName)
+        if (prevRowsWithTable.length > 0) {
+          const latestPrevDate = prevRowsWithTable.map((r) => r.tanggal).sort().at(-1)
+          matchedRows = prevRowsWithTable
+            .filter((r) => r.tanggal === latestPrevDate)
+            .map((r) => ({ tanggal: r.tanggal, ...r.row_data }))
+        }
+      }
+
+      tables[tableName] = normalizeTableRows(matchedRows)
     }
 
     if (Array.isArray(tables.pasien_rs)) {
