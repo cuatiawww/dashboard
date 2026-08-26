@@ -127,10 +127,14 @@ export async function GET(request: NextRequest) {
     ? [requestedTable as TableName]
     : [...TABLES]
 
-  // ─── Priority 1: PostgreSQL records imported by the collector ─────────────
   const databaseSnapshot = await readNttDatabase()
   if (databaseSnapshot && (!requestedDate || databaseSnapshot.dates.includes(requestedDate))) {
-    const targetDate = requestedDate || databaseSnapshot.dates.at(-1) || ''
+    const validDates = databaseSnapshot.dates.filter((d) =>
+      databaseSnapshot.rows.some(
+        (r) => r.tanggal === d && (r.dataset === 'situasi_kesehatan' || r.dataset === 'pasien_rs' || r.dataset === 'analisa_ringkasan_harian'),
+      ),
+    )
+    const targetDate = requestedDate || validDates.at(-1) || databaseSnapshot.dates.at(-1) || ''
     const targetRows = databaseSnapshot.rows.filter((row) => row.tanggal === targetDate)
     const tables: Record<string, unknown[]> = {}
 

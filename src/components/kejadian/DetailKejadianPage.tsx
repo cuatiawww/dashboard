@@ -53,10 +53,12 @@ import {
   X,
   Tv,
   Table2,
-  Calendar
+  Calendar,
+  FileSpreadsheet
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
+import NttCsvManagerModal from './NttCsvManagerModal'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -222,6 +224,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [logsError, setLogsError] = useState<string | null>(null)
   const [showLogModal, setShowLogModal] = useState(false)
   const [showApiSourcesModal, setShowApiSourcesModal] = useState(false)
+  const [showNttCsvModal, setShowNttCsvModal] = useState(false)
   const [trendWindowDays, setTrendWindowDays] = useState(7)
 
   // ── Tenaga Cadangan Kesehatan (TCK) Kemkes ──
@@ -809,11 +812,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ? nttApiData.timeline_pasien_puskesmas
       : (Array.isArray(nttApiData.pasien_puskesmas) ? nttApiData.pasien_puskesmas : [])
 
-    const activeRs = activeModalDate ? allRs.filter((r: any) => r.tanggal === activeModalDate) : allRs
-    const activePkm = activeModalDate ? allPkm.filter((p: any) => p.tanggal === activeModalDate) : allPkm
+    const rsDates = Array.from(new Set(allRs.map((r: any) => r.tanggal).filter(Boolean))).sort()
+    const pkmDates = Array.from(new Set(allPkm.map((r: any) => r.tanggal).filter(Boolean))).sort()
 
-    const rsRowsToUse = activeRs.length > 0 ? activeRs : allRs
-    const pkmRowsToUse = activePkm.length > 0 ? activePkm : allPkm
+    const targetRsDate = (activeModalDate && rsDates.includes(activeModalDate)) ? activeModalDate : rsDates[rsDates.length - 1]
+    const targetPkmDate = (activeModalDate && pkmDates.includes(activeModalDate)) ? activeModalDate : pkmDates[pkmDates.length - 1]
+
+    const rsRowsToUse = targetRsDate ? allRs.filter((r: any) => r.tanggal === targetRsDate) : allRs
+    const pkmRowsToUse = targetPkmDate ? allPkm.filter((p: any) => p.tanggal === targetPkmDate) : allPkm
 
     if (rsRowsToUse.length > 0) {
       rsRowsToUse.forEach((rs: any, idx: number) => {
@@ -1338,9 +1344,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
 
         if (situList.length > 0) {
-          const targetDate = nttApiData.tanggal || situList[situList.length - 1]?.tanggal || ''
-          const activeRows = targetDate ? situList.filter((r: any) => r.tanggal === targetDate) : situList
-          const rowsToUse = activeRows.length > 0 ? activeRows : situList
+          const availableDates = Array.from(new Set(situList.map((r: any) => r.tanggal).filter(Boolean))).sort()
+          const preferredDate = nttApiData.tanggal && availableDates.includes(nttApiData.tanggal)
+            ? nttApiData.tanggal
+            : availableDates[availableDates.length - 1]
+
+          const rowsToUse = situList.filter((r: any) => r.tanggal === preferredDate)
 
           let sMen = 0, sLb = 0, sLr = 0, sPeng = 0
           rowsToUse.forEach((r: any) => {
@@ -2387,9 +2396,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       : (Array.isArray(nttApiData?.timeline_situasi_kesehatan) ? nttApiData.timeline_situasi_kesehatan : [])
 
     if (situList.length > 0) {
-      const targetDate = nttApiData.tanggal || situList[situList.length - 1]?.tanggal || ''
-      const activeRows = targetDate ? situList.filter((r: any) => r.tanggal === targetDate) : situList
-      const rowsToUse = activeRows.length > 0 ? activeRows : situList
+      const availableDates = Array.from(new Set(situList.map((r: any) => r.tanggal).filter(Boolean))).sort()
+      const preferredDate = nttApiData.tanggal && availableDates.includes(nttApiData.tanggal)
+        ? nttApiData.tanggal
+        : availableDates[availableDates.length - 1]
+
+      const rowsToUse = situList.filter((r: any) => r.tanggal === preferredDate)
       const situSum = rowsToUse.reduce((acc: number, bk: any) => acc + safeParseInt(bk.populasi_terdampak || bk.penduduk_terdampak), 0)
       if (situSum > 0) return situSum
     }
@@ -3659,9 +3671,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       : (Array.isArray(nttApiData?.situasi_kesehatan) ? nttApiData.situasi_kesehatan : [])
 
     if (isNttEvent && nttSitu.length > 0) {
-      const targetDate = activeModalDate || nttApiData.tanggal || nttSitu[nttSitu.length - 1]?.tanggal || ''
-      const activeRows = targetDate ? nttSitu.filter((r: any) => r.tanggal === targetDate) : nttSitu
-      const rowsToUse = activeRows.length > 0 ? activeRows : nttSitu
+      const availableDates = Array.from(new Set(nttSitu.map((r: any) => r.tanggal).filter(Boolean))).sort()
+      const preferredDate = (activeModalDate && availableDates.includes(activeModalDate))
+        ? activeModalDate
+        : ((nttApiData.tanggal && availableDates.includes(nttApiData.tanggal))
+            ? nttApiData.tanggal
+            : availableDates[availableDates.length - 1])
+
+      const rowsToUse = nttSitu.filter((r: any) => r.tanggal === preferredDate)
 
       return rowsToUse.map((item: any) => {
         const meninggal = safeParseInt(item.meninggal || item.korban_meninggal)
@@ -4003,6 +4020,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             )}
           </button>
           */}
+          {isNttEvent && (
+            <button
+              onClick={() => setShowNttCsvModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-bold text-teal-900 shadow-xs transition hover:bg-teal-100 hover:border-teal-300 cursor-pointer"
+              title="Kelola Data CSV Bencana NTT (Download Template, Export, Import)"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-[#047D78]" />
+              <span>Kelola Data CSV</span>
+            </button>
+          )}
           <button
             onClick={handleShare}
             className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -9041,6 +9068,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             </div>
           </div>
         </div>
+      )}
+
+      {showNttCsvModal && (
+        <NttCsvManagerModal
+          isOpen={showNttCsvModal}
+          onClose={() => setShowNttCsvModal(false)}
+          initialDate={targetSituasiDate || latestNttDate}
+          onSuccessImport={() => {
+            const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+            fetch(`${basePath}/api/ntt-data`, { cache: 'no-store' })
+              .then((res) => res.json())
+              .then((json) => {
+                if (json.success && json.data) {
+                  setNttApiData(json.data)
+                }
+              })
+              .catch(() => {})
+          }}
+        />
       )}
 
     </div>
