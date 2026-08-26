@@ -59,6 +59,7 @@ import {
 import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
+import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -360,6 +361,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [kabupatenMatrixSearch, setKabupatenMatrixSearch] = useState<string>('')
   const [kabupatenMatrixDate, setKabupatenMatrixDate] = useState<string>('')
   const [modalFaskesTypeFilter, setModalFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu' | 'merawat'>('all')
+  const [showBmkgSeismicModal, setShowBmkgSeismicModal] = useState<boolean>(false)
 
   // Faskes Terdampak (Google Sheets Live API) State
   const [faskesTerdampakList, setFaskesTerdampakList] = useState<any[]>([])
@@ -4109,13 +4111,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width ~44% - Scrollable Horizontal) */}
               <div className="w-full md:w-[44%] flex flex-col justify-between pl-0 md:pl-2">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                    {disasterTheme.type === 'gempa'
-                      ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG'
-                      : disasterTheme.type === 'gunung'
-                        ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN DI KEJADIAN'
-                        : 'HISTORI CUACA & PARAMETER METEOROLOGI BMKG'}
-                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-black text-slate-800 uppercase tracking-wider block truncate">
+                      {disasterTheme.type === 'gempa'
+                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG DI KEJADIAN'
+                        : disasterTheme.type === 'gunung'
+                          ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN DI KEJADIAN'
+                          : 'HISTORI CUACA & PARAMETER METEOROLOGI BMKG'}
+                    </span>
+                    {disasterTheme.type === 'gempa' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowBmkgSeismicModal(true)}
+                        title="Lihat Data Detail Aktivitas Seismik & Gempa Susulan BMKG dari Hari Kejadian s.d Hari Ini"
+                        className="inline-flex items-center justify-center p-1 rounded-full text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-300 transition-all shadow-xs cursor-pointer group shrink-0"
+                      >
+                        <Info className="w-3.5 h-3.5 text-slate-600 group-hover:text-teal-700" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5 w-full flex-1">
@@ -9086,6 +9100,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               })
               .catch(() => {})
           }}
+        />
+      )}
+
+      {showBmkgSeismicModal && (
+        <BmkgSeismicDetailModal
+          isOpen={showBmkgSeismicModal}
+          onClose={() => setShowBmkgSeismicModal(false)}
+          eventData={eventData}
+          seismicResult={seismicResult}
+          bmkgGempa={bmkgGempa}
+          earthquakeTimeline={earthquakeTimeline}
         />
       )}
 
