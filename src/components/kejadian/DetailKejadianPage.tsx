@@ -387,6 +387,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [terdampakKerusakanFilter, setTerdampakKerusakanFilter] = useState<string>('semua')
   const [terdampakOperasionalFilter, setTerdampakOperasionalFilter] = useState<string>('semua')
 
+  // Data Penyakit (Google Sheets Live API) State
+  const [livePenyakitData, setLivePenyakitData] = useState<{
+    total_kasus_se_ntt?: number
+    total_jenis_penyakit?: number
+    penyakit_terbanyak?: { name: string; total: number; kategori?: string }
+    summary_chart?: Array<{ name: string; total: number; kategori?: string }>
+    data_detail?: Array<{
+      kabupaten: string
+      jenis_penyakit: string
+      nama_asli_sheet?: string
+      jumlah_kasus: number
+      kategori: string
+      posko: string
+      tindakan: string
+      risiko: string
+    }>
+  } | null>(null)
+
   // Master Data Faskes Filtering & Pagination State
   const [masterFaskesTypeFilter, setMasterFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu'>('all')
   const [masterFaskesKabFilter, setMasterFaskesKabFilter] = useState<string>('semua')
@@ -402,7 +420,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     setMounted(true)
   }, [])
 
-  // Fetch Live Data Faskes Terdampak dari Endpoint /api/faskes-terdampak (Google Sheets)
+  // Fetch Live Data Faskes Terdampak & Penyakit dari Endpoint /api/faskes-terdampak (Google Sheets)
   useEffect(() => {
     let active = true
     const fetchFaskesTerdampak = async () => {
@@ -425,6 +443,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               ...json.summary,
               total_terdampak: sumTerdampak
             })
+          }
+          if (json.penyakit && active) {
+            setLivePenyakitData(json.penyakit)
           }
         }
       } catch (err) {
@@ -2833,23 +2854,46 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData.faskes_terdampak, eventData.tgl_kejadian, trendWindowDays, isNttEvent, nttApiData?.situasi_kesehatan, faskesPieBreakdown]);
 
   const effectivePenyakitList = useMemo(() => {
+    // 1. Live Data dari Google Sheets API (per-kabupaten)
+    if (livePenyakitData && Array.isArray(livePenyakitData.data_detail) && livePenyakitData.data_detail.length > 0) {
+      return livePenyakitData.data_detail.map((p, idx) => ({
+        id_penyakit: idx + 1,
+        jenis_penyakit: p.jenis_penyakit,
+        nama_asli_sheet: p.nama_asli_sheet,
+        jumlah_kasus: p.jumlah_kasus,
+        kabupaten: p.kabupaten,
+        posko: p.posko || `Posko ${p.kabupaten}`,
+        kategori: p.kategori,
+        tindakan: p.tindakan,
+        risiko: p.risiko
+      }))
+    }
+    // 2. Database input
     if (Array.isArray(eventData.penyakit_input) && eventData.penyakit_input.length > 0) {
       return eventData.penyakit_input
     }
+    // 3. Fallback jika offline
     if (isNttEvent) {
       return [
-        { id_penyakit: 1, jenis_penyakit: 'ISPA', jumlah_kasus: 142, posko: 'Posko Pengungsian 7 Kab NTT', kategori: 'Penyakit Menular Potensial KLB', tindakan: 'Distribusi Masker, Oksigen, & Nebulisasi' },
-        { id_penyakit: 2, jenis_penyakit: 'Diare Akut', jumlah_kasus: 86, posko: 'Posko Pengungsian & EMT', kategori: 'Penyakit Menular Potensial KLB', tindakan: 'Kaporisasi Sumber Air, Oralit, & Zinc' },
-        { id_penyakit: 3, jenis_penyakit: 'Penyakit Kulit & Alergi', jumlah_kasus: 54, posko: 'Posko Pengungsian Lapangan', kategori: 'Surveilans SKDR', tindakan: 'Salep Antibiotik & Antihistamin' },
+        { id_penyakit: 1, jenis_penyakit: 'ISPA', jumlah_kasus: 142, posko: 'Posko Pengungsian 7 Kab NTT', kategori: 'Penyakit Menular', tindakan: 'Distribusi Masker, Oksigen, & Nebulisasi' },
+        { id_penyakit: 2, jenis_penyakit: 'Diare Akut', jumlah_kasus: 86, posko: 'Posko Pengungsian & EMT', kategori: 'Penyakit Menular', tindakan: 'Kaporisasi Sumber Air, Oralit, & Zinc' },
+        { id_penyakit: 3, jenis_penyakit: 'Penyakit Kulit & Alergi', jumlah_kasus: 54, posko: 'Posko Pengungsian Lapangan', kategori: 'Surveilans Rutin', tindakan: 'Salep Antibiotik & Antihistamin' },
         { id_penyakit: 4, jenis_penyakit: 'Trauma Fisik / Cedera', jumlah_kasus: 38, posko: 'Fasilitas Kesehatan Darurat', kategori: 'Trauma Bencana', tindakan: 'Perawatan Luka, Jahit, & ATS' },
         { id_penyakit: 5, jenis_penyakit: 'Gastritis / Dispepsia', jumlah_kasus: 29, posko: 'Posko Kesehatan Lapangan', kategori: 'Surveilans Rutin', tindakan: 'Antasida & Manajemen Dapur Gizi' },
-        { id_penyakit: 6, jenis_penyakit: 'Hipertensi', jumlah_kasus: 21, posko: 'Posko Kesehatan Pengungsian', kategori: 'Surveilans PTM', tindakan: 'Antihipertensi & Dukungan Psikososial' },
+        { id_penyakit: 6, jenis_penyakit: 'Hipertensi', jumlah_kasus: 21, posko: 'Posko Kesehatan Pengungsian', kategori: 'Penyakit Tidak Menular (PTM)', tindakan: 'Antihipertensi & Dukungan Psikososial' },
       ]
     }
     return []
-  }, [eventData.penyakit_input, isNttEvent]);
+  }, [livePenyakitData, eventData.penyakit_input, isNttEvent]);
 
   const penyakitTotalData = useMemo(() => {
+    // 1. Live Summary Ranking Chart dari Google Sheets API
+    if (livePenyakitData && Array.isArray(livePenyakitData.summary_chart) && livePenyakitData.summary_chart.length > 0) {
+      return livePenyakitData.summary_chart.map(item => ({
+        name: item.name,
+        total: item.total
+      }))
+    }
     const list = effectivePenyakitList;
     if (list.length === 0) {
       return [];
@@ -2869,15 +2913,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       name,
       total
     })).sort((a, b) => b.total - a.total);
-  }, [effectivePenyakitList]);
+  }, [livePenyakitData, effectivePenyakitList]);
 
   const totalPenyakitCases = useMemo(() => {
+    if (livePenyakitData?.total_kasus_se_ntt !== undefined && livePenyakitData.total_kasus_se_ntt > 0) {
+      return livePenyakitData.total_kasus_se_ntt;
+    }
     return penyakitTotalData.reduce((s, item) => s + (item.total || 0), 0);
-  }, [penyakitTotalData]);
+  }, [livePenyakitData, penyakitTotalData]);
 
   const dominantDiseaseObj = useMemo(() => {
+    if (livePenyakitData?.penyakit_terbanyak && livePenyakitData.penyakit_terbanyak.total > 0) {
+      return livePenyakitData.penyakit_terbanyak;
+    }
     return penyakitTotalData.length > 0 && penyakitTotalData[0].total > 0 ? penyakitTotalData[0] : null;
-  }, [penyakitTotalData]);
+  }, [livePenyakitData, penyakitTotalData]);
 
   const penyakitTrendData = useMemo(() => {
     const list = effectivePenyakitList;
@@ -3836,21 +3886,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const list = effectivePenyakitList
     if (list.length === 0) return []
     return list.map((p: any) => {
-      const nama = String(p.jenis_penyakit || p.id_penyakit || 'Penyakit').trim()
+      const nama = String(p.jenis_penyakit || p.nama_penyakit || p.nama_asli_sheet || p.id_penyakit || 'Penyakit').trim()
       const kasus = safeParseInt(p.jumlah_kasus || p.jml || 0)
-      const kategori = p.kategori || (nama.toLowerCase().includes('ispa') || nama.toLowerCase().includes('diare') ? 'Penyakit Menular Potensial KLB' : 'Surveilans Rutin')
-      const posko = p.posko || p.lokasi || (eventData.kabupaten ? `Posko ${eventData.kabupaten}` : 'Seluruh Posko Pengungsian')
-      const risiko = kasus > 50 ? 'Tinggi' : kasus > 20 ? 'Sedang' : 'Terkendali'
-      const risikoColor = kasus > 50 ? 'bg-red-50 text-red-700 border-red-200' : kasus > 20 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      const tindakan = p.tindakan || (nama.toLowerCase().includes('ispa') ? 'Distribusi Masker & Nebulisasi' : nama.toLowerCase().includes('diare') ? 'Kaporisasi & Oralit' : 'Pengobatan Simptomatik')
+      const kab = p.kabupaten || (eventData.kabupaten ? `Kab. ${eventData.kabupaten}` : 'Kab. NTT')
+      const posko = p.posko || p.lokasi || `Posko Pengungsian & Faskes ${kab}`
       return {
         nama,
-        kategori,
+        kabupaten: kab,
         kasus,
         posko,
-        risiko,
-        risikoColor,
-        tindakan
       }
     })
   }, [effectivePenyakitList, eventData.kabupaten])
@@ -5003,7 +5047,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               </article>
 
-              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT & SURVEILANS SKDR (30% KIRI - 70% KANAN) ─── */}
+              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (30% KIRI - 70% KANAN) ─── */}
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Kasus Penyakit & Epidemiologi */}
@@ -5012,10 +5056,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <div className="flex items-center justify-between gap-2.5">
                         <div>
                           <h4 className="text-lg sm:text-xl font-black text-slate-900 leading-snug m-0">
-                            Distribusi Kasus Penyakit &amp; SKDR
+                            Distribusi Kasus Penyakit Bencana
                           </h4>
                           <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 mb-0">
-                            Surveilans penyakit potensial KLB pasca bencana di {displayRegion}.
+                            Surveilans epidemiologi dan pemantauan tren kasus penyakit pasca bencana di {displayRegion}.
                           </p>
                         </div>
                         <button
@@ -5025,7 +5069,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             setShowKabupatenMatrixModal(true)
                           }}
                           className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#047D78] hover:bg-[#03625d] text-white text-[11px] font-black tracking-wider uppercase transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer shrink-0 border border-teal-600/30 group"
-                          title="Buka Matriks Distribusi Kasus Penyakit & Surveilans SKDR"
+                          title="Buka Matriks Distribusi Kasus Penyakit Pasca Bencana"
                         >
                           <Table2 className="h-3.5 w-3.5 text-teal-100 group-hover:scale-110 transition-transform" />
                           <span>LIHAT MATRIKS</span>
@@ -5037,7 +5081,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">Total Kasus</span>
                           {totalPenyakitCases > 0 ? (
-                            <span className="text-lg sm:text-xl font-black text-amber-950 block mt-0.5">{totalPenyakitCases} <span className="text-xs font-bold text-amber-700">Kasus</span></span>
+                            <span className="text-lg sm:text-xl font-black text-amber-950 block mt-0.5">{totalPenyakitCases.toLocaleString('id-ID')} <span className="text-xs font-bold text-amber-700">Kasus</span></span>
                           ) : (
                             <span className="text-lg sm:text-xl font-black text-amber-900 block mt-0.5">0</span>
                           )}
@@ -5057,9 +5101,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           )}
                         </div>
                         <div className="p-3 rounded-xl bg-teal-50/70 border border-teal-200/80">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 block">Status SKDR</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 block">Kondisi Kasus</span>
                           <span className="text-xs sm:text-sm font-black text-teal-950 leading-tight block mt-1">
-                            {totalPenyakitCases > 0 ? (totalPenyakitCases > 100 ? 'Siaga KLB' : totalPenyakitCases > 50 ? 'Waspada' : 'Terkendali') : 'Terkendali'}
+                            {totalPenyakitCases > 1000 ? 'Perhatian Khusus' : totalPenyakitCases > 200 ? 'Waspada' : 'Terkendali'}
                           </span>
                         </div>
                       </div>
@@ -5072,7 +5116,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         <span>Insight Epidemiologi Klinis:</span>
                       </div>
                       <p className="text-amber-950 font-medium m-0 text-xs leading-relaxed">
-                        {penyakitNarrative || 'Pemantauan surveilans harian SKDR terus diperkuat di seluruh pos kesehatan darurat dan posko pengungsian guna mencegah penularan penyakit potensial KLB.'}
+                        {dominantDiseaseObj ? `Dampak kesehatan paling dominan adalah ${dominantDiseaseObj.name} dengan ${dominantDiseaseObj.total?.toLocaleString('id-ID')} kasus. Total akumulasi kasus penyakit di posko pengungsian & fasilitas kesehatan ${displayRegion} tercatat sebanyak ${totalPenyakitCases.toLocaleString('id-ID')} kasus terlaporkan.` : (penyakitNarrative || 'Pemantauan surveilans harian terus diperkuat di seluruh pos kesehatan darurat dan posko pengungsian guna mencegah penularan penyakit pasca bencana.')}
                       </p>
                     </div>
                   </div>
@@ -5084,7 +5128,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         Grafik Kasus Penyakit Terlaporkan
                       </span>
                       <span className="px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 text-xs font-bold shadow-2xs">
-                        {totalPenyakitCases > 0 ? `${totalPenyakitCases} Total Pasien Kasus` : 'Belum Ada Laporan Kasus'}
+                        {totalPenyakitCases > 0 ? `${totalPenyakitCases.toLocaleString('id-ID')} Total Pasien Kasus` : 'Belum Ada Laporan Kasus'}
                       </span>
                     </div>
 
@@ -5097,7 +5141,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                               <XAxis dataKey="name" stroke="#475569" tickLine={false} interval={0} angle={-10} textAnchor="end" height={45} tick={{ fontSize: 11, fontWeight: 700 }} />
                               <YAxis stroke="#475569" tickLine={false} style={{ fontSize: '11px', fontWeight: 'bold' }} allowDecimals={false} />
-                              <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 700 }} formatter={(value) => [`${value} Kasus`, 'Total Pasien']} />
+                              <Tooltip contentStyle={{ background: '#ffffff', borderRadius: '10px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 700 }} formatter={(value) => [`${Number(value).toLocaleString('id-ID')} Kasus`, 'Total Pasien']} />
                               <Bar
                                 dataKey="total"
                                 radius={[6, 6, 0, 0]}
@@ -5106,7 +5150,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 animationDuration={800}
                               >
                                 {penyakitTotalData.map((entry, idx) => {
-                                  const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1'];
+                                  const colors = ['#0ea5e9', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#14b8a6', '#f43f5e', '#a855f7'];
                                   return <Cell key={`cell-${idx}`} fill={colors[idx % colors.length]} />;
                                 })}
                               </Bar>
@@ -5120,7 +5164,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           </div>
                           <h5 className="font-bold text-slate-700 text-sm mb-1">Data Penyakit: Belum Ada Laporan Kasus</h5>
                           <p className="text-xs text-slate-500 max-w-md leading-relaxed m-0">
-                            Belum ada entri data surveilans penyakit berpotensi KLB (SKDR) dari posko kesehatan atau dinas kesehatan untuk kejadian bencana ini. Grafik akan otomatis tampil saat data riil dilaporkan.
+                            Belum ada entri data surveilans penyakit dari posko kesehatan atau dinas kesehatan untuk kejadian bencana ini. Grafik akan otomatis tampil saat data riil dilaporkan.
                           </p>
                         </div>
                       )}
@@ -8588,58 +8632,53 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="sticky top-0 z-10 bg-slate-100 border-b border-slate-200 shadow-2xs">
                     <tr className="text-slate-700 font-black uppercase text-[11px]">
-                      <th className="py-3.5 px-4 text-center">No</th>
-                      <th className="py-3.5 px-4">Jenis Penyakit / Diagnosis</th>
-                      <th className="py-3.5 px-4">Kategori Surveilans SKDR</th>
-                      <th className="py-3.5 px-4 text-center text-amber-800">Jumlah Kasus</th>
-                      <th className="py-3.5 px-4">Sebaran Titik Posko / Faskes</th>
-                      <th className="py-3.5 px-4 text-center">Tingkat Risiko</th>
-                      <th className="py-3.5 px-4">Tindakan &amp; Intervensi Medis</th>
+                      <th className="py-3.5 px-4 text-center w-12">No</th>
+                      <th className="py-3.5 px-4">Kabupaten / Kota</th>
+                      <th className="py-3.5 px-4">Nama Penyakit</th>
+                      <th className="py-3.5 px-4 text-center text-amber-800">Jumlah Kasus (Kumulatif)</th>
+                      <th className="py-3.5 px-4">Posko / Titik Layanan</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {penyakitMatrixData.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-slate-400 font-semibold text-xs">
-                          Data surveilans kasus penyakit tidak dilaporkan atau belum ada kasus potensial KLB.
+                        <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold text-xs">
+                          Data kasus penyakit tidak dilaporkan atau belum ada kasus tercatat.
                         </td>
                       </tr>
                     ) : (
                       penyakitMatrixData
                         .filter((p: any) =>
                           !kabupatenMatrixSearch ||
+                          (p.kabupaten && p.kabupaten.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())) ||
                           p.nama.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()) ||
-                          p.kategori.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()) ||
-                          p.posko.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase()) ||
-                          p.tindakan.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())
+                          p.posko.toLowerCase().includes(kabupatenMatrixSearch.toLowerCase())
                         )
                         .map((row: any, idx: number) => (
                           <tr key={idx} className={`hover:bg-amber-50/30 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
                             <td className="py-3 px-4 font-bold text-slate-400 text-center">{idx + 1}</td>
                             <td className="py-3 px-4">
-                              <div className="font-extrabold text-slate-900">{row.nama}</div>
+                              <span className="font-extrabold text-slate-900">{row.kabupaten}</span>
                             </td>
-                            <td className="py-3 px-4 text-slate-600 font-semibold">{row.kategori}</td>
-                            <td className="py-3 px-4 text-center font-black text-amber-900 bg-amber-50/40">{row.kasus} Jiwa</td>
+                            <td className="py-3 px-4">
+                              <div className="font-black text-slate-900 text-sm">{row.nama}</div>
+                            </td>
+                            <td className="py-3 px-4 text-center font-black text-amber-900 bg-amber-50/40 text-sm">
+                              {Number(row.kasus).toLocaleString('id-ID')} Kasus
+                            </td>
                             <td className="py-3 px-4 text-slate-800 font-medium">{row.posko}</td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${row.risikoColor}`}>
-                                {row.risiko}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-teal-900 font-bold text-[11px]">{row.tindakan}</td>
                           </tr>
                         ))
                     )}
                   </tbody>
                   <tfoot className="bg-slate-100 border-t-2 border-slate-300 font-black text-slate-900">
                     <tr>
-                      <td className="py-3.5 px-4 text-center" colSpan={3}>TOTAL KASUS SURVEILANS SKDR</td>
-                      <td className="py-3.5 px-4 text-center text-amber-800">
-                        {penyakitMatrixData.reduce((acc: number, curr: any) => acc + (Number(curr.kasus) || 0), 0)} Jiwa
+                      <td className="py-3.5 px-4 text-center" colSpan={3}>TOTAL KASUS PENYAKIT TERLAPORKAN</td>
+                      <td className="py-3.5 px-4 text-center text-amber-800 text-sm">
+                        {penyakitMatrixData.reduce((acc: number, curr: any) => acc + (Number(curr.kasus) || 0), 0).toLocaleString('id-ID')} Kasus
                       </td>
-                      <td className="py-3.5 px-4 text-teal-800 font-bold" colSpan={3}>
-                        {penyakitMatrixData.length > 0 ? `${penyakitMatrixData.length} Kasus Surveilans Terdata` : 'Data Nihil'}
+                      <td className="py-3.5 px-4 text-teal-800 font-bold">
+                        {penyakitMatrixData.length > 0 ? `${penyakitMatrixData.length} Catatan Wilayah Terdata` : 'Data Nihil'}
                       </td>
                     </tr>
                   </tfoot>

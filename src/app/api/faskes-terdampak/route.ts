@@ -187,6 +187,7 @@ export async function GET(req: NextRequest) {
       source: 'google_apps_script_ntt',
       updated_at: json.updated_at || new Date().toISOString(),
       summary,
+      penyakit: json.penyakit || null,
       total: filtered.length,
       data: filtered,
     })
