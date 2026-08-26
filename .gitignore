@@ -35,6 +35,9 @@ docker-compose.yml
 
 # env files (can opt-in for committing if needed)
 .env
+.env*
+*.bak
+*.bak.*
 
 # vercel
 .vercel
