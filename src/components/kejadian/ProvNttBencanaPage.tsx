@@ -262,6 +262,19 @@ export default function ProvNttBencanaPage() {
             }
           }
 
+          if (json.summary_korban) {
+            tot = {
+              meninggal: safeParseInt(json.summary_korban.total_meninggal ?? json.summary_korban.meninggal) || tot.meninggal,
+              luka_berat: safeParseInt(json.summary_korban.total_luka_berat ?? json.summary_korban.luka_berat) || tot.luka_berat,
+              luka_ringan: safeParseInt(json.summary_korban.total_luka_ringan ?? json.summary_korban.luka_ringan) || tot.luka_ringan,
+              total_luka: safeParseInt(json.summary_korban.total_korban_luka ?? json.summary_korban.total_luka) || (tot.luka_berat + tot.luka_ringan),
+              hilang: tot.hilang || 0,
+              pengungsi: safeParseInt(json.summary_korban.total_pengungsi ?? json.summary_korban.pengungsi) || tot.pengungsi,
+              titik_pengungsian: safeParseInt(json.summary_korban.total_titik_pengungsian ?? json.summary_korban.titik_pengungsian) || tot.titik_pengungsian,
+              populasi_terdampak: safeParseInt(json.summary_korban.total_populasi_terdampak ?? json.summary_korban.populasi_terdampak) || tot.populasi_terdampak
+            }
+          }
+
           // 2. Data Pasien RS & Puskesmas dari Collector (Faskes Siaga yang melayani pasien)
           if (Array.isArray(json.tables?.pasien_rs)) {
             json.tables.pasien_rs.forEach((rs: any, idx: number) => {
