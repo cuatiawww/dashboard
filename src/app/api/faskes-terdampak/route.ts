@@ -6,7 +6,7 @@ export const revalidate = 0
 
 const GOOGLE_APPS_SCRIPT_URL =
   process.env.GOOGLE_APPS_SCRIPT_FASKES_URL ||
-  'https://script.google.com/macros/s/AKfycbyARvzwA-r1NIlBC4xf8TNJK31FQNywIdnKYH71M0gxkWJNmR8Dg7nJ7wdY-zXoArHXiA/exec'
+  'https://script.google.com/macros/s/AKfycbwt-VTU0wNteo_03CyCJIALO2KZ8I6cyya049A16OnslSal6nKqzw7e-y_JIYPIjUZn/exec?type=faskes_terdampak'
 
 // Koordinat default per kabupaten di NTT jika faskes belum tercatat koordinatnya di master
 const NTT_KAB_CENTER_COORDS: Record<string, { lat: number; lng: number }> = {
