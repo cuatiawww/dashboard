@@ -1088,10 +1088,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     setMasterFaskesPage(1)
   }, [masterFaskesTypeFilter, masterFaskesKabFilter, masterFaskesSearch, masterFaskesPerPage])
 
+  const effectiveFaskesTerdampakList = useMemo(() => {
+    if (Array.isArray(faskesTerdampakList) && faskesTerdampakList.length > 0) {
+      return faskesTerdampakList
+    }
+    if (Array.isArray(detail?.faskes_terdampak) && detail.faskes_terdampak.length > 0) {
+      return detail.faskes_terdampak
+    }
+    return []
+  }, [faskesTerdampakList, detail?.faskes_terdampak])
+
   const faskesStatusSummary = useMemo(() => {
-    const list = (isNttEvent && faskesTerdampakList.length > 0)
-      ? faskesTerdampakList
-      : (Array.isArray(detail?.faskes_terdampak) ? detail.faskes_terdampak : [])
+    const list = effectiveFaskesTerdampakList
 
     const summary = {
       rs: { label: 'Rumah Sakit', terdampak: 0, rusakBerat: 0, rusakSedang: 0, rusakRingan: 0, tidakBerfungsi: 0, berfungsi: 0 },

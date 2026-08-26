@@ -382,7 +382,7 @@ export default function ProvNttBencanaPage() {
               hilang: tot.hilang ?? prev.detailData.hilang,
               penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
               breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
-              faskes_terdampak: faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak,
+              faskes_terdampak: Array.isArray(json.faskes_terdampak) && json.faskes_terdampak.length > 0 ? json.faskes_terdampak : (Array.isArray(json.tables?.faskes_terdampak) && json.tables.faskes_terdampak.length > 0 ? json.tables.faskes_terdampak : (faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak)),
               faskes_terdekat: allMasterFaskes.length > 0 ? allMasterFaskes : prev.detailData.faskes_terdekat,
               summary_faskes: json.summary_faskes || null,
               pos_pengungsi: prev.detailData.pos_pengungsi || [],
