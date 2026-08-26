@@ -103,18 +103,72 @@ export default function TvAnalyticsDeck({
 
   const tglLaporanStr = '23 Agustus 2026, 12:19 WIB'
 
-  // 2. 7-Day Seismic Activity & Aftershock Trend
+  // 2. 7-Day Seismic Activity & Aftershock Trend (Strictly dynamic from earthquakePoints API)
   const seismicTimeline = useMemo(() => {
-    return [
-      { day: 'SAB', date: '15 Agu', mag: 'M 7.7', label: 'VII - VIII MMI', isMain: true, lat: -8.34, lng: 122.98 },
-      { day: 'MIN', date: '16 Agu', mag: 'M 5.5', label: 'Susulan', isMain: false, lat: -8.41, lng: 122.85 },
-      { day: 'SEN', date: '17 Agu', mag: 'M 5.5', label: 'Susulan', isMain: false, lat: -8.29, lng: 123.12 },
-      { day: 'SEL', date: '18 Agu', mag: 'M 4.9', label: 'Susulan', isMain: false, lat: -8.45, lng: 122.76 },
-      { day: 'RAB', date: '19 Agu', mag: 'M 5.8', label: 'Susulan', isMain: false, lat: -8.36, lng: 123.05 },
-      { day: 'KAM', date: '20 Agu', mag: 'M 5.7', label: 'Susulan', isMain: false, lat: -8.38, lng: 122.92 },
-      { day: 'JUM', date: '21 Agu', mag: 'M 4.9', label: 'Susulan', isMain: false, lat: -8.42, lng: 122.88 },
-    ]
-  }, [])
+    const baseDate = new Date('2026-08-15')
+    const dayNames = ['MIN', 'SEN', 'SEL', 'RAB', 'KAM', 'JUM', 'SAB']
+    const monthNames = ['Agu', 'Agu', 'Agu', 'Agu', 'Agu', 'Agu', 'Agu', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+    
+    // Group earthquakePoints by dateStr YYYY-MM-DD
+    const byDate: Record<string, any> = {}
+    if (Array.isArray(earthquakePoints)) {
+      earthquakePoints.forEach((eq: any) => {
+        if (!eq) return
+        const dStr = eq.dateStr || (eq.time ? new Date(eq.time).toISOString().split('T')[0] : '')
+        const mag = Number(eq.magnitude || 0)
+        if (dStr && (!byDate[dStr] || mag > Number(byDate[dStr].magnitude || 0))) {
+          byDate[dStr] = eq
+        }
+      })
+    }
+
+    const items = []
+    for (let i = 0; i < 7; i++) {
+      const curr = new Date(baseDate)
+      curr.setDate(baseDate.getDate() + i)
+      const dStr = curr.toISOString().split('T')[0]
+      const dayShort = dayNames[curr.getDay()]
+      const dateShort = `${curr.getDate()} Agu`
+      const isMain = i === 0
+
+      if (isMain) {
+        const mainEq = (earthquakePoints || []).find((eq: any) => eq.isMainshock)
+        const mainMag = mainEq?.magnitude ? Number(mainEq.magnitude) : 7.7
+        items.push({
+          day: dayShort,
+          date: dateShort,
+          mag: `M ${mainMag.toFixed(1)}`,
+          label: 'VII - VIII MMI',
+          isMain: true,
+          lat: mainEq?.lat || -8.34,
+          lng: mainEq?.lng || 122.98,
+        })
+      } else if (byDate[dStr]) {
+        const eq = byDate[dStr]
+        const mag = Number(eq.magnitude || 0)
+        items.push({
+          day: dayShort,
+          date: dateShort,
+          mag: `M ${mag.toFixed(1)}`,
+          label: mag >= 4.0 ? 'Susulan' : 'Peluruhan',
+          isMain: false,
+          lat: eq.lat,
+          lng: eq.lng,
+        })
+      } else {
+        items.push({
+          day: dayShort,
+          date: dateShort,
+          mag: '-',
+          label: 'Normal',
+          isMain: false,
+          lat: null,
+          lng: null,
+        })
+      }
+    }
+    return items
+  }, [earthquakePoints])
 
   // 3. EOC Chronological Bulletin Narrative
   const kronologisText =

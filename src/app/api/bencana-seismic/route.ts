@@ -268,17 +268,24 @@ export async function GET(request: Request) {
     // Determine Main Characteristics for Disaster Date (dateParam)
     const mainDayEq = byDate[dateParam]
     const parsedDbMag = parseFloat(dbMag)
-    const mainMagNum = bmkgMatch?.Magnitude ? parseFloat(bmkgMatch.Magnitude) : (!isNaN(parsedDbMag) && parsedDbMag > 0 ? parsedDbMag : (mainDayEq ? parseFloat(mainDayEq.mag) : 5.0))
+    const hasDbMag = !isNaN(parsedDbMag) && parsedDbMag > 0
+    const mainMagNum = bmkgMatch?.Magnitude
+      ? parseFloat(bmkgMatch.Magnitude)
+      : hasDbMag
+      ? parsedDbMag
+      : mainDayEq
+      ? parseFloat(mainDayEq.mag)
+      : 0
 
     const magnitude = bmkgMatch?.Magnitude
       ? `${bmkgMatch.Magnitude} SR`
       : apiIndoMatch?.magnitude
       ? `${apiIndoMatch.magnitude} SR`
-      : dbMag
+      : hasDbMag
       ? `${dbMag} SR`
       : mainDayEq
       ? `${Number(mainDayEq.mag).toFixed(1)} SR`
-      : '5.0 SR'
+      : '-'
 
     const kedalaman = bmkgMatch?.Kedalaman
       ? bmkgMatch.Kedalaman
@@ -288,7 +295,7 @@ export async function GET(request: Request) {
       ? (String(dbDepth).includes('km') ? dbDepth : `${dbDepth} km`)
       : mainDayEq
       ? `${mainDayEq.depth} km`
-      : '10 km'
+      : '-'
 
     const potensiTsunami = bmkgMatch?.Potensi
       ? bmkgMatch.Potensi
@@ -296,7 +303,7 @@ export async function GET(request: Request) {
       ? apiIndoMatch.potential
       : dbTsunami
       ? dbTsunami
-      : (mainMagNum >= 7.0 ? 'Waspada / Berpotensi Tsunami' : 'Tidak Berpotensi Tsunami')
+      : (mainMagNum >= 7.0 ? 'Berpotensi Tsunami' : '-')
 
     const intensitasMmi = bmkgMatch?.Dirasakan
       ? bmkgMatch.Dirasakan
@@ -304,13 +311,16 @@ export async function GET(request: Request) {
       ? apiIndoMatch.felt_areas
       : dbMmi
       ? (dbMmi.includes('MMI') ? dbMmi : `${dbMmi} MMI`)
-      : (mainDayEq?.mmi ? `${mainDayEq.mmi} MMI` : 'III MMI')
+      : mainDayEq?.mmi
+      ? `${mainDayEq.mmi} MMI`
+      : '-'
 
-    const rawMmi = intensitasMmi.split(',')[0].trim()
-    const mmiMatch = rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i)
-    const mmiVal = mmiMatch ? `${mmiMatch[1]} MMI` : 'Gempa Utama'
+    const rawMmi = intensitasMmi !== '-' ? intensitasMmi.split(',')[0].trim() : '-'
+    const mmiMatch = rawMmi !== '-' ? rawMmi.match(/([I|V|X]+(\s*-\s*[I|V|X]+)?)/i) : null
+    const mmiVal = mmiMatch ? `${mmiMatch[1]} MMI` : (intensitasMmi !== '-' ? intensitasMmi : '-')
 
     // Build 7-day timeline strictly starting from Event Date (Day 0 to Day 6)
+    // Strictly NO synthetic or fake decay aftershocks: only real USGS/BMKG records
     const timeline = []
 
     for (let i = 0; i < 7; i++) {
@@ -323,19 +333,35 @@ export async function GET(request: Request) {
       const dateLabel = curr.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
 
       if (isEventDay) {
-        timeline.push({
-          offset: i,
-          dateStr: dStr,
-          dayName,
-          dateLabel,
-          topLabel: `M ${mainMagNum.toFixed(1)}`,
-          bottomLabel: `${mmiVal} (Gempa Utama)`,
-          magnitude: mainMagNum,
-          depth: kedalaman,
-          place: bmkgMatch?.Wilayah || `${kabParam}, ${provParam}`,
-          statusType: 'mainshock',
-          isPeak: true,
-        })
+        if (mainMagNum > 0) {
+          timeline.push({
+            offset: i,
+            dateStr: dStr,
+            dayName,
+            dateLabel,
+            topLabel: `M ${mainMagNum.toFixed(1)}`,
+            bottomLabel: mmiVal !== '-' ? `${mmiVal} (Gempa Utama)` : 'Gempa Utama',
+            magnitude: mainMagNum,
+            depth: kedalaman,
+            place: bmkgMatch?.Wilayah || apiIndoMatch?.region || mainDayEq?.place || `${kabParam}, ${provParam}`,
+            statusType: 'mainshock',
+            isPeak: true,
+          })
+        } else {
+          timeline.push({
+            offset: i,
+            dateStr: dStr,
+            dayName,
+            dateLabel,
+            topLabel: '-',
+            bottomLabel: 'Tidak ada rekaman',
+            magnitude: 0,
+            depth: '-',
+            place: '-',
+            statusType: 'none',
+            isPeak: false,
+          })
+        }
       } else if (byDate[dStr]) {
         const eq = byDate[dStr]
         const bottomLabel = eq.mag >= 4.0 ? 'Susulan' : 'Peluruhan'
@@ -354,49 +380,18 @@ export async function GET(request: Request) {
           isPeak: false,
         })
       } else {
-        // Calibrated exponential decay aftershocks from main shock
-        let topLabel = 'M < 3.0'
-        let bottomLabel = 'Normal'
-        let magDecay = 0
-
-        if (i === 1) {
-          magDecay = Math.max(3.0, Number((mainMagNum - 1.9).toFixed(1)))
-          topLabel = `M ${magDecay.toFixed(1)}`
-          bottomLabel = 'Susulan'
-        } else if (i === 2) {
-          magDecay = Math.max(2.8, Number((mainMagNum - 2.6).toFixed(1)))
-          topLabel = `M ${magDecay.toFixed(1)}`
-          bottomLabel = 'Susulan'
-        } else if (i === 3) {
-          magDecay = Math.max(2.5, Number((mainMagNum - 3.2).toFixed(1)))
-          topLabel = `M ${magDecay.toFixed(1)}`
-          bottomLabel = 'Susulan'
-        } else if (i === 4) {
-          magDecay = Math.max(2.2, Number((mainMagNum - 3.8).toFixed(1)))
-          topLabel = `M ${magDecay.toFixed(1)}`
-          bottomLabel = 'Peluruhan'
-        } else if (i === 5) {
-          topLabel = 'M 3.2'
-          bottomLabel = 'Stabil'
-        } else if (i === 6) {
-          topLabel = 'M < 3.0'
-          bottomLabel = 'Stabil'
-        } else {
-          topLabel = 'M < 3.0'
-          bottomLabel = 'Normal'
-        }
-
+        // Honest representation: No earthquakes recorded on this day
         timeline.push({
           offset: i,
           dateStr: dStr,
           dayName,
           dateLabel,
-          topLabel,
-          bottomLabel,
-          magnitude: magDecay,
+          topLabel: '-',
+          bottomLabel: 'Tidak ada rekaman',
+          magnitude: 0,
           depth: '-',
-          place: 'Gempa Susulan BMKG',
-          statusType: i <= 4 ? 'aftershock' : 'normal',
+          place: '-',
+          statusType: 'none',
           isPeak: false,
         })
       }
@@ -406,17 +401,19 @@ export async function GET(request: Request) {
       ? `https://data.bmkg.go.id/DataMKG/TEWS/${bmkgMatch.Shakemap}`
       : null
 
+    const isMatched = Boolean(bmkgMatch || apiIndoMatch || mainDayEq || hasDbMag)
+
     return NextResponse.json({
       success: true,
       data: {
-        matched: Boolean(bmkgMatch || apiIndoMatch || mainDayEq || dbMag),
+        matched: isMatched,
         characteristics: {
           magnitude,
           kedalaman,
           potensiTsunami,
           intensitasMmi,
           shakemapUrl,
-          wilayah: bmkgMatch?.Wilayah || apiIndoMatch?.region || mainDayEq?.place || `${kabParam}, ${provParam}`,
+          wilayah: bmkgMatch?.Wilayah || apiIndoMatch?.region || mainDayEq?.place || (hasDbMag ? `${kabParam}, ${provParam}` : '-'),
         },
         petaBencana: petaBencanaMatch ? {
           disasterType: petaBencanaMatch.disaster_type,
@@ -435,6 +432,10 @@ export async function GET(request: Request) {
           ? 'API Indonesia & BMKG (use.apiindonesia.id)'
           : petaBencanaMatch
           ? 'PetaBencana.id & BMKG'
+          : mainDayEq
+          ? 'USGS (United States Geological Survey)'
+          : hasDbMag
+          ? 'SIPKK EOC Official Report'
           : 'Katalog Seismik BMKG & TEWS',
       },
     })

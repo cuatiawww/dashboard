@@ -74,14 +74,14 @@ export default function TvDisasterFeedDeck({
           intensitas: 'VII - VIII MMI',
           waktu: '15 Agu 2026, 09:18:22 WITA',
           isMainshock: true,
-          meninggal: summary?.total_meninggal || 24,
-          luka: summary?.total_luka || 480,
-          pengungsi: summary?.total_pengungsi || 12500,
+          meninggal: summary?.total_meninggal ?? 0,
+          luka: summary?.total_luka ?? 0,
+          pengungsi: summary?.total_pengungsi ?? 0,
           type: 'earthquake',
         })
       }
 
-      // Add 8 Kabupaten data from markers / kabupatenDetailList
+      // Add Kabupaten data strictly from markers / kabupatenDetailList (from API)
       if (markers && markers.length > 0) {
         markers.forEach((m) => {
           const detail = kabupatenDetailList.find(
@@ -109,36 +109,6 @@ export default function TvDisasterFeedDeck({
             faskes_terdampak: (m as any).faskes_terdampak || 0,
             titik_posko: detail?.titik_posko || (m as any).titik_posko || 0,
             waktu: m.tgl_kejadian || '15 Agu 2026',
-            type: 'disaster',
-          })
-        })
-      } else {
-        // Fallback standard 8 kabupaten for NTT
-        const ntt8 = [
-          { name: 'Flores Timur', lat: -8.3421, lng: 122.9814, m: 12, l: 145, p: 4200 },
-          { name: 'Sikka', lat: -8.6214, lng: 122.2155, m: 6, l: 110, p: 3100 },
-          { name: 'Ende', lat: -8.8415, lng: 121.6582, m: 4, l: 85, p: 2400 },
-          { name: 'Nagekeo', lat: -8.6752, lng: 121.2891, m: 2, l: 60, p: 1200 },
-          { name: 'Ngada', lat: -8.7891, lng: 120.9664, m: 0, l: 40, p: 850 },
-          { name: 'Manggarai Timur', lat: -8.8033, lng: 120.5982, m: 0, l: 25, p: 450 },
-          { name: 'Manggarai', lat: -8.6148, lng: 120.4632, m: 0, l: 15, p: 200 },
-          { name: 'Manggarai Barat', lat: -8.5142, lng: 119.8924, m: 0, l: 10, p: 100 },
-        ]
-        ntt8.forEach((k) => {
-          items.push({
-            id: `fallback-${k.name}`,
-            nama: `Kabupaten ${k.name}`,
-            jenis: 'Gempa Bumi & Dampak Kesehatan',
-            kabupaten: k.name,
-            provinsi: 'NUSA TENGGARA TIMUR',
-            status: k.m > 0 ? 'Tanggap Darurat' : 'Siaga Darurat',
-            statusColor: k.m > 0 ? 'rose' : 'amber',
-            lat: k.lat,
-            lng: k.lng,
-            meninggal: k.m,
-            luka: k.l,
-            pengungsi: k.p,
-            waktu: '15 Agu 2026',
             type: 'disaster',
           })
         })

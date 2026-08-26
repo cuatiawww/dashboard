@@ -651,7 +651,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         // Mode Nasional: 30-day recent disaster feed
         const [dashRes, bmkgRes, alertsRes] = await Promise.allSettled([
           fetch(`/api/dashboard-utama?startDate=${startDate}&endDate=${endDate}`, { cache: 'no-store' }),
-          fetch('/api/bmkg-autogempa', { cache: 'no-store' }),
+          fetch('/api/bmkg-gempa', { cache: 'no-store' }),
           fetch('/api/bmkg-nowcast', { cache: 'no-store' }),
         ])
 
