@@ -2271,7 +2271,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ? nttApiData.timeline_pasien_rs
       : (nttApiData.pasien_rs || [])
 
-    const filtered = targetSituasiDate ? all.filter((r: any) => r.tanggal === targetSituasiDate) : all
+    if (!targetSituasiDate) {
+      // Akumulasi kumulatif seluruh tanggal per faskes
+      const map: Record<string, any> = {}
+      all.forEach((r: any) => {
+        const key = `${r.kabupaten}_${r.nama_rs}`
+        if (!map[key]) {
+          map[key] = {
+            ...r,
+            tanggal: 'Kumulatif (15 - 25 Agu)',
+            triase_merah: 0,
+            triase_kuning: 0,
+            triase_hijau: 0,
+            triase_hitam: 0,
+            total: 0,
+          }
+        }
+        map[key].triase_merah += Number(r.triase_merah || 0)
+        map[key].triase_kuning += Number(r.triase_kuning || 0)
+        map[key].triase_hijau += Number(r.triase_hijau || 0)
+        map[key].triase_hitam += Number(r.triase_hitam || 0)
+        map[key].total = map[key].triase_merah + map[key].triase_kuning + map[key].triase_hijau + map[key].triase_hitam
+      })
+      return Object.values(map)
+    }
+
+    const filtered = all.filter((r: any) => r.tanggal === targetSituasiDate)
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
   }, [isNttEvent, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, targetSituasiDate])
 
@@ -2281,7 +2306,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       ? nttApiData.timeline_pasien_puskesmas
       : (nttApiData.pasien_puskesmas || [])
 
-    const filtered = targetSituasiDate ? all.filter((p: any) => p.tanggal === targetSituasiDate) : all
+    if (!targetSituasiDate) {
+      // Akumulasi kumulatif seluruh tanggal per faskes
+      const map: Record<string, any> = {}
+      all.forEach((p: any) => {
+        const key = `${p.kabupaten}_${p.nama_puskesmas}`
+        if (!map[key]) {
+          map[key] = {
+            ...p,
+            tanggal: 'Kumulatif (15 - 25 Agu)',
+            triase_merah: 0,
+            triase_kuning: 0,
+            triase_hijau: 0,
+            triase_hitam: 0,
+            total: 0,
+          }
+        }
+        map[key].triase_merah += Number(p.triase_merah || 0)
+        map[key].triase_kuning += Number(p.triase_kuning || 0)
+        map[key].triase_hijau += Number(p.triase_hijau || 0)
+        map[key].triase_hitam += Number(p.triase_hitam || 0)
+        map[key].total = map[key].triase_merah + map[key].triase_kuning + map[key].triase_hijau + map[key].triase_hitam
+      })
+      return Object.values(map)
+    }
+
+    const filtered = all.filter((p: any) => p.tanggal === targetSituasiDate)
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
   }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, targetSituasiDate])
 
@@ -2298,16 +2348,24 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const filteredPasienRs = useMemo(() => {
     return pasienRsList.filter(rs => {
       const matchKab = situasiKabFilter === 'semua' || rs.kabupaten.toLowerCase() === situasiKabFilter.toLowerCase()
-      const matchSearch = !situasiSearch || rs.nama_rs.toLowerCase().includes(situasiSearch.toLowerCase()) || rs.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
-      return matchKab && matchSearch
+      const matchSearch = !situasiSearch ||
+        (rs.nama_display || rs.nama_rs || '').toLowerCase().includes(situasiSearch.toLowerCase()) ||
+        rs.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
+      // User request: Hanya munculkan RS yang memiliki pasien (> 0) pada tanggal/periode yang dipilih
+      const hasPatients = (Number(rs.triase_merah || 0) + Number(rs.triase_kuning || 0) + Number(rs.triase_hijau || 0) + Number(rs.triase_hitam || 0) + Number(rs.total || 0)) > 0
+      return matchKab && matchSearch && hasPatients
     })
   }, [pasienRsList, situasiKabFilter, situasiSearch])
 
   const filteredPasienPkm = useMemo(() => {
     return pasienPkmList.filter(pkm => {
       const matchKab = situasiKabFilter === 'semua' || pkm.kabupaten.toLowerCase() === situasiKabFilter.toLowerCase()
-      const matchSearch = !situasiSearch || pkm.nama_puskesmas.toLowerCase().includes(situasiSearch.toLowerCase()) || pkm.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
-      return matchKab && matchSearch
+      const matchSearch = !situasiSearch ||
+        (pkm.nama_display || pkm.nama_puskesmas || '').toLowerCase().includes(situasiSearch.toLowerCase()) ||
+        pkm.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
+      // User request: Hanya munculkan Puskesmas yang memiliki pasien (> 0) pada tanggal/periode yang dipilih
+      const hasPatients = (Number(pkm.triase_merah || 0) + Number(pkm.triase_kuning || 0) + Number(pkm.triase_hijau || 0) + Number(pkm.triase_hitam || 0) + Number(pkm.total || 0)) > 0
+      return matchKab && matchSearch && hasPatients
     })
   }, [pasienPkmList, situasiKabFilter, situasiSearch])
 
@@ -3996,6 +4054,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const filteredModalFaskesList = useMemo(() => {
     return faskesMatrixData.filter((f: any) => {
+      const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
+      // User request: Hanya munculkan RS dan PKM yang memiliki pasien (> 0)
+      if (isNttEvent && tot <= 0) return false
+
       // 1. Filter Type / Category
       if (modalFaskesTypeFilter === 'rs') {
         const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
@@ -4010,7 +4072,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         const j = String(f.jenis || f.subjenis || f.nama || '').toLowerCase()
         if (!j.includes('klinik')) return false
       } else if (modalFaskesTypeFilter === 'merawat') {
-        const tot = Number(f.total_pasien || (Number(f.triase_merah || 0) + Number(f.triase_kuning || 0) + Number(f.triase_hijau || 0) + Number(f.triase_hitam || 0)) || 0)
         if (tot <= 0) return false
       }
 
@@ -4027,7 +4088,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
       return true
     })
-  }, [faskesMatrixData, modalFaskesTypeFilter, kabupatenMatrixSearch])
+  }, [faskesMatrixData, isNttEvent, modalFaskesTypeFilter, kabupatenMatrixSearch])
 
   const filteredModalFaskesTotals = useMemo(() => {
     let merah = 0, kuning = 0, hijau = 0, hitam = 0, totalPasien = 0, aktifMerawat = 0
@@ -6008,7 +6069,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'bg-white/25 text-white'
                         : 'bg-blue-100 text-blue-800'
                         }`}>
-                        {pasienRsList.length} RSUD
+                        {filteredPasienRs.length} RSUD
                       </span>
                     </button>
 
@@ -6026,7 +6087,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'bg-white/25 text-white'
                         : 'bg-teal-100 text-teal-800'
                         }`}>
-                        {pasienPkmList.length} PKM
+                        {filteredPasienPkm.length} PKM
                       </span>
                     </button>
                   </div>
@@ -6213,7 +6274,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                 <td className="py-2.5 px-3 font-black text-slate-900">
                                   <div className="flex items-center gap-1.5">
                                     <Building2 className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                                    <span>{rs.nama_rs}</span>
+                                    <span>{rs.nama_display || rs.nama_rs}</span>
+                                    {rs.master_matched === false && (
+                                      <span className="text-[11px] text-amber-600 font-bold" title="Nama faskes disesuaikan dari laporan lapangan (belum 1:1 di master data)">*</span>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="py-2.5 px-3 text-center font-black text-rose-700 bg-rose-50/30 border-x border-rose-100">
@@ -6364,7 +6428,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   <td className="py-2.5 px-3 font-black text-slate-900">
                                     <div className="flex items-center gap-1.5">
                                       <Stethoscope className="h-3.5 w-3.5 text-teal-600 shrink-0" />
-                                      <span>{pkm.nama_puskesmas}</span>
+                                      <span>{pkm.nama_display || pkm.nama_puskesmas}</span>
+                                      {pkm.master_matched === false && (
+                                        <span className="text-[11px] text-amber-600 font-bold" title="Nama faskes disesuaikan dari laporan lapangan (belum 1:1 di master data)">*</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="py-2.5 px-3 text-center font-black text-rose-700 bg-rose-50/30 border-x border-rose-100">
