@@ -2367,18 +2367,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, targetSituasiDate])
 
   const rsKabupatenOptions = useMemo(() => {
-    const kabs = Array.from(new Set(pasienRsList.map(r => r.kabupaten).filter(Boolean)))
+    const kabs = Array.from(new Set(pasienRsList.map(r => String(r.kabupaten || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()).filter(Boolean)))
     return ['semua', ...kabs]
   }, [pasienRsList])
 
   const pkmKabupatenOptions = useMemo(() => {
-    const kabs = Array.from(new Set(pasienPkmList.map(p => p.kabupaten).filter(Boolean)))
+    const kabs = Array.from(new Set(pasienPkmList.map(p => String(p.kabupaten || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()).filter(Boolean)))
     return ['semua', ...kabs]
   }, [pasienPkmList])
 
   const filteredPasienRs = useMemo(() => {
-    return pasienRsList.filter(rs => {
-      const matchKab = situasiKabFilter === 'semua' || rs.kabupaten.toLowerCase() === situasiKabFilter.toLowerCase()
+    return pasienRsList.map(rs => ({
+      ...rs,
+      kabupaten: String(rs.kabupaten || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()
+    })).filter(rs => {
+      const filterKabClean = String(situasiKabFilter || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim().toLowerCase()
+      const matchKab = situasiKabFilter === 'semua' || rs.kabupaten.toLowerCase() === filterKabClean
       const matchSearch = !situasiSearch ||
         (rs.nama_display || rs.nama_rs || '').toLowerCase().includes(situasiSearch.toLowerCase()) ||
         rs.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
@@ -2389,8 +2393,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [pasienRsList, situasiKabFilter, situasiSearch])
 
   const filteredPasienPkm = useMemo(() => {
-    return pasienPkmList.filter(pkm => {
-      const matchKab = situasiKabFilter === 'semua' || pkm.kabupaten.toLowerCase() === situasiKabFilter.toLowerCase()
+    return pasienPkmList.map(pkm => ({
+      ...pkm,
+      kabupaten: String(pkm.kabupaten || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()
+    })).filter(pkm => {
+      const filterKabClean = String(situasiKabFilter || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim().toLowerCase()
+      const matchKab = situasiKabFilter === 'semua' || pkm.kabupaten.toLowerCase() === filterKabClean
       const matchSearch = !situasiSearch ||
         (pkm.nama_display || pkm.nama_puskesmas || '').toLowerCase().includes(situasiSearch.toLowerCase()) ||
         pkm.kabupaten.toLowerCase().includes(situasiSearch.toLowerCase())
