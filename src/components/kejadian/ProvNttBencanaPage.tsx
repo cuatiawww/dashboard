@@ -127,7 +127,7 @@ export default function ProvNttBencanaPage() {
   const { setHeader, resetHeader } = useHeaderStore()
   const [eventData, setEventData] = useState<any>(BASE_NTT_GEMPA_EVENT)
   const [selectedDate, setSelectedDate] = useState<string>('')
-  const [isLoadingDate, setIsLoadingDate] = useState<boolean>(false)
+  const [isLoadingDate, setIsLoadingDate] = useState<boolean>(true)
 
   useEffect(() => {
     setHeader({
@@ -426,6 +426,7 @@ export default function ProvNttBencanaPage() {
       <DetailKejadianPage
         selectedEvent={eventData}
         onBack={() => router.push('/')}
+        isLoading={isLoadingDate}
       />
     </div>
   )
