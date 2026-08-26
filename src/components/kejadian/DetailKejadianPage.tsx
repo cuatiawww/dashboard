@@ -795,26 +795,25 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const set = new Set<string>()
     if (Array.isArray(nttApiData?.dates_available)) {
       nttApiData.dates_available.forEach((d: string) => {
-        if (d && d <= todayIso) set.add(d)
+        if (d && d <= todayIso && d <= '2026-08-25') set.add(d)
       })
     }
     if (Array.isArray(nttApiData?.timeline_situasi_kesehatan)) {
       nttApiData.timeline_situasi_kesehatan.forEach((r: any) => {
         const dt = String(r.tanggal || r.tgl || '').trim()
-        if (dt && dt <= todayIso) set.add(dt)
+        if (dt && dt <= todayIso && dt <= '2026-08-25') set.add(dt)
       })
     }
     if (Array.isArray(nttApiData?.situasi_kesehatan)) {
       nttApiData.situasi_kesehatan.forEach((r: any) => {
         const dt = String(r.tanggal || r.tgl || '').trim()
-        if (dt && dt <= todayIso) set.add(dt)
+        if (dt && dt <= todayIso && dt <= '2026-08-25') set.add(dt)
       })
     }
-    if (nttApiData?.tanggal && nttApiData.tanggal <= todayIso) set.add(nttApiData.tanggal)
+    if (nttApiData?.tanggal && nttApiData.tanggal <= todayIso && nttApiData.tanggal <= '2026-08-25') set.add(nttApiData.tanggal)
     
     if (set.size === 0) {
-      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25', '2026-08-26']
-        .filter(d => d <= todayIso)
+      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25']
         .forEach(d => set.add(d))
     }
     return Array.from(set).sort()
@@ -8212,7 +8211,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         className="bg-transparent font-black text-slate-900 border-none outline-none cursor-pointer pr-1"
                       >
                         <option value="kumulatif">
-                          Kumulatif (15 - 28 Agu 2026) ★ (Terbaru)
+                          Kumulatif ({modalAvailableDates.length > 0 ? `${new Date(modalAvailableDates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${new Date(modalAvailableDates[modalAvailableDates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : '15 - 25 Agu 2026'}) ★ (Terbaru)
                         </option>
                         {modalAvailableDates.slice().reverse().map((dt) => {
                           const dObj = new Date(dt)
