@@ -123,6 +123,16 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
   const [bmkgData, setBmkgData] = useState<{ autogempa?: any; gempaterkini?: any[]; gempadirasakan?: any[] } | null>(null)
   const [peringatanDiniList, setPeringatanDiniList] = useState<any[]>([])
 
+  // Dynamic API Analytics & Timeline Datasets
+  const [timelineSituasiKesehatan, setTimelineSituasiKesehatan] = useState<any[]>([])
+  const [timelinePasienRs, setTimelinePasienRs] = useState<any[]>([])
+  const [timelinePasienPkm, setTimelinePasienPkm] = useState<any[]>([])
+  const [faskesTerdampakList, setFaskesTerdampakList] = useState<any[]>([])
+  const [summaryFaskesTerdampak, setSummaryFaskesTerdampak] = useState<any>(null)
+  const [surveilansPenyakitList, setSurveilansPenyakitList] = useState<any[]>([])
+  const [weatherList, setWeatherList] = useState<any[]>([])
+  const [weatherSummary, setWeatherSummary] = useState<any>(null)
+
   // Faskes Real API Counts for Layer Services Drawer
   const faskesCounts = useMemo(() => {
     const list = Array.isArray(faskesList) ? faskesList : []
@@ -238,11 +248,13 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
       if (isNttScope) {
         // 1. Fetch direct from official Collector API (/api/ntt-data & /dashboard-eoc/api/ntt-data)
         let nttData: any = null
+        let nttFullJson: any = null
         try {
           const nttRes = await fetch('/api/ntt-data', { cache: 'no-store' })
           if (nttRes.ok) {
             const nttJson = await nttRes.json()
             if (nttJson.success) {
+              nttFullJson = nttJson
               nttData = nttJson.tables || nttJson.data
             }
           }
@@ -256,6 +268,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             if (nttRes2.ok) {
               const nttJson2 = await nttRes2.json()
               if (nttJson2.success) {
+                nttFullJson = nttJson2
                 nttData = nttJson2.tables || nttJson2.data
               }
             }
@@ -271,6 +284,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
             if (nttRes3.ok) {
               const nttJson3 = await nttRes3.json()
               if (nttJson3.success) {
+                nttFullJson = nttJson3
                 nttData = nttJson3.tables || nttJson3.data
               }
             }
@@ -280,6 +294,42 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         }
 
         setIsApiDisconnected(!nttData)
+
+        // Extract Timeline, Faskes Terdampak, Triase & SKDR datasets
+        if (nttFullJson) {
+          if (Array.isArray(nttFullJson.timeline_situasi_kesehatan)) {
+            setTimelineSituasiKesehatan(nttFullJson.timeline_situasi_kesehatan)
+          }
+          if (Array.isArray(nttFullJson.timeline_pasien_rs)) {
+            setTimelinePasienRs(nttFullJson.timeline_pasien_rs)
+          }
+          if (Array.isArray(nttFullJson.timeline_pasien_puskesmas)) {
+            setTimelinePasienPkm(nttFullJson.timeline_pasien_puskesmas)
+          }
+          if (Array.isArray(nttFullJson.faskes_terdampak) || Array.isArray(nttFullJson.tables?.faskes_terdampak)) {
+            setFaskesTerdampakList(nttFullJson.faskes_terdampak || nttFullJson.tables?.faskes_terdampak || [])
+          }
+          if (nttFullJson.summary_faskes_terdampak) {
+            setSummaryFaskesTerdampak(nttFullJson.summary_faskes_terdampak)
+          }
+          if (Array.isArray(nttFullJson.tables?.surveilans_penyakit)) {
+            setSurveilansPenyakitList(nttFullJson.tables.surveilans_penyakit)
+          }
+        }
+
+        // Fetch Live NTT Weather for 8 Kabupatens + Kupang
+        try {
+          const weatherRes = await fetch('/api/weather-ntt', { cache: 'no-store' })
+          if (weatherRes.ok) {
+            const wJson = await weatherRes.json()
+            if (wJson.success && Array.isArray(wJson.data)) {
+              setWeatherList(wJson.data)
+              setWeatherSummary(wJson.summary)
+            }
+          }
+        } catch (weaErr) {
+          console.warn('[TV NTT] Weather fetch error:', weaErr)
+        }
 
         // Fetch live BMKG earthquake parameter for NTT epicenter
         try {
@@ -841,6 +891,10 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         kabupatenDetailList={kabupatenDetailList}
         wilayahList={wilayahList}
         earthquakePoints={earthquakePoints}
+        poskoList={poskoList}
+        weatherList={weatherList}
+        weatherSummary={weatherSummary}
+        peringatanDiniList={peringatanDiniList}
         summary={summary}
         isNttScope={isNttScope}
         isKpiCollapsed={isKpiCollapsed}
@@ -849,7 +903,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         onSelectProvince={handleSelectProvince}
       />
 
-      {/* ── 5. RIGHT FLOATING KARAKTERISTIK BENCANA & KRONOLOGIS DECK ── */}
+      {/* ── 5. RIGHT FLOATING KARAKTERISTIK BENCANA & ANALITIK DECK ── */}
       <TvAnalyticsDeck
         jenisBencanaList={jenisBencanaList}
         wilayahList={wilayahList}
@@ -860,6 +914,12 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         summary={summary}
         bmkgData={bmkgData}
         earthquakePoints={earthquakePoints}
+        timelineSituasiKesehatan={timelineSituasiKesehatan}
+        faskesTerdampakList={faskesTerdampakList}
+        summaryFaskesTerdampak={summaryFaskesTerdampak}
+        timelinePasienRs={timelinePasienRs}
+        timelinePasienPkm={timelinePasienPkm}
+        surveilansPenyakitList={surveilansPenyakitList}
         isNttScope={isNttScope}
         isKpiCollapsed={isKpiCollapsed}
         onSelectProvince={handleSelectProvince}

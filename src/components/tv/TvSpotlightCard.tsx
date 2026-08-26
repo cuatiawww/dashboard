@@ -329,8 +329,9 @@ export default function TvSpotlightCard({
               </span>
             </div>
 
-            {/* 3 Action Buttons: Renkon, Respon, Share */}
-            <div className="grid grid-cols-3 gap-1.5">
+            {/* Action Buttons: Renkon & Respon (Temporarily commented out/hidden as requested) */}
+            {/*
+            <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -358,15 +359,19 @@ export default function TvSpotlightCard({
                 <ShieldAlert className="h-3.5 w-3.5 text-amber-700" />
                 <span>Respon</span>
               </button>
+            </div>
+            */}
 
+            {/* Share Button */}
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleShare}
-                className="py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-black shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer text-center"
+                className="w-full py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-black shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer text-center"
                 title="Bagikan Tautan Kejadian"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5 text-slate-600" />}
-                <span>{copied ? 'Tersalin' : 'Share'}</span>
+                <span>{copied ? 'Tersalin' : 'Bagikan Informasi'}</span>
               </button>
             </div>
           </div>

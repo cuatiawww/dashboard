@@ -140,11 +140,51 @@ const getKorbanBreakdown = (total: any, jenis: string) => {
   }
 }
 
-const formatDateISO = (d: Date): string => {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+const formatDateISO = (d: any): string => {
+  if (!d) return '2026-08-20'
+  const dateObj = d instanceof Date ? d : new Date(d)
+  if (isNaN(dateObj.getTime())) {
+    const clean = String(d).replace(/\s+WIB/i, '').trim()
+    const dmyMatch = clean.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/)
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`
+    }
+    return '2026-08-20'
+  }
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const day = String(dateObj.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+const parseSafeDate = (rawDate: any): Date => {
+  if (!rawDate) return new Date()
+  if (rawDate instanceof Date && !isNaN(rawDate.getTime())) return rawDate
+  const cleanDate = String(rawDate).replace(/\s+WIB/i, '').trim()
+  const parsed = new Date(cleanDate)
+  if (!isNaN(parsed.getTime())) return parsed
+
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = cleanDate.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/)
+  if (dmyMatch) {
+    const d = parseInt(dmyMatch[1], 10)
+    const m = parseInt(dmyMatch[2], 10) - 1
+    const y = parseInt(dmyMatch[3], 10)
+    const res = new Date(y, m, d)
+    if (!isNaN(res.getTime())) return res
+  }
+
+  // Match YYYY-MM-DD
+  const ymdMatch = cleanDate.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
+  if (ymdMatch) {
+    const y = parseInt(ymdMatch[1], 10)
+    const m = parseInt(ymdMatch[2], 10) - 1
+    const d = parseInt(ymdMatch[3], 10)
+    const res = new Date(y, m, d)
+    if (!isNaN(res.getTime())) return res
+  }
+
+  return new Date()
 }
 
 const maskName = (name: string): string => {
@@ -420,8 +460,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     setMounted(true)
   }, [])
 
+  // ── Identifikasi Kejadian Bencana Gempa NTT & Live Collector Polling (Interval 30 Menit) ──
+  const isNttEvent = useMemo(() => {
+    const prov = String(selectedEvent?.provinsi || detail?.provinsi || '').toLowerCase()
+    const kab = String(selectedEvent?.kabupaten || detail?.kabupaten || '').toLowerCase()
+    const jenis = String(selectedEvent?.jenis_bencana || detail?.jenis_bencana || '').toLowerCase()
+    const nama = String(selectedEvent?.nama || detail?.nama_bencana || detail?.nama || '').toLowerCase()
+
+    // Periksa apakah ini kejadian Gempa NTT khusus
+    const isGempa = jenis.includes('gempa') || nama.includes('gempa') || jenis.includes('seismik') || !jenis
+    const isNtt = prov.includes('nusa tenggara timur') || prov.includes('ntt') || kab.includes('flores') || kab.includes('manggarai') || kab.includes('sikka') || kab.includes('ngada') || kab.includes('nagekeo') || kab.includes('ende') || nama.includes('ntt')
+
+    return isGempa && isNtt
+  }, [selectedEvent, detail])
+
   // Fetch Live Data Faskes Terdampak & Penyakit dari Endpoint /api/faskes-terdampak (Google Sheets)
   useEffect(() => {
+    if (!isNttEvent) return
     let active = true
     const fetchFaskesTerdampak = async () => {
       try {
@@ -461,15 +516,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       active = false
       clearInterval(interval)
     }
-  }, [])
-
-  // ── Identifikasi Kejadian Bencana NTT & Live Collector Polling (Interval 30 Menit) ──
-  const isNttEvent = useMemo(() => {
-    const prov = String(selectedEvent?.provinsi || detail?.provinsi || '').toLowerCase()
-    const kab = String(selectedEvent?.kabupaten || detail?.kabupaten || '').toLowerCase()
-    const nama = String(selectedEvent?.nama || selectedEvent?.jenis_bencana || detail?.nama_bencana || '').toLowerCase()
-    return prov.includes('nusa tenggara timur') || prov.includes('ntt') || kab.includes('flores') || kab.includes('manggarai') || kab.includes('sikka') || kab.includes('ngada') || kab.includes('nagekeo') || kab.includes('ende') || nama.includes('ntt')
-  }, [selectedEvent, detail])
+  }, [isNttEvent])
 
   const [nttApiData, setNttApiData] = useState<{
     pasien_rs: any[]
@@ -720,11 +767,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       return
     }
 
+    const eventId = selectedEvent?.kode_trans || selectedEvent?.id || selectedEvent?.uid || selectedEvent?.kode || selectedEvent?.id_kejadian || selectedEvent?.kode_bencana || ''
+
     async function fetchDetail() {
       try {
         setLoading(true)
         setError(null)
-        const res = await fetch(`/api/bencana-detail?id=${encodeURIComponent(selectedEvent.kode_trans)}`)
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+        const res = await fetch(`${basePath}/api/bencana-detail?id=${encodeURIComponent(eventId)}`)
         if (!res.ok) {
           throw new Error(`Gagal menghubungi server API (HTTP ${res.status})`)
         }
@@ -757,13 +807,18 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
-    if (selectedEvent?.kode_trans) {
+    if (eventId) {
       fetchDetail()
+    } else {
+      if (selectedEvent) {
+        setDetail(selectedEvent)
+      }
+      setLoading(false)
     }
     return () => {
       active = false
     }
-  }, [selectedEvent?.kode_trans, selectedEvent?.detailData])
+  }, [selectedEvent, onDetailLoaded])
 
 
   const getStatusLabel = (val: number | null | undefined, type: 'akses' | 'listrik' | 'air') => {
@@ -1779,12 +1834,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   // Parse event date (tgl_kejadian) and calculate H-3 to H+3 date strings
   const eventDateObj = useMemo(() => {
-    const rawDate = eventData.tgl_kejadian
-    if (!rawDate) return new Date()
-    const cleanDate = String(rawDate).replace(/\s+WIB/i, '').trim()
-    const parsed = new Date(cleanDate)
-    return isNaN(parsed.getTime()) ? new Date() : parsed
-  }, [eventData.tgl_kejadian])
+    const rawDate = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || detail?.tgl_kejadian || ''
+    return parseSafeDate(rawDate)
+  }, [eventData.tgl_kejadian, eventData.tgl_kejadian_riil, detail?.tgl_kejadian])
 
   const { startStr, endStr } = useMemo(() => {
     const base = new Date(eventDateObj)
@@ -1855,12 +1907,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       })
   }, [eventData, detail, startStr, endStr, eventDateObj])
 
-  // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10) from Open-Meteo Air Quality API
+  // Fetch real Air Quality (ISPU / AQI, PM2.5, PM10, SO2) from Open-Meteo Air Quality API
   useEffect(() => {
     const lat = Number(eventData.latitude || (detail?.lokasi && detail.lokasi[0]?.latitude) || 1.6833)
     const lng = Number(eventData.longitude || (detail?.lokasi && detail.lokasi[0]?.longitude) || 98.8472)
 
-    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&past_days=7&forecast_days=3&hourly=us_aqi,pm2_5,pm10&daily=us_aqi_max,pm2_5_max&timezone=Asia/Jakarta`
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&past_days=7&forecast_days=3&hourly=us_aqi,pm2_5,pm10,sulphur_dioxide&timezone=Asia/Jakarta`
 
     let active = true
     fetch(url)
@@ -1870,10 +1922,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       })
       .then((json) => {
         if (!active) return
-        if (json && json.daily && json.daily.time && json.daily.time.length >= 1) {
-          const dailyTimeline = json.daily.time.map((tStr: string, i: number) => {
-            const dObj = new Date(tStr)
-            const dAqi = Math.round(json.daily.us_aqi_max[i] || 0)
+        if (json && json.hourly && json.hourly.time && json.hourly.time.length >= 1) {
+          const dayMap: Record<string, { aqi: number[]; pm25: number[]; pm10: number[]; so2: number[] }> = {}
+          json.hourly.time.forEach((tStr: string, idx: number) => {
+            const dateKey = tStr.split('T')[0]
+            if (!dayMap[dateKey]) {
+              dayMap[dateKey] = { aqi: [], pm25: [], pm10: [], so2: [] }
+            }
+            if (json.hourly.us_aqi && json.hourly.us_aqi[idx] != null) dayMap[dateKey].aqi.push(json.hourly.us_aqi[idx])
+            if (json.hourly.pm2_5 && json.hourly.pm2_5[idx] != null) dayMap[dateKey].pm25.push(json.hourly.pm2_5[idx])
+            if (json.hourly.pm10 && json.hourly.pm10[idx] != null) dayMap[dateKey].pm10.push(json.hourly.pm10[idx])
+            if (json.hourly.sulphur_dioxide && json.hourly.sulphur_dioxide[idx] != null) dayMap[dateKey].so2.push(json.hourly.sulphur_dioxide[idx])
+          })
+
+          const dateKeys = Object.keys(dayMap).sort()
+          const eventDateKey = formatDateISO(eventDateObj)
+          const eventIdx = dateKeys.indexOf(eventDateKey) >= 0 ? dateKeys.indexOf(eventDateKey) : Math.floor(dateKeys.length / 2)
+
+          const dailyTimeline = dateKeys.map((dKey, i) => {
+            const dObj = parseSafeDate(dKey)
+            const item = dayMap[dKey]
+            const maxAqi = item.aqi.length > 0 ? Math.max(...item.aqi) : 0
+            const maxPm25 = item.pm25.length > 0 ? Math.max(...item.pm25) : 0
+            const maxPm10 = item.pm10.length > 0 ? Math.max(...item.pm10) : 0
+            const maxSo2 = item.so2.length > 0 ? Math.max(...item.so2) : 0
+
+            const dAqi = Math.round(maxAqi)
             let dLabel = 'Baik'
             let dShortLabel = 'Baik'
             if (dAqi > 300) { dLabel = 'Berbahaya'; dShortLabel = 'Bahaya'; }
@@ -1884,28 +1958,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             else if (dAqi === 0) { dLabel = 'Data Belum Tersedia'; dShortLabel = '-'; }
 
             return {
-              offset: i - 3,
+              offset: i - eventIdx,
               date: dObj,
               dayName: dObj.toLocaleDateString('id-ID', { weekday: 'short' }),
               dateLabel: dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
               aqi: dAqi,
+              pm25: Math.round(maxPm25),
+              pm10: Math.round(maxPm10),
+              so2: Math.round(maxSo2),
               label: dLabel,
               shortLabel: dShortLabel
             }
           })
 
-          const eventDayIdx = dailyTimeline.findIndex((d: any) => d.offset === 0)
-          const targetItem = eventDayIdx >= 0 ? dailyTimeline[eventDayIdx] : (dailyTimeline[3] || dailyTimeline[0])
+          const targetItem = dailyTimeline[eventIdx] || dailyTimeline[0]
           const ispuVal = targetItem ? targetItem.aqi : 0
-          const pm25Val = (json.daily.pm2_5_max && json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
-            ? Math.round(json.daily.pm2_5_max[eventDayIdx >= 0 ? eventDayIdx : 0])
-            : 0
+          const pm25Val = targetItem ? targetItem.pm25 : 0
+          const pm10Val = targetItem ? targetItem.pm10 : 0
 
           setRealtimeAirQuality({
             ispu: ispuVal,
             label: targetItem ? targetItem.label : 'Data Belum Tersedia',
             pm25: pm25Val,
-            pm10: 0,
+            pm10: pm10Val,
             timeline: dailyTimeline
           })
         }
@@ -1918,7 +1993,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return () => {
       active = false
     }
-  }, [eventData, detail, startStr, endStr, eventDateObj])
+  }, [eventData, detail, eventDateObj])
 
   // Fetch weekly weather history/forecast (H-3 to H+3) from Open-Meteo for all disasters
   useEffect(() => {
@@ -2072,22 +2147,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     // Real date timeline for 7 days (Day 0 to Day 6)
     const dates = []
-    const base = new Date(eventDateObj)
+    const base = parseSafeDate(eventDateObj)
     for (let i = 0; i < 7; i++) {
       const d = new Date(base)
       d.setDate(base.getDate() + i)
+      const dIso = formatDateISO(d)
 
       const weatherMatch = weeklyWeather.find((w: any) => {
         if (!w.date) return false
-        const wDate = new Date(w.date).toISOString().split('T')[0]
-        return wDate === d.toISOString().split('T')[0]
+        const wDate = formatDateISO(w.date)
+        return wDate === dIso
       })
 
       dates.push({
         offset: i,
         date: d,
-        dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
-        dateLabel: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        dayName: !isNaN(d.getTime()) ? d.toLocaleDateString('id-ID', { weekday: 'short' }) : `H+${i}`,
+        dateLabel: !isNaN(d.getTime()) ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : `Hari ${i + 1}`,
         weather: weatherMatch?.weather || '-',
         temp: weatherMatch?.temp || '-',
         precip: weatherMatch?.precip || 0
@@ -2115,8 +2191,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   // Dynamic 7-day earthquake timeline (Day 0 to Day 6): strictly 7 days starting from disaster day
   // Strictly NO synthetic fallback: only real events from API / event data
   const earthquakeTimeline = useMemo(() => {
-    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || '2026-08-20'
-    const base = new Date(realDateStr)
+    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || detail?.tgl_kejadian || '2026-08-20'
+    const base = parseSafeDate(realDateStr)
     const rawMag = parseFloat(eventData.magnitudo || (bmkgGempa?.Magnitude || bmkgGempa?.magnitude || '0'))
     const mainMag = isNaN(rawMag) || rawMag <= 0 ? 0 : rawMag
     const rawMmi = eventData.skala_mmi || bmkgGempa?.Dirasakan || ''
@@ -2127,7 +2203,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     for (let i = 0; i < 7; i++) {
       const d = new Date(base)
       d.setDate(base.getDate() + i)
-      const dStr = d.toISOString().split('T')[0]
+      const dStr = formatDateISO(d)
 
       const apiItem = Array.isArray(seismicResult?.timeline)
         ? seismicResult.timeline.find((t: any) => t.dateStr === dStr || t.offset === i)
@@ -2158,15 +2234,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       dates.push({
         offset: i,
         date: d,
-        dayName: d.toLocaleDateString('id-ID', { weekday: 'short' }),
-        dateLabel: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        dayName: !isNaN(d.getTime()) ? d.toLocaleDateString('id-ID', { weekday: 'short' }) : `H+${i}`,
+        dateLabel: !isNaN(d.getTime()) ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : `Hari ${i + 1}`,
         topLabel,
         bottomLabel,
         isPeak
       })
     }
     return dates
-  }, [eventData.tgl_kejadian_riil, eventData.tgl_kejadian, eventData.provinsi, eventData.kabupaten, bmkgGempa, eventData.magnitudo, eventData.skala_mmi, seismicResult])
+  }, [eventData.tgl_kejadian_riil, eventData.tgl_kejadian, detail?.tgl_kejadian, eventData.provinsi, eventData.kabupaten, bmkgGempa, eventData.magnitudo, eventData.skala_mmi, seismicResult])
 
   const disasterTheme = useMemo(() => {
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
@@ -4206,46 +4282,166 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   if (loading) {
     return (
-      <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8 bg-[#fbffff] rounded-3xl border border-slate-200/60 shadow-sm animate-pulse">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <div className="w-full space-y-6 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] animate-pulse">
+        {/* 1. Header Navigation Skeleton */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-slate-200 rounded-xl"></div>
+            <div className="h-9 w-9 bg-slate-200 rounded-xl" />
             <div className="space-y-1.5">
-              <div className="h-6 w-56 bg-slate-200 rounded-md"></div>
-              <div className="h-3.5 w-32 bg-slate-100 rounded-md"></div>
+              <div className="h-6 w-64 bg-slate-200 rounded-lg" />
+              <div className="h-3.5 w-96 bg-slate-150 rounded-md" />
             </div>
           </div>
-          <div className="h-7 w-40 bg-slate-150 rounded-full"></div>
-        </div>
-
-        {/* Map & Summary Row Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-[350px] bg-slate-200 rounded-3xl"></div>
-          <div className="space-y-4">
-            <div className="h-8 w-44 bg-slate-200 rounded-md"></div>
-            <div className="h-[280px] bg-slate-100 rounded-2xl p-4 space-y-3.5">
-              <div className="h-10 w-full bg-slate-200 rounded-xl"></div>
-              <div className="h-5 w-3/4 bg-slate-200 rounded-md"></div>
-              <div className="h-5 w-1/2 bg-slate-200 rounded-md"></div>
-              <div className="h-5 w-2/3 bg-slate-200 rounded-md"></div>
-              <div className="h-5 w-5/6 bg-slate-200 rounded-md"></div>
-            </div>
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-40 bg-slate-150 rounded-full" />
+            <div className="h-7 w-28 bg-slate-200 rounded-full" />
           </div>
         </div>
 
-        {/* 6 Grid Cards Skeleton */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-28 bg-slate-150 rounded-2xl"></div>
+        {/* 2. Top Summary Section (3 Kolom: Info Utama, Karakteristik, Timeline 7 Hari) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          {/* Kolom 1: Profil Bencana */}
+          <div className="md:col-span-3 rounded-2xl border border-slate-200/90 bg-slate-100/70 p-4 flex flex-col justify-between h-[230px]">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl bg-slate-200 shrink-0" />
+              <div className="space-y-1.5 flex-1">
+                <div className="h-3 w-20 bg-slate-200 rounded" />
+                <div className="h-5 w-32 bg-slate-300 rounded" />
+              </div>
+            </div>
+            <div className="space-y-2 mt-4">
+              <div className="h-4 w-40 bg-slate-200 rounded" />
+              <div className="h-3.5 w-28 bg-slate-200 rounded" />
+              <div className="h-3.5 w-36 bg-slate-200 rounded" />
+            </div>
+          </div>
+
+          {/* Kolom 2: Karakteristik Parameter Bencana (2x2 Grid) */}
+          <div className="md:col-span-4 rounded-2xl border border-slate-200/90 bg-white p-4 flex flex-col justify-between h-[230px]">
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-44 bg-slate-200 rounded" />
+              <div className="h-4 w-16 bg-slate-150 rounded-full" />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 my-auto">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-2.5 rounded-xl bg-slate-50 border border-slate-150 space-y-1.5">
+                  <div className="h-3 w-16 bg-slate-200 rounded" />
+                  <div className="h-5 w-20 bg-slate-300 rounded" />
+                  <div className="h-2.5 w-24 bg-slate-200 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Kolom 3: 7-Day Timeline */}
+          <div className="md:col-span-5 rounded-2xl border border-slate-200/90 bg-white p-4 flex flex-col justify-between h-[230px]">
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-48 bg-slate-200 rounded" />
+              <div className="h-4 w-20 bg-slate-150 rounded-full" />
+            </div>
+            <div className="grid grid-cols-7 gap-1.5 my-auto">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="p-2 rounded-xl bg-slate-50 border border-slate-150 flex flex-col items-center space-y-1.5 text-center">
+                  <div className="h-2.5 w-6 bg-slate-200 rounded" />
+                  <div className="h-5 w-5 rounded-full bg-slate-200" />
+                  <div className="h-3 w-8 bg-slate-300 rounded" />
+                  <div className="h-2 w-7 bg-slate-150 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Key Metric Cards (3 Big Cards) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-10 w-10 rounded-xl bg-slate-150" />
+                  <div className="space-y-1">
+                    <div className="h-3.5 w-28 bg-slate-200 rounded" />
+                    <div className="h-2.5 w-20 bg-slate-150 rounded" />
+                  </div>
+                </div>
+                <div className="h-5 w-16 bg-slate-150 rounded-full" />
+              </div>
+              <div className="h-8 w-32 bg-slate-300 rounded-lg" />
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                <div className="h-8 bg-slate-100 rounded-lg" />
+                <div className="h-8 bg-slate-100 rounded-lg" />
+                <div className="h-8 bg-slate-100 rounded-lg" />
+              </div>
+            </div>
           ))}
         </div>
 
-        {/* Trend Chart Area Skeleton */}
-        <div className="h-[250px] bg-slate-100 rounded-3xl p-4 flex flex-col justify-between">
-          <div className="h-5 w-48 bg-slate-200 rounded-md"></div>
-          <div className="h-32 w-full bg-slate-200 rounded-2xl"></div>
-          <div className="h-8 w-full bg-slate-150 rounded-xl"></div>
+        {/* 4. Spatial Map & Right Sidebar Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+          {/* Peta Spasial (8 cols) */}
+          <div className="lg:col-span-8 rounded-2xl border border-slate-200 bg-slate-100 h-[480px] p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="h-5 w-48 bg-slate-200 rounded" />
+              <div className="flex gap-2">
+                <div className="h-7 w-20 bg-slate-200 rounded-lg" />
+                <div className="h-7 w-20 bg-slate-200 rounded-lg" />
+              </div>
+            </div>
+            <div className="flex items-center justify-center text-slate-300">
+              <div className="h-16 w-16 rounded-full border-4 border-slate-300 border-t-transparent animate-spin" />
+            </div>
+            <div className="h-8 w-full bg-slate-200 rounded-xl" />
+          </div>
+
+          {/* Right Status & Faskes Sidebar (4 cols) */}
+          <div className="lg:col-span-4 rounded-2xl border border-slate-200 bg-white p-4 space-y-4 flex flex-col justify-between h-[480px]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="h-4 w-32 bg-slate-200 rounded" />
+              <div className="h-6 w-20 bg-slate-150 rounded-lg" />
+            </div>
+            <div className="space-y-2.5 flex-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="h-3.5 w-24 bg-slate-200 rounded" />
+                    <div className="h-2.5 w-16 bg-slate-150 rounded" />
+                  </div>
+                  <div className="h-6 w-12 bg-slate-200 rounded-lg" />
+                </div>
+              ))}
+            </div>
+            <div className="h-10 w-full bg-slate-200 rounded-xl" />
+          </div>
+        </div>
+
+        {/* 5. Multi-Series Trend Analytics Skeleton */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="space-y-1">
+              <div className="h-5 w-56 bg-slate-200 rounded" />
+              <div className="h-3 w-80 bg-slate-150 rounded" />
+            </div>
+            <div className="h-8 w-36 bg-slate-150 rounded-xl" />
+          </div>
+          <div className="h-[280px] bg-slate-50 rounded-xl flex items-center justify-center border border-slate-150">
+            <div className="h-10 w-44 bg-slate-200 rounded-md" />
+          </div>
+        </div>
+
+        {/* 6. Section Faskes Terdampak & Distribusi Kasus Penyakit */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
+            <div className="h-5 w-44 bg-slate-200 rounded" />
+            <div className="grid grid-cols-3 gap-3 h-[180px]">
+              <div className="bg-slate-50 rounded-xl border border-slate-150" />
+              <div className="bg-slate-50 rounded-xl border border-slate-150" />
+              <div className="bg-slate-50 rounded-xl border border-slate-150" />
+            </div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
+            <div className="h-5 w-44 bg-slate-200 rounded" />
+            <div className="h-[180px] bg-slate-50 rounded-xl border border-slate-150" />
+          </div>
         </div>
       </div>
     )
@@ -4412,10 +4608,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     {locationFull}
                   </p>
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
-                      <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black shrink-0">Waktu Gempa (BMKG)</span>
-                      <span className="truncate" title={bmkgWaktuDisplay}>{bmkgWaktuDisplay}</span>
-                    </div>
+                    {disasterTheme.type === 'gempa' && bmkgWaktuDisplay && bmkgWaktuDisplay !== '-' ? (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black shrink-0">Waktu Gempa (BMKG)</span>
+                        <span className="truncate" title={bmkgWaktuDisplay}>{bmkgWaktuDisplay}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                        <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-black shrink-0">Waktu Kejadian</span>
+                        <span className="truncate" title={eventData.tgl_kejadian || formattedDate || '-'}>{eventData.tgl_kejadian || formattedDate || '-'}</span>
+                      </div>
+                    )}
                     {formattedDate && (
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                         <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold shrink-0">Tgl Laporan</span>
@@ -4981,7 +5184,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       {/* Chart Container */}
                       <div className="w-full flex-1 min-h-[320px] sm:min-h-[360px] text-xs font-semibold">
                         {typeof window !== 'undefined' && (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <LineChart data={victimTrendData} margin={{ top: 10, right: 15, left: -5, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                               <XAxis dataKey="date" stroke="#475569" tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
@@ -5190,7 +5393,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-black text-rose-700 flex items-center gap-1.5">
                           <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-ping" />
-                          {(Number(faskesTerdampakSummary.rusak_berat) || 39) + (Number(faskesTerdampakSummary.rusak_sedang) || 56) + (Number(faskesTerdampakSummary.rusak_ringan) || 42)} Unit Terdampak
+                          {isNttEvent
+                            ? ((Number(faskesTerdampakSummary.rusak_berat) || 39) + (Number(faskesTerdampakSummary.rusak_sedang) || 56) + (Number(faskesTerdampakSummary.rusak_ringan) || 42))
+                            : (totalTerdampakFaskes || (faskesStatusSummary.rs.terdampak + faskesStatusSummary.pkm.terdampak + faskesStatusSummary.pustu.terdampak + faskesStatusSummary.klinik.terdampak))
+                          } Unit Terdampak
                         </span>
                       </div>
 
@@ -5198,15 +5404,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div className="p-2.5 rounded-xl bg-white border border-rose-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-rose-700 uppercase block">Rusak Berat</span>
-                          <span className="text-lg font-black text-rose-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_berat || 39}</span>
+                          <span className="text-lg font-black text-rose-900 leading-tight block mt-0.5">
+                            {isNttEvent ? (faskesTerdampakSummary.rusak_berat || 39) : (faskesStatusSummary.rs.rusakBerat + faskesStatusSummary.pkm.rusakBerat + faskesStatusSummary.pustu.rusakBerat + faskesStatusSummary.klinik.rusakBerat)}
+                          </span>
                         </div>
                         <div className="p-2.5 rounded-xl bg-white border border-amber-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-amber-700 uppercase block">Rusak Sedang</span>
-                          <span className="text-lg font-black text-amber-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_sedang || 56}</span>
+                          <span className="text-lg font-black text-amber-900 leading-tight block mt-0.5">
+                            {isNttEvent ? (faskesTerdampakSummary.rusak_sedang || 56) : (faskesStatusSummary.rs.rusakSedang + faskesStatusSummary.pkm.rusakSedang + faskesStatusSummary.pustu.rusakSedang + faskesStatusSummary.klinik.rusakSedang)}
+                          </span>
                         </div>
                         <div className="p-2.5 rounded-xl bg-white border border-yellow-150 shadow-2xs">
                           <span className="text-[10px] font-bold text-yellow-800 uppercase block">Rusak Ringan</span>
-                          <span className="text-lg font-black text-yellow-900 leading-tight block mt-0.5">{faskesTerdampakSummary.rusak_ringan || 42}</span>
+                          <span className="text-lg font-black text-yellow-900 leading-tight block mt-0.5">
+                            {isNttEvent ? (faskesTerdampakSummary.rusak_ringan || 42) : (faskesStatusSummary.rs.rusakRingan + faskesStatusSummary.pkm.rusakRingan + faskesStatusSummary.pustu.rusakRingan + faskesStatusSummary.klinik.rusakRingan)}
+                          </span>
                         </div>
                       </div>
 
@@ -5214,15 +5426,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <div className="pt-2 border-t border-slate-200/80 grid grid-cols-3 gap-1.5 text-[10.5px] font-bold text-slate-700 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Zap className="h-3 w-3 text-amber-600 shrink-0" />
-                          <span className="truncate">Listrik: <strong>{faskesTerdampakSummary.krisis_listrik || 54}</strong></span>
+                          <span className="truncate">Listrik: <strong>{isNttEvent ? (faskesTerdampakSummary.krisis_listrik || 54) : 0}</strong></span>
                         </div>
                         <div className="flex items-center justify-center gap-1 border-x border-slate-200">
                           <Droplets className="h-3 w-3 text-blue-600 shrink-0" />
-                          <span className="truncate">Air: <strong>{faskesTerdampakSummary.krisis_air || 28}</strong></span>
+                          <span className="truncate">Air: <strong>{isNttEvent ? (faskesTerdampakSummary.krisis_air || 28) : 0}</strong></span>
                         </div>
                         <div className="flex items-center justify-center gap-1">
                           <Home className="h-3 w-3 text-purple-600 shrink-0" />
-                          <span className="truncate">Tenda: <strong>{faskesTerdampakSummary.butuh_tenda || 111}</strong></span>
+                          <span className="truncate">Tenda: <strong>{isNttEvent ? (faskesTerdampakSummary.butuh_tenda || 111) : 0}</strong></span>
                         </div>
                       </div>
                     </div>
@@ -5263,7 +5475,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             {/* Solid Pie Chart (Model Potongan Pizza) */}
                             <div className="relative w-full h-[155px] flex items-center justify-center my-auto">
                               {typeof window !== 'undefined' && (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                   <PieChart>
                                     <Pie
                                       data={cat.pieData}
@@ -5402,7 +5614,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="w-full flex-1 min-h-[280px] sm:min-h-[300px] text-xs font-semibold flex items-center justify-center">
                       {penyakitChartData.length > 0 ? (
                         typeof window !== 'undefined' && (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart data={penyakitChartData} margin={{ top: 15, right: 15, left: -5, bottom: 25 }}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                               <XAxis dataKey="name" stroke="#475569" tickLine={false} interval={0} angle={-15} textAnchor="end" height={45} tick={{ fontSize: 11, fontWeight: 700 }} />

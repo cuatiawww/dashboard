@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ['svg-captcha'],
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', 'date-fns', 'framer-motion'],
+  },
   async rewrites() {
     return {
       beforeFiles: [
