@@ -157,21 +157,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (rawKorbanJson && Array.isArray(rawKorbanJson.data_kabupaten)) {
-      // Batasi tanggal: hanya tanggal yang sudah memiliki data laporan terkonfirmasi
-      const nowWib = new Date()
-      const wibOffset = 7 * 60 * 60 * 1000
-      const todayIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
-
-      const rawDates = Array.isArray(rawKorbanJson.daftar_tanggal) ? rawKorbanJson.daftar_tanggal.slice().sort() : []
-      const allDates = rawDates.filter((d: string) => {
-        if (d > todayIso) return false
-        if (d >= '2026-08-26') return false // Tanggal 26 belum ada inputan resmi final
-        return true
-      })
-      if (allDates.length === 0 && rawDates.length > 0) {
-        allDates.push(...rawDates.filter((d: string) => d <= '2026-08-25'))
-      }
-
+      const allDates = Array.isArray(rawKorbanJson.daftar_tanggal) ? rawKorbanJson.daftar_tanggal.slice().sort() : []
       const targetDate = (requestedDate && allDates.includes(requestedDate))
         ? requestedDate
         : allDates[allDates.length - 1]
@@ -476,7 +462,7 @@ export async function GET(request: NextRequest) {
           timeline_pasien_rs: enrichNttFaskesTable(normalizeTableRows(allPasienRsRows), 'rs'),
           timeline_pasien_puskesmas: enrichNttFaskesTable(normalizeTableRows(allPasienPkmRows), 'puskesmas'),
           updated_at: manifest.updated_at ?? new Date().toISOString(),
-          source_url: manifest.source_url ?? 'https://ntt.tanggap-bencana.go.id/',
+          source_url: manifest.source_url ?? 'https://docs.google.com/spreadsheets/d/1-gdeokvKWvNsve1Vf5Yx6QbeeWYBXEHpSQDjE2oyQNw/',
           tables,
           summary_faskes: summaryFaskes,
         })
@@ -495,7 +481,7 @@ export async function GET(request: NextRequest) {
       tanggal: requestedDate || '2026-08-23',
       dates_available: ['2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23'],
       updated_at: new Date().toISOString(),
-      source_url: 'https://ntt.tanggap-bencana.go.id/',
+      source_url: 'https://docs.google.com/spreadsheets/d/1-gdeokvKWvNsve1Vf5Yx6QbeeWYBXEHpSQDjE2oyQNw/',
       tables: {
         analisa_ringkasan_harian: [],
         situasi_kesehatan: [],
