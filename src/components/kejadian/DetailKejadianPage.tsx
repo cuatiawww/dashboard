@@ -4300,6 +4300,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             )}
           </button>
           */}
+          {/*
           {isNttEvent && (
             <button
               onClick={() => setShowNttCsvModal(true)}
@@ -4310,6 +4311,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <span>Kelola Data CSV</span>
             </button>
           )}
+          */}
           <button
             onClick={handleShare}
             className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
