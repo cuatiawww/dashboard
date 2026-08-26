@@ -107,12 +107,12 @@ function normalizeTableRows(rows: Record<string, unknown>[]): Record<string, unk
 const GOOGLE_APPS_SCRIPT_KORBAN_URL = process.env.GOOGLE_APPS_SCRIPT_KORBAN_URL ||
   'https://script.google.com/macros/s/AKfycbyb194K-zGzY_eJ99G27V3K3yq-2Gf7t8kY_placeholder/exec'
 
-// Hardcoded real fallback dataset from spreadsheet (15-28 Aug 2026 for 7 Kab NTT)
+// Hardcoded real fallback dataset from spreadsheet (15-25 Aug 2026 for 7 Kab NTT)
 const REAL_SPREADSHEET_KORBAN_DATA = {
   "daftar_tanggal": [
     "2026-08-15", "2026-08-16", "2026-08-17", "2026-08-18", "2026-08-19",
     "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23", "2026-08-24",
-    "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28"
+    "2026-08-25"
   ],
   "summary": {
     "populasi_terdampak": 1917732,
@@ -344,15 +344,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (rawKorbanJson && Array.isArray(rawKorbanJson.data_kabupaten)) {
-      // Batasi tanggal sesuai Date Now (tidak menampilkan tanggal masa depan yang belum terjadi)
+      // Batasi tanggal: hanya tanggal yang sudah memiliki data laporan terkonfirmasi (15 - 25 Agustus 2026)
       const nowWib = new Date()
       const wibOffset = 7 * 60 * 60 * 1000
       const todayIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
 
       const rawDates = (rawKorbanJson.daftar_tanggal || REAL_SPREADSHEET_KORBAN_DATA.daftar_tanggal).slice().sort()
-      const allDates = rawDates.filter((d: string) => d <= todayIso)
+      const allDates = rawDates.filter((d: string) => {
+        if (d > todayIso) return false
+        if (d >= '2026-08-26') return false // Tanggal 26 belum ada inputan resmi final
+        return true
+      })
       if (allDates.length === 0) {
-        allDates.push(...rawDates.filter((d: string) => d <= '2026-08-26'))
+        allDates.push(...rawDates.filter((d: string) => d <= '2026-08-25'))
       }
 
       const targetDate = (requestedDate && allDates.includes(requestedDate))
