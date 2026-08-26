@@ -82,6 +82,7 @@ interface DetailKejadianPageProps {
   selectedEvent: any
   onBack: () => void
   onDetailLoaded?: (detailData: any) => void
+  isLoading?: boolean
 }
 
 const safeParseInt = (val: any): number => {
@@ -236,7 +237,7 @@ const formatPerkembangan = (p: any): string => {
 }
 
 
-export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoaded }: DetailKejadianPageProps) {
+export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoaded, isLoading }: DetailKejadianPageProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = storeIsGuest || !token || !user
 
@@ -4291,7 +4292,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   if (!selectedEvent) return null
 
-  if (loading) {
+  const isPageLoading = loading || Boolean(isLoading)
+  if (isPageLoading) {
     return (
       <div className="w-full space-y-6 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] animate-pulse">
         {/* 1. Header Navigation Skeleton */}
