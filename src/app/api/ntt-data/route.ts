@@ -3,6 +3,7 @@ import path from 'node:path'
 import { NextRequest, NextResponse } from 'next/server'
 import Papa from 'papaparse'
 import {
+  enrichNttFaskesRow,
   enrichNttFaskesTable,
   getAllNttMasterFaskesWithCollectorOverlay,
   getNttMasterFaskesSummary,
@@ -292,6 +293,245 @@ const REAL_SPREADSHEET_KORBAN_DATA = {
   ]
 }
 
+const REAL_SPREADSHEET_TRIASE_RS = [
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_rs: 'RSUD dr. TC Hillers',
+    jenis: 'RS',
+    harian: {
+      '2026-08-16': { merah: 1, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-17': { merah: 2, kuning: 8, hijau: 12, hitam: 3 },
+      '2026-08-18': { merah: 2, kuning: 8, hijau: 12, hitam: 3 },
+      '2026-08-19': { merah: 1, kuning: 10, hijau: 15, hitam: 0 },
+      '2026-08-20': { merah: 1, kuning: 3, hijau: 0, hitam: 0 },
+      '2026-08-21': { merah: 2, kuning: 0, hijau: 3, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-23': { merah: 2, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 1, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_rs: 'RSU ST Gabriel Kewapante',
+    jenis: 'RS',
+    harian: {
+      '2026-08-17': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+      '2026-08-18': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Ende',
+    nama_rs: 'RSUD Ende',
+    jenis: 'RS',
+    harian: {
+      '2026-08-16': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
+      '2026-08-17': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
+      '2026-08-18': { merah: 1, kuning: 2, hijau: 12, hitam: 0 },
+      '2026-08-19': { merah: 1, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-20': { merah: 1, kuning: 7, hijau: 0, hitam: 0 },
+      '2026-08-21': { merah: 1, kuning: 9, hijau: 0, hitam: 0 },
+      '2026-08-22': { merah: 1, kuning: 9, hijau: 0, hitam: 0 },
+      '2026-08-23': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-24': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-25': { merah: 1, kuning: 0, hijau: 0, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Nagekeo',
+    nama_rs: 'RSUD Aeramo',
+    jenis: 'RS',
+    harian: {
+      '2026-08-19': { merah: 5, kuning: 17, hijau: 0, hitam: 0 },
+      '2026-08-20': { merah: 3, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-21': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-22': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-23': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-24': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-25': { merah: 3, kuning: 0, hijau: 0, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Ngada',
+    nama_rs: 'RSUD Bajawa',
+    jenis: 'RS',
+    harian: {
+      '2026-08-19': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 3, hijau: 0, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 2, hijau: 0, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Manggarai',
+    nama_rs: 'RSUD Ruteng',
+    jenis: 'RS',
+    harian: {
+      '2026-08-16': { merah: 3, kuning: 1, hijau: 0, hitam: 0 },
+      '2026-08-17': { merah: 3, kuning: 4, hijau: 0, hitam: 0 },
+      '2026-08-18': { merah: 3, kuning: 4, hijau: 0, hitam: 0 },
+      '2026-08-19': { merah: 8, kuning: 12, hijau: 3, hitam: 0 },
+      '2026-08-20': { merah: 2, kuning: 8, hijau: 1, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 2, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Manggarai Timur',
+    nama_rs: 'RSUD Borong',
+    jenis: 'RS',
+    harian: {
+      '2026-08-19': { merah: 12, kuning: 4, hijau: 5, hitam: 1 },
+      '2026-08-20': { merah: 12, kuning: 17, hijau: 8, hitam: 1 },
+      '2026-08-21': { merah: 12, kuning: 22, hijau: 12, hitam: 1 },
+      '2026-08-22': { merah: 12, kuning: 22, hijau: 12, hitam: 1 },
+      '2026-08-23': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
+      '2026-08-24': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
+      '2026-08-25': { merah: 0, kuning: 33, hijau: 10, hitam: 1 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Manggarai Barat',
+    nama_rs: 'RSUD Komodo',
+    jenis: 'RS',
+    harian: {
+      '2026-08-17': { merah: 1, kuning: 7, hijau: 10, hitam: 0 },
+      '2026-08-18': { merah: 1, kuning: 7, hijau: 10, hitam: 0 },
+      '2026-08-19': { merah: 0, kuning: 12, hijau: 0, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 9, hijau: 0, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 6, hijau: 0, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Manggarai Barat',
+    nama_rs: 'RSU Siloam Labuan bajo',
+    jenis: 'RS',
+    harian: {
+      '2026-08-17': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
+      '2026-08-18': { merah: 0, kuning: 1, hijau: 0, hitam: 0 },
+    }
+  }
+]
+
+const REAL_SPREADSHEET_TRIASE_PKM = [
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Watubaing',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-19': { merah: 0, kuning: 1, hijau: 6, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 5, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Palue',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 1, hijau: 2, hitam: 0 },
+      '2026-08-22': { merah: 1, kuning: 0, hijau: 4, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 0, hijau: 19, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Nita',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-17': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Wolofeo',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Paga',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-17': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-18': { merah: 0, kuning: 1, hijau: 2, hitam: 0 },
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 3, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Mapitara',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-18': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+      '2026-08-24': { merah: 0, kuning: 0, hijau: 4, hitam: 0 },
+      '2026-08-25': { merah: 0, kuning: 0, hijau: 4, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Wualadu',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+    }
+  },
+  {
+    kabupaten: 'Kab. Sikka',
+    nama_puskesmas: 'Puskesmas Waigate',
+    jenis: 'Puskesmas',
+    harian: {
+      '2026-08-17': { merah: 2, kuning: 0, hijau: 0, hitam: 0 },
+      '2026-08-19': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-20': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-21': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-22': { merah: 0, kuning: 0, hijau: 1, hitam: 0 },
+      '2026-08-23': { merah: 0, kuning: 0, hijau: 2, hitam: 0 },
+    }
+  }
+]
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const requestedDate = searchParams.get('tanggal')?.trim() || ''
@@ -436,11 +676,83 @@ export async function GET(request: NextRequest) {
         })
       })
 
+      // Bangun timeline_pasien_rs dan timeline_pasien_puskesmas
+      const rawRsList = (Array.isArray(rawKorbanJson.triase_rs) && rawKorbanJson.triase_rs.length > 0)
+        ? rawKorbanJson.triase_rs
+        : REAL_SPREADSHEET_TRIASE_RS
+      
+      const rawPkmList = (Array.isArray(rawKorbanJson.triase_pkm) && rawKorbanJson.triase_pkm.length > 0)
+        ? rawKorbanJson.triase_pkm
+        : REAL_SPREADSHEET_TRIASE_PKM
+
+      const timelinePasienRs: any[] = []
+      const timelinePasienPkm: any[] = []
+
+      allDates.forEach((dt: string) => {
+        rawRsList.forEach((rs: any) => {
+          const h = rs.harian?.[dt] || { merah: 0, kuning: 0, hijau: 0, hitam: 0 }
+          const m = Number(h.merah || 0)
+          const k = Number(h.kuning || 0)
+          const hij = Number(h.hijau || 0)
+          const hit = Number(h.hitam || 0)
+          const tot = m + k + hij + hit
+
+          const enriched = enrichNttFaskesRow({
+            tanggal: dt,
+            kabupaten: rs.kabupaten.replace(/^Kab\.\s*/i, '').trim(),
+            nama_rs: rs.nama_rs,
+            nama_faskes: rs.nama_rs,
+            jenis: 'RS',
+            triase_merah: m,
+            triase_kuning: k,
+            triase_hijau: hij,
+            triase_hitam: hit,
+            total: tot,
+          }, 'rs')
+
+          enriched.nama_display = enriched.master_matched
+            ? (enriched.nama_master || rs.nama_rs)
+            : `${rs.nama_rs}*`
+
+          timelinePasienRs.push(enriched)
+        })
+
+        rawPkmList.forEach((pkm: any) => {
+          const h = pkm.harian?.[dt] || { merah: 0, kuning: 0, hijau: 0, hitam: 0 }
+          const m = Number(h.merah || 0)
+          const k = Number(h.kuning || 0)
+          const hij = Number(h.hijau || 0)
+          const hit = Number(h.hitam || 0)
+          const tot = m + k + hij + hit
+
+          const enriched = enrichNttFaskesRow({
+            tanggal: dt,
+            kabupaten: pkm.kabupaten.replace(/^Kab\.\s*/i, '').trim(),
+            nama_puskesmas: pkm.nama_puskesmas,
+            nama_faskes: pkm.nama_puskesmas,
+            jenis: 'Puskesmas',
+            triase_merah: m,
+            triase_kuning: k,
+            triase_hijau: hij,
+            triase_hitam: hit,
+            total: tot,
+          }, 'puskesmas')
+
+          enriched.nama_display = enriched.master_matched
+            ? (enriched.nama_master || pkm.nama_puskesmas)
+            : `${pkm.nama_puskesmas}*`
+
+          timelinePasienPkm.push(enriched)
+        })
+      })
+
       // Snapshot tabel untuk targetDate
       const situasiKesehatanTarget = timelineSituasiKesehatan.filter((r: any) => r.tanggal === targetDate)
+      const pasienRsTarget = timelinePasienRs.filter((r: any) => r.tanggal === targetDate)
+      const pasienPkmTarget = timelinePasienPkm.filter((r: any) => r.tanggal === targetDate)
 
       // Master faskes fallback
-      const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay([], [])
+      const masterFaskes = getAllNttMasterFaskesWithCollectorOverlay(pasienRsTarget, pasienPkmTarget)
       const summaryFaskes = getNttMasterFaskesSummary(masterFaskes)
 
       const responsePayload = {
@@ -451,15 +763,15 @@ export async function GET(request: NextRequest) {
         summary_korban: rawKorbanJson.summary,
         timeline_situasi_kesehatan: timelineSituasiKesehatan,
         timeline_analisa_ringkasan: [],
-        timeline_pasien_rs: [],
-        timeline_pasien_puskesmas: [],
+        timeline_pasien_rs: timelinePasienRs,
+        timeline_pasien_puskesmas: timelinePasienPkm,
         updated_at: rawKorbanJson.updated_at || new Date().toISOString(),
         source_url: 'https://docs.google.com/spreadsheets/d/1-gdeokvKWvNsve1Vf5Yx6QbeeWYBXEHpSQDjE2oyQNw/',
         tables: {
           situasi_kesehatan: situasiKesehatanTarget,
           analisa_ringkasan_harian: [],
-          pasien_rs: [],
-          pasien_puskesmas: [],
+          pasien_rs: pasienRsTarget,
+          pasien_puskesmas: pasienPkmTarget,
           master_faskes: masterFaskes,
         },
         summary_faskes: summaryFaskes,
