@@ -863,6 +863,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (kabupatenMatrixDate && (kabupatenMatrixDate === 'kumulatif' || modalAvailableDates.includes(kabupatenMatrixDate))) {
       return kabupatenMatrixDate
     }
+    // Default secara otomatis ke tanggal TERAKHIR / terbaru
+    if (modalAvailableDates.length > 0) {
+      return modalAvailableDates[modalAvailableDates.length - 1]
+    }
     return 'kumulatif'
   }, [kabupatenMatrixDate, modalAvailableDates])
 
@@ -8313,20 +8317,20 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         onChange={(e) => setKabupatenMatrixDate(e.target.value)}
                         className="bg-transparent font-black text-slate-900 border-none outline-none cursor-pointer pr-1"
                       >
-                        <option value="kumulatif">
-                          Kumulatif ({modalAvailableDates.length > 0 ? `${new Date(modalAvailableDates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${new Date(modalAvailableDates[modalAvailableDates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : '15 - 25 Agu 2026'}) ★ (Terbaru)
-                        </option>
-                        {modalAvailableDates.slice().reverse().map((dt) => {
+                        {modalAvailableDates.slice().reverse().map((dt, idx) => {
                           const dObj = new Date(dt)
                           const label = !isNaN(dObj.getTime())
                             ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
                             : dt
                           return (
                             <option key={dt} value={dt}>
-                              {label}
+                              {label} {idx === 0 ? '★ (Terbaru)' : ''}
                             </option>
                           )
                         })}
+                        <option value="kumulatif">
+                          Kumulatif ({modalAvailableDates.length > 0 ? `${new Date(modalAvailableDates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${new Date(modalAvailableDates[modalAvailableDates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : '15 - 25 Agu 2026'})
+                        </option>
                       </select>
                     </div>
                   )}
