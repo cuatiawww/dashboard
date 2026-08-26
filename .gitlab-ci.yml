@@ -17,8 +17,8 @@ stages:
   - 'export POSTGRES_USER=${POSTGRES_USER:-postgres}'
   - 'export POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
   - 'export POSTGRES_CONNECT_TIMEOUT_SECONDS=${POSTGRES_CONNECT_TIMEOUT_SECONDS:-10}'
-  - 'export NTT_DATA_DIR=${NTT_ADMIN_PASSWORD:-/home/pusatkrisis/docker/data-ntt}'
-  - 'export NTT_DATA_DIR=${NTT_DATA_DIR:-EocNtt@Kemenkes2026!}'
+  - 'export NTT_DATA_DIR=${NTT_DATA_DIR:-/home/pusatkrisis/docker/data-ntt}'
+  - 'export NTT_ADMIN_PASSWORD=${NTT_ADMIN_PASSWORD:-EocNtt@Kemenkes2026!}'
   - docker compose -f docker-compose.yml up -d --build
   - docker image prune -f
 
