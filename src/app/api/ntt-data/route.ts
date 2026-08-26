@@ -110,6 +110,48 @@ const GOOGLE_APPS_SCRIPT_KORBAN_URL =
   process.env.NEXT_PUBLIC_NTT_APPS_SCRIPT_URL ||
   'https://script.google.com/macros/s/AKfycbwt-VTU0wNteo_03CyCJIALO2KZ8I6cyya049A16OnslSal6nKqzw7e-y_JIYPIjUZn/exec'
 
+// ─── High-Performance Server-Side Cache for Google Apps Script (30s TTL) ────
+let cachedGasPayload: any = null
+let cachedGasTimestamp = 0
+let inFlightGasPromise: Promise<any> | null = null
+const GAS_CACHE_TTL_MS = 30_000 // 30 detik
+
+async function fetchGoogleAppsScriptData(): Promise<any> {
+  const now = Date.now()
+  if (cachedGasPayload && (now - cachedGasTimestamp < GAS_CACHE_TTL_MS)) {
+    return cachedGasPayload
+  }
+
+  if (inFlightGasPromise) {
+    return inFlightGasPromise
+  }
+
+  inFlightGasPromise = (async () => {
+    try {
+      if (!GOOGLE_APPS_SCRIPT_KORBAN_URL) return null
+      const gasRes = await fetch(GOOGLE_APPS_SCRIPT_KORBAN_URL, {
+        headers: { Accept: 'application/json' },
+        redirect: 'follow',
+      })
+      if (gasRes.ok) {
+        const fetched = await gasRes.json()
+        if (fetched && fetched.success && Array.isArray(fetched.data_kabupaten)) {
+          cachedGasPayload = fetched
+          cachedGasTimestamp = Date.now()
+          return fetched
+        }
+      }
+    } catch (err) {
+      console.warn('[API ntt-data] Live Google Sheets fetch failed:', err)
+    } finally {
+      inFlightGasPromise = null
+    }
+    return cachedGasPayload
+  })()
+
+  return inFlightGasPromise
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const requestedDate = searchParams.get('tanggal')?.trim() || ''
@@ -135,26 +177,7 @@ export async function GET(request: NextRequest) {
 
   // ─── Priority 1: Google Apps Script Live Korban & Penduduk Terdampak API ─────
   try {
-    let rawKorbanJson: any = null
-
-    // Ambil live 100% dari Google Apps Script Spreadsheet API
-    if (GOOGLE_APPS_SCRIPT_KORBAN_URL) {
-      try {
-        const gasRes = await fetch(GOOGLE_APPS_SCRIPT_KORBAN_URL, {
-          headers: { Accept: 'application/json' },
-          redirect: 'follow',
-          next: { revalidate: 60 },
-        })
-        if (gasRes.ok) {
-          const fetched = await gasRes.json()
-          if (fetched && fetched.success && Array.isArray(fetched.data_kabupaten)) {
-            rawKorbanJson = fetched
-          }
-        }
-      } catch (fetchErr) {
-        console.warn('[API ntt-data] Live Google Sheets fetch failed:', fetchErr)
-      }
-    }
+    const rawKorbanJson = await fetchGoogleAppsScriptData()
 
     if (rawKorbanJson && Array.isArray(rawKorbanJson.data_kabupaten)) {
       const allDates = Array.isArray(rawKorbanJson.daftar_tanggal) ? rawKorbanJson.daftar_tanggal.slice().sort() : []
