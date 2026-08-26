@@ -2328,10 +2328,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         map[key].triase_hitam += Number(r.triase_hitam || 0)
         map[key].total = map[key].triase_merah + map[key].triase_kuning + map[key].triase_hijau + map[key].triase_hitam
       })
-      return Object.values(map)
+      // Hanya kembalikan RS yang total pasien kumulatifnya > 0
+      return Object.values(map).filter((rs: any) => Number(rs.total || 0) > 0)
     }
 
-    const filtered = all.filter((r: any) => r.tanggal === targetSituasiDate)
+    const filtered = all.filter((r: any) => r.tanggal === targetSituasiDate && (Number(r.total || 0) > 0 || (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0) + Number(r.triase_hitam || 0)) > 0))
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
   }, [isNttEvent, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, targetSituasiDate])
 
@@ -2363,10 +2364,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         map[key].triase_hitam += Number(p.triase_hitam || 0)
         map[key].total = map[key].triase_merah + map[key].triase_kuning + map[key].triase_hijau + map[key].triase_hitam
       })
-      return Object.values(map)
+      // Hanya kembalikan Puskesmas yang total pasien kumulatifnya > 0
+      return Object.values(map).filter((pkm: any) => Number(pkm.total || 0) > 0)
     }
 
-    const filtered = all.filter((p: any) => p.tanggal === targetSituasiDate)
+    const filtered = all.filter((p: any) => p.tanggal === targetSituasiDate && (Number(p.total || 0) > 0 || (Number(p.triase_merah || 0) + Number(p.triase_kuning || 0) + Number(p.triase_hijau || 0) + Number(p.triase_hitam || 0)) > 0))
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
   }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, targetSituasiDate])
 
@@ -5577,7 +5579,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <Building2 className="h-4 w-4 text-blue-600" />
                 Situasi Faskes
                 <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-700 text-white text-[10px] font-black">
-                  {pasienRsList.length + pasienPkmList.length} Faskes
+                  {filteredPasienRs.length + filteredPasienPkm.length} Faskes
                 </span>
               </button>
             )}
