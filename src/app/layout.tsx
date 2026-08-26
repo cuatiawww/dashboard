@@ -13,11 +13,17 @@ const roboto = Roboto({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  const backendBase = (
+    process.env.SIPKK_BACKEND_BASE_URL ||
+    process.env.NEXT_PUBLIC_SIPKK_BACKEND_BASE_URL ||
+    'https://sipkk-new.mediaciptainformasi.co.id'
+  ).replace(/\/+$/, '')
+
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 3000)
+  const timeoutId = setTimeout(() => controller.abort(), 2000)
 
   try {
-    const res = await fetch(buildApiUrl('/api/settings'), {
+    const res = await fetch(`${backendBase}/api/settings`, {
       next: { revalidate: 3600 },
       signal: controller.signal
     });
@@ -31,7 +37,6 @@ export async function generateMetadata(): Promise<Metadata> {
     }
   } catch (error) {
     clearTimeout(timeoutId)
-    console.error("Failed to generate dynamic metadata:", error);
   }
 
   return {

@@ -2615,7 +2615,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 <div className="w-full bg-slate-200 rounded-t h-[60%]" />
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
@@ -2677,7 +2677,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                 <div className="w-full bg-slate-200 rounded-t h-[65%]" />
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <LineChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
@@ -2745,7 +2745,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                       </div>
                     ) : (
                       <>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <PieChart>
                             <Pie
                               data={formattedJenisBencana}
@@ -2823,7 +2823,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                       </div>
                     ) : (
                       <>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <PieChart>
                             <Pie
                               data={categoryChartData}
@@ -2901,7 +2901,7 @@ Secara keseluruhan, respon kesehatan terhadap bencana ${topDisaster} telah berja
                       </div>
                     ) : (
                       <>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <PieChart>
                             <Pie
                               data={formattedWilayah}
