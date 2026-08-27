@@ -122,12 +122,16 @@ const BASE_NTT_GEMPA_EVENT = {
   }
 }
 
+// Global memory cache agar saat berpindah halaman data langsung muncul instan tanpa skeleton reload
+let globalNttEventCache: any = null
+let globalNttHasLoadedOnce = false
+
 export default function ProvNttBencanaPage() {
   const router = useRouter()
   const { setHeader, resetHeader } = useHeaderStore()
-  const [eventData, setEventData] = useState<any>(BASE_NTT_GEMPA_EVENT)
+  const [eventData, setEventData] = useState<any>(globalNttEventCache || BASE_NTT_GEMPA_EVENT)
   const [selectedDate, setSelectedDate] = useState<string>('')
-  const [isLoadingDate, setIsLoadingDate] = useState<boolean>(true)
+  const [isLoadingDate, setIsLoadingDate] = useState<boolean>(!globalNttHasLoadedOnce && !globalNttEventCache)
 
   useEffect(() => {
     setHeader({
@@ -170,12 +174,9 @@ export default function ProvNttBencanaPage() {
             keterangan: NTT_KRONOLOGIS_TEXT,
             kronologis: NTT_KRONOLOGIS_TEXT,
             buletin_eoc: NTT_KRONOLOGIS_TEXT,
-            detailData: {
-              ...prev.detailData,
-              deskripsi: NTT_KRONOLOGIS_TEXT,
-              kronologis: NTT_KRONOLOGIS_TEXT,
-              buletin_eoc: NTT_KRONOLOGIS_TEXT,
-            }
+            bmkg_live: matched,
+            skala_mmi: matched.Dirasakan || prev.skala_mmi,
+            waktu_kejadian_bmkg: matched.Jam ? `${matched.Tanggal}, ${matched.Jam}` : prev.waktu_kejadian_bmkg
           }))
         }
       } catch (err) {
@@ -188,7 +189,10 @@ export default function ProvNttBencanaPage() {
 
   // 2. Ambil data real-time dari API resmi collector (/api/ntt-data)
   const loadCollectorData = async (targetDate?: string) => {
-    setIsLoadingDate(true)
+    // Hanya tampilkan full skeleton loading jika data belum pernah dimuat sama sekali
+    if (!globalNttHasLoadedOnce && !globalNttEventCache) {
+      setIsLoadingDate(true)
+    }
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
       const url = targetDate ? `${basePath}/api/ntt-data?tanggal=${targetDate}` : `${basePath}/api/ntt-data`
@@ -351,45 +355,50 @@ export default function ProvNttBencanaPage() {
             : (faskesList.length > 0 ? faskesList : [])
           
           const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : '2026-08-21 10:01:00')
-          setEventData((prev: any) => ({
-            ...prev,
-            tgl_laporan: updateTimestamp || prev.tgl_laporan,
-            updated_at: updateTimestamp,
-            meninggal: tot.meninggal ?? prev.meninggal,
-            luka_berat: tot.luka_berat ?? prev.luka_berat,
-            luka_ringan: tot.luka_ringan ?? prev.luka_ringan,
-            luka: tot.total_luka ?? prev.luka,
-            hilang: tot.hilang ?? prev.hilang,
-            pengungsi: tot.pengungsi ?? prev.pengungsi,
-            titik_pengungsian: tot.titik_pengungsian ?? prev.titik_pengungsian,
-            penduduk_terdampak: tot.populasi_terdampak ?? prev.penduduk_terdampak,
-            detailData: {
-              ...prev.detailData,
-              tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
+          setEventData((prev: any) => {
+            const next = {
+              ...prev,
+              tgl_laporan: updateTimestamp || prev.tgl_laporan,
               updated_at: updateTimestamp,
-              korban_meninggal: tot.meninggal ?? prev.detailData.korban_meninggal,
-              korban_luka_berat: tot.luka_berat ?? prev.detailData.korban_luka_berat,
-              korban_luka_ringan: tot.luka_ringan ?? prev.detailData.korban_luka_ringan,
-              korban_luka: tot.total_luka ?? prev.detailData.korban_luka,
-              korban_hilang: tot.hilang ?? prev.detailData.korban_hilang,
-              pengungsi: tot.pengungsi ?? prev.detailData.pengungsi,
-              titik_pengungsian: tot.titik_pengungsian ?? prev.detailData.titik_pengungsian,
-              populasi_terdampak: tot.populasi_terdampak ?? prev.detailData.populasi_terdampak,
-              meninggal: tot.meninggal ?? prev.detailData.meninggal,
-              luka_berat: tot.luka_berat ?? prev.detailData.luka_berat,
-              luka_ringan: tot.luka_ringan ?? prev.detailData.luka_ringan,
-              luka: tot.total_luka ?? prev.detailData.luka,
-              hilang: tot.hilang ?? prev.detailData.hilang,
-              penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
-              breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
-              faskes_terdampak: Array.isArray(json.faskes_terdampak) && json.faskes_terdampak.length > 0 ? json.faskes_terdampak : (Array.isArray(json.tables?.faskes_terdampak) && json.tables.faskes_terdampak.length > 0 ? json.tables.faskes_terdampak : (faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak)),
-              faskes_terdekat: allMasterFaskes.length > 0 ? allMasterFaskes : prev.detailData.faskes_terdekat,
-              summary_faskes: json.summary_faskes || null,
-              pos_pengungsi: prev.detailData.pos_pengungsi || [],
-              logistik: prev.detailData.logistik || [],
-              tck: prev.detailData.tck || []
+              meninggal: tot.meninggal ?? prev.meninggal,
+              luka_berat: tot.luka_berat ?? prev.luka_berat,
+              luka_ringan: tot.luka_ringan ?? prev.luka_ringan,
+              luka: tot.total_luka ?? prev.luka,
+              hilang: tot.hilang ?? prev.hilang,
+              pengungsi: tot.pengungsi ?? prev.pengungsi,
+              titik_pengungsian: tot.titik_pengungsian ?? prev.titik_pengungsian,
+              penduduk_terdampak: tot.populasi_terdampak ?? prev.penduduk_terdampak,
+              detailData: {
+                ...prev.detailData,
+                tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
+                updated_at: updateTimestamp,
+                korban_meninggal: tot.meninggal ?? prev.detailData.korban_meninggal,
+                korban_luka_berat: tot.luka_berat ?? prev.detailData.korban_luka_berat,
+                korban_luka_ringan: tot.luka_ringan ?? prev.detailData.korban_luka_ringan,
+                korban_luka: tot.total_luka ?? prev.detailData.korban_luka,
+                korban_hilang: tot.hilang ?? prev.detailData.korban_hilang,
+                pengungsi: tot.pengungsi ?? prev.detailData.pengungsi,
+                titik_pengungsian: tot.titik_pengungsian ?? prev.detailData.titik_pengungsian,
+                populasi_terdampak: tot.populasi_terdampak ?? prev.detailData.populasi_terdampak,
+                meninggal: tot.meninggal ?? prev.detailData.meninggal,
+                luka_berat: tot.luka_berat ?? prev.detailData.luka_berat,
+                luka_ringan: tot.luka_ringan ?? prev.detailData.luka_ringan,
+                luka: tot.total_luka ?? prev.detailData.luka,
+                hilang: tot.hilang ?? prev.detailData.hilang,
+                penduduk_terdampak: tot.populasi_terdampak ?? prev.detailData.penduduk_terdampak,
+                breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
+                faskes_terdampak: Array.isArray(json.faskes_terdampak) && json.faskes_terdampak.length > 0 ? json.faskes_terdampak : (Array.isArray(json.tables?.faskes_terdampak) && json.tables.faskes_terdampak.length > 0 ? json.tables.faskes_terdampak : (faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak)),
+                faskes_terdekat: allMasterFaskes.length > 0 ? allMasterFaskes : prev.detailData.faskes_terdekat,
+                summary_faskes: json.summary_faskes || null,
+                pos_pengungsi: prev.detailData.pos_pengungsi || [],
+                logistik: prev.detailData.logistik || [],
+                tck: prev.detailData.tck || []
+              }
             }
-          }))
+            globalNttEventCache = next
+            globalNttHasLoadedOnce = true
+            return next
+          })
         }
       }
     } catch (e) {
