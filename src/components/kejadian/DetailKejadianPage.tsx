@@ -4441,8 +4441,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           </div>
         </div>
 
-        {/* 6. Section Faskes Terdampak & Distribusi Kasus Penyakit */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* 6. Section Faskes Terdampak (Distribusi Kasus Penyakit di-hide sementara) */}
+        <div className="grid grid-cols-1 gap-5">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
             <div className="h-5 w-44 bg-slate-200 rounded" />
             <div className="grid grid-cols-3 gap-3 h-[180px]">
@@ -4451,10 +4451,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="bg-slate-50 rounded-xl border border-slate-150" />
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
-            <div className="h-5 w-44 bg-slate-200 rounded" />
-            <div className="h-[180px] bg-slate-50 rounded-xl border border-slate-150" />
-          </div>
+          {/* SKELETON DISTRIBUSI PENYAKIT (HIDDEN SEMENTARA - JANGAN HAPUS) */}
+          {false && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
+              <div className="h-5 w-44 bg-slate-200 rounded" />
+              <div className="h-[180px] bg-slate-50 rounded-xl border border-slate-150" />
+            </div>
+          )}
         </div>
       </div>
     )
@@ -5549,7 +5552,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               </article>
 
-              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (30% KIRI - 70% KANAN) ─── */}
+              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (HIDDEN SEMENTARA - JANGAN HAPUS KODINGAN) ─── */}
+              {/* @ts-ignore */}
+              {false && (
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Kasus Penyakit & Epidemiologi */}
@@ -5663,6 +5668,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 </div>
               </article>
+              )}
 
               {/* ─── KESIMPULAN REKOMENDASI OPERASIONAL ─── */}
               {!isNttEvent && (
@@ -5680,7 +5686,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </p>
                   )}
                   <p className="text-sm sm:text-base text-slate-700 font-normal leading-relaxed m-0">
-                    {korbanNarrative} {faskesNarrative} {penyakitNarrative}
+                    {korbanNarrative} {faskesNarrative}
                   </p>
                 </div>
               )}
@@ -8507,6 +8513,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <span>Korban Jiwa</span>
                   </button>
 
+                  {/* TAB SURVEILANS PENYAKIT (HIDDEN SEMENTARA - JANGAN HAPUS KODINGAN) */}
+                  {false && (
                   <button
                     type="button"
                     onClick={() => setKabupatenMatrixTab('penyakit')}
@@ -8519,6 +8527,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <Activity className="h-3.5 w-3.5" />
                     <span>Surveilans Penyakit</span>
                   </button>
+                  )}
                 </div>
 
                 {/* Filter Tanggal & Search Input */}
