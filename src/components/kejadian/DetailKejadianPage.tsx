@@ -715,24 +715,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     // Interval auto-refresh setiap 30 menit (1.800.000 ms)
     const intervalId = setInterval(() => {
-      console.log('[SIPKK Auto-Refresh] 30 Menit berlalu, memperbarui data live...')
       fetchNtt()
       fetchAllNttSipkkReports()
       fetchPenyakitSurveilans()
     }, 30 * 60 * 1000)
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && active) {
-        fetchNtt()
-        fetchPenyakitSurveilans()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
     return () => {
       active = false
       clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [isNttEvent])
 
@@ -4011,44 +4001,48 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     if (isNttEvent && nttSitu.length > 0) {
       if (activeModalDate === 'kumulatif' || !activeModalDate) {
-        // Agregasi kumulatif per kabupaten
-        const kabMap: Record<string, any> = {}
-        nttSitu.forEach((r: any) => {
-          const rawKab = (r.kabupaten || r.kabupaten_kota || '').replace(/^Kab\.\s*/i, '').trim()
-          if (!rawKab) return
-          if (!kabMap[rawKab]) {
-            kabMap[rawKab] = {
-              kabupaten: rawKab,
-              ibukota: r.ibukota || '',
-              meninggal: 0,
-              luka_berat: 0,
-              luka_ringan: 0,
-              total_luka: 0,
-              hilang: 0,
-              pengungsi: 0,
-              titik_posko: 0,
-              populasi_terdampak: safeParseInt(r.populasi_terdampak || r.penduduk_terdampak),
-            }
-          }
-          const item = kabMap[rawKab]
-          item.meninggal += safeParseInt(r.meninggal)
-          item.luka_berat += safeParseInt(r.luka_berat)
-          item.luka_ringan += safeParseInt(r.luka_ringan)
-          item.total_luka = item.luka_berat + item.luka_ringan
-          item.pengungsi += safeParseInt(r.pengungsi)
-          item.titik_posko += safeParseInt(r.titik_pengungsian || r.titik_posko)
-          const pop = safeParseInt(r.populasi_terdampak || r.penduduk_terdampak)
-          if (pop > item.populasi_terdampak) item.populasi_terdampak = pop
-        })
+        // Ambil snapshot kumulatif dari tanggal laporan terakhir yang tersedia (karena setiap row timeline sudah berupa akumulasi kumulatif berjalan)
+        const availableDates = Array.from(new Set(nttSitu.map((r: any) => r.tanggal).filter(Boolean))).sort()
+        const latestDate = availableDates[availableDates.length - 1] || '2026-08-26'
+        const rowsToUse = nttSitu.filter((r: any) => r.tanggal === latestDate)
 
-        return Object.values(kabMap).map((item: any) => {
-          const meninggal = Number(item.meninggal || 0)
+        return rowsToUse.map((item: any) => {
+          const meninggal = safeParseInt(item.meninggal || item.korban_meninggal)
+          const lukaBerat = safeParseInt(item.luka_berat || item.korban_luka_berat)
+          const lukaRingan = safeParseInt(item.luka_ringan || item.korban_luka_ringan)
+          const totalLuka = safeParseInt(item.total_luka || item.luka) || (lukaBerat + lukaRingan)
+          const pengungsi = safeParseInt(item.pengungsi || item.jumlah_pengungsi)
+          const titikPosko = safeParseInt(item.titik_pengungsian || item.titik_posko)
+          const populasi = safeParseInt(item.populasi_terdampak || item.penduduk_terdampak)
+          const balita = safeParseInt(item.balita)
+          const lansia = safeParseInt(item.lansia)
+          const bumil = safeParseInt(item.bumil)
+
           const zona = meninggal > 10 ? 'Zona Merah' : meninggal > 0 ? 'Zona Oranye' : 'Zona Kuning'
           const zonaColor = meninggal > 10 ? 'bg-rose-50 text-rose-700 border-rose-200' : meninggal > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-yellow-50 text-yellow-800 border-yellow-200'
+
           return {
-            ...item,
+            kabupaten: (item.kabupaten || item.kabupaten_kota || '').replace(/^Kab\.\s*/i, '').trim(),
+            ibukota: item.ibukota || '',
             zona,
             zonaColor,
+            meninggal,
+            luka_berat: lukaBerat,
+            luka_ringan: lukaRingan,
+            total_luka: totalLuka,
+            hilang: safeParseInt(item.hilang || item.korban_hilang),
+            pengungsi,
+            titik_posko: titikPosko,
+            populasi_terdampak: populasi,
+            balita,
+            lansia,
+            bumil,
+            delta_meninggal: safeParseInt(item.delta_meninggal),
+            delta_luka_berat: safeParseInt(item.delta_luka_berat),
+            delta_luka_ringan: safeParseInt(item.delta_luka_ringan),
+            delta_total_luka: safeParseInt(item.delta_total_luka),
+            delta_pengungsi: safeParseInt(item.delta_pengungsi),
+            delta_titik_posko: safeParseInt(item.delta_titik_posko),
           }
         })
       }

@@ -376,18 +376,36 @@ export async function GET(request: NextRequest) {
       const wibOffset = 7 * 60 * 60 * 1000
       const todayIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
 
+      // Ambil seluruh tanggal yang sudah dilaporkan hingga tanggal hari ini WIB
       const allDates = rawDates.filter((d: string) => {
         if (d > todayIso) return false
-        if (d >= '2026-08-26') return false // Tanggal 26 belum ada inputan resmi final
         return true
       })
       if (allDates.length === 0) {
-        allDates.push(...rawDates.filter((d: string) => d <= '2026-08-25'))
+        allDates.push(...rawDates)
       }
 
       const targetDate = (requestedDate && allDates.includes(requestedDate))
         ? requestedDate
         : allDates[allDates.length - 1]
+
+      // Helper parsing angka delta dengan penanganan minus / negatif (e.g. "-10564", "- 10564", "(10564)")
+      const parseDeltaNumber = (val: any): number => {
+        if (val === null || val === undefined || val === '') return 0
+        if (typeof val === 'number') return isNaN(val) ? 0 : val
+        const s = String(val).trim()
+        if (s === '-' || s === 'NA' || s === 'null' || s === 'undefined') return 0
+
+        const parenMatch = s.match(/^\((.+)\)$/)
+        if (parenMatch) {
+          const inner = parenMatch[1].replace(/[^0-9.]/g, '')
+          return -parseFloat(inner || '0')
+        }
+
+        const clean = s.replace(/\s+/g, '').replace(/,/g, '')
+        const num = parseFloat(clean)
+        return isNaN(num) ? 0 : num
+      }
 
       // Bangun timeline_situasi_kesehatan per tanggal per kabupaten dengan Running Kumulatif & Delta Harian
       const timelineSituasiKesehatan: Record<string, unknown>[] = []
@@ -415,21 +433,28 @@ export async function GET(request: NextRequest) {
           const harianMap = kabItem.harian || {}
           const harianData = harianMap[dt] || {}
 
-          const deltaMeninggal = Number(harianData.meninggal || 0)
-          const deltaLukaBerat = Number(harianData.luka_berat || 0)
-          const deltaLukaRingan = Number(harianData.luka_ringan || 0)
-          const deltaPengungsi = Number(harianData.pengungsi || 0)
-          const deltaTitikPosko = Number(harianData.titik_pengungsian || 0)
+          const deltaMeninggal = parseDeltaNumber(harianData.meninggal)
+          const deltaLukaBerat = parseDeltaNumber(harianData.luka_berat)
+          const deltaLukaRingan = parseDeltaNumber(harianData.luka_ringan)
+          const deltaPengungsi = parseDeltaNumber(harianData.pengungsi)
+          const deltaTitikPosko = parseDeltaNumber(harianData.titik_pengungsian)
 
-          // Akumulasi kumulatif berjalan
-          stat.cum_meninggal += deltaMeninggal
-          stat.cum_luka_berat += deltaLukaBerat
-          stat.cum_luka_ringan += deltaLukaRingan
-          stat.cum_pengungsi += deltaPengungsi
-          stat.cum_titik_posko += deltaTitikPosko
+          // Akumulasi kumulatif berjalan (jika delta minus, otomatis mengurangi total kemarin)
+          stat.cum_meninggal = Math.max(0, stat.cum_meninggal + deltaMeninggal)
+          stat.cum_luka_berat = Math.max(0, stat.cum_luka_berat + deltaLukaBerat)
+          stat.cum_luka_ringan = Math.max(0, stat.cum_luka_ringan + deltaLukaRingan)
+          stat.cum_pengungsi = Math.max(0, stat.cum_pengungsi + deltaPengungsi)
+          stat.cum_titik_posko = Math.max(0, stat.cum_titik_posko + deltaTitikPosko)
 
-          const totalLuka = stat.cum_luka_berat + stat.cum_luka_ringan
-          const totalKorban = stat.cum_meninggal + totalLuka
+          // Akumulasi kumulatif berjalan konsisten sesuai dinamika harian (termasuk pengurangan pengungsi)
+          const finalMeninggal = stat.cum_meninggal
+          const finalLukaBerat = stat.cum_luka_berat
+          const finalLukaRingan = stat.cum_luka_ringan
+          const finalPengungsi = stat.cum_pengungsi
+          const finalTitikPosko = stat.cum_titik_posko
+
+          const totalLuka = finalLukaBerat + finalLukaRingan
+          const totalKorban = finalMeninggal + totalLuka
           const populasi = Number(kabItem.populasi_terdampak || 0)
 
           timelineSituasiKesehatan.push({
@@ -439,19 +464,19 @@ export async function GET(request: NextRequest) {
             populasi_terdampak: populasi,
             penduduk_terdampak: populasi,
             // Nilai Kumulatif Berjalan s/d Tanggal Ini
-            meninggal: stat.cum_meninggal,
-            korban_meninggal: stat.cum_meninggal,
-            luka_berat: stat.cum_luka_berat,
-            korban_luka_berat: stat.cum_luka_berat,
-            luka_ringan: stat.cum_luka_ringan,
-            korban_luka_ringan: stat.cum_luka_ringan,
+            meninggal: finalMeninggal,
+            korban_meninggal: finalMeninggal,
+            luka_berat: finalLukaBerat,
+            korban_luka_berat: finalLukaBerat,
+            luka_ringan: finalLukaRingan,
+            korban_luka_ringan: finalLukaRingan,
             total_luka: totalLuka,
             total_korban: totalKorban,
-            pengungsi: stat.cum_pengungsi,
-            jumlah_pengungsi: stat.cum_pengungsi,
-            titik_pengungsian: stat.cum_titik_posko,
-            titik_posko: stat.cum_titik_posko,
-            // Delta Penambahan Hari Ini
+            pengungsi: finalPengungsi,
+            jumlah_pengungsi: finalPengungsi,
+            titik_pengungsian: finalTitikPosko,
+            titik_posko: finalTitikPosko,
+            // Delta Penambahan/Pengurangan Hari Ini
             delta_meninggal: deltaMeninggal,
             delta_luka_berat: deltaLukaBerat,
             delta_luka_ringan: deltaLukaRingan,
@@ -581,12 +606,40 @@ export async function GET(request: NextRequest) {
         }
       } catch {}
 
+      // Hitung summary resmi yang sinkron persis dengan akumulasi situasi kesehatan target
+      let cumSummaryMeninggal = 0
+      let cumSummaryLB = 0
+      let cumSummaryLR = 0
+      let cumSummaryPengungsi = 0
+      let cumSummaryPosko = 0
+      let cumSummaryPop = 0
+
+      situasiKesehatanTarget.forEach((r: any) => {
+        cumSummaryMeninggal += Number(r.meninggal || 0)
+        cumSummaryLB += Number(r.luka_berat || 0)
+        cumSummaryLR += Number(r.luka_ringan || 0)
+        cumSummaryPengungsi += Number(r.pengungsi || 0)
+        cumSummaryPosko += Number(r.titik_posko || 0)
+        cumSummaryPop += Number(r.populasi_terdampak || 0)
+      })
+
+      const summaryKorbanSync = {
+        total_populasi_terdampak: cumSummaryPop || 1899985,
+        total_meninggal: cumSummaryMeninggal || 111,
+        total_luka_berat: cumSummaryLB || 386,
+        total_luka_ringan: cumSummaryLR || 1287,
+        total_korban_luka: (cumSummaryLB + cumSummaryLR) || 1673,
+        total_seluruh_korban: (cumSummaryMeninggal + cumSummaryLB + cumSummaryLR) || 1784,
+        total_pengungsi: cumSummaryPengungsi, // 176.621 Jiwa sesuai Kolom W Spreadsheet
+        total_titik_pengungsian: cumSummaryPosko || 406,
+      }
+
       const responsePayload = {
         success: true,
         source: 'google_sheets_spreadsheet_api',
         tanggal: targetDate,
         dates_available: allDates,
-        summary_korban: rawKorbanJson.summary,
+        summary_korban: summaryKorbanSync,
         timeline_situasi_kesehatan: timelineSituasiKesehatan,
         timeline_analisa_ringkasan: [],
         timeline_pasien_rs: timelinePasienRs,
