@@ -8356,7 +8356,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? `${modalTotals.titik_posko || 397} Titik Posko Terdata`
                         : (modalTotals.delta_pengungsi && modalTotals.delta_pengungsi > 0)
                           ? `+${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa Tambahan (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`
-                          : `Nihil Tambahan (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`}
+                          : (modalTotals.delta_pengungsi && modalTotals.delta_pengungsi < 0)
+                            ? `${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa Berkurang (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`
+                            : `Nihil Tambahan (${activeDateFormatted}) • ${modalTotals.titik_posko || 0} Posko`}
                     </div>
                   </div>
                   <div className="bg-rose-50/70 p-3 rounded-2xl border border-rose-200">
@@ -8367,7 +8369,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'Total Akumulasi Lapangan'
                         : (modalTotals.delta_meninggal && modalTotals.delta_meninggal > 0)
                           ? `+${modalTotals.delta_meninggal} Jiwa Tambahan (${activeDateFormatted})`
-                          : `Nihil Penambahan (${activeDateFormatted})`}
+                          : (modalTotals.delta_meninggal && modalTotals.delta_meninggal < 0)
+                            ? `${modalTotals.delta_meninggal} Jiwa Koreksi (${activeDateFormatted})`
+                            : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                   <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
@@ -8378,7 +8382,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'Rujukan RSUD Siaga'
                         : (modalTotals.delta_luka_berat && modalTotals.delta_luka_berat > 0)
                           ? `+${modalTotals.delta_luka_berat} Pasien Tambahan (${activeDateFormatted})`
-                          : `Nihil Penambahan (${activeDateFormatted})`}
+                          : (modalTotals.delta_luka_berat && modalTotals.delta_luka_berat < 0)
+                            ? `${modalTotals.delta_luka_berat} Pasien Koreksi (${activeDateFormatted})`
+                            : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                   <div className="bg-orange-50/70 p-3 rounded-2xl border border-orange-200">
@@ -8389,7 +8395,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'EMT & Posko Pelayanan'
                         : (modalTotals.delta_luka_ringan && modalTotals.delta_luka_ringan > 0)
                           ? `+${modalTotals.delta_luka_ringan} Pasien Tambahan (${activeDateFormatted})`
-                          : `Nihil Penambahan (${activeDateFormatted})`}
+                          : (modalTotals.delta_luka_ringan && modalTotals.delta_luka_ringan < 0)
+                            ? `${modalTotals.delta_luka_ringan} Pasien Koreksi (${activeDateFormatted})`
+                            : `Nihil Penambahan (${activeDateFormatted})`}
                     </div>
                   </div>
                 </>
@@ -8982,6 +8990,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     <span className="inline-flex items-center text-[10px] font-black text-rose-700 bg-rose-100/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       ▲ +{row.delta_meninggal} Jiwa
                                     </span>
+                                  ) : row.delta_meninggal < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ▼ {row.delta_meninggal} Jiwa
+                                    </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
                                       Nihil Tambahan
@@ -8997,6 +9009,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   {row.delta_luka_berat > 0 ? (
                                     <span className="inline-flex items-center text-[10px] font-black text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       ▲ +{row.delta_luka_berat} Pasien
+                                    </span>
+                                  ) : row.delta_luka_berat < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ▼ {row.delta_luka_berat} Pasien
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
@@ -9014,6 +9030,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     <span className="inline-flex items-center text-[10px] font-black text-orange-800 bg-orange-100/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       ▲ +{row.delta_luka_ringan} Pasien
                                     </span>
+                                  ) : row.delta_luka_ringan < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ▼ {row.delta_luka_ringan} Pasien
+                                    </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
                                       Nihil Tambahan
@@ -9029,6 +9049,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   {row.delta_total_luka > 0 ? (
                                     <span className="inline-flex items-center text-[10px] font-black text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       ▲ +{row.delta_total_luka} Pasien
+                                    </span>
+                                  ) : row.delta_total_luka < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ▼ {row.delta_total_luka} Pasien
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
@@ -9047,6 +9071,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                     <span className="inline-flex items-center text-[10px] font-black text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       ▲ +{row.delta_pengungsi.toLocaleString('id-ID')} Jiwa
                                     </span>
+                                  ) : row.delta_pengungsi < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-sky-800 bg-sky-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      ▼ {row.delta_pengungsi.toLocaleString('id-ID')} Jiwa
+                                    </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
                                       Nihil Tambahan
@@ -9062,6 +9090,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   {row.delta_titik_posko > 0 ? (
                                     <span className="inline-flex items-center text-[10px] font-black text-blue-800 bg-blue-100/90 px-1.5 py-0.5 rounded shadow-2xs">
                                       +{row.delta_titik_posko} Posko
+                                    </span>
+                                  ) : row.delta_titik_posko < 0 ? (
+                                    <span className="inline-flex items-center text-[10px] font-black text-sky-800 bg-sky-100/90 px-1.5 py-0.5 rounded shadow-2xs">
+                                      {row.delta_titik_posko} Posko
                                     </span>
                                   ) : (
                                     <span className="text-[10px] font-semibold text-slate-400">
@@ -9098,32 +9130,32 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <td className="py-3.5 px-4 text-center bg-rose-50/60">
                         <div className="text-rose-700 font-black text-sm">{modalTotals.meninggal}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_meninggal > 0 ? 'text-rose-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_meninggal > 0 ? `▲ +${modalTotals.delta_meninggal} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_meninggal > 0 ? 'text-rose-800 font-black' : modalTotals.delta_meninggal < 0 ? 'text-emerald-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_meninggal > 0 ? `▲ +${modalTotals.delta_meninggal} Jiwa (${activeDateFormatted})` : modalTotals.delta_meninggal < 0 ? `▼ ${modalTotals.delta_meninggal} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center bg-amber-50/40">
                         <div className="text-amber-700 font-black text-sm">{modalTotals.luka_berat}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_berat > 0 ? 'text-amber-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_luka_berat > 0 ? `▲ +${modalTotals.delta_luka_berat} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_berat > 0 ? 'text-amber-800 font-black' : modalTotals.delta_luka_berat < 0 ? 'text-emerald-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_luka_berat > 0 ? `▲ +${modalTotals.delta_luka_berat} Pasien (${activeDateFormatted})` : modalTotals.delta_luka_berat < 0 ? `▼ ${modalTotals.delta_luka_berat} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="text-orange-700 font-black text-sm">{modalTotals.luka_ringan}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_ringan > 0 ? 'text-orange-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_luka_ringan > 0 ? `▲ +${modalTotals.delta_luka_ringan} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_luka_ringan > 0 ? 'text-orange-800 font-black' : modalTotals.delta_luka_ringan < 0 ? 'text-emerald-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_luka_ringan > 0 ? `▲ +${modalTotals.delta_luka_ringan} Pasien (${activeDateFormatted})` : modalTotals.delta_luka_ringan < 0 ? `▼ ${modalTotals.delta_luka_ringan} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center bg-amber-50/60">
                         <div className="text-amber-800 font-black text-sm">{modalTotals.total_luka}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_total_luka > 0 ? 'text-amber-900 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_total_luka > 0 ? `▲ +${modalTotals.delta_total_luka} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_total_luka > 0 ? 'text-amber-900 font-black' : modalTotals.delta_total_luka < 0 ? 'text-emerald-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_total_luka > 0 ? `▲ +${modalTotals.delta_total_luka} Pasien (${activeDateFormatted})` : modalTotals.delta_total_luka < 0 ? `▼ ${modalTotals.delta_total_luka} Pasien (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
@@ -9131,16 +9163,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       <td className="py-3.5 px-4 text-center bg-blue-50/50">
                         <div className="text-blue-900 font-black text-sm">{modalTotals.pengungsi.toLocaleString('id-ID')}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_pengungsi > 0 ? 'text-blue-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_pengungsi > 0 ? `▲ +${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_pengungsi > 0 ? 'text-blue-800 font-black' : modalTotals.delta_pengungsi < 0 ? 'text-sky-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_pengungsi > 0 ? `▲ +${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa (${activeDateFormatted})` : modalTotals.delta_pengungsi < 0 ? `▼ ${modalTotals.delta_pengungsi.toLocaleString('id-ID')} Jiwa (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center text-blue-700 font-black text-sm">
                         <div>{modalTotals.titik_posko || '-'}</div>
                         {activeModalDate !== 'kumulatif' && (
-                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_titik_posko > 0 ? 'text-blue-800 font-black' : 'text-slate-400 font-medium'}`}>
-                            {modalTotals.delta_titik_posko > 0 ? `+${modalTotals.delta_titik_posko} Posko (${activeDateFormatted})` : 'Nihil Tambahan'}
+                          <div className={`text-[10px] mt-0.5 ${modalTotals.delta_titik_posko > 0 ? 'text-blue-800 font-black' : modalTotals.delta_titik_posko < 0 ? 'text-sky-800 font-black' : 'text-slate-400 font-medium'}`}>
+                            {modalTotals.delta_titik_posko > 0 ? `+${modalTotals.delta_titik_posko} Posko (${activeDateFormatted})` : modalTotals.delta_titik_posko < 0 ? `${modalTotals.delta_titik_posko} Posko (${activeDateFormatted})` : 'Nihil Tambahan'}
                           </div>
                         )}
                       </td>
