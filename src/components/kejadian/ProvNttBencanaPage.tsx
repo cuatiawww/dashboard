@@ -402,22 +402,13 @@ export default function ProvNttBencanaPage() {
   useEffect(() => {
     loadCollectorData(selectedDate)
 
-    // Auto-refresh data collector secara otomatis setiap 30 menit (1.800.000 ms)
+    // Auto-refresh di background secara wajar setiap 30 menit (tanpa trigger blocking refresh saat ganti tab)
     const interval = setInterval(() => {
-      console.log('[ProvNttBencanaPage Auto-Refresh] 30 Menit berlalu, memperbarui data live...')
       loadCollectorData(selectedDate)
     }, 30 * 60 * 1000)
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadCollectorData(selectedDate)
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
     return () => {
       clearInterval(interval)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [selectedDate])
 
