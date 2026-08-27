@@ -475,6 +475,30 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return isGempa && isNtt
   }, [selectedEvent, detail])
 
+  // ── Konfigurasi Flag Distribusi Kasus Penyakit (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) ──
+  const showPenyakitSection = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_ENABLE_SURVEILANS_PENYAKIT === 'true') return true
+    if (process.env.NEXT_PUBLIC_ENABLE_SURVEILANS_PENYAKIT === 'false') return false
+
+    // Otomatis aktif di Vercel (Staging Dev), Localhost, atau environment Staging/Dev
+    if (process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL) return true
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase()
+      if (
+        host.includes('vercel.app') ||
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host.includes('dev') ||
+        host.includes('staging')
+      ) {
+        return true
+      }
+    }
+
+    // Default di Server Atas (Production GitLab): Hidden sementara
+    return false
+  }, [])
+
   // Fetch Live Data Faskes Terdampak & Penyakit dari Endpoint /api/faskes-terdampak (Google Sheets)
   useEffect(() => {
     if (!isNttEvent) return
@@ -4441,8 +4465,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           </div>
         </div>
 
-        {/* 6. Section Faskes Terdampak (Distribusi Kasus Penyakit di-hide sementara) */}
-        <div className="grid grid-cols-1 gap-5">
+        {/* 6. Section Faskes Terdampak & Distribusi Kasus Penyakit (Dinamis: tampil di Vercel/dev, hidden di prod) */}
+        <div className={`grid grid-cols-1 ${showPenyakitSection ? 'lg:grid-cols-2' : ''} gap-5`}>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
             <div className="h-5 w-44 bg-slate-200 rounded" />
             <div className="grid grid-cols-3 gap-3 h-[180px]">
@@ -4451,8 +4475,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="bg-slate-50 rounded-xl border border-slate-150" />
             </div>
           </div>
-          {/* SKELETON DISTRIBUSI PENYAKIT (HIDDEN SEMENTARA - JANGAN HAPUS) */}
-          {false && (
+          {showPenyakitSection && (
             <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3.5">
               <div className="h-5 w-44 bg-slate-200 rounded" />
               <div className="h-[180px] bg-slate-50 rounded-xl border border-slate-150" />
@@ -5552,9 +5575,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               </article>
 
-              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (HIDDEN SEMENTARA - JANGAN HAPUS KODINGAN) ─── */}
-              {/* @ts-ignore */}
-              {false && (
+              {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) ─── */}
+              {showPenyakitSection && (
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Kasus Penyakit & Epidemiologi */}
@@ -5686,7 +5708,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </p>
                   )}
                   <p className="text-sm sm:text-base text-slate-700 font-normal leading-relaxed m-0">
-                    {korbanNarrative} {faskesNarrative}
+                    {korbanNarrative} {faskesNarrative} {showPenyakitSection ? penyakitNarrative : ''}
                   </p>
                 </div>
               )}
@@ -8513,8 +8535,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <span>Korban Jiwa</span>
                   </button>
 
-                  {/* TAB SURVEILANS PENYAKIT (HIDDEN SEMENTARA - JANGAN HAPUS KODINGAN) */}
-                  {false && (
+                  {/* TAB SURVEILANS PENYAKIT (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) */}
+                  {showPenyakitSection && (
                   <button
                     type="button"
                     onClick={() => setKabupatenMatrixTab('penyakit')}
