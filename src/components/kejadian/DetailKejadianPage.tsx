@@ -505,7 +505,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     let active = true
     const fetchFaskesTerdampak = async () => {
       try {
-        setLoadingFaskesTerdampak(true)
+        if (faskesTerdampakList.length === 0) {
+          setLoadingFaskesTerdampak(true)
+        }
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
         const res = await fetch(`${basePath}/api/faskes-terdampak`, { cache: 'no-store' })
         if (!res.ok) throw new Error('Gagal fetch data faskes terdampak')
@@ -536,10 +538,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
 
     fetchFaskesTerdampak()
-    const interval = setInterval(fetchFaskesTerdampak, 60 * 1000)
     return () => {
       active = false
-      clearInterval(interval)
     }
   }, [isNttEvent])
 
@@ -772,6 +772,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   useEffect(() => {
     let active = true
+
+    // Jika ini adalah kejadian gempa NTT khusus, seluruh detail data sudah ada di props / collector
+    if (isNttEvent || selectedEvent?.isNttEvent) {
+      const nttData = selectedEvent?.detailData || selectedEvent
+      setDetail(nttData)
+      setLoading(false)
+      if (onDetailLoaded) {
+        onDetailLoaded(nttData)
+      }
+      return
+    }
 
     if (selectedEvent?.detailData) {
       setDetail(selectedEvent.detailData)

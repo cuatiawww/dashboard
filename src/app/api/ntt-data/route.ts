@@ -297,20 +297,15 @@ const REAL_SPREADSHEET_KORBAN_DATA = {
 }
 
 // ─── High-Performance Server-Side Cache for Google Apps Script (30s TTL) ────
+// ─── High-Performance Server-Side Cache for Google Apps Script (Stale-While-Revalidate) ────
 let cachedGasPayload: any = null
 let cachedGasTimestamp = 0
 let inFlightGasPromise: Promise<any> | null = null
-const GAS_CACHE_TTL_MS = 30_000 // 30 detik
+const GAS_STALE_TTL_MS = 60_000 // 1 menit: jika kurang dari 1 menit, langsung pakai cache
+const GAS_MAX_TTL_MS = 10 * 60_000 // 10 menit: maksimal umur cache
 
-async function fetchGoogleAppsScriptData(): Promise<any> {
-  const now = Date.now()
-  if (cachedGasPayload && (now - cachedGasTimestamp < GAS_CACHE_TTL_MS)) {
-    return cachedGasPayload
-  }
-
-  if (inFlightGasPromise) {
-    return inFlightGasPromise
-  }
+function triggerBackgroundGasRefresh(): Promise<any> {
+  if (inFlightGasPromise) return inFlightGasPromise
 
   inFlightGasPromise = (async () => {
     try {
@@ -337,6 +332,28 @@ async function fetchGoogleAppsScriptData(): Promise<any> {
   })()
 
   return inFlightGasPromise
+}
+
+async function fetchGoogleAppsScriptData(): Promise<any> {
+  const now = Date.now()
+  // 1. Jika ada cache dan masih sangat segar (< 1 menit), langsung return 0ms
+  if (cachedGasPayload && (now - cachedGasTimestamp < GAS_STALE_TTL_MS)) {
+    return cachedGasPayload
+  }
+
+  // 2. Jika ada cache tapi mulai stale (< 10 menit), return cache langsung & refresh di background tanpa memblokir user
+  if (cachedGasPayload && (now - cachedGasTimestamp < GAS_MAX_TTL_MS)) {
+    if (!inFlightGasPromise) {
+      void triggerBackgroundGasRefresh()
+    }
+    return cachedGasPayload
+  }
+
+  if (inFlightGasPromise) {
+    return inFlightGasPromise
+  }
+
+  return triggerBackgroundGasRefresh()
 }
 
 export async function GET(request: NextRequest) {
