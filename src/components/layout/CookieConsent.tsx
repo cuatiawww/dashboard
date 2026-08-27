@@ -1,13 +1,29 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Shield, Bell, MapPin, X, Check } from 'lucide-react'
 
 export default function CookieConsent() {
+  const pathname = usePathname()
   const [show, setShow] = useState(false)
   const [userLocationName, setUserLocationName] = useState<string | null>(null)
 
+  // Sembunyikan EWS consent popup khusus pada halaman Gempa NTT
+  const isGempaNtt = Boolean(
+    pathname &&
+    (
+      pathname.toLowerCase().includes('gempa-ntt') ||
+      pathname.toLowerCase().includes('gempa_ntt') ||
+      pathname.toLowerCase().includes('prov-ntt') ||
+      pathname.toLowerCase().includes('ntt') ||
+      pathname.toLowerCase().includes('gempa')
+    )
+  )
+
   useEffect(() => {
+    if (isGempaNtt) return
+
     // Check if user already consented
     if (typeof window !== 'undefined') {
       const consent = localStorage.getItem('ews-cookie-consent')
@@ -21,7 +37,9 @@ export default function CookieConsent() {
         if (savedName) setUserLocationName(savedName)
       }
     }
-  }, [])
+  }, [isGempaNtt])
+
+  if (isGempaNtt) return null
 
   const handleDecline = () => {
     if (typeof window !== 'undefined') {

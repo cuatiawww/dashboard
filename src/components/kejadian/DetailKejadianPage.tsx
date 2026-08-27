@@ -245,7 +245,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'datastudio_kluster' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
   const [situasiFaskesSubTab, setSituasiFaskesSubTab] = useState<'rs' | 'puskesmas'>('rs')
   const [situasiKabFilter, setSituasiKabFilter] = useState<string>('semua')
   const [situasiTanggalFilter, setSituasiTanggalFilter] = useState<string>('terbaru')
@@ -255,10 +255,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loadingKapasitas, setLoadingKapasitas] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
 
-  // ── Data Studio / Looker Studio Embed State ──
+  // ── Data Studio / Looker Studio Embed State (Dukungan Kluster) ──
   const [isDataStudioFullscreen, setIsDataStudioFullscreen] = useState(false)
   const [dataStudioIframeKey, setDataStudioIframeKey] = useState(0)
   const [isDataStudioIframeLoading, setIsDataStudioIframeLoading] = useState(true)
+
+  // ── Data Studio Embed State (Surveilans Penyakit) ──
+  const [isDataStudioPenyakitFullscreen, setIsDataStudioPenyakitFullscreen] = useState(false)
+  const [dataStudioPenyakitIframeKey, setDataStudioPenyakitIframeKey] = useState(0)
+  const [isDataStudioPenyakitIframeLoading, setIsDataStudioPenyakitIframeLoading] = useState(true)
 
   // ── Timeline Log Aktivitas Kejadian ──
   const [timelineLogs, setTimelineLogs] = useState<any[]>([])
@@ -5909,6 +5914,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               Dukungan Kluster (Data Studio)
               <span className="ml-1 px-2 py-0.5 rounded-full bg-sky-700 text-white text-[10px] font-black">Live</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMatrixTab('datastudio_penyakit')
+                setIsDataStudioPenyakitIframeLoading(true)
+              }}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'datastudio_penyakit'
+                ? 'bg-rose-50 text-rose-900 border-rose-400 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+            >
+              <Activity className="h-4 w-4 text-rose-600" />
+              Surveilans Penyakit (Data Studio)
+              <span className="ml-1 px-2 py-0.5 rounded-full bg-rose-700 text-white text-[10px] font-black">Live</span>
+            </button>
           </div>
 
           {/* Tab content area */}
@@ -7968,6 +7988,153 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sky-700 underline font-bold hover:text-sky-900 inline-flex items-center gap-1 self-end sm:self-auto"
+                  >
+                    Akses Langsung di Data Studio <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {matrixTab === 'datastudio_penyakit' && (
+              <div className="space-y-4 pt-1">
+                {/* Header Action Bar */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-gradient-to-r from-rose-900/10 via-red-900/5 to-slate-900/5 p-4 rounded-2xl border border-rose-200/80 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-100 border border-rose-300 text-rose-700 flex items-center justify-center shadow-xs shrink-0">
+                      <Activity className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h5 className="text-sm sm:text-base font-black text-slate-900 m-0">
+                          Dashboard Surveilans Penyakit Gempa Bumi NTT
+                        </h5>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+                          Google Looker Studio
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium mt-0.5 mb-0">
+                        Pemantauan tren morbiditas penyakit potensial KLB, kasus harian pengungsi, dan kewaspadaan dini kesehatan di {displayRegion}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-stretch md:self-center justify-end shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDataStudioPenyakitIframeLoading(true)
+                        setDataStudioPenyakitIframeKey(prev => prev + 1)
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 hover:border-slate-300 transition shadow-2xs cursor-pointer"
+                      title="Muat Ulang Dashboard Surveilans Penyakit"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" />
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsDataStudioPenyakitFullscreen(prev => !prev)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 hover:border-slate-300 transition shadow-2xs cursor-pointer"
+                      title={isDataStudioPenyakitFullscreen ? "Tutup Tampilan Layar Penuh" : "Buka Tampilan Layar Penuh"}
+                    >
+                      {isDataStudioPenyakitFullscreen ? (
+                        <>
+                          <Minimize2 className="h-3.5 w-3.5 text-slate-700" />
+                          <span>Perkecil</span>
+                        </>
+                      ) : (
+                        <>
+                          <Maximize2 className="h-3.5 w-3.5 text-slate-700" />
+                          <span>Perbesar</span>
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href="https://datastudio.google.com/u/0/reporting/541be3b0-2553-46d6-ac23-09a504c498cd/page/V756F"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-700 text-white text-xs font-bold hover:bg-rose-800 transition shadow-2xs"
+                    >
+                      <span>Buka Tab Baru</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Iframe Container */}
+                <div
+                  className={`relative w-full rounded-2xl border border-slate-200/90 bg-slate-900/5 shadow-inner overflow-hidden transition-all duration-300 ${isDataStudioPenyakitFullscreen
+                    ? 'fixed inset-2 md:inset-6 z-50 bg-white p-4 shadow-2xl flex flex-col'
+                    : 'min-h-[850px] h-[900px]'
+                    }`}
+                >
+                  {isDataStudioPenyakitFullscreen && (
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-rose-600" />
+                        <span className="text-sm sm:text-base font-black text-slate-900">
+                          Dashboard Surveilans Penyakit Gempa Bumi NTT (Mode Layar Penuh)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDataStudioPenyakitIframeLoading(true)
+                            setDataStudioPenyakitIframeKey(prev => prev + 1)
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold"
+                          title="Refresh Iframe"
+                        >
+                          <RotateCw className="h-3.5 w-3.5" />
+                          <span>Refresh</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsDataStudioPenyakitFullscreen(false)}
+                          className="px-3.5 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition"
+                        >
+                          ✕ Tutup Layar Penuh
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {isDataStudioPenyakitIframeLoading && (
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 backdrop-blur-xs">
+                      <Loader2 className="h-8 w-8 text-rose-600 animate-spin mb-2" />
+                      <span className="text-xs sm:text-sm font-bold text-slate-800">Memuat Dashboard Surveilans Penyakit...</span>
+                      <span className="text-[11px] text-slate-400 mt-0.5">Sinkronisasi data pelaporan kasus penyakit bencana</span>
+                    </div>
+                  )}
+
+                  <iframe
+                    key={dataStudioPenyakitIframeKey}
+                    src="https://datastudio.google.com/embed/u/0/reporting/541be3b0-2553-46d6-ac23-09a504c498cd/page/V756F"
+                    className="w-full h-full min-h-[820px] border-0 rounded-xl flex-1"
+                    frameBorder="0"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                    onLoad={() => setIsDataStudioPenyakitIframeLoading(false)}
+                    title="Dashboard Surveilans Penyakit Gempa Bumi NTT"
+                  />
+                </div>
+
+                {/* Footer Citation & Fallback */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-3 rounded-xl bg-rose-50/80 border border-rose-100 text-[11px] text-rose-900 font-medium">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-rose-600 shrink-0" />
+                    <span>
+                      Sumber Data: <strong className="font-bold">Google Data Studio / Looker Studio Surveilans Penyakit NTT</strong> (Terintegrasi EOC Kemenkes RI).
+                    </span>
+                  </div>
+                  <a
+                    href="https://datastudio.google.com/u/0/reporting/541be3b0-2553-46d6-ac23-09a504c498cd/page/V756F"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-rose-700 underline font-bold hover:text-rose-900 inline-flex items-center gap-1 self-end sm:self-auto"
                   >
                     Akses Langsung di Data Studio <ExternalLink className="h-3 w-3" />
                   </a>

@@ -37,9 +37,9 @@ const DEFAULT_LAYERS: TvLayerState = {
   bnpbHillshade: false,
   bnpbKepadatan: false,
   bnpbAdmin: true,
-  showWindy: true,
+  showWindy: false,
   showFaskes: true,
-  showPosko: true,
+  showPosko: false,
   showTck: false,
   showChoropleth: true,
   showMarkers: true,
@@ -47,7 +47,7 @@ const DEFAULT_LAYERS: TvLayerState = {
   faskesPuskesmas: true,
   faskesKlinik: true,
   faskesPustu: true,
-  faskesSiagaOnly: false,
+  faskesSiagaOnly: true,
   impactRadiusKm: 1,
 }
 

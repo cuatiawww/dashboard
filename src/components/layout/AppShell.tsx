@@ -58,10 +58,16 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [])
 
-  const isGempaNttRoute =
-    pathname === '/gempa-ntt' ||
-    pathname === '/dashboard-eoc/gempa-ntt' ||
-    pathname?.includes('gempa-ntt')
+  const isGempaNttRoute = Boolean(
+    pathname &&
+    (
+      pathname.toLowerCase().includes('gempa-ntt') ||
+      pathname.toLowerCase().includes('gempa_ntt') ||
+      pathname.toLowerCase().includes('prov-ntt') ||
+      pathname.toLowerCase().includes('ntt') ||
+      pathname.toLowerCase().includes('gempa')
+    )
+  )
 
   if (!isInitialized) {
     return (
@@ -94,7 +100,7 @@ export default function AppShell({ children }: AppShellProps) {
         <DashboardHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} />
         {children}
         <Footer />
-        <CookieConsent />
+        {!isGempaNttRoute && <CookieConsent />}
       </main>
     </NotificationProvider>
   )

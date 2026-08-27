@@ -464,7 +464,8 @@ export default function DisasterMap({
   const isGuest = propIsGuest || storeIsGuest || !token || !user
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
-  const [showTckLayer, setShowTckLayer] = useState(true) // Toggle layer TCK Kemkes
+  const [showTckLayer, setShowTckLayer] = useState(false) // Toggle layer TCK Kemkes (default: non-aktif)
+  const [showPosko, setShowPosko] = useState(false) // Toggle layer Posko Pengungsian (default: non-aktif)
   const [showSeismicLayer, setShowSeismicLayer] = useState(true) // Toggle layer Titik Gempa USGS/BMKG
 
   // Infer normalized disaster category ONLY when disasterType is explicitly provided (Detail Page)
@@ -501,6 +502,7 @@ export default function DisasterMap({
   const bnpbLongsorLayerRef = useRef<any>(null)
   const bnpbKarhutlaLayerRef = useRef<any>(null)
   const windLayerRef = useRef<any>(null)
+  const showWindyRef = useRef(false)
 
   // EOC Routing Refs
   const eocLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
@@ -572,7 +574,7 @@ export default function DisasterMap({
     puskesmas: true,
     klinik: true,
     pustu: true,
-    siagaOnly: false,
+    siagaOnly: true,
   })
 
   const faskesCountsByType = useMemo(() => {
@@ -615,10 +617,14 @@ export default function DisasterMap({
   }, [selectedRouteTarget])
   const [showBaseMap, setShowBaseMap] = useState(true)
   const [showGeoJson, setShowGeoJson] = useState(true)
-  const [showWindy, setShowWindy] = useState(true)
-  const [showWindLegend, setShowWindLegend] = useState(true)
+  const [showWindy, setShowWindy] = useState(false)
+  const [showWindLegend, setShowWindLegend] = useState(false)
   const [showRegionLegend, setShowRegionLegend] = useState(false)
   const [showCasualtyLegend, setShowCasualtyLegend] = useState(false)
+
+  useEffect(() => {
+    showWindyRef.current = showWindy
+  }, [showWindy])
 
   // Fungsi untuk kembali ke titik pusat utama kejadian bencana (Reset View/Zoom)
   const handleResetCenter = useCallback(() => {
@@ -639,12 +645,12 @@ export default function DisasterMap({
     })
   }, [isFloodEocMode])
 
-  // BNPB layer visibilities - all OFF by default on Main Dashboard (disasterType is undefined)
+  // BNPB layer visibilities - Bahaya Gempa Bumi aktif default
   const [showBnpbAdmin, setShowBnpbAdmin] = useState(false)
   const [showBnpbHillshade, setShowBnpbHillshade] = useState(false)
   const [showBnpbKepadatan, setShowBnpbKepadatan] = useState(false)
   const [showBnpbBanjir, setShowBnpbBanjir] = useState(false)
-  const [showBnpbGempa, setShowBnpbGempa] = useState(false)
+  const [showBnpbGempa, setShowBnpbGempa] = useState(true)
   const [showBnpbLongsor, setShowBnpbLongsor] = useState(false)
   const [showBnpbKarhutla, setShowBnpbKarhutla] = useState(false)
 
@@ -652,7 +658,7 @@ export default function DisasterMap({
   useEffect(() => {
     if (!disasterType || disasterCategory === 'none') {
       setShowBnpbBanjir(false)
-      setShowBnpbGempa(false)
+      setShowBnpbGempa(true)
       setShowBnpbLongsor(false)
       setShowBnpbKarhutla(false)
       return
@@ -663,7 +669,7 @@ export default function DisasterMap({
       setShowBnpbBanjir(false)
       setShowBnpbGempa(false)
       setShowBnpbLongsor(false)
-      setShowWindy(true)
+      setShowWindy(false)
     } else if (disasterCategory === 'banjir') {
       setShowBnpbBanjir(true)
       setShowBnpbKarhutla(false)
@@ -671,7 +677,7 @@ export default function DisasterMap({
       setShowBnpbLongsor(false)
     } else if (disasterCategory === 'gempa') {
       setShowBnpbGempa(true)
-      setShowBmkg(true)
+      setShowBmkg(false)
       setShowBnpbBanjir(false)
       setShowBnpbKarhutla(false)
       setShowBnpbLongsor(false)
@@ -1393,10 +1399,11 @@ export default function DisasterMap({
           },
           fieldOptions: { wrapX: true },
         } as any)
-          // Default ON: langsung visible dan jalankan animasi partikel
-          ; (windLayer as any).setVisible?.(true)
+        // Default: sesuaikan dengan showWindyRef (false by default)
+        const isWindActive = showWindyRef.current
+        ; (windLayer as any).setVisible?.(isWindActive)
         try {
-          if (typeof (windLayer as any).start === 'function') {
+          if (isWindActive && typeof (windLayer as any).start === 'function') {
             ; (windLayer as any).start()
           }
         } catch { }
@@ -2174,79 +2181,75 @@ export default function DisasterMap({
     }
 
     // 1. Add disaster location pins and pulsing radius circle ONLY on the main epicenter/target
-    const validDisasterMarkers = Array.isArray(markers) ? markers : []
+    if (showMarkers) {
+      const validDisasterMarkers = Array.isArray(markers) ? markers : []
 
-    // Clear old overlays if any
-    if (map) {
-      pulseOverlaysRef.current.forEach(ov => map.removeOverlay(ov))
-      pulseOverlaysRef.current = []
-    }
+      validDisasterMarkers.forEach((m: any, idx: number) => {
+        if (m.lat && m.lng && Number(m.lat) !== 0 && Number(m.lng) !== 0) {
+          const lat = Number(m.lat)
+          const lng = Number(m.lng)
+          const isEpicenter = !!m.isEpicenter || idx === 0
 
-    validDisasterMarkers.forEach((m: any, idx: number) => {
-      if (m.lat && m.lng && Number(m.lat) !== 0 && Number(m.lng) !== 0) {
-        const lat = Number(m.lat)
-        const lng = Number(m.lng)
-        const isEpicenter = !!m.isEpicenter || idx === 0
-
-        // Draw pin marker
-        const disasterFeat = new Feature({
-          geometry: new Point(fromLonLat([lng, lat])),
-          id: `disaster-${idx}`,
-          name: m.nama || (m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : (isEpicenter ? 'Pusat Episentrum Gempa NTT' : `Titik Dampak - ${m.kabupaten || 'Kabupaten'}`)),
-          rawItem: m,
-          itemType: 'disaster'
-        })
-        disasterFeat.setStyle(new Style({
-          image: new Icon({
-            src: getSvgPin(isEpicenter ? '#dc2626' : '#ea580c', 'disaster'),
-            scale: isEpicenter ? 1.05 : 0.78,
-            anchor: [0.5, 1]
-          }),
-          zIndex: isEpicenter ? 100 : 50
-        }))
-        source.addFeature(disasterFeat)
-
-        // Draw concentric impact radius rings on epicenter and radar pulse overlay on all disaster points
-        if (isEpicenter) {
-          const concentricRings = [
-            { km: 5, stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.20)' },
-            { km: 15, stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.15)' },
-            { km: 35, stroke: '#eab308', fill: 'rgba(234, 179, 8, 0.10)' },
-            { km: 60, stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.08)' }
-          ]
-
-          concentricRings.forEach((r) => {
-            const circleFeat = new Feature({
-              geometry: new CircleGeom(fromLonLat([lng, lat]), r.km * 1000),
-              id: `pulse-circle-${idx}-${r.km}`
-            })
-            circleFeat.setStyle(new Style({
-              fill: new Fill({ color: r.fill }),
-              stroke: new Stroke({
-                color: r.stroke,
-                width: 2.0,
-                lineDash: [6, 6]
-              })
-            }))
-            source.addFeature(circleFeat)
+          // Draw pin marker
+          const disasterFeat = new Feature({
+            geometry: new Point(fromLonLat([lng, lat])),
+            id: `disaster-${idx}`,
+            name: m.nama || (m.nama_desa ? `Kec. ${m.kecamatan || ''}, Desa ${m.nama_desa}` : (isEpicenter ? 'Pusat Episentrum Gempa NTT' : `Titik Dampak - ${m.kabupaten || 'Kabupaten'}`)),
+            rawItem: m,
+            itemType: 'disaster'
           })
-
-          // Inner core zone for epicenter
-          const innerCircle = new Feature({
-            geometry: new CircleGeom(fromLonLat([lng, lat]), 2500),
-            id: `pulse-inner-${idx}`
-          })
-          innerCircle.setStyle(new Style({
-            fill: new Fill({ color: 'rgba(220, 38, 38, 0.28)' }),
-            stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 })
+          disasterFeat.setStyle(new Style({
+            image: new Icon({
+              src: getSvgPin(isEpicenter ? '#dc2626' : '#ea580c', 'disaster'),
+              scale: isEpicenter ? 1.05 : 0.78,
+              anchor: [0.5, 1]
+            }),
+            zIndex: isEpicenter ? 100 : 50
           }))
-          source.addFeature(innerCircle)
-        }
+          source.addFeature(disasterFeat)
 
-        // Trigger radar overlay bip-bip denyut (always active like on TV display)
-        createPulseOverlay(lng, lat, isEpicenter ? 'danger' : 'warning')
-      }
-    })
+          // Draw concentric impact radius rings on epicenter and radar pulse overlay on all disaster points
+          if (isEpicenter) {
+            const concentricRings = [
+              { km: 5, stroke: '#ef4444', fill: 'rgba(239, 68, 68, 0.20)' },
+              { km: 15, stroke: '#f97316', fill: 'rgba(249, 115, 22, 0.15)' },
+              { km: 35, stroke: '#eab308', fill: 'rgba(234, 179, 8, 0.10)' },
+              { km: 60, stroke: '#06b6d4', fill: 'rgba(6, 182, 212, 0.08)' }
+            ]
+
+            concentricRings.forEach((r) => {
+              const circleFeat = new Feature({
+                geometry: new CircleGeom(fromLonLat([lng, lat]), r.km * 1000),
+                id: `pulse-circle-${idx}-${r.km}`
+              })
+              circleFeat.setStyle(new Style({
+                fill: new Fill({ color: r.fill }),
+                stroke: new Stroke({
+                  color: r.stroke,
+                  width: 2.0,
+                  lineDash: [6, 6]
+                })
+              }))
+              source.addFeature(circleFeat)
+            })
+
+            // Inner core zone for epicenter
+            const innerCircle = new Feature({
+              geometry: new CircleGeom(fromLonLat([lng, lat]), 2500),
+              id: `pulse-inner-${idx}`
+            })
+            innerCircle.setStyle(new Style({
+              fill: new Fill({ color: 'rgba(220, 38, 38, 0.28)' }),
+              stroke: new Stroke({ color: 'rgba(185, 28, 28, 0.95)', width: 1.8 })
+            }))
+            source.addFeature(innerCircle)
+          }
+
+          // Trigger radar overlay bip-bip denyut (always active like on TV display)
+          createPulseOverlay(lng, lat, isEpicenter ? 'danger' : 'warning')
+        }
+      })
+    }
 
     // 1.5. Add Real Earthquake Points & Epicenters (from USGS/BMKG API)
     if (showSeismicLayer && Array.isArray(earthquakePoints) && earthquakePoints.length > 0) {
@@ -2485,35 +2488,37 @@ export default function DisasterMap({
         }
       })
 
-    // 3. Add Posko List
-    const pList = Array.isArray(poskoList) ? poskoList : []
-    pList.forEach((pos: any, idx: number) => {
-      const pLat = Number(pos.latitude || pos.lat || 0)
-      const pLng = Number(pos.longitude || pos.lng || 0)
-      if (pLat !== 0 && pLng !== 0) {
-        if (isFloodEocMode) {
-          if (pLat < -11.6 || pLat > -7.5 || pLng < 118.5 || pLng > 125.5) {
-            return
+    // 3. Add Posko List (if enabled)
+    if (showPosko) {
+      const pList = Array.isArray(poskoList) ? poskoList : []
+      pList.forEach((pos: any, idx: number) => {
+        const pLat = Number(pos.latitude || pos.lat || 0)
+        const pLng = Number(pos.longitude || pos.lng || 0)
+        if (pLat !== 0 && pLng !== 0) {
+          if (isFloodEocMode) {
+            if (pLat < -11.6 || pLat > -7.5 || pLng < 118.5 || pLng > 125.5) {
+              return
+            }
           }
-        }
 
-        const pFeat = new Feature({
-          geometry: new Point(fromLonLat([pLng, pLat])),
-          id: pos.nama || `posko-${idx}`,
-          name: pos.nama || `Posko ${pos.kecamatan || ''}`,
-          rawItem: pos,
-          itemType: 'shelter'
-        })
-        pFeat.setStyle(new Style({
-          image: new Icon({
-            src: `${basePath}/posyandu.svg`,
-            scale: 0.08,
-            anchor: [0.5, 0.5]
+          const pFeat = new Feature({
+            geometry: new Point(fromLonLat([pLng, pLat])),
+            id: pos.nama || `posko-${idx}`,
+            name: pos.nama || `Posko ${pos.kecamatan || ''}`,
+            rawItem: pos,
+            itemType: 'shelter'
           })
-        }))
-        source.addFeature(pFeat)
-      }
-    })
+          pFeat.setStyle(new Style({
+            image: new Icon({
+              src: `${basePath}/posyandu.svg`,
+              scale: 0.08,
+              anchor: [0.5, 0.5]
+            })
+          }))
+          source.addFeature(pFeat)
+        }
+      })
+    }
 
     // 4. Add TCK Relawan List (if enabled)
     if (showTckLayer) {
@@ -2646,7 +2651,7 @@ export default function DisasterMap({
         pulseOverlaysRef.current = []
       }
     }
-  }, [showEocRoute, isFloodEocMode, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesRusakList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
+  }, [showEocRoute, isFloodEocMode, showMarkers, showPosko, showTckLayer, showSeismicLayer, earthquakePoints, tckList, faskesList, faskesRusakList, faskesTypeFilters, poskoList, selectedRouteTarget, routeCoords, markers, mapInstance, pulseRadius])
 
   // ─────────────────────────────────────────────
   // Legend / UI data
@@ -3422,6 +3427,32 @@ export default function DisasterMap({
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showTckLayer ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle Posko Pengungsian Layer */}
+                <div
+                  onClick={() => setShowPosko((v) => !v)}
+                  className="flex cursor-pointer items-center justify-between rounded-xl border border-sky-100 bg-sky-50/50 px-3 py-2 hover:bg-sky-100/50 transition-all"
+                >
+                  <div>
+                    <p className="text-xs font-semibold text-sky-900 flex items-center gap-1.5">
+                      <Tent className="w-4 h-4 shrink-0 text-sky-700" />
+                      Posko Pengungsian Siaga
+                      {poskoList && poskoList.length > 0 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 bg-sky-700 text-white rounded-full">
+                          {poskoList.length}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-sky-700 font-medium">Titik pos pengungsian & penyaluran logistik</p>
+                  </div>
+                  <div
+                    className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${showPosko ? 'bg-teal-600' : 'bg-slate-300'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${showPosko ? 'translate-x-4' : 'translate-x-0'}`}
                     />
                   </div>
                 </div>
