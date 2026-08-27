@@ -4492,29 +4492,29 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }
 
   return (
-    <div className="w-full space-y-5 px-4 py-5 sm:px-6 lg:px-8 bg-[#fbffff] animate-in fade-in duration-200">
+    <div className="w-full max-w-full overflow-x-hidden space-y-5 px-3 py-4 sm:px-6 lg:px-8 bg-[#fbffff] animate-in fade-in duration-200">
       {/* Back navigation & Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBack}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
             title="Kembali ke Dashboard"
           >
             <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div>
-            <h2 className="text-[20px] font-black text-slate-900 uppercase tracking-wide">
+          <div className="min-w-0">
+            <h2 className="text-[18px] sm:text-[20px] font-black text-slate-900 uppercase tracking-wide truncate">
               RINGKASAN SITUASI - {eventData.jenis_bencana}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
               Pemantauan rincian spasial faskes, logistik darurat, dan dampak korban krisis kesehatan.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 md:self-end">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 sm:justify-end shrink-0">
           <span>Terakhir Diperbarui: {formattedDate}</span>
           <button
             onClick={() => setShowApiSourcesModal(true)}
@@ -4564,13 +4564,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         </div>
       </div>
 
-      {/* EOC Top Section Layout (Responsive Flex Container containing Merged Header & Metrics) */}
+      {/* EOC Top Section Layout (Responsive Auto-Layout Flex Container) */}
       {(isNttEvent && loadingNtt && !nttApiData.summary_korban && (!detail || Number(detail.meninggal || 0) === 0)) ? (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch animate-pulse">
+        <div className="flex flex-col 2xl:flex-row gap-4 items-stretch animate-pulse">
           {/* Skeleton Card 1 & 5 */}
-          <div className="w-full lg:w-[61%] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between min-h-[220px]">
-            <div className="flex flex-col md:flex-row gap-4 flex-1">
-              <div className="w-full md:w-[26%] space-y-3 pr-2 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
+          <div className="w-full 2xl:w-[62%] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between min-h-[220px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-12 gap-4 flex-1">
+              <div className="col-span-1 md:col-span-1 2xl:col-span-3 space-y-3 pr-0 md:pr-2 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-2xl bg-slate-200" />
                   <div className="space-y-1.5 flex-1">
@@ -4583,7 +4583,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <div className="h-3 w-3/4 bg-slate-100 rounded" />
                 </div>
               </div>
-              <div className="w-full md:w-[30%] space-y-2.5 px-0 md:px-2 border-b md:border-b-0 md:border-r border-slate-100 pb-3 md:pb-0">
+              <div className="col-span-1 md:col-span-1 2xl:col-span-4 space-y-2.5 px-0 md:px-2 border-b md:border-b-0 2xl:border-r border-slate-100 pb-3 md:pb-0">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-2">
                     <div className="h-7 w-7 rounded-xl bg-slate-200 shrink-0" />
@@ -4594,7 +4594,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 ))}
               </div>
-              <div className="w-full md:w-[44%] space-y-2 pl-0 md:pl-2">
+              <div className="col-span-1 md:col-span-2 2xl:col-span-5 space-y-2 pl-0 2xl:pl-2">
                 <div className="h-3 w-44 bg-slate-200 rounded mb-2" />
                 <div className="grid grid-cols-7 gap-1.5 flex-1">
                   {[1, 2, 3, 4, 5, 6, 7].map(i => (
@@ -4607,7 +4607,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           </div>
 
           {/* Skeleton Cards 2, 3, 4 */}
-          <div className="w-full lg:w-[39%] grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-stretch">
+          <div className="w-full 2xl:w-[38%] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 items-stretch">
             {[1, 2, 3].map(i => (
               <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm flex flex-col justify-between min-h-[220px]">
                 <div className="space-y-2 text-center flex flex-col items-center justify-center flex-1">
@@ -4624,14 +4624,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           </div>
         </div>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch animate-in fade-in slide-in-from-top-3 duration-300">
+        <div className="flex flex-col 2xl:flex-row gap-4 items-stretch animate-in fade-in slide-in-from-top-3 duration-300">
 
-          {/* Card 1 & 5 Merged: Disaster Header & Characteristics Bulletin (Expanded Width ~60%) */}
-          <div className={`w-full lg:w-[61%] rounded-2xl border bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between transition hover:shadow-md ${disasterTheme.bg}`}>
-            <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+          {/* Card 1 & 5 Merged: Disaster Header & Characteristics Bulletin (Full width on laptop/tablet, ~62% on ultra-wide) */}
+          <div className={`w-full 2xl:w-[62%] rounded-2xl border bg-white p-4 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between transition hover:shadow-md ${disasterTheme.bg}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-12 gap-4 flex-1 min-h-0">
 
               {/* Col 1: Disaster Identity */}
-              <div className="w-full md:w-[26%] flex flex-col justify-between pr-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
+              <div className="col-span-1 md:col-span-1 2xl:col-span-3 flex flex-col justify-between pr-0 md:pr-3 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0 min-w-0">
                 <div className="flex items-center gap-3">
                   <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm border border-slate-200 ${disasterTheme.iconColor}`}>
                     {(() => {
@@ -4639,34 +4639,34 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       return <IconComp className="h-6.5 w-6.5" />
                     })()}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-xs font-black text-slate-500 uppercase tracking-wider block leading-none">JENIS BENCANA</span>
-                    <span className="text-2xl sm:text-3xl font-black text-slate-900 block leading-tight mt-1 uppercase tracking-tight">
+                    <span className="text-2xl sm:text-3xl font-black text-slate-900 block leading-tight mt-1 uppercase tracking-tight truncate">
                       {eventData.jenis_bencana}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3.5 md:mt-auto space-y-1.5">
-                  <p className="text-sm sm:text-base font-black text-slate-900 leading-snug truncate" title={locationFull}>
+                <div className="mt-3.5 md:mt-auto space-y-1.5 min-w-0">
+                  <p className="text-sm sm:text-base font-black text-slate-900 leading-snug line-clamp-2" title={locationFull}>
                     {locationFull}
                   </p>
                   <div className="space-y-1">
                     {disasterTheme.type === 'gempa' && bmkgWaktuDisplay && bmkgWaktuDisplay !== '-' ? (
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-700">
                         <span className="px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black shrink-0">Waktu Gempa (BMKG)</span>
-                        <span className="truncate" title={bmkgWaktuDisplay}>{bmkgWaktuDisplay}</span>
+                        <span className="truncate max-w-full" title={bmkgWaktuDisplay}>{bmkgWaktuDisplay}</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-700">
                         <span className="px-1.5 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-black shrink-0">Waktu Kejadian</span>
-                        <span className="truncate" title={eventData.tgl_kejadian || formattedDate || '-'}>{eventData.tgl_kejadian || formattedDate || '-'}</span>
+                        <span className="truncate max-w-full" title={eventData.tgl_kejadian || formattedDate || '-'}>{eventData.tgl_kejadian || formattedDate || '-'}</span>
                       </div>
                     )}
                     {formattedDate && (
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-slate-500">
                         <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold shrink-0">Tgl Laporan</span>
-                        <span className="truncate" title={formattedDate}>{formattedDate}</span>
+                        <span className="truncate max-w-full" title={formattedDate}>{formattedDate}</span>
                       </div>
                     )}
                   </div>
@@ -4674,17 +4674,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
 
               {/* Col 2: Disaster Specific Physical/Geological Parameters */}
-              <div className="w-full md:w-[30%] flex flex-col justify-center gap-3.5 px-0 md:px-2 border-b md:border-b-0 md:border-r border-slate-250/60 pb-3 md:pb-0">
+              <div className="col-span-1 md:col-span-1 2xl:col-span-4 flex flex-col justify-center gap-3 px-0 md:px-2 border-b md:border-b-0 2xl:border-r border-slate-250/60 pb-3 md:pb-0 min-w-0">
                 {dynamicCharacteristics.map((item, idx) => {
                   const IconComp = item.icon
                   return (
-                    <div key={idx} className="flex items-center gap-2.5">
+                    <div key={idx} className="flex items-center gap-2.5 min-w-0">
                       <div className="flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-white text-slate-600 border border-slate-200/90 shadow-xs shrink-0">
                         <IconComp className={`h-4.5 w-4.5 ${item.color}`} />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="text-[11px] font-extrabold text-slate-500 block uppercase leading-none tracking-wide">{item.label}</span>
-                        <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5 truncate" title={item.value}>
+                        <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5 line-clamp-1" title={item.value}>
                           {item.value}
                         </span>
                       </div>
@@ -4693,16 +4693,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 })}
               </div>
 
-              {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width ~44% - Scrollable Horizontal) */}
-              <div className="w-full md:w-[44%] flex flex-col justify-between pl-0 md:pl-2">
+              {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width - Responsive Scroll) */}
+              <div className="col-span-1 md:col-span-2 2xl:col-span-5 flex flex-col justify-between pl-0 2xl:pl-2 min-w-0">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-xs font-black text-slate-800 uppercase tracking-wider block truncate">
                       {disasterTheme.type === 'gempa'
-                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG DI KEJADIAN'
+                        ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG'
                         : disasterTheme.type === 'gunung'
-                          ? 'TREN KUALITAS UDARA (ISPU / SO2) & ANGIN DI KEJADIAN'
-                          : 'HISTORI CUACA & PARAMETER METEOROLOGI BMKG'}
+                          ? 'TREN KUALITAS UDARA (ISPU / SO2)'
+                          : 'HISTORI CUACA & PARAMETER BMKG'}
                     </span>
                     {disasterTheme.type === 'gempa' && (
                       <button
@@ -4717,7 +4717,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1.5 w-full flex-1">
+                <div className="grid grid-cols-7 gap-1.5 w-full flex-1 min-w-0 overflow-x-auto pb-1 scrollbar-thin">
                   {(disasterTheme.type === 'gempa' ? earthquakeTimeline : weatherTimeline).map((day: any, idx: number) => {
                     const isEventDay = day.offset === 0
                     const aqItem = (realtimeAirQuality && realtimeAirQuality.timeline && realtimeAirQuality.timeline[idx])
@@ -4730,7 +4730,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     return (
                       <div
                         key={day.offset}
-                        className={`flex flex-col items-center justify-between py-2 px-1 rounded-xl transition-all border w-full min-w-0 ${isEventDay
+                        className={`flex flex-col items-center justify-between py-2 px-1 rounded-xl transition-all border min-w-[50px] 2xl:min-w-0 ${isEventDay
                           ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-md ring-2 ring-rose-300/60'
                           : 'bg-white/90 border-slate-200/90 hover:bg-slate-50'
                           }`}
@@ -4809,8 +4809,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             ) : null}
           </div>
 
-          {/* Cards 2, 3, 4 Container (Slightly Compacted ~39% Width) */}
-          <div className="w-full lg:w-[39%] grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3.5 items-stretch">
+          {/* Cards 2, 3, 4 Container (Responsive auto-layout: 3 cols row on laptop/tablet, ~38% on ultra-wide) */}
+          <div className="w-full 2xl:w-[38%] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 items-stretch min-w-0">
             {/* Card 2: Total Korban */}
             <div
               onClick={() => {
@@ -4818,7 +4818,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 setShowKabupatenMatrixModal(true)
               }}
               title="Klik untuk melihat Matriks Korban per Kabupaten"
-              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition-all duration-200 hover:shadow-lg hover:scale-[1.015] cursor-pointer group relative overflow-hidden ${disasterTheme.bg}`}
+              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[220px] transition-all duration-200 hover:shadow-lg hover:scale-[1.015] cursor-pointer group relative overflow-hidden ${disasterTheme.bg}`}
             >
               <div className="absolute top-2 right-2.5 opacity-60 group-hover:opacity-100 transition-opacity">
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-slate-900/5 text-slate-600 group-hover:bg-teal-700 group-hover:text-white transition-colors flex items-center gap-0.5">
@@ -4827,7 +4827,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
                 <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">TOTAL KORBAN</span>
-                <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">{totalKorbanReal.toLocaleString('id-ID')}</span>
+                <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">{totalKorbanReal.toLocaleString('id-ID')}</span>
                 {!isNttEvent && (
                   <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
                     {korbanTrendInfo.label}
@@ -4836,16 +4836,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               <div className={`border-t border-slate-300/40 pt-2.5 mt-auto grid ${isNttEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-center shrink-0`}>
                 <div>
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Meninggal</span>
                 </div>
                 <div className={`${isNttEvent ? 'border-l' : 'border-x'} border-slate-300/40 px-0.5`}>
-                  <span className="text-lg sm:text-xl font-black text-amber-600 block leading-none">{breakdown.luka}</span>
+                  <span className="text-base sm:text-lg font-black text-amber-600 block leading-none">{breakdown.luka}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Luka</span>
                 </div>
                 {!isNttEvent && (
                   <div>
-                    <span className="text-lg sm:text-xl font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
+                    <span className="text-base sm:text-lg font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Hilang</span>
                   </div>
                 )}
@@ -4859,7 +4859,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 setShowKabupatenMatrixModal(true)
               }}
               title="Klik untuk melihat Matriks Faskes Terdampak per Kabupaten"
-              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition-all duration-200 hover:shadow-lg hover:scale-[1.015] cursor-pointer group relative overflow-hidden ${disasterTheme.bg}`}
+              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[220px] transition-all duration-200 hover:shadow-lg hover:scale-[1.015] cursor-pointer group relative overflow-hidden ${disasterTheme.bg}`}
             >
               <div className="absolute top-2 right-2.5 opacity-60 group-hover:opacity-100 transition-opacity">
                 <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-slate-900/5 text-slate-600 group-hover:bg-teal-700 group-hover:text-white transition-colors flex items-center gap-0.5">
@@ -4868,7 +4868,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
                 <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">FASKES DI AREA</span>
-                <span className="text-3xl sm:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">
+                <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">
                   {totalFaskes.toLocaleString('id-ID')}
                 </span>
                 {!isNttEvent && (
@@ -4879,19 +4879,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               {isNttEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
-                  <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">{totalFaskes.toLocaleString('id-ID')}</span>
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{totalFaskes.toLocaleString('id-ID')}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">DISIAGAKAN</span>
                 </div>
               ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
                   <div className="border-r border-slate-300/40 px-0.5">
-                    <span className="text-lg sm:text-xl font-black text-slate-900 block leading-none">
+                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">
                       {operasionalFaskes}
                     </span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">OPERASIONAL</span>
                   </div>
                   <div className="px-0.5">
-                    <span className="text-lg sm:text-xl font-black text-rose-600 block leading-none">
+                    <span className="text-base sm:text-lg font-black text-rose-600 block leading-none">
                       {terdampakFaskes}
                     </span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">TERDAMPAK</span>
@@ -4902,12 +4902,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
             {/* Card 4: Penduduk Terdampak */}
             <div
-              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[240px] transition-all duration-200 ${disasterTheme.bg}`}
+              className={`rounded-2xl border p-3.5 shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[220px] transition-all duration-200 ${disasterTheme.bg}`}
             >
               <div className="text-center flex-1 flex flex-col justify-center items-center">
                 <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">PENDUDUK TERDAMPAK</span>
-                <div className="flex items-baseline justify-center gap-1 mt-2">
-                  <span className="text-3xl sm:text-4xl font-black text-slate-900 leading-none group-hover:text-teal-800 transition-colors">
+                <div className="flex items-baseline justify-center gap-1 mt-2 min-w-0">
+                  <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 leading-none group-hover:text-teal-800 transition-colors truncate">
                     {pendudukTerdampakDisplay}
                   </span>
                   {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-500">Jiwa</span>}
@@ -4920,21 +4920,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               {isNttEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
-                  <span className="text-lg sm:text-xl font-black text-blue-900 block leading-none">{(breakdown.pengungsi || 95871).toLocaleString('id-ID')}</span>
+                  <span className="text-base sm:text-lg font-black text-blue-900 block leading-none">{(breakdown.pengungsi || 95871).toLocaleString('id-ID')}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">PENGUNGSI TERDATA</span>
                 </div>
               ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
                   <div className="min-w-0 px-0.5">
-                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 block leading-none truncate" title={balitaDisplay}>{balitaDisplay}</span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Balita</span>
                   </div>
                   <div className="border-x border-slate-300/40 min-w-0 px-0.5">
-                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={lansiaDisplay}>{lansiaDisplay}</span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 block leading-none truncate" title={lansiaDisplay}>{lansiaDisplay}</span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Lansia</span>
                   </div>
                   <div className="min-w-0 px-0.5">
-                    <span className="text-base sm:text-lg font-black text-slate-900 block leading-none truncate" title={bumilDisplay}>{bumilDisplay}</span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 block leading-none truncate" title={bumilDisplay}>{bumilDisplay}</span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Bumil</span>
                   </div>
                 </div>

@@ -467,14 +467,14 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   }, [notifOpen])
 
   return (
-    <header className="w-full border-b-2 border-teal-400/25 bg-white">
-      <div className="relative flex min-h-[118px] items-stretch overflow-visible">
+    <header className="w-full max-w-full border-b-2 border-teal-400/25 bg-white overflow-hidden">
+      <div className="relative flex min-h-[118px] items-stretch overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
           style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/${(pathname === '/gempa-ntt' || pathname === '/dashboard-eoc/gempa-ntt' || pathname?.includes('gempa-ntt')) ? 'bg header_ntt.webp' : 'bg header.png'}')` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/82 to-white/92" />
-        <div className="relative grid w-full gap-5 px-4 py-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="relative grid w-full max-w-full gap-4 sm:gap-5 px-4 py-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="flex min-w-0 items-center gap-4">
             {!(pathname === '/gempa-ntt' || pathname === '/dashboard-eoc/gempa-ntt' || pathname?.includes('gempa-ntt')) && (
               <button
@@ -496,7 +496,7 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
                 priority
               />
               <div className="min-w-0 border-teal-200/80 md:border-l md:pl-5">
-                <h1 className="max-w-[720px] text-lg sm:text-2xl md:text-3xl font-extrabold leading-tight tracking-normal text-slate-900 uppercase">
+                <h1 className="max-w-[720px] text-lg sm:text-2xl md:text-3xl font-extrabold leading-tight tracking-normal text-slate-900 uppercase break-words">
                   {headerTitle}
                 </h1>
                 <p className="mt-2 max-w-[760px] text-xs leading-relaxed text-slate-600 md:text-sm lg:text-base hidden sm:block">
