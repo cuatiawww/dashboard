@@ -5902,21 +5902,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <span className="ml-1 px-2 py-0.5 rounded-full bg-teal-700 text-white text-[10px] font-black">{tckTotal.toLocaleString('id-ID')}</span>
               )}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMatrixTab('datastudio_kluster')
-                setIsDataStudioIframeLoading(true)
-              }}
-              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'datastudio_kluster'
-                ? 'bg-sky-50 text-sky-900 border-sky-400 shadow-sm font-black'
-                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-            >
-              <LayoutDashboard className="h-4 w-4 text-sky-600" />
-              Dukungan Kluster (Data Studio)
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-sky-700 text-white text-[10px] font-black">Live</span>
-            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -7621,20 +7607,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
             {/* ── TCK Tab ── */}
             {matrixTab === 'tck' && (() => {
-              const filteredTck = tckRelawan.filter(r => {
-                const q = tckSearch.toLowerCase()
-                const matchSearch = !q ||
-                  (r.nama_lengkap || '').toLowerCase().includes(q) ||
-                  (r.golongan || '').toLowerCase().includes(q) ||
-                  (r.spesifikasi || '').toLowerCase().includes(q) ||
-                  (r.kab_kota || '').toLowerCase().includes(q)
-                const matchTckTab =
-                  tckTab === 'semua' ? true
-                    : tckTab === 'nakes' ? (r.kategori || '').toLowerCase() === 'nakes'
-                      : (r.organisasi || r.nama_tim_emt || '').toLowerCase().includes('emt')
-                return matchSearch && matchTckTab
-              })
-
+              // ── Aggregate computations ──
               const golonganColors: Record<string, string> = {
                 'Tenaga Keperawatan': 'bg-blue-50 text-blue-700 border-blue-200',
                 'Tenaga Medis': 'bg-teal-50 text-teal-700 border-teal-200',
@@ -7651,12 +7624,44 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 return 'bg-slate-50 text-slate-700 border-slate-200'
               }
 
+              // Panel 1 – Jumlah per Profesi/Golongan
               const countByGolongan: Record<string, number> = {}
-              filteredTck.forEach(r => {
+              tckRelawan.forEach(r => {
                 const g = r.golongan || 'Lainnya'
                 countByGolongan[g] = (countByGolongan[g] || 0) + 1
               })
-              const topGolongan = Object.entries(countByGolongan).sort((a, b) => b[1] - a[1]).slice(0, 3)
+              const sortedGolongan = Object.entries(countByGolongan).sort((a, b) => b[1] - a[1])
+
+              // Panel 2 – Proporsi Kategori Tim
+              const countByKategori: Record<string, number> = {}
+              tckRelawan.forEach(r => {
+                const kat = r.spesifikasi || r.nama_tim_emt || r.kategori || 'Umum'
+                countByKategori[kat] = (countByKategori[kat] || 0) + 1
+              })
+              const sortedKategori = Object.entries(countByKategori).sort((a, b) => b[1] - a[1]).slice(0, 10)
+
+              // Panel 3 – Relawan Aktif Bertugas per Profesi
+              const aktifRelawan = tckRelawan.filter(r =>
+                r.status_aktif === true || r.status_aktif === 1 ||
+                (r.status || '').toLowerCase().includes('aktif') ||
+                (r.status || '').toLowerCase().includes('bertugas')
+              )
+              const countAktifByGolongan: Record<string, number> = {}
+              aktifRelawan.forEach(r => {
+                const g = r.golongan || 'Lainnya'
+                countAktifByGolongan[g] = (countAktifByGolongan[g] || 0) + 1
+              })
+              const sortedAktif = Object.entries(countAktifByGolongan).sort((a, b) => b[1] - a[1])
+
+              // Panel 4 – Per Kota Penempatan
+              const countByKota: Record<string, number> = {}
+              tckRelawan.forEach(r => {
+                const kota = r.kab_kota || r.provinsi || 'Tidak Diketahui'
+                countByKota[kota] = (countByKota[kota] || 0) + 1
+              })
+              const sortedKota = Object.entries(countByKota).sort((a, b) => b[1] - a[1]).slice(0, 15)
+
+              const topGolongan = sortedGolongan.slice(0, 3)
 
               return (
                 <div className="space-y-4">
@@ -7712,134 +7717,147 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-4">
-                      {/* Summary mini cards */}
+                    <div className="flex flex-col gap-5">
+                      {/* Summary hero card */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="rounded-xl bg-teal-700 text-white px-4 py-3 flex flex-col">
+                        <div className="rounded-xl bg-teal-700 text-white px-4 py-3 flex flex-col col-span-2 sm:col-span-1">
                           <span className="text-[10px] font-bold uppercase opacity-80">{isNttEvent ? 'Total TCK' : 'Total Relawan'}</span>
-                          <span className="text-2xl font-black mt-1">{tckTotal.toLocaleString('id-ID')}</span>
+                          <span className="text-3xl font-black mt-1">{tckTotal.toLocaleString('id-ID')}</span>
                           <span className="text-[10px] opacity-70 mt-0.5 truncate">di {eventData.provinsi || eventData.kabupaten}</span>
                         </div>
                         {topGolongan.map(([golongan, count]) => (
                           <div key={golongan} className={`rounded-xl border px-3 py-3 flex flex-col ${getGolStyle(golongan)}`}>
                             <span className="text-[9px] font-bold uppercase opacity-70 leading-tight">{golongan.replace('Tenaga ', '')}</span>
-                            <span className="text-xl font-black mt-1">{count}</span>
+                            <span className="text-2xl font-black mt-1">{count.toLocaleString('id-ID')}</span>
                             <span className="text-[9px] opacity-60 mt-0.5">{isNttEvent ? 'personil' : 'relawan'}</span>
                           </div>
                         ))}
                       </div>
 
-                      {/* Filters */}
-                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
-                          {(['semua', 'nakes', 'emt'] as const).map(tab => (
-                            <button key={tab} onClick={() => setTckTab(tab)}
-                              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold capitalize transition ${tckTab === tab ? 'bg-teal-700 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}>
-                              {tab === 'semua' ? 'Semua' : tab === 'nakes' ? 'Nakes' : 'Tim EMT'}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="relative flex-1 w-full sm:max-w-xs">
-                          <input type="text" placeholder="Cari nama, golongan, wilayah..." value={tckSearch}
-                            onChange={e => setTckSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-[11px] rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-teal-300 placeholder:text-slate-400" />
-                          <svg className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-semibold shrink-0">
-                          <span className="font-black text-slate-700">{filteredTck.length}</span> {isNttEvent ? 'personil TCK' : 'relawan'}
-                        </span>
-                      </div>
+                      {/* 4 Aggregate Panels Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                      {/* Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[480px] overflow-y-auto pr-1">
-                        {filteredTck.slice(0, tckDisplayLimit).map((r, idx) => (
-                          <div key={r.id_user || idx}
-                            className="bg-white rounded-xl border border-slate-200/80 p-3.5 shadow-xs hover:shadow-md hover:border-teal-200 transition-all duration-200 flex flex-col gap-2.5">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full overflow-hidden border-2 border-teal-100 bg-teal-50 shrink-0">
-                                {r.foto && !r.foto.includes('user.png') ? (
-                                  <img src={r.foto} alt={r.nama_lengkap} className="h-full w-full object-cover"
-                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                                ) : (
-                                  <div className="h-full w-full flex items-center justify-center">
-                                    <UserCheck className="h-4 w-4 text-teal-600" />
+                        {/* Panel 1 — Jumlah Relawan per Profesi/Jenis Tenaga */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-teal-50/60">
+                            <UserCheck className="h-4 w-4 text-teal-700 shrink-0" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">Jumlah Relawan / Profesi &amp; Jenis Tenaga</span>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {sortedGolongan.length === 0 ? (
+                              <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
+                            ) : sortedGolongan.map(([golongan, count]) => {
+                              const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              return (
+                                <div key={golongan} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border shrink-0 ${getGolStyle(golongan)}`}>{golongan.replace('Tenaga ', '')}</span>
+                                    <span className="text-[11px] text-slate-600 font-semibold truncate">{golongan}</span>
                                   </div>
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[12px] font-black text-slate-900 leading-tight truncate">{maskName(r.nama_lengkap || r.nama || 'Tidak Diketahui')}</p>
-                                <p className="text-[10px] text-slate-500 font-semibold truncate">{r.kab_kota || r.provinsi || '-'}</p>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {r.golongan && <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border ${getGolStyle(r.golongan)}`}>{r.golongan.replace('Tenaga ', '')}</span>}
-                              {r.spesifikasi && <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200">{r.spesifikasi}</span>}
-                            </div>
-                            <div className="space-y-1 text-[11px]">
-                              {r.pekerjaan && <div className="flex items-center gap-1.5 text-slate-600"><BriefcaseMedical className="h-3 w-3 text-slate-400 shrink-0" /><span className="truncate">{r.pekerjaan}</span></div>}
-                              {(r.nama_tim_emt || r.organisasi) && <div className="flex items-center gap-1.5 text-slate-600"><Building2 className="h-3 w-3 text-slate-400 shrink-0" /><span className="truncate font-semibold">{r.nama_tim_emt || r.organisasi}</span></div>}
-                              <div className="flex items-center justify-between pt-1 border-t border-slate-100 mt-1">
-                                <div className="flex items-center gap-1.5 text-slate-500">
-                                  <Users className="h-3 w-3 shrink-0" />
-                                  <span>{r.jenis_kelamin || 'N/A'} · {r.usia ? `${r.usia} th` : 'N/A'}</span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
+                                    <span className="text-[10px] text-slate-400 font-semibold w-8 text-right">{pct}%</span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => {
-                                      // Scroll smoothly to map
-                                      const mapEl = document.getElementById('peta-detail')
-                                      if (mapEl) {
-                                        mapEl.scrollIntoView({ behavior: 'smooth' })
-                                      }
-                                      handleSelectTarget(r, 'tck')
-                                    }}
-                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[10px] font-bold hover:bg-teal-100 transition shadow-2xs"
-                                    title="Pilih dan Buat Rute ke Relawan TCK ini"
-                                  >
-                                    <Compass className="h-3 w-3 text-teal-700" />
-                                    Rute
-                                  </button>
-                                  {r.nomor_telp && (
-                                    <a href={`https://wa.me/${r.nomor_telp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20${encodeURIComponent(r.nama_lengkap || 'Relawan TCK')},%20kami%20menghubungi%20dari%20EOC%20SIPKK%20Kemenkes.`}
-                                      target="_blank" rel="noopener noreferrer"
-                                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold hover:bg-emerald-100 transition shadow-2xs">
-                                      <Phone className="h-3 w-3" />WA
-                                    </a>
-                                  )}
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Panel 2 — Proporsi Berdasarkan Kategori Tim */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-emerald-50/60">
+                            <Users className="h-4 w-4 text-emerald-700 shrink-0" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900">Proporsi Berdasarkan Kategori Tim</span>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {sortedKategori.length === 0 ? (
+                              <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
+                            ) : sortedKategori.map(([kat, count]) => {
+                              const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              return (
+                                <div key={kat} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-semibold text-slate-700 truncate">{kat}</span>
+                                    </div>
+                                    <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                                    <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
+                                    <span className="text-[10px] text-slate-400 font-semibold w-8 text-right">{pct}%</span>
+                                  </div>
                                 </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Panel 3 — Relawan Aktif Bertugas per Profesi */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-blue-50/60">
+                            <HeartPulse className="h-4 w-4 text-blue-700 shrink-0" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-blue-900">Relawan Masih Aktif Bertugas / Profesi</span>
+                            {aktifRelawan.length > 0 && (
+                              <span className="ml-auto px-2 py-0.5 rounded-full bg-blue-700 text-white text-[9px] font-black">{aktifRelawan.length.toLocaleString('id-ID')}</span>
+                            )}
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {sortedAktif.length === 0 ? (
+                              <div className="text-center py-6 px-4">
+                                <p className="text-[11px] text-slate-400 font-semibold">Data status aktif tidak tersedia</p>
+                                <p className="text-[10px] text-slate-300 mt-1">Semua {tckTotal.toLocaleString('id-ID')} personil terregistrasi aktif di wilayah</p>
                               </div>
-                            </div>
+                            ) : sortedAktif.map(([golongan, count]) => {
+                              const pct = aktifRelawan.length > 0 ? Math.round((count / aktifRelawan.length) * 100) : 0
+                              return (
+                                <div key={golongan} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border shrink-0 ${getGolStyle(golongan)}`}>{golongan.replace('Tenaga ', '')}</span>
+                                    <span className="text-[11px] text-slate-600 font-semibold truncate">{golongan}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
+                                    <span className="text-[10px] text-slate-400 font-semibold w-8 text-right">{pct}%</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
-                        ))}
-                        {filteredTck.length > tckDisplayLimit && (
-                          <div className="col-span-full text-center py-4 px-3 bg-slate-50 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-center justify-center gap-2">
-                            <span className="text-xs text-slate-600 font-semibold">
-                              Menampilkan <strong className="text-teal-900">{tckDisplayLimit}</strong> dari <strong className="text-slate-900">{filteredTck.length}</strong> relawan
-                            </span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setTckDisplayLimit(prev => Math.min(prev + 30, filteredTck.length))}
-                                className="px-3 py-1.5 rounded-lg bg-white border border-teal-300 text-teal-800 text-xs font-bold hover:bg-teal-50 transition shadow-2xs"
-                              >
-                                Muat Lebih Banyak (+30)
-                              </button>
-                              <button
-                                onClick={() => setTckDisplayLimit(filteredTck.length)}
-                                className="px-3 py-1.5 rounded-lg bg-teal-700 text-white text-xs font-bold hover:bg-teal-800 transition shadow-2xs"
-                              >
-                                Tampilkan Semua ({filteredTck.length})
-                              </button>
-                            </div>
+                        </div>
+
+                        {/* Panel 4 — Jumlah Relawan per Kota Penempatan */}
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-amber-50/60">
+                            <MapPin className="h-4 w-4 text-amber-700 shrink-0" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900">Jumlah Relawan per Kota Penempatan</span>
                           </div>
-                        )}
-                        {filteredTck.length === 0 && (
-                          <div className="col-span-full text-center py-8 text-slate-400">
-                            <p className="text-sm font-semibold">Tidak ada relawan yang cocok</p>
+                          <div className="divide-y divide-slate-100 max-h-[320px] overflow-y-auto">
+                            {sortedKota.length === 0 ? (
+                              <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
+                            ) : sortedKota.map(([kota, count]) => {
+                              const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              return (
+                                <div key={kota} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-[11px] font-semibold text-slate-700 truncate block">{kota}</span>
+                                    <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                      <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                                    <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
+                                    <span className="text-[10px] text-slate-400 font-semibold w-8 text-right">{pct}%</span>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
-                        )}
-                      </div>
+                        </div>
+
+                      </div>{/* end 4 panels grid */}
 
                       <div className="flex items-start gap-2 bg-teal-50/80 border border-teal-100 rounded-xl px-3.5 py-2.5 text-[11px] text-teal-800 font-semibold">
                         <AlertTriangle className="h-4 w-4 text-teal-600 shrink-0 mt-0.5" />
@@ -7851,7 +7869,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )
             })()}
 
-            {matrixTab === 'datastudio_kluster' && (
+            {false && matrixTab === 'datastudio_kluster' && (
               <div className="space-y-4 pt-1">
                 {/* Header Action Bar */}
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-gradient-to-r from-sky-900/10 via-blue-900/5 to-slate-900/5 p-4 rounded-2xl border border-sky-200/80 shadow-2xs">
