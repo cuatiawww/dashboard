@@ -83,6 +83,7 @@ interface DetailKejadianPageProps {
   onBack: () => void
   onDetailLoaded?: (detailData: any) => void
   isLoading?: boolean
+  hideBack?: boolean
 }
 
 const safeParseInt = (val: any): number => {
@@ -237,7 +238,7 @@ const formatPerkembangan = (p: any): string => {
 }
 
 
-export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoaded, isLoading }: DetailKejadianPageProps) {
+export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoaded, isLoading, hideBack }: DetailKejadianPageProps) {
   const { token, user, isGuest: storeIsGuest } = useAuthStore()
   const isGuest = storeIsGuest || !token || !user
 
@@ -4501,6 +4502,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       {/* Back navigation & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5 min-w-0">
         <div className="flex items-center gap-3 min-w-0">
+          {!hideBack && (
           <button
             onClick={onBack}
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
@@ -4510,6 +4512,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
+          )}
           <div className="min-w-0">
             <h2 className="text-[18px] sm:text-[20px] font-black text-slate-900 uppercase tracking-wide truncate">
               RINGKASAN SITUASI - {eventData.jenis_bencana}
