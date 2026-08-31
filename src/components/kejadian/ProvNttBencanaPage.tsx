@@ -427,6 +427,7 @@ export default function ProvNttBencanaPage() {
         selectedEvent={eventData}
         onBack={() => router.push('/')}
         isLoading={isLoadingDate}
+        hideBack={true}
       />
     </div>
   )
