@@ -60,6 +60,7 @@ import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
+import RelawanMobilisasiTab from './RelawanMobilisasiTab'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -246,7 +247,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'relawan_mobilisasi' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
   const [situasiFaskesSubTab, setSituasiFaskesSubTab] = useState<'rs' | 'puskesmas'>('rs')
   const [situasiKabFilter, setSituasiKabFilter] = useState<string>('semua')
   const [situasiTanggalFilter, setSituasiTanggalFilter] = useState<string>('terbaru')
@@ -452,6 +453,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }>
   } | null>(null)
 
+  // Live Relawan Mobilisasi Badge Count State
+  const [relawanBadgeCount, setRelawanBadgeCount] = useState<number>(0)
+
   // Master Data Faskes Filtering & Pagination State
   const [masterFaskesTypeFilter, setMasterFaskesTypeFilter] = useState<'all' | 'rs' | 'puskesmas' | 'klinik' | 'pustu'>('all')
   const [masterFaskesKabFilter, setMasterFaskesKabFilter] = useState<string>('semua')
@@ -548,6 +552,47 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       active = false
     }
   }, [isNttEvent])
+
+  // Fetch Live Relawan Mobilisasi Total Count dari Endpoint /api/relawan-data
+  useEffect(() => {
+    let active = true
+    const fetchRelawanCount = async () => {
+      try {
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+        const res = await fetch(`${basePath}/api/relawan-data?type=relawan`, { cache: 'no-store' })
+        if (res.ok) {
+          const json = await res.json()
+          if (active && json) {
+            const regRows = json.registrasi_relawan?.data_detail || []
+            const rawDates = json.registrasi_relawan?.daftar_tanggal || json.relawan_aktif_harian?.daftar_tanggal || []
+            const now = new Date()
+            const y = now.getFullYear()
+            const m = String(now.getMonth() + 1).padStart(2, '0')
+            const d = String(now.getDate()).padStart(2, '0')
+            const todayStr = `${y}-${m}-${d}`
+            const validDates = rawDates.filter((dt: string) => dt <= todayStr)
+            const datesToUse = validDates.length > 0 ? validDates : rawDates
+
+            let totalReg = 0
+            if (regRows.length > 0) {
+              regRows.forEach((r: any) => {
+                datesToUse.forEach((dt: string) => {
+                  totalReg += Number(r.harian?.[dt] || 0)
+                })
+              })
+            }
+
+            const finalCount = totalReg > 0 ? totalReg : (json.registrasi_relawan?.total_registrasi_kumulatif || json.summary?.total_registrasi_kumulatif || 0)
+            if (finalCount > 0) setRelawanBadgeCount(finalCount)
+          }
+        }
+      } catch (e) {
+        // silent fail
+      }
+    }
+    fetchRelawanCount()
+    return () => { active = false }
+  }, [])
 
   const [nttApiData, setNttApiData] = useState<{
     pasien_rs: any[]
@@ -5905,6 +5950,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
             <button
               type="button"
+              onClick={() => setMatrixTab('relawan_mobilisasi')}
+              className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'relawan_mobilisasi'
+                ? 'bg-cyan-50 text-cyan-900 border-cyan-400 shadow-sm font-black'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+            >
+              <Users className="h-4 w-4 text-cyan-600" />
+              Mobilisasi &amp; Relawan
+              {relawanBadgeCount > 0 ? (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-cyan-700 text-white text-[10px] font-black">{relawanBadgeCount.toLocaleString('id-ID')}</span>
+              ) : (
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-cyan-700 text-white text-[10px] font-black">Live</span>
+              )}
+            </button>
+
+            <button
+              type="button"
               onClick={() => {
                 setMatrixTab('datastudio_penyakit')
                 setIsDataStudioPenyakitIframeLoading(true)
@@ -7625,9 +7687,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               }
 
               // Panel 1 – Jumlah per Profesi/Golongan
+              // Panel 1 – Berdasarkan Jenis Tenaga
               const countByGolongan: Record<string, number> = {}
               tckRelawan.forEach(r => {
-                const g = r.golongan || 'Lainnya'
+                let g = (r.golongan || '').trim()
+                if (!g || g === '-' || g === '--' || g === '---') g = 'Lainnya'
                 countByGolongan[g] = (countByGolongan[g] || 0) + 1
               })
               const sortedGolongan = Object.entries(countByGolongan).sort((a, b) => b[1] - a[1])
@@ -7635,28 +7699,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               // Panel 2 – Proporsi Kategori Tim
               const countByKategori: Record<string, number> = {}
               tckRelawan.forEach(r => {
-                const kat = r.spesifikasi || r.nama_tim_emt || r.kategori || 'Umum'
+                let kat = (r.spesifikasi || r.nama_tim_emt || r.kategori || '').trim()
+                if (!kat || kat === '-' || kat === '--' || kat === '---') kat = 'Lainnya'
                 countByKategori[kat] = (countByKategori[kat] || 0) + 1
               })
               const sortedKategori = Object.entries(countByKategori).sort((a, b) => b[1] - a[1]).slice(0, 10)
 
-              // Panel 3 – Relawan Aktif Bertugas per Profesi
-              const aktifRelawan = tckRelawan.filter(r =>
-                r.status_aktif === true || r.status_aktif === 1 ||
-                (r.status || '').toLowerCase().includes('aktif') ||
-                (r.status || '').toLowerCase().includes('bertugas')
-              )
-              const countAktifByGolongan: Record<string, number> = {}
-              aktifRelawan.forEach(r => {
-                const g = r.golongan || 'Lainnya'
-                countAktifByGolongan[g] = (countAktifByGolongan[g] || 0) + 1
-              })
-              const sortedAktif = Object.entries(countAktifByGolongan).sort((a, b) => b[1] - a[1])
-
-              // Panel 4 – Per Kota Penempatan
+              // Panel 3 – Berdasarkan Lokasi Domisili
               const countByKota: Record<string, number> = {}
               tckRelawan.forEach(r => {
-                const kota = r.kab_kota || r.provinsi || 'Tidak Diketahui'
+                let kota = (r.kab_kota || r.provinsi || '').trim()
+                if (!kota || kota === '-' || kota === '--' || kota === '---' || kota.toLowerCase().includes('tidak')) kota = 'Lainnya'
                 countByKota[kota] = (countByKota[kota] || 0) + 1
               })
               const sortedKota = Object.entries(countByKota).sort((a, b) => b[1] - a[1]).slice(0, 15)
@@ -7666,11 +7719,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               return (
                 <div className="space-y-4">
                   {/* Header sub-section */}
-                  <div className="bg-gradient-to-r from-teal-50 to-emerald-50 rounded-xl border border-teal-200/70 p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <div>
                       <div className="flex items-center gap-2">
                         <UserCheck className="h-4 w-4 text-teal-700" />
-                        <span className="text-[12px] font-black uppercase tracking-wider text-teal-900">
+                        <span className="text-[12px] font-black uppercase tracking-wider text-slate-800">
                           {isNttEvent ? 'TCK Terregistrasi Wilayah' : 'Tenaga Cadangan Kesehatan (TCK) Kemkes RI'}
                         </span>
                         {tckTotal > 0 && (
@@ -7720,39 +7773,44 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     <div className="flex flex-col gap-5">
                       {/* Summary hero card */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="rounded-xl bg-teal-700 text-white px-4 py-3 flex flex-col col-span-2 sm:col-span-1">
-                          <span className="text-[10px] font-bold uppercase opacity-80">{isNttEvent ? 'Total TCK' : 'Total Relawan'}</span>
-                          <span className="text-3xl font-black mt-1">{tckTotal.toLocaleString('id-ID')}</span>
-                          <span className="text-[10px] opacity-70 mt-0.5 truncate">di {eventData.provinsi || eventData.kabupaten}</span>
+                        <div className="rounded-xl bg-white border border-teal-200 px-4 py-3 flex flex-col col-span-2 sm:col-span-1 shadow-xs">
+                          <span className="text-[10px] font-bold uppercase text-teal-800">{isNttEvent ? 'Total TCK' : 'Total Relawan'}</span>
+                          <span className="text-3xl font-black mt-1 text-slate-900">{tckTotal.toLocaleString('id-ID')}</span>
+                          <span className="text-[10px] text-slate-500 mt-0.5 truncate">di {eventData.provinsi || eventData.kabupaten}</span>
                         </div>
-                        {topGolongan.map(([golongan, count]) => (
-                          <div key={golongan} className={`rounded-xl border px-3 py-3 flex flex-col ${getGolStyle(golongan)}`}>
-                            <span className="text-[9px] font-bold uppercase opacity-70 leading-tight">{golongan.replace('Tenaga ', '')}</span>
-                            <span className="text-2xl font-black mt-1">{count.toLocaleString('id-ID')}</span>
-                            <span className="text-[9px] opacity-60 mt-0.5">{isNttEvent ? 'personil' : 'relawan'}</span>
-                          </div>
-                        ))}
+                        {topGolongan.map(([golongan, count]) => {
+                          const displayGol = (golongan === '-' || golongan === '--' || !golongan) ? 'Lainnya' : golongan.replace('Tenaga ', '')
+                          return (
+                            <div key={golongan} className={`rounded-xl border px-3 py-3 flex flex-col ${getGolStyle(golongan)}`}>
+                              <span className="text-[9px] font-bold uppercase opacity-70 leading-tight">{displayGol}</span>
+                              <span className="text-2xl font-black mt-1">{count.toLocaleString('id-ID')}</span>
+                              <span className="text-[9px] opacity-60 mt-0.5">{isNttEvent ? 'personil' : 'relawan'}</span>
+                            </div>
+                          )
+                        })}
                       </div>
 
-                      {/* 4 Aggregate Panels Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* 3 Aggregate Panels Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                        {/* Panel 1 — Jumlah Relawan per Profesi/Jenis Tenaga */}
+                        {/* Panel 1 — Berdasarkan Jenis Tenaga */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                           <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-teal-50/60">
                             <UserCheck className="h-4 w-4 text-teal-700 shrink-0" />
-                            <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">Jumlah Relawan / Profesi &amp; Jenis Tenaga</span>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-teal-900">Berdasarkan Jenis Tenaga</span>
                           </div>
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
                             {sortedGolongan.length === 0 ? (
                               <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
                             ) : sortedGolongan.map(([golongan, count]) => {
                               const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              const displayBadge = (golongan === '-' || golongan === '--' || !golongan) ? 'Lainnya' : golongan.replace('Tenaga ', '')
+                              const displayLabel = (golongan === '-' || golongan === '--' || !golongan) ? 'Lainnya' : golongan
                               return (
                                 <div key={golongan} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
                                   <div className="flex items-center gap-2 min-w-0">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border shrink-0 ${getGolStyle(golongan)}`}>{golongan.replace('Tenaga ', '')}</span>
-                                    <span className="text-[11px] text-slate-600 font-semibold truncate">{golongan}</span>
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border shrink-0 ${getGolStyle(golongan)}`}>{displayBadge}</span>
+                                    <span className="text-[11px] text-slate-600 font-semibold truncate">{displayLabel}</span>
                                   </div>
                                   <div className="flex items-center gap-2 shrink-0">
                                     <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
@@ -7770,16 +7828,17 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <Users className="h-4 w-4 text-emerald-700 shrink-0" />
                             <span className="text-[11px] font-black uppercase tracking-wider text-emerald-900">Proporsi Berdasarkan Kategori Tim</span>
                           </div>
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
                             {sortedKategori.length === 0 ? (
                               <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
                             ) : sortedKategori.map(([kat, count]) => {
                               const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              const displayKat = (kat === '-' || kat === '--' || !kat) ? 'Lainnya' : kat
                               return (
                                 <div key={kat} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-semibold text-slate-700 truncate">{kat}</span>
+                                      <span className="text-[11px] font-semibold text-slate-700 truncate">{displayKat}</span>
                                     </div>
                                     <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                       <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
@@ -7795,54 +7854,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           </div>
                         </div>
 
-                        {/* Panel 3 — Relawan Aktif Bertugas per Profesi */}
-                        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-blue-50/60">
-                            <HeartPulse className="h-4 w-4 text-blue-700 shrink-0" />
-                            <span className="text-[11px] font-black uppercase tracking-wider text-blue-900">Relawan Masih Aktif Bertugas / Profesi</span>
-                            {aktifRelawan.length > 0 && (
-                              <span className="ml-auto px-2 py-0.5 rounded-full bg-blue-700 text-white text-[9px] font-black">{aktifRelawan.length.toLocaleString('id-ID')}</span>
-                            )}
-                          </div>
-                          <div className="divide-y divide-slate-100">
-                            {sortedAktif.length === 0 ? (
-                              <div className="text-center py-6 px-4">
-                                <p className="text-[11px] text-slate-400 font-semibold">Data status aktif tidak tersedia</p>
-                                <p className="text-[10px] text-slate-300 mt-1">Semua {tckTotal.toLocaleString('id-ID')} personil terregistrasi aktif di wilayah</p>
-                              </div>
-                            ) : sortedAktif.map(([golongan, count]) => {
-                              const pct = aktifRelawan.length > 0 ? Math.round((count / aktifRelawan.length) * 100) : 0
-                              return (
-                                <div key={golongan} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-black border shrink-0 ${getGolStyle(golongan)}`}>{golongan.replace('Tenaga ', '')}</span>
-                                    <span className="text-[11px] text-slate-600 font-semibold truncate">{golongan}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <span className="text-[13px] font-black text-slate-900">{count.toLocaleString('id-ID')}</span>
-                                    <span className="text-[10px] text-slate-400 font-semibold w-8 text-right">{pct}%</span>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Panel 4 — Jumlah Relawan per Kota Penempatan */}
+                        {/* Panel 3 — Berdasarkan Lokasi Domisili */}
                         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                           <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-amber-50/60">
                             <MapPin className="h-4 w-4 text-amber-700 shrink-0" />
-                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900">Jumlah Relawan per Kota Penempatan</span>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900">Berdasarkan Lokasi Domisili</span>
                           </div>
-                          <div className="divide-y divide-slate-100 max-h-[320px] overflow-y-auto">
+                          <div className="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
                             {sortedKota.length === 0 ? (
                               <p className="text-[11px] text-slate-400 text-center py-6">Tidak ada data</p>
                             ) : sortedKota.map(([kota, count]) => {
                               const pct = tckTotal > 0 ? Math.round((count / tckTotal) * 100) : 0
+                              const displayKota = (kota === '-' || kota === '--' || !kota) ? 'Lainnya' : kota
                               return (
                                 <div key={kota} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition">
                                   <div className="min-w-0 flex-1">
-                                    <span className="text-[11px] font-semibold text-slate-700 truncate block">{kota}</span>
+                                    <span className="text-[11px] font-semibold text-slate-700 truncate block">{displayKota}</span>
                                     <div className="mt-1 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                                       <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
                                     </div>
@@ -7868,6 +7895,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </div>
               )
             })()}
+
+            {matrixTab === 'relawan_mobilisasi' && (
+              <RelawanMobilisasiTab isNttEvent={isNttEvent} />
+            )}
 
             {false && matrixTab === 'datastudio_kluster' && (
               <div className="space-y-4 pt-1">
