@@ -280,7 +280,7 @@ export default function TvDashboardContainer({ scopeProvinsi, scopeEventId }: Tv
         // Secondary fallback with explicit active date parameter if main fetch returns empty
         if (!nttData || (!nttData.pasien_rs && !nttData.situasi_kesehatan)) {
           try {
-            const nttRes3 = await fetch('/dashboard-eoc/api/ntt-data?tanggal=2026-08-20', { cache: 'no-store' })
+            const nttRes3 = await fetch('/dashboard-eoc/api/ntt-data', { cache: 'no-store' })
             if (nttRes3.ok) {
               const nttJson3 = await nttRes3.json()
               if (nttJson3.success) {

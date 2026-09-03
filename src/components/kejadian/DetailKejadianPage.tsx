@@ -61,7 +61,6 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
-import nttResponDinkesBackup from '@/data/ntt_respon_dinkes_backup.json'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -145,7 +144,7 @@ const getKorbanBreakdown = (total: any, jenis: string) => {
 }
 
 const formatDateISO = (d: any): string => {
-  if (!d) return '2026-08-20'
+  if (!d) return ''
   const dateObj = d instanceof Date ? d : new Date(d)
   if (isNaN(dateObj.getTime())) {
     const clean = String(d).replace(/\s+WIB/i, '').trim()
@@ -153,7 +152,7 @@ const formatDateISO = (d: any): string => {
     if (dmyMatch) {
       return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`
     }
-    return '2026-08-20'
+    return ''
   }
   const year = dateObj.getFullYear()
   const month = String(dateObj.getMonth() + 1).padStart(2, '0')
@@ -627,11 +626,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     tanggal: null,
   })
 
-  const [nttSipkkReports, setNttSipkkReports] = useState<any[]>(() => {
-    return (nttResponDinkesBackup && Array.isArray(nttResponDinkesBackup.reports)) ? nttResponDinkesBackup.reports : []
-  })
+  const [nttSipkkReports, setNttSipkkReports] = useState<any[]>([])
   const [loadingNtt, setLoadingNtt] = useState<boolean>(true)
   const [livePenyakitSurveilans, setLivePenyakitSurveilans] = useState<any>(null)
+  const [upayaSelectedSubKlaster, setUpayaSelectedSubKlaster] = useState<string>('all')
+  const [upayaSelectedKabupaten, setUpayaSelectedKabupaten] = useState<string>('all')
+  const [upayaSearchQuery, setUpayaSearchQuery] = useState<string>('')
 
   // Polling data collector otomatis setiap 30 menit & saat tab aktif kembali
   useEffect(() => {
@@ -700,7 +700,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           summary_faskes: json.summary_faskes || null,
           summary_korban: json.summary_korban || null,
           dates_available: Array.isArray(json.dates_available) ? json.dates_available : [],
-          updated_at: json.updated_at || (json.tanggal ? `${json.tanggal} 10:01:00` : '2026-08-28 10:01:00'),
+          updated_at: json.updated_at || (json.tanggal ? `${json.tanggal} 10:01:00` : new Date().toISOString()),
           tanggal: json.tanggal || null,
         })
       } catch (err) {
@@ -996,10 +996,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     }
     if (nttApiData?.tanggal) set.add(nttApiData.tanggal)
 
-    if (set.size === 0) {
-      ;['2026-08-15', '2026-08-16', '2026-08-17', '2026-08-18', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23', '2026-08-24', '2026-08-25']
-        .forEach(d => set.add(d))
-    }
+
     return Array.from(set).sort()
   }, [
     nttApiData?.dates_available,
@@ -1640,7 +1637,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       }
     }
 
-    return getKorbanBreakdown(selectedEvent?.total_korban || (isNttEvent ? 1777 : 0), selectedEvent?.jenis_bencana || '')
+    return getKorbanBreakdown(selectedEvent?.total_korban || 0, selectedEvent?.jenis_bencana || '')
   }, [hasDetail, detail, eventData, selectedEvent, isNttEvent, nttApiData?.summary_korban, nttApiData?.situasi_kesehatan, nttApiData?.timeline_situasi_kesehatan, nttApiData?.tanggal])
 
   const totalKorbanReal = useMemo(() => {
@@ -1690,7 +1687,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     // 3. Log Situasi Lapangan Terkini dari API Collector
     if (nttApiData.situasi_kesehatan.length > 0 || nttApiData.updated_at) {
-      const syncDate = nttApiData.updated_at || eventData.tgl_laporan || '2026-08-20 20:00:00'
+      const syncDate = nttApiData.updated_at || eventData.tgl_laporan || ''
       const hasSyncLog = logs.some(l => String(l.judul || '').toLowerCase().includes('sinkronisasi') || String(l.judul || '').toLowerCase().includes('collector'))
       if (!hasSyncLog) {
         logs.push({
@@ -2287,7 +2284,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   // Dynamic 7-day earthquake timeline (Day 0 to Day 6): strictly 7 days starting from disaster day
   // Strictly NO synthetic fallback: only real events from API / event data
   const earthquakeTimeline = useMemo(() => {
-    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || detail?.tgl_kejadian || '2026-08-20'
+    const realDateStr = eventData.tgl_kejadian_riil || eventData.tgl_kejadian || detail?.tgl_kejadian || ''
     const base = parseSafeDate(realDateStr)
     const rawMag = parseFloat(eventData.magnitudo || (bmkgGempa?.Magnitude || bmkgGempa?.magnitude || '0'))
     const mainMag = isNaN(rawMag) || rawMag <= 0 ? 0 : rawMag
@@ -2484,7 +2481,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }, [eventData])
 
   const latestNttDate = useMemo(() => {
-    return nttApiData.tanggal || modalAvailableDates[modalAvailableDates.length - 1] || '2026-08-23'
+    return nttApiData.tanggal || modalAvailableDates[modalAvailableDates.length - 1] || ''
   }, [nttApiData.tanggal, modalAvailableDates])
 
   const targetSituasiDate = useMemo(() => {
@@ -2492,6 +2489,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     if (situasiTanggalFilter === 'semua') return ''
     return situasiTanggalFilter
   }, [situasiTanggalFilter, latestNttDate])
+
+  const dynamicKumulatifLabel = useMemo(() => {
+    if (modalAvailableDates.length >= 2) {
+      return `Kumulatif (${modalAvailableDates[0]} - ${modalAvailableDates[modalAvailableDates.length - 1]})`
+    }
+    return 'Kumulatif'
+  }, [modalAvailableDates])
 
   const pasienRsList = useMemo(() => {
     if (!isNttEvent) return []
@@ -2507,7 +2511,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (!map[key]) {
           map[key] = {
             ...r,
-            tanggal: 'Kumulatif (15 - 25 Agu)',
+            tanggal: dynamicKumulatifLabel,
             triase_merah: 0,
             triase_kuning: 0,
             triase_hijau: 0,
@@ -2527,7 +2531,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     const filtered = all.filter((r: any) => r.tanggal === targetSituasiDate && (Number(r.total || 0) > 0 || (Number(r.triase_merah || 0) + Number(r.triase_kuning || 0) + Number(r.triase_hijau || 0) + Number(r.triase_hitam || 0)) > 0))
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
-  }, [isNttEvent, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, targetSituasiDate])
+  }, [isNttEvent, nttApiData.timeline_pasien_rs, nttApiData.pasien_rs, targetSituasiDate, dynamicKumulatifLabel])
 
   const pasienPkmList = useMemo(() => {
     if (!isNttEvent) return []
@@ -2543,7 +2547,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         if (!map[key]) {
           map[key] = {
             ...p,
-            tanggal: 'Kumulatif (15 - 25 Agu)',
+            tanggal: dynamicKumulatifLabel,
             triase_merah: 0,
             triase_kuning: 0,
             triase_hijau: 0,
@@ -2563,7 +2567,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     const filtered = all.filter((p: any) => p.tanggal === targetSituasiDate && (Number(p.total || 0) > 0 || (Number(p.triase_merah || 0) + Number(p.triase_kuning || 0) + Number(p.triase_hijau || 0) + Number(p.triase_hitam || 0)) > 0))
     return [...filtered].sort((a: any, b: any) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')))
-  }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, targetSituasiDate])
+  }, [isNttEvent, nttApiData.timeline_pasien_puskesmas, nttApiData.pasien_puskesmas, targetSituasiDate, dynamicKumulatifLabel])
 
   const rsKabupatenOptions = useMemo(() => {
     const kabs = Array.from(new Set(pasienRsList.map(r => String(r.kabupaten || '').replace(/^(kab\.\s*|kabupaten\s*)+/i, '').trim()).filter(Boolean)))
@@ -3834,42 +3838,61 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   }
 
   const compiledUpaya = useMemo(() => {
-    const items: { label: string; text: string; category?: string }[] = []
+    const items: { label: string; text: string; category?: string; kabupaten?: string; sub_klaster?: string }[] = []
 
-    const addUpaya = (label: string, rawText: any, category: string) => {
+    const addUpaya = (label: string, rawText: any, category: string, kabupaten?: string, subKlaster?: string) => {
       const txt = stripHtmlText(rawText)
       if (txt && txt.length > 2 && !items.some(it => it.text === txt)) {
-        items.push({ label, text: txt, category })
+        items.push({
+          label,
+          text: txt,
+          category,
+          kabupaten: kabupaten || resolveKabupatenName({ kabupaten, nama: label }),
+          sub_klaster: subKlaster || category
+        })
       }
     }
 
-    // 1. Data langsung dari event yang sedang dibuka
-    if (eventData.upaya_sub_klaster_pelayanan_kesehatan) addUpaya('Pelayanan Kesehatan', eventData.upaya_sub_klaster_pelayanan_kesehatan, 'Sub Klaster')
-    if (eventData.upaya_sub_klaster_pp_pl_air_bersih) addUpaya('Pencegahan Penyakit & Sanitasi Air', eventData.upaya_sub_klaster_pp_pl_air_bersih, 'Sub Klaster')
-    if (eventData.upaya_sub_klaster_gizi) addUpaya('Pelayanan Gizi Darurat', eventData.upaya_sub_klaster_gizi, 'Sub Klaster')
-    if (eventData.upaya_sub_klaster_jiwa) addUpaya('Kesehatan Jiwa (Dukungan Psikososial)', eventData.upaya_sub_klaster_jiwa, 'Sub Klaster')
-    if (eventData.upaya_sub_klaster_kia) addUpaya('Kesehatan Reproduksi & KIA', eventData.upaya_sub_klaster_kia, 'Sub Klaster')
-    if (eventData.upaya_tim_logistik_kesehatan) addUpaya('Tim Logistik Kesehatan', eventData.upaya_tim_logistik_kesehatan, 'Sub Klaster')
-    if (eventData.upaya_sub_klaster_dvi) addUpaya('Identifikasi Korban (DVI)', eventData.upaya_sub_klaster_dvi, 'Sub Klaster')
+    // 0. Prioritas Utama: Data Riil dari Sheet "UPAYA BIDANG KESEHATAN"
+    const sheetUpayaList = eventData.upaya_kesehatan?.data ||
+                           eventData.detailData?.upaya_kesehatan?.data ||
+                           (nttApiData as any)?.upaya_kesehatan?.data
+    if (Array.isArray(sheetUpayaList) && sheetUpayaList.length > 0) {
+      sheetUpayaList.forEach((it: any) => {
+        const kab = it.kabupaten || 'Kab. Nagekeo'
+        const sub = it.sub_klaster || 'Sub Klaster'
+        const label = `${sub} (${kab})`
+        addUpaya(label, it.upaya, sub, kab, sub)
+      })
+    }
 
-    if (eventData.upaya_kabupaten) addUpaya('Upaya Dinkes Kabupaten/Kota', eventData.upaya_kabupaten, 'Dinkes Kab')
-    if (eventData.upaya_provinsi) addUpaya('Upaya Dinkes Provinsi', eventData.upaya_provinsi, 'Dinkes Prov')
-    if (eventData.upaya_kemenkes || eventData.upaya) addUpaya('Upaya Pusat (Kemenkes/EOC)', eventData.upaya_kemenkes || eventData.upaya, 'EOC Pusat')
+    // 1. Data langsung dari event yang sedang dibuka
+    if (eventData.upaya_sub_klaster_pelayanan_kesehatan) addUpaya('Pelayanan Kesehatan', eventData.upaya_sub_klaster_pelayanan_kesehatan, 'Sub Klaster', eventData.kabupaten, 'Pelayanan Kesehatan')
+    if (eventData.upaya_sub_klaster_pp_pl_air_bersih) addUpaya('Pencegahan Penyakit & Sanitasi Air', eventData.upaya_sub_klaster_pp_pl_air_bersih, 'Sub Klaster', eventData.kabupaten, 'Pencegahan Penyakit & Sanitasi')
+    if (eventData.upaya_sub_klaster_gizi) addUpaya('Pelayanan Gizi Darurat', eventData.upaya_sub_klaster_gizi, 'Sub Klaster', eventData.kabupaten, 'Pelayanan Gizi')
+    if (eventData.upaya_sub_klaster_jiwa) addUpaya('Kesehatan Jiwa (Dukungan Psikososial)', eventData.upaya_sub_klaster_jiwa, 'Sub Klaster', eventData.kabupaten, 'Kesehatan Jiwa')
+    if (eventData.upaya_sub_klaster_kia) addUpaya('Kesehatan Reproduksi & KIA', eventData.upaya_sub_klaster_kia, 'Sub Klaster', eventData.kabupaten, 'Kesehatan Reproduksi & KIA')
+    if (eventData.upaya_tim_logistik_kesehatan) addUpaya('Tim Logistik Kesehatan', eventData.upaya_tim_logistik_kesehatan, 'Sub Klaster', eventData.kabupaten, 'Tim Logistik')
+    if (eventData.upaya_sub_klaster_dvi) addUpaya('Identifikasi Korban (DVI)', eventData.upaya_sub_klaster_dvi, 'Sub Klaster', eventData.kabupaten, 'Identifikasi Korban (DVI)')
+
+    if (eventData.upaya_kabupaten) addUpaya('Upaya Dinkes Kabupaten/Kota', eventData.upaya_kabupaten, 'Dinkes Kab', eventData.kabupaten, 'Dinkes Kab')
+    if (eventData.upaya_provinsi) addUpaya('Upaya Dinkes Provinsi', eventData.upaya_provinsi, 'Dinkes Prov', 'Prov. NTT', 'Dinkes Prov')
+    if (eventData.upaya_kemenkes || eventData.upaya) addUpaya('Upaya Pusat (Kemenkes/EOC)', eventData.upaya_kemenkes || eventData.upaya, 'EOC Pusat', 'Kemenkes RI', 'EOC Pusat')
 
     // 2. Jika di level Provinsi NTT, agregasikan seluruh upaya riil dari laporan kabupaten SIPKK
     if (isNttEvent && nttSipkkReports.length > 0) {
       nttSipkkReports.forEach((rep: any) => {
         const kab = resolveKabupatenName(rep)
-        if (rep.upaya_sub_klaster_pelayanan_kesehatan) addUpaya(`Pelayanan Medis (${kab})`, rep.upaya_sub_klaster_pelayanan_kesehatan, 'Sub Klaster')
-        if (rep.upaya_sub_klaster_pp_pl_air_bersih) addUpaya(`Pencegahan Penyakit & Sanitasi (${kab})`, rep.upaya_sub_klaster_pp_pl_air_bersih, 'Kesling & SKDR')
-        if (rep.upaya_sub_klaster_gizi) addUpaya(`Pelayanan Gizi (${kab})`, rep.upaya_sub_klaster_gizi, 'Gizi Darurat')
-        if (rep.upaya_sub_klaster_jiwa) addUpaya(`Kesehatan Jiwa / Trauma Healing (${kab})`, rep.upaya_sub_klaster_jiwa, 'Psikososial')
-        if (rep.upaya_sub_klaster_kia) addUpaya(`Kesehatan Reproduksi & KIA (${kab})`, rep.upaya_sub_klaster_kia, 'KIA')
-        if (rep.upaya_tim_logistik_kesehatan) addUpaya(`Tim Logistik Medis (${kab})`, rep.upaya_tim_logistik_kesehatan, 'Logistik')
-        if (rep.upaya_sub_klaster_dvi) addUpaya(`DVI & Identifikasi (${kab})`, rep.upaya_sub_klaster_dvi, 'DVI')
-        if (rep.upaya_kabupaten) addUpaya(`Dinkes ${kab}`, rep.upaya_kabupaten, 'Dinkes Kab')
-        if (rep.upaya_provinsi) addUpaya(`Dinkes Prov. NTT (${kab})`, rep.upaya_provinsi, 'Dinkes Prov')
-        if (rep.upaya_kemenkes || rep.upaya) addUpaya(`EOC Pusat (${kab})`, rep.upaya_kemenkes || rep.upaya, 'EOC Pusat')
+        if (rep.upaya_sub_klaster_pelayanan_kesehatan) addUpaya(`Pelayanan Medis (${kab})`, rep.upaya_sub_klaster_pelayanan_kesehatan, 'Sub Klaster', kab, 'Pelayanan Medis')
+        if (rep.upaya_sub_klaster_pp_pl_air_bersih) addUpaya(`Pencegahan Penyakit & Sanitasi (${kab})`, rep.upaya_sub_klaster_pp_pl_air_bersih, 'Kesling & SKDR', kab, 'Kesling & SKDR')
+        if (rep.upaya_sub_klaster_gizi) addUpaya(`Pelayanan Gizi (${kab})`, rep.upaya_sub_klaster_gizi, 'Gizi Darurat', kab, 'Gizi Darurat')
+        if (rep.upaya_sub_klaster_jiwa) addUpaya(`Kesehatan Jiwa / Trauma Healing (${kab})`, rep.upaya_sub_klaster_jiwa, 'Psikososial', kab, 'Psikososial')
+        if (rep.upaya_sub_klaster_kia) addUpaya(`Kesehatan Reproduksi & KIA (${kab})`, rep.upaya_sub_klaster_kia, 'KIA', kab, 'KIA')
+        if (rep.upaya_tim_logistik_kesehatan) addUpaya(`Tim Logistik Medis (${kab})`, rep.upaya_tim_logistik_kesehatan, 'Logistik', kab, 'Logistik')
+        if (rep.upaya_sub_klaster_dvi) addUpaya(`DVI & Identifikasi (${kab})`, rep.upaya_sub_klaster_dvi, 'DVI', kab, 'DVI')
+        if (rep.upaya_kabupaten) addUpaya(`Dinkes ${kab}`, rep.upaya_kabupaten, 'Dinkes Kab', kab, 'Dinkes Kab')
+        if (rep.upaya_provinsi) addUpaya(`Dinkes Prov. NTT (${kab})`, rep.upaya_provinsi, 'Dinkes Prov', kab, 'Dinkes Prov')
+        if (rep.upaya_kemenkes || rep.upaya) addUpaya(`EOC Pusat (${kab})`, rep.upaya_kemenkes || rep.upaya, 'EOC Pusat', kab, 'EOC Pusat')
       })
     }
 
@@ -3880,11 +3903,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const statusList = Object.entries(parsedGizi)
             .map(([k, v]) => `${k.replace(/^layanan_/, 'Layanan Gizi #')}: ${v}`)
             .join(' | ')
-          if (statusList) items.push({ label: 'Skrining & Layanan Gizi', text: statusList, category: 'Layanan Gizi' })
+          if (statusList) items.push({ label: 'Skrining & Layanan Gizi', text: statusList, category: 'Layanan Gizi', sub_klaster: 'Layanan Gizi' })
         }
       } catch (e) {
         const txt = stripHtmlText(eventData.id_pertanyaan_layanan_gizi)
-        if (txt) items.push({ label: 'Skrining & Layanan Gizi', text: txt, category: 'Layanan Gizi' })
+        if (txt) items.push({ label: 'Skrining & Layanan Gizi', text: txt, category: 'Layanan Gizi', sub_klaster: 'Layanan Gizi' })
       }
     }
 
@@ -3892,13 +3915,53 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       detail.perkembangan.forEach((p: any) => {
         const formatted = formatPerkembangan(p)
         if (formatted && !items.some(it => it.text === formatted)) {
-          items.push({ label: 'Update Lapangan', text: formatted, category: 'Laporan Berkala' })
+          items.push({ label: 'Update Lapangan', text: formatted, category: 'Laporan Berkala', sub_klaster: 'Laporan Berkala' })
         }
       })
     }
 
     return items
-  }, [eventData, detail, isNttEvent, nttSipkkReports])
+  }, [eventData, detail, isNttEvent, nttSipkkReports, (nttApiData as any)?.upaya_kesehatan])
+
+  const upayaAvailableSubKlasters = useMemo(() => {
+    const set = new Set<string>()
+    compiledUpaya.forEach((it) => {
+      const name = it.sub_klaster || it.category
+      if (name && name !== 'Sub Klaster' && name !== 'Dinkes Kab' && name !== 'Dinkes Prov' && name !== 'EOC Pusat') {
+        set.add(name)
+      }
+    })
+    return Array.from(set)
+  }, [compiledUpaya])
+
+  const filteredCompiledUpaya = useMemo(() => {
+    return compiledUpaya.filter((item) => {
+      if (upayaSelectedSubKlaster !== 'all') {
+        const cat = (item.category || item.sub_klaster || '').toLowerCase()
+        const target = upayaSelectedSubKlaster.toLowerCase()
+        if (!cat.includes(target) && !item.label.toLowerCase().includes(target)) {
+          return false
+        }
+      }
+      if (upayaSelectedKabupaten !== 'all') {
+        const kab = (item.kabupaten || '').toLowerCase()
+        const target = upayaSelectedKabupaten.toLowerCase()
+        if (!kab.includes(target) && !item.label.toLowerCase().includes(target)) {
+          return false
+        }
+      }
+      if (upayaSearchQuery.trim()) {
+        const q = upayaSearchQuery.toLowerCase()
+        const match =
+          item.label.toLowerCase().includes(q) ||
+          item.text.toLowerCase().includes(q) ||
+          (item.category || '').toLowerCase().includes(q) ||
+          (item.kabupaten || '').toLowerCase().includes(q)
+        if (!match) return false
+      }
+      return true
+    })
+  }, [compiledUpaya, upayaSelectedSubKlaster, upayaSelectedKabupaten, upayaSearchQuery])
 
   const aggregatedTenaga = useMemo(() => {
     const list = Array.isArray(eventData.tenaga_kesehatan) ? eventData.tenaga_kesehatan : []
@@ -4073,7 +4136,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       if (activeModalDate === 'kumulatif' || !activeModalDate) {
         // Ambil snapshot kumulatif dari tanggal laporan terakhir yang tersedia (karena setiap row timeline sudah berupa akumulasi kumulatif berjalan)
         const availableDates = Array.from(new Set(nttSitu.map((r: any) => r.tanggal).filter(Boolean))).sort()
-        const latestDate = availableDates[availableDates.length - 1] || '2026-08-26'
+        const latestDate = availableDates[availableDates.length - 1] || modalAvailableDates[modalAvailableDates.length - 1] || nttApiData?.tanggal || ''
         const rowsToUse = nttSitu.filter((r: any) => r.tanggal === latestDate)
 
         return rowsToUse.map((item: any) => {
@@ -8357,25 +8420,104 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className={`grid grid-cols-1 ${isNttEvent ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
                 {/* Col 1: Upaya Penanggulangan */}
                 <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
-                  <div>
-                    <div className="flex items-center justify-between pb-2.5 border-b border-amber-200/60">
-                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-amber-950 m-0">
-                        Upaya Penanggulangan Krisis
-                      </h5>
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-amber-200/60 gap-2">
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-amber-950 m-0">
+                          Upaya Penanggulangan Krisis
+                        </h5>
+                        {isNttEvent && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                            Sheet: UPAYA BIDANG KESEHATAN
+                          </span>
+                        )}
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs shrink-0">
                         {compiledUpaya.length > 0 ? `${compiledUpaya.length} Upaya Terinput` : 'Prosedur EOC'}
                       </span>
                     </div>
 
-                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                      {compiledUpaya.length > 0 ? (
-                        compiledUpaya.map((item, idx) => (
-                          <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150 shadow-2xs space-y-1">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-black uppercase tracking-wide text-amber-800">{item.label}</span>
-                              {item.category && (
-                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">{item.category}</span>
-                              )}
+                    {/* Filter & Search Bar jika ada data */}
+                    {compiledUpaya.length > 0 && (
+                      <div className="space-y-2">
+                        {/* Search Input */}
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                          <input
+                            type="text"
+                            value={upayaSearchQuery}
+                            onChange={(e) => setUpayaSearchQuery(e.target.value)}
+                            placeholder="Cari narasi upaya, APD, sanitasi, logistik, dll..."
+                            className="w-full pl-8 pr-7 py-1.5 bg-white border border-amber-200/80 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 shadow-2xs"
+                          />
+                          {upayaSearchQuery && (
+                            <button
+                              onClick={() => setUpayaSearchQuery('')}
+                              className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Filter Sub Klaster Pills */}
+                        {upayaAvailableSubKlasters.length > 1 && (
+                          <div className="flex flex-wrap gap-1 items-center">
+                            <button
+                              onClick={() => setUpayaSelectedSubKlaster('all')}
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                                upayaSelectedSubKlaster === 'all'
+                                  ? 'bg-amber-600 text-white shadow-2xs'
+                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              Semua Sub Klaster ({compiledUpaya.length})
+                            </button>
+                            {upayaAvailableSubKlasters.map((sub, sIdx) => {
+                              const count = compiledUpaya.filter(
+                                (it) => (it.sub_klaster || it.category || '').toLowerCase().includes(sub.toLowerCase())
+                              ).length
+                              return (
+                                <button
+                                  key={sIdx}
+                                  onClick={() => setUpayaSelectedSubKlaster(sub)}
+                                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                                    upayaSelectedSubKlaster === sub
+                                      ? 'bg-amber-600 text-white shadow-2xs'
+                                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {sub.replace(/^Sub Klaster\s*/i, '')} ({count})
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Upaya Item Cards */}
+                    <div className="mt-2 space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                      {filteredCompiledUpaya.length > 0 ? (
+                        filteredCompiledUpaya.map((item, idx) => (
+                          <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150 shadow-2xs space-y-1.5 hover:border-amber-300 transition-colors">
+                            <div className="flex flex-wrap justify-between items-center gap-1">
+                              <span className="text-xs font-black uppercase tracking-wide text-amber-800">
+                                {item.label}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {item.kabupaten && (
+                                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                    {item.kabupaten}
+                                  </span>
+                                )}
+                                {item.category && (
+                                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                    {item.category}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
                               {item.text}
@@ -8384,7 +8526,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ))
                       ) : (
                         <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-amber-100">
-                          Belum ada data rincian upaya penanggulangan yang dilaporkan.
+                          {compiledUpaya.length > 0
+                            ? 'Tidak ada upaya yang cocok dengan filter atau kata kunci pencarian.'
+                            : 'Belum ada data rincian upaya penanggulangan yang dilaporkan.'}
                         </div>
                       )}
                     </div>
@@ -8827,7 +8971,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           )
                         })}
                         <option value="kumulatif">
-                          Kumulatif ({modalAvailableDates.length > 0 ? `${new Date(modalAvailableDates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${new Date(modalAvailableDates[modalAvailableDates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : '15 - 25 Agu 2026'})
+                          Kumulatif ({modalAvailableDates.length > 0 ? `${new Date(modalAvailableDates[0]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${new Date(modalAvailableDates[modalAvailableDates.length - 1]).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'Seluruh Laporan'})
                         </option>
                       </select>
                     </div>
