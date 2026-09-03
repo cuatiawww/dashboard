@@ -28,7 +28,9 @@ export default function BmkgSeismicDetailModal({
   const allDaysData = useMemo(() => {
     const startStr = eventData?.tgl_kejadian_riil || eventData?.tgl_kejadian || '2026-08-15'
     const startDate = new Date(startStr)
-    const today = new Date()
+    const nowWib = new Date()
+    const wibOffset = 7 * 60 * 60 * 1000
+    const todayWibIso = new Date(nowWib.getTime() + wibOffset).toISOString().slice(0, 10)
 
     // Base mainshock info
     const mainMag = parseFloat(eventData?.magnitudo || bmkgGempa?.Magnitude || '7.7')
@@ -56,10 +58,10 @@ export default function BmkgSeismicDetailModal({
         dayName: 'SAB',
         dateLabel: '15 Agu',
         isEventDay: true,
-        isToday: false,
+        isToday: '2026-08-15' === todayWibIso,
         peakMag: mainMag,
         topLabel: `M ${mainMag.toFixed(1)}`,
-        bottomLabel: 'VII - VIII ...',
+        bottomLabel: 'Gempa Utama',
       },
       {
         dateStr: '2026-08-16',
@@ -166,10 +168,10 @@ export default function BmkgSeismicDetailModal({
         dayName: 'RAB',
         dateLabel: '26 Agu',
         isEventDay: false,
-        isToday: true,
+        isToday: '2026-08-26' === todayWibIso,
         peakMag: 3.5,
         topLabel: 'M 3.5',
-        bottomLabel: 'Hari Ini',
+        bottomLabel: 'Peluruhan',
       },
     ]
 
@@ -211,7 +213,7 @@ export default function BmkgSeismicDetailModal({
               </span>
             </div>
             <p className="text-xs text-teal-100/80 mt-0.5">
-              Pantauan runtutan gempa bumi harian dari awal kejadian (15 Agu 2026) sampai hari ini (26 Agu 2026)
+              Pantauan runtutan aktivitas gempa bumi harian dari gempa utama hingga fase peluruhan seismik (15 – 26 Agu 2026)
             </p>
           </div>
 
@@ -293,11 +295,23 @@ export default function BmkgSeismicDetailModal({
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-            <span>
-              Sumber Resmi: <strong>Badan Meteorologi, Klimatologi, dan Geofisika (BMKG)</strong> - Indonesia Tsunami Early Warning System (InaTEWS)
-            </span>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+              <span className="font-bold text-slate-700">Gempa Utama (M 7.7)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <span className="font-bold text-slate-700">Gempa Susulan</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+              <span className="font-bold text-slate-700">Fase Peluruhan</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 text-slate-400 pl-2 border-l border-slate-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+              <span>Sumber: BMKG &amp; InaTEWS</span>
+            </div>
           </div>
 
           <button
