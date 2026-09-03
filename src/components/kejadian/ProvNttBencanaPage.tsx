@@ -354,7 +354,23 @@ export default function ProvNttBencanaPage() {
             ? json.tables.master_faskes
             : (faskesList.length > 0 ? faskesList : [])
           
-          const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : '2026-08-21 10:01:00')
+          // Fetch data upaya kesehatan spesifik dari API /api/upaya-kesehatan
+          let upayaKesehatanData = json.upaya_kesehatan || json.tables?.upaya_kesehatan || null
+          if (!upayaKesehatanData || !Array.isArray(upayaKesehatanData.data) || upayaKesehatanData.data.length === 0) {
+            try {
+              const uRes = await fetch(`${basePath}/api/upaya-kesehatan`, { cache: 'no-store' })
+              if (uRes.ok) {
+                const uJson = await uRes.json()
+                if (uJson && uJson.success) {
+                  upayaKesehatanData = uJson
+                }
+              }
+            } catch (uErr) {
+              console.warn('[ProvNttBencanaPage] Fetch /api/upaya-kesehatan error:', uErr)
+            }
+          }
+
+          const updateTimestamp = json.updated_at || (tgl ? `${tgl} 10:01:00` : new Date().toISOString())
           setEventData((prev: any) => {
             const next = {
               ...prev,
@@ -368,6 +384,7 @@ export default function ProvNttBencanaPage() {
               pengungsi: tot.pengungsi ?? prev.pengungsi,
               titik_pengungsian: tot.titik_pengungsian ?? prev.titik_pengungsian,
               penduduk_terdampak: tot.populasi_terdampak ?? prev.penduduk_terdampak,
+              upaya_kesehatan: upayaKesehatanData || prev.upaya_kesehatan || null,
               detailData: {
                 ...prev.detailData,
                 tgl_laporan: updateTimestamp || prev.detailData.tgl_laporan,
@@ -390,6 +407,7 @@ export default function ProvNttBencanaPage() {
                 faskes_terdampak: Array.isArray(json.faskes_terdampak) && json.faskes_terdampak.length > 0 ? json.faskes_terdampak : (Array.isArray(json.tables?.faskes_terdampak) && json.tables.faskes_terdampak.length > 0 ? json.tables.faskes_terdampak : (faskesList.length > 0 ? faskesList : prev.detailData.faskes_terdampak)),
                 faskes_terdekat: allMasterFaskes.length > 0 ? allMasterFaskes : prev.detailData.faskes_terdekat,
                 summary_faskes: json.summary_faskes || null,
+                upaya_kesehatan: upayaKesehatanData || prev.detailData?.upaya_kesehatan || null,
                 pos_pengungsi: prev.detailData.pos_pengungsi || [],
                 logistik: prev.detailData.logistik || [],
                 tck: prev.detailData.tck || []

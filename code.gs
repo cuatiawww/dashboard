@@ -9,6 +9,7 @@
  *  5. Sheet "DATA REGISTRASI RELAWAN" (atau DATA REGISTRASI RELAWAN HARIAN)
  *  6. Sheet "DATA RELAWAN BERDASARKAN TIM"
  *  7. Sheet "DATA JUMLAH RELAWAN AKTIF HARIAN" (atau DATA RELAWAN AKTIF HARIAN)
+ *  8. Sheet "UPAYA BIDANG KESEHATAN" (atau UPAYA KESEHATAN / UPAYA)
  * ====================================================================
  */
 
@@ -63,7 +64,21 @@ function doGet(e) {
       return ContentService.createTextOutput(jsonStr).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 4. JIKA REQUEST KORBAN / SEMUA (?type=all / type=korban)
+    // 4. JIKA REQUEST UPAYA KESEHATAN (?type=upaya / ?type=upaya_kesehatan / ?type=upaya_bidang_kesehatan)
+    if (type === 'upaya' || type === 'upaya_kesehatan' || type === 'upaya_bidang_kesehatan') {
+      const upayaResult = parseSheetUpayaKesehatan(ss);
+      const payloadUpaya = {
+        success: true,
+        source: 'google_spreadsheet_upaya_kesehatan',
+        updated_at: new Date().toISOString(),
+        ...upayaResult
+      };
+      const jsonStr = JSON.stringify(payloadUpaya);
+      try { cache.put(cacheKey, jsonStr, 600); } catch (ce) {}
+      return ContentService.createTextOutput(jsonStr).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 5. JIKA REQUEST KORBAN / SEMUA (?type=all / type=korban)
     const sheetKorban = ss.getSheetByName("PENDUDUK TERDAMPAK & KORBAN") || findSheetByPattern(ss, ["KORBAN", "PENDUDUK"]) || ss.getSheets()[0];
     const korbanData = parseSheetKorban(sheetKorban);
 
@@ -75,6 +90,7 @@ function doGet(e) {
 
     const faskesTerdampakResult = parseDataFaskesTerdampak(ss);
     const relawanResult = parseDataRelawanLengkap(ss);
+    const upayaKesehatanResult = parseSheetUpayaKesehatan(ss);
 
     let totalMerah = 0, totalKuning = 0, totalHijau = 0, totalHitam = 0;
     rsData.forEach(function(r) {
@@ -107,7 +123,8 @@ function doGet(e) {
       },
       faskes_terdampak: faskesTerdampakResult.data,
       summary_faskes_terdampak: faskesTerdampakResult.summary,
-      relawan: relawanResult
+      relawan: relawanResult,
+      upaya_kesehatan: upayaKesehatanResult
     };
 
     const jsonStr = JSON.stringify(payload);
@@ -941,6 +958,140 @@ function parseDataRelawanLengkap(ss) {
 }
 
 // ====================================================================
+// MODUL 5: PARSER SHEET UPAYA BIDANG KESEHATAN
+// ====================================================================
+function parseSheetUpayaKesehatan(ss) {
+  const sheet = ss.getSheetByName("UPAYA BIDANG KESEHATAN") || 
+                ss.getSheetByName("UPAYA KESEHATAN") || 
+                ss.getSheetByName("UPAYA") ||
+                findSheetByPattern(ss, ["UPAYA BIDANG KESEHATAN", "UPAYA KESEHATAN", "UPAYA BIDANG", "UPAYA"]);
+
+  if (!sheet) {
+    return {
+      tersedia: false,
+      pesan: "Sheet 'UPAYA BIDANG KESEHATAN' tidak ditemukan.",
+      summary: { total_upaya: 0, total_kabupaten: 0, total_sub_klaster: 0, daftar_kabupaten: [], daftar_sub_klaster: [] },
+      data: [],
+      by_kabupaten: {},
+      by_sub_klaster: {}
+    };
+  }
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return {
+      tersedia: true,
+      pesan: "Sheet 'UPAYA BIDANG KESEHATAN' kosong atau belum memiliki data.",
+      summary: { total_upaya: 0, total_kabupaten: 0, total_sub_klaster: 0, daftar_kabupaten: [], daftar_sub_klaster: [] },
+      data: [],
+      by_kabupaten: {},
+      by_sub_klaster: {}
+    };
+  }
+
+  // 1. Identifikasi Baris Header dan Posisi Kolom
+  // Default: Col A (0) = Kabupaten/Kota, Col B (1) = Sub Klaster, Col C (2) = Upaya
+  let headerRowIdx = 0;
+  let colKab = 0;
+  let colSubKlaster = 1;
+  let colUpaya = 2;
+
+  for (let r = 0; r < Math.min(5, values.length); r++) {
+    const row = values[r];
+    for (let c = 0; c < row.length; c++) {
+      const cell = String(row[c] || '').trim().toUpperCase();
+      if (cell.includes("KABUPATEN") || cell.includes("KOTA")) {
+        headerRowIdx = r;
+        colKab = c;
+      }
+      if (cell.includes("SUB KLASTER") || cell.includes("SUB-KLASTER") || cell.includes("KLASTER")) {
+        colSubKlaster = c;
+      }
+      if (cell.includes("UPAYA") || cell.includes("KEGIATAN") || cell.includes("RESPON")) {
+        colUpaya = c;
+      }
+    }
+  }
+
+  const items = [];
+  let currentKabupaten = "";
+  let currentSubKlaster = "";
+
+  // 2. Iterasi Baris Data (Forward-Fill untuk cell yang dimerge atau sengaja dikosongkan)
+  for (let r = headerRowIdx + 1; r < values.length; r++) {
+    const row = values[r];
+    const rawKab = String(row[colKab] || '').trim();
+    const rawSub = String(row[colSubKlaster] || '').trim();
+    const rawUpaya = String(row[colUpaya] || '').trim();
+
+    // Jika kolom kabupaten terisi, perbarui kabupaten aktif
+    if (rawKab && rawKab.length > 1 && !rawKab.toUpperCase().includes("KABUPATEN/KOTA")) {
+      currentKabupaten = formatKabupaten(rawKab);
+    }
+
+    // Jika kolom sub klaster terisi, perbarui sub klaster aktif
+    if (rawSub && rawSub.length > 1 && !rawSub.toUpperCase().includes("SUB KLASTER")) {
+      currentSubKlaster = rawSub;
+    }
+
+    // Jika ada narasi upaya, simpan sebagai record data
+    if (rawUpaya && rawUpaya.length > 1 && rawUpaya !== '-' && !rawUpaya.toUpperCase().includes("UPAYA")) {
+      items.push({
+        id: "upaya-" + (items.length + 1),
+        kabupaten: currentKabupaten || "Kab. Nagekeo",
+        sub_klaster: currentSubKlaster || "Sub Klaster Pelayanan Kesehatan",
+        upaya: rawUpaya
+      });
+    }
+  }
+
+  // 3. Bangun Struktur Grouping Dinamis
+  const byKabupaten = {};
+  const bySubKlaster = {};
+  const setKab = {};
+  const setSub = {};
+
+  items.forEach(function(item) {
+    const kab = item.kabupaten;
+    const sub = item.sub_klaster;
+
+    setKab[kab] = true;
+    setSub[sub] = true;
+
+    // Grouping by Kabupaten -> Sub Klaster -> Upaya[]
+    if (!byKabupaten[kab]) byKabupaten[kab] = {};
+    if (!byKabupaten[kab][sub]) byKabupaten[kab][sub] = [];
+    byKabupaten[kab][sub].push(item.upaya);
+
+    // Grouping by Sub Klaster -> [{ kabupaten, upaya }]
+    if (!bySubKlaster[sub]) bySubKlaster[sub] = [];
+    bySubKlaster[sub].push({
+      kabupaten: kab,
+      upaya: item.upaya
+    });
+  });
+
+  const daftarKabupaten = Object.keys(setKab);
+  const daftarSubKlaster = Object.keys(setSub);
+
+  return {
+    tersedia: true,
+    sheet_name: sheet.getName(),
+    total: items.length,
+    summary: {
+      total_upaya: items.length,
+      total_kabupaten: daftarKabupaten.length,
+      total_sub_klaster: daftarSubKlaster.length,
+      daftar_kabupaten: daftarKabupaten,
+      daftar_sub_klaster: daftarSubKlaster
+    },
+    data: items,
+    by_kabupaten: byKabupaten,
+    by_sub_klaster: bySubKlaster
+  };
+}
+
+// ====================================================================
 // UTILITY HELPERS
 // ====================================================================
 function findSheetByPattern(ss, patterns) {
@@ -1023,8 +1174,14 @@ function testDoGet() {
   Logger.log("5. Relawan Tim Kategori: " + JSON.stringify(relawanData.relawan_berdasarkan_tim ? relawanData.relawan_berdasarkan_tim.kategori_tim : 'N/A'));
   Logger.log("6. Relawan Aktif Harian Terkini: " + (relawanData.relawan_aktif_harian ? relawanData.relawan_aktif_harian.total_aktif_terkini : 'N/A'));
 
-  // 3. Test Full Endpoint Mock
+  // 3. Test Data Upaya Bidang Kesehatan
+  Logger.log("=== MEMULAI TEST DATA UPAYA BIDANG KESEHATAN ===");
+  const upayaData = parseSheetUpayaKesehatan(ss);
+  Logger.log("7. Summary Upaya Kesehatan: " + JSON.stringify(upayaData.summary));
+  Logger.log("8. Total Upaya Terinput: " + upayaData.total);
+
+  // 4. Test Full Endpoint Mock
   const mockResp = doGet({ parameter: { type: 'all' } });
-  Logger.log("7. Status Output JSON Length: " + mockResp.getContent().length + " chars");
+  Logger.log("9. Status Output JSON Length: " + mockResp.getContent().length + " chars");
   Logger.log("=== TEST SELESAI DENGAN SUKSES ===");
 }
