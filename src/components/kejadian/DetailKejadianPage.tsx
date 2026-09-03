@@ -54,7 +54,8 @@ import {
   Tv,
   Table2,
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Layers
 } from 'lucide-react'
 import DisasterMap from './DisasterMap'
 import TimelineCalendarModal from './TimelineCalendarModal'
@@ -632,6 +633,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [upayaSelectedSubKlaster, setUpayaSelectedSubKlaster] = useState<string>('all')
   const [upayaSelectedKabupaten, setUpayaSelectedKabupaten] = useState<string>('all')
   const [upayaSearchQuery, setUpayaSearchQuery] = useState<string>('')
+  const [upayaActiveTab, setUpayaActiveTab] = useState<'all' | 'pelayanan' | 'logistik' | 'surveilans' | 'administrasi'>('all')
 
   // Polling data collector otomatis setiap 30 menit & saat tab aktif kembali
   useEffect(() => {
@@ -3922,6 +3924,85 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     return items
   }, [eventData, detail, isNttEvent, nttSipkkReports, (nttApiData as any)?.upaya_kesehatan])
+
+  const classifiedUpaya = useMemo(() => {
+    const pelayanan: any[] = []
+    const logistik: any[] = []
+    const surveilans: any[] = []
+    const administrasi: any[] = []
+
+    compiledUpaya.forEach((item) => {
+      // Filter Kabupaten jika dipilih
+      if (upayaSelectedKabupaten !== 'all') {
+        const kab = (item.kabupaten || '').toLowerCase()
+        const target = upayaSelectedKabupaten.toLowerCase()
+        if (!kab.includes(target) && !item.label.toLowerCase().includes(target)) {
+          return
+        }
+      }
+
+      // Filter Search Query jika diisi
+      if (upayaSearchQuery.trim()) {
+        const q = upayaSearchQuery.toLowerCase()
+        const match =
+          item.label.toLowerCase().includes(q) ||
+          item.text.toLowerCase().includes(q) ||
+          (item.category || '').toLowerCase().includes(q) ||
+          (item.kabupaten || '').toLowerCase().includes(q)
+        if (!match) return
+      }
+
+      const textToScan = `${item.sub_klaster || ''} ${item.category || ''} ${item.label || ''}`.toLowerCase()
+
+      if (
+        textToScan.includes('logistik') ||
+        textToScan.includes('obat') ||
+        textToScan.includes('bmhp') ||
+        textToScan.includes('farmasi') ||
+        textToScan.includes('gudang')
+      ) {
+        logistik.push(item)
+      } else if (
+        textToScan.includes('data') ||
+        textToScan.includes('informasi') ||
+        textToScan.includes('surveilans') ||
+        textToScan.includes('skdr') ||
+        textToScan.includes('sitrep')
+      ) {
+        surveilans.push(item)
+      } else if (
+        textToScan.includes('administrasi') ||
+        textToScan.includes('keuangan') ||
+        textToScan.includes('perencana') ||
+        textToScan.includes('anggaran') ||
+        textToScan.includes('rab') ||
+        textToScan.includes('surat') ||
+        textToScan.includes('spj')
+      ) {
+        administrasi.push(item)
+      } else {
+        pelayanan.push(item)
+      }
+    })
+
+    return {
+      pelayanan,
+      logistik,
+      surveilans,
+      administrasi,
+      totalFiltered: pelayanan.length + logistik.length + surveilans.length + administrasi.length
+    }
+  }, [compiledUpaya, upayaSelectedKabupaten, upayaSearchQuery])
+
+  const upayaAvailableKabupatens = useMemo(() => {
+    const set = new Set<string>()
+    compiledUpaya.forEach((it) => {
+      if (it.kabupaten && it.kabupaten.trim().length > 2) {
+        set.add(it.kabupaten.trim())
+      }
+    })
+    return Array.from(set).sort()
+  }, [compiledUpaya])
 
   const upayaAvailableSubKlasters = useMemo(() => {
     const set = new Set<string>()
@@ -8417,181 +8498,484 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 )}
               </div>
 
-              <div className={`grid grid-cols-1 ${isNttEvent ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
-                {/* Col 1: Upaya Penanggulangan */}
-                <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-amber-200/60 gap-2">
-                      <div className="flex items-center gap-2">
+              {isNttEvent ? (
+                <div className="space-y-4">
+                  {/* Filter Toolbar: Tab Pilar + Dropdown Wilayah + Live Search */}
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 bg-slate-50/90 p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    {/* Pilar Tabs */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setUpayaActiveTab('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                          upayaActiveTab === 'all'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                        Semua 4 Pilar ({classifiedUpaya.totalFiltered})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setUpayaActiveTab('pelayanan')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                          upayaActiveTab === 'pelayanan'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50'
+                        }`}
+                      >
+                        <Stethoscope className="h-3.5 w-3.5 text-emerald-600" />
+                        Pelayanan Medis ({classifiedUpaya.pelayanan.length})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setUpayaActiveTab('logistik')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                          upayaActiveTab === 'logistik'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-white text-amber-800 border border-amber-200 hover:bg-amber-50'
+                        }`}
+                      >
+                        <Warehouse className="h-3.5 w-3.5 text-amber-600" />
+                        Logistik &amp; Farmasi ({classifiedUpaya.logistik.length})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setUpayaActiveTab('surveilans')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                          upayaActiveTab === 'surveilans'
+                            ? 'bg-sky-600 text-white shadow-xs'
+                            : 'bg-white text-sky-800 border border-sky-200 hover:bg-sky-50'
+                        }`}
+                      >
+                        <Activity className="h-3.5 w-3.5 text-sky-600" />
+                        Data &amp; Surveilans ({classifiedUpaya.surveilans.length})
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setUpayaActiveTab('administrasi')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                          upayaActiveTab === 'administrasi'
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-white text-indigo-800 border border-indigo-200 hover:bg-indigo-50'
+                        }`}
+                      >
+                        <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                        Administrasi &amp; Perencanaan ({classifiedUpaya.administrasi.length})
+                      </button>
+                    </div>
+
+                    {/* Filter Kabupaten & Live Search */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Dropdown Kabupaten */}
+                      {upayaAvailableKabupatens.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+                          <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <select
+                            value={upayaSelectedKabupaten}
+                            onChange={(e) => setUpayaSelectedKabupaten(e.target.value)}
+                            className="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer pr-1"
+                          >
+                            <option value="all">Semua Wilayah ({upayaAvailableKabupatens.length} Kab)</option>
+                            {upayaAvailableKabupatens.map((kab, kIdx) => (
+                              <option key={kIdx} value={kab}>
+                                {kab}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Search Box */}
+                      <div className="relative min-w-[210px]">
+                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={upayaSearchQuery}
+                          onChange={(e) => setUpayaSearchQuery(e.target.value)}
+                          placeholder="Cari tindakan / aksi..."
+                          className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500 shadow-2xs"
+                        />
+                        {upayaSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setUpayaSearchQuery('')}
+                            className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Pilar Grid (Saat Tab 'all' aktif) */}
+                  {upayaActiveTab === 'all' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {/* Pilar 1: Pelayanan Medis & Kesmas */}
+                      <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-b from-emerald-50/40 via-white to-slate-50/20 p-4 space-y-3 flex flex-col justify-between shadow-2xs">
+                        <div>
+                          <div className="flex items-center justify-between pb-2.5 border-b border-emerald-200/60">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800">
+                                <Stethoscope className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-950 m-0">
+                                  Pelayanan Medis
+                                </h5>
+                                <span className="text-[10px] text-emerald-700 font-semibold block">Pos Medik, Rujukan, Kesling</span>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-black text-xs">
+                              {classifiedUpaya.pelayanan.length}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                            {classifiedUpaya.pelayanan.length > 0 ? (
+                              classifiedUpaya.pelayanan.map((item, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded-xl border border-emerald-150/90 shadow-2xs space-y-1.5 hover:border-emerald-300 transition-colors">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.kabupaten}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      {item.sub_klaster || item.category}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                    {item.text}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-emerald-100">
+                                Tidak ada aksi pelayanan medis yang sesuai filter.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pilar 2: Logistik & Farmasi Kesehatan */}
+                      <div className="rounded-2xl border border-amber-200/90 bg-gradient-to-b from-amber-50/40 via-white to-slate-50/20 p-4 space-y-3 flex flex-col justify-between shadow-2xs">
+                        <div>
+                          <div className="flex items-center justify-between pb-2.5 border-b border-amber-200/60">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
+                                <Warehouse className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-950 m-0">
+                                  Logistik &amp; Farmasi
+                                </h5>
+                                <span className="text-[10px] text-amber-700 font-semibold block">Obat, BMHP, Gudang, Faskes</span>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black text-xs">
+                              {classifiedUpaya.logistik.length}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                            {classifiedUpaya.logistik.length > 0 ? (
+                              classifiedUpaya.logistik.map((item, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150/90 shadow-2xs space-y-1.5 hover:border-amber-300 transition-colors">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.kabupaten}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                      {item.sub_klaster || item.category}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                    {item.text}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-amber-100">
+                                Tidak ada aksi logistik yang sesuai filter.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pilar 3: Data, Informasi & Surveilans */}
+                      <div className="rounded-2xl border border-sky-200/90 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/20 p-4 space-y-3 flex flex-col justify-between shadow-2xs">
+                        <div>
+                          <div className="flex items-center justify-between pb-2.5 border-b border-sky-200/60">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 rounded-lg bg-sky-100 text-sky-800">
+                                <Activity className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-sky-950 m-0">
+                                  Data &amp; Surveilans
+                                </h5>
+                                <span className="text-[10px] text-sky-700 font-semibold block">SKDR, SitRep, Rekap Triase</span>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-black text-xs">
+                              {classifiedUpaya.surveilans.length}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                            {classifiedUpaya.surveilans.length > 0 ? (
+                              classifiedUpaya.surveilans.map((item, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded-xl border border-sky-150/90 shadow-2xs space-y-1.5 hover:border-sky-300 transition-colors">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.kabupaten}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
+                                      {item.sub_klaster || item.category}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                    {item.text}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-sky-100">
+                                Tidak ada aksi surveilans yang sesuai filter.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Pilar 4: Administrasi & Manajemen Krisis */}
+                      <div className="rounded-2xl border border-indigo-200/90 bg-gradient-to-b from-indigo-50/40 via-white to-slate-50/20 p-4 space-y-3 flex flex-col justify-between shadow-2xs">
+                        <div>
+                          <div className="flex items-center justify-between pb-2.5 border-b border-indigo-200/60">
+                            <div className="flex items-center gap-2">
+                              <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-800">
+                                <FileText className="h-4 w-4" />
+                              </span>
+                              <div>
+                                <h5 className="text-xs sm:text-sm font-black uppercase tracking-wider text-indigo-950 m-0">
+                                  Administrasi &amp; Keuangan
+                                </h5>
+                                <span className="text-[10px] text-indigo-700 font-semibold block">RAB, Surat Nakes, Perencanaan</span>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-black text-xs">
+                              {classifiedUpaya.administrasi.length}
+                            </span>
+                          </div>
+
+                          <div className="mt-3 space-y-2 max-h-[460px] overflow-y-auto pr-1">
+                            {classifiedUpaya.administrasi.length > 0 ? (
+                              classifiedUpaya.administrasi.map((item, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded-xl border border-indigo-150/90 shadow-2xs space-y-1.5 hover:border-indigo-300 transition-colors">
+                                  <div className="flex flex-wrap items-center justify-between gap-1">
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.kabupaten}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                      {item.sub_klaster || item.category}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                    {item.text}
+                                  </p>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-indigo-100">
+                                Tidak ada aksi administrasi yang sesuai filter.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Tampilan Fokus Single Pilar (Saat Tab spesifik dipilih) */
+                    <div className="bg-slate-50/60 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                          {upayaActiveTab === 'pelayanan' && <Stethoscope className="h-5 w-5 text-emerald-600" />}
+                          {upayaActiveTab === 'logistik' && <Warehouse className="h-5 w-5 text-amber-600" />}
+                          {upayaActiveTab === 'surveilans' && <Activity className="h-5 w-5 text-sky-600" />}
+                          {upayaActiveTab === 'administrasi' && <FileText className="h-5 w-5 text-indigo-600" />}
+                          <h5 className="text-base font-black text-slate-900 m-0 uppercase tracking-wide">
+                            {upayaActiveTab === 'pelayanan' && 'Fokus: Pelayanan Medis & Posko Kesehatan'}
+                            {upayaActiveTab === 'logistik' && 'Fokus: Logistik & Farmasi Kesehatan'}
+                            {upayaActiveTab === 'surveilans' && 'Fokus: Data, Informasi & Surveilans SKDR'}
+                            {upayaActiveTab === 'administrasi' && 'Fokus: Administrasi, Keuangan & Perencanaan'}
+                          </h5>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUpayaActiveTab('all')}
+                          className="text-xs font-bold text-teal-700 hover:text-teal-900 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 cursor-pointer"
+                        >
+                          &larr; Kembali ke Semua 4 Pilar
+                        </button>
+                      </div>
+
+                      {/* Responsive Multi-Column Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[560px] overflow-y-auto pr-1">
+                        {(() => {
+                          const list =
+                            upayaActiveTab === 'pelayanan'
+                              ? classifiedUpaya.pelayanan
+                              : upayaActiveTab === 'logistik'
+                                ? classifiedUpaya.logistik
+                                : upayaActiveTab === 'surveilans'
+                                  ? classifiedUpaya.surveilans
+                                  : classifiedUpaya.administrasi
+
+                          if (list.length === 0) {
+                            return (
+                              <div className="col-span-full p-6 text-center text-slate-400 font-semibold text-sm bg-white rounded-2xl border border-slate-200">
+                                Tidak ada data aksi yang sesuai dengan filter atau kata kunci pencarian.
+                              </div>
+                            )
+                          }
+
+                          return list.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2 hover:border-slate-400 transition-all"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+                                <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 text-slate-400" />
+                                  {item.kabupaten}
+                                </span>
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                  {item.sub_klaster || item.category}
+                                </span>
+                              </div>
+                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                {item.text}
+                              </p>
+                            </div>
+                          ))
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Layout Non-NTT Standar (3 Kolom Lama) */
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                  {/* Col 1: Upaya Penanggulangan */}
+                  <div className="rounded-xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between pb-2.5 border-b border-amber-200/60 gap-2">
                         <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-amber-950 m-0">
                           Upaya Penanggulangan Krisis
                         </h5>
-                        {isNttEvent && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                            Sheet: UPAYA BIDANG KESEHATAN
-                          </span>
-                        )}
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs shrink-0">
+                          {compiledUpaya.length > 0 ? `${compiledUpaya.length} Upaya Terinput` : 'Prosedur EOC'}
+                        </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-extrabold text-xs shrink-0">
-                        {compiledUpaya.length > 0 ? `${compiledUpaya.length} Upaya Terinput` : 'Prosedur EOC'}
-                      </span>
-                    </div>
 
-                    {/* Filter & Search Bar jika ada data */}
-                    {compiledUpaya.length > 0 && (
-                      <div className="space-y-2">
-                        {/* Search Input */}
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                          <input
-                            type="text"
-                            value={upayaSearchQuery}
-                            onChange={(e) => setUpayaSearchQuery(e.target.value)}
-                            placeholder="Cari narasi upaya, APD, sanitasi, logistik, dll..."
-                            className="w-full pl-8 pr-7 py-1.5 bg-white border border-amber-200/80 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 shadow-2xs"
-                          />
-                          {upayaSearchQuery && (
-                            <button
-                              onClick={() => setUpayaSearchQuery('')}
-                              className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                            >
-                              <X className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Filter Sub Klaster Pills */}
-                        {upayaAvailableSubKlasters.length > 1 && (
-                          <div className="flex flex-wrap gap-1 items-center">
-                            <button
-                              onClick={() => setUpayaSelectedSubKlaster('all')}
-                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                                upayaSelectedSubKlaster === 'all'
-                                  ? 'bg-amber-600 text-white shadow-2xs'
-                                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                              }`}
-                            >
-                              Semua Sub Klaster ({compiledUpaya.length})
-                            </button>
-                            {upayaAvailableSubKlasters.map((sub, sIdx) => {
-                              const count = compiledUpaya.filter(
-                                (it) => (it.sub_klaster || it.category || '').toLowerCase().includes(sub.toLowerCase())
-                              ).length
-                              return (
-                                <button
-                                  key={sIdx}
-                                  onClick={() => setUpayaSelectedSubKlaster(sub)}
-                                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
-                                    upayaSelectedSubKlaster === sub
-                                      ? 'bg-amber-600 text-white shadow-2xs'
-                                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                                  }`}
-                                >
-                                  {sub.replace(/^Sub Klaster\s*/i, '')} ({count})
-                                </button>
-                              )
-                            })}
+                      <div className="mt-2 space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        {filteredCompiledUpaya.length > 0 ? (
+                          filteredCompiledUpaya.map((item, idx) => (
+                            <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150 shadow-2xs space-y-1.5 hover:border-amber-300 transition-colors">
+                              <div className="flex flex-wrap justify-between items-center gap-1">
+                                <span className="text-xs font-black uppercase tracking-wide text-amber-800">
+                                  {item.label}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  {item.kabupaten && (
+                                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                                      {item.kabupaten}
+                                    </span>
+                                  )}
+                                  {item.category && (
+                                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                      {item.category}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                                {item.text}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-amber-100">
+                            Belum ada data rincian upaya penanggulangan yang dilaporkan.
                           </div>
                         )}
                       </div>
-                    )}
+                    </div>
+                  </div>
 
-                    {/* Upaya Item Cards */}
-                    <div className="mt-2 space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                      {filteredCompiledUpaya.length > 0 ? (
-                        filteredCompiledUpaya.map((item, idx) => (
-                          <div key={idx} className="bg-white p-3 rounded-xl border border-amber-150 shadow-2xs space-y-1.5 hover:border-amber-300 transition-colors">
-                            <div className="flex flex-wrap justify-between items-center gap-1">
-                              <span className="text-xs font-black uppercase tracking-wide text-amber-800">
-                                {item.label}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                {item.kabupaten && (
-                                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                                    {item.kabupaten}
-                                  </span>
-                                )}
-                                {item.category && (
-                                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                    {item.category}
-                                  </span>
-                                )}
+                  {/* Col 2: Mobilisasi & Distribusi Logistik Bantuan */}
+                  <div className="rounded-xl border border-cyan-200/80 bg-gradient-to-b from-cyan-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between pb-2.5 border-b border-cyan-200/60">
+                        <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-cyan-950 m-0">
+                          Distribusi Logistik &amp; Bantuan
+                        </h5>
+                        <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 font-extrabold text-xs">
+                          Klaster Logistik
+                        </span>
+                      </div>
+
+                      <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
+                        {(emtText || pscText) && (
+                          <div className="grid grid-cols-2 gap-2">
+                            {emtText && (
+                              <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
+                                <span className="text-[10px] font-black uppercase text-slate-400 block">Tim EMT</span>
+                                <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={emtText}>{emtText}</span>
                               </div>
-                            </div>
+                            )}
+                            {pscText && (
+                              <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
+                                <span className="text-[10px] font-black uppercase text-slate-400 block">PSC 119</span>
+                                <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={pscText}>{pscText}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {bantuanText ? (
+                          <div className="bg-white p-3.5 rounded-xl border border-cyan-150 shadow-2xs space-y-1">
+                            <span className="text-xs font-black uppercase tracking-wide text-cyan-800 block">Logistik Tersalurkan / Diterima</span>
                             <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
-                              {item.text}
+                              {bantuanText}
                             </p>
                           </div>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-amber-100">
-                          {compiledUpaya.length > 0
-                            ? 'Tidak ada upaya yang cocok dengan filter atau kata kunci pencarian.'
-                            : 'Belum ada data rincian upaya penanggulangan yang dilaporkan.'}
-                        </div>
-                      )}
+                        ) : !emtText && !pscText && !bantuanDiperlukanText ? (
+                          <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-cyan-100">
+                            Belum ada catatan distribusi logistik yang dilaporkan.
+                          </div>
+                        ) : null}
+
+                        {bantuanDiperlukanText && (
+                          <div className="bg-white p-3.5 rounded-xl border border-teal-200 shadow-2xs space-y-1">
+                            <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Bantuan Yang Diperlukan Segera</span>
+                            <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
+                              {bantuanDiperlukanText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Col 2: Mobilisasi & Distribusi Logistik Bantuan */}
-                <div className="rounded-xl border border-cyan-200/80 bg-gradient-to-b from-cyan-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
-                  <div>
-                    <div className="flex items-center justify-between pb-2.5 border-b border-cyan-200/60">
-                      <h5 className="text-sm sm:text-base font-black uppercase tracking-wider text-cyan-950 m-0">
-                        Distribusi Logistik &amp; Bantuan
-                      </h5>
-                      <span className="px-2.5 py-0.5 rounded-full bg-cyan-100 text-cyan-900 font-extrabold text-xs">
-                        Klaster Logistik
-                      </span>
-                    </div>
-
-                    <div className="mt-3.5 space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-                      {(emtText || pscText) && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {emtText && (
-                            <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
-                              <span className="text-[10px] font-black uppercase text-slate-400 block">Tim EMT</span>
-                              <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={emtText}>{emtText}</span>
-                            </div>
-                          )}
-                          {pscText && (
-                            <div className="bg-white p-2.5 rounded-xl border border-cyan-150 shadow-2xs">
-                              <span className="text-[10px] font-black uppercase text-slate-400 block">PSC 119</span>
-                              <span className="text-xs sm:text-sm font-bold text-cyan-900 block truncate" title={pscText}>{pscText}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {bantuanText ? (
-                        <div className="bg-white p-3.5 rounded-xl border border-cyan-150 shadow-2xs space-y-1">
-                          <span className="text-xs font-black uppercase tracking-wide text-cyan-800 block">Logistik Tersalurkan / Diterima</span>
-                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
-                            {bantuanText}
-                          </p>
-                        </div>
-                      ) : !emtText && !pscText && !bantuanDiperlukanText ? (
-                        <div className="p-4 text-center text-slate-400 font-semibold text-xs bg-white rounded-xl border border-cyan-100">
-                          Belum ada catatan distribusi logistik yang dilaporkan.
-                        </div>
-                      ) : null}
-
-                      {bantuanDiperlukanText && (
-                        <div className="bg-white p-3.5 rounded-xl border border-teal-200 shadow-2xs space-y-1">
-                          <span className="text-xs font-black uppercase tracking-wide text-teal-800 block">Bantuan Yang Diperlukan Segera</span>
-                          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal whitespace-pre-line m-0">
-                            {bantuanDiperlukanText}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Col 3: Rekomendasi, Tindak Lanjut & Hambatan */}
-                {!isNttEvent && (
+                  {/* Col 3: Rekomendasi, Tindak Lanjut & Hambatan */}
                   <div className="rounded-xl border border-teal-200/80 bg-gradient-to-b from-teal-50/50 to-slate-50/30 p-4 sm:p-5 space-y-3 flex flex-col justify-between shadow-2xs">
                     <div>
                       <div className="flex items-center justify-between pb-2.5 border-b border-teal-200/60">
@@ -8640,8 +9024,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {eventData.pelapor_nama && (
                 <div className="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs sm:text-sm text-slate-600 font-medium gap-2">
