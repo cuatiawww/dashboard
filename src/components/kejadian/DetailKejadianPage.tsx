@@ -61,6 +61,7 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
+import nttResponDinkesBackup from '@/data/ntt_respon_dinkes_backup.json'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -626,7 +627,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     tanggal: null,
   })
 
-  const [nttSipkkReports, setNttSipkkReports] = useState<any[]>([])
+  const [nttSipkkReports, setNttSipkkReports] = useState<any[]>(() => {
+    return (nttResponDinkesBackup && Array.isArray(nttResponDinkesBackup.reports)) ? nttResponDinkesBackup.reports : []
+  })
   const [loadingNtt, setLoadingNtt] = useState<boolean>(true)
   const [livePenyakitSurveilans, setLivePenyakitSurveilans] = useState<any>(null)
 
@@ -713,13 +716,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         const res = await fetch(`${basePath}/api/bencana-stats?provinsi=53`, { cache: 'no-store' })
         if (!res.ok) return
         const json = await res.json()
-        if (!active || !json.markers || !Array.isArray(json.markers)) return
+        if (!active || !json.markers || !Array.isArray(json.markers) || json.markers.length === 0) return
 
         const nttMarkers = json.markers.filter((m: any) => {
           const prov = String(m.provinsi || '').toLowerCase()
           const kab = String(m.kabupaten || m.nama_kab || '').toLowerCase()
           return prov.includes('nusa tenggara timur') || prov.includes('ntt') || kab.includes('flores') || kab.includes('manggarai') || kab.includes('sikka') || kab.includes('ngada') || kab.includes('nagekeo') || kab.includes('ende')
         })
+
+        if (nttMarkers.length === 0) return
 
         const fullReports = await Promise.all(
           nttMarkers.slice(0, 15).map(async (m: any) => {
@@ -737,8 +742,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           })
         )
 
-        if (active) {
-          setNttSipkkReports(fullReports.filter(Boolean))
+        const validReports = fullReports.filter(Boolean)
+        const hasRealData = validReports.some((r: any) => Boolean(r.upaya || r.upaya_kabupaten || r.bantuan_diperlukan || r.bantuan || r.upaya_provinsi))
+
+        if (active && hasRealData) {
+          setNttSipkkReports(validReports)
         }
       } catch (err) {
         console.warn('[NTT SIPKK Reports Fetch Error]', err)
