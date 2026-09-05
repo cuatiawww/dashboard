@@ -486,27 +486,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return isGempa && isNtt
   }, [selectedEvent, detail])
 
-  // ── Konfigurasi Flag Distribusi Kasus Penyakit (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) ──
+  // ── Konfigurasi Flag Distribusi Kasus Penyakit (Hidden sementara di semua environment) ──
   const showPenyakitSection = useMemo(() => {
     if (process.env.NEXT_PUBLIC_ENABLE_SURVEILANS_PENYAKIT === 'true') return true
-    if (process.env.NEXT_PUBLIC_ENABLE_SURVEILANS_PENYAKIT === 'false') return false
-
-    // Otomatis aktif di Vercel (Staging Dev), Localhost, atau environment Staging/Dev
-    if (process.env.NEXT_PUBLIC_VERCEL_ENV || process.env.VERCEL) return true
-    if (typeof window !== 'undefined') {
-      const host = window.location.hostname.toLowerCase()
-      if (
-        host.includes('vercel.app') ||
-        host === 'localhost' ||
-        host === '127.0.0.1' ||
-        host.includes('dev') ||
-        host.includes('staging')
-      ) {
-        return true
-      }
-    }
-
-    // Default di Server Atas (Production GitLab): Hidden sementara
+    // Default hidden sementara di Vercel, Localhost & Production
     return false
   }, [])
 
