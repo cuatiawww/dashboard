@@ -78,7 +78,21 @@ function doGet(e) {
       return ContentService.createTextOutput(jsonStr).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 5. JIKA REQUEST KORBAN / SEMUA (?type=all / type=korban)
+    // 5. JIKA REQUEST KELOMPOK RENTAN (?type=kelompok_rentan / ?type=rentan)
+    if (type === 'kelompok_rentan' || type === 'rentan') {
+      const rentanResult = parseSheetKelompokRentan(ss);
+      const payloadRentan = {
+        success: true,
+        source: 'google_spreadsheet_kelompok_rentan',
+        updated_at: new Date().toISOString(),
+        ...rentanResult
+      };
+      const jsonStr = JSON.stringify(payloadRentan);
+      try { cache.put(cacheKey, jsonStr, 600); } catch (ce) {}
+      return ContentService.createTextOutput(jsonStr).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 6. JIKA REQUEST KORBAN / SEMUA (?type=all / type=korban)
     const sheetKorban = ss.getSheetByName("PENDUDUK TERDAMPAK & KORBAN") || findSheetByPattern(ss, ["KORBAN", "PENDUDUK"]) || ss.getSheets()[0];
     const korbanData = parseSheetKorban(sheetKorban);
 
@@ -91,6 +105,7 @@ function doGet(e) {
     const faskesTerdampakResult = parseDataFaskesTerdampak(ss);
     const relawanResult = parseDataRelawanLengkap(ss);
     const upayaKesehatanResult = parseSheetUpayaKesehatan(ss);
+    const kelompokRentanResult = parseSheetKelompokRentan(ss);
 
     let totalMerah = 0, totalKuning = 0, totalHijau = 0, totalHitam = 0;
     rsData.forEach(function(r) {
@@ -124,7 +139,8 @@ function doGet(e) {
       faskes_terdampak: faskesTerdampakResult.data,
       summary_faskes_terdampak: faskesTerdampakResult.summary,
       relawan: relawanResult,
-      upaya_kesehatan: upayaKesehatanResult
+      upaya_kesehatan: upayaKesehatanResult,
+      kelompok_rentan: kelompokRentanResult
     };
 
     const jsonStr = JSON.stringify(payload);
@@ -1000,14 +1016,14 @@ function parseSheetUpayaKesehatan(ss) {
     const row = values[r];
     for (let c = 0; c < row.length; c++) {
       const cell = String(row[c] || '').trim().toUpperCase();
-      if (cell.includes("KABUPATEN") || cell.includes("KOTA")) {
+      if (cell === "KABUPATEN/KOTA" || cell === "KABUPATEN" || cell === "KOTA" || (cell.includes("KABUPATEN") && cell.length < 20)) {
         headerRowIdx = r;
         colKab = c;
       }
-      if (cell.includes("SUB KLASTER") || cell.includes("SUB-KLASTER") || cell.includes("KLASTER")) {
+      if (cell === "SUB KLASTER" || cell === "SUB-KLASTER" || (cell.includes("SUB KLASTER") && cell.length < 18)) {
         colSubKlaster = c;
       }
-      if (cell.includes("UPAYA") || cell.includes("KEGIATAN") || cell.includes("RESPON")) {
+      if (cell === "UPAYA" || cell === "KEGIATAN" || cell === "RESPON" || (cell.includes("UPAYA") && cell.length < 15)) {
         colUpaya = c;
       }
     }
@@ -1024,18 +1040,23 @@ function parseSheetUpayaKesehatan(ss) {
     const rawSub = String(row[colSubKlaster] || '').trim();
     const rawUpaya = String(row[colUpaya] || '').trim();
 
+    // Lewati baris jika ini adalah pengulangan persis header
+    if (rawKab.toUpperCase() === "KABUPATEN/KOTA" || rawSub.toUpperCase() === "SUB KLASTER" || rawUpaya.toUpperCase() === "UPAYA") {
+      continue;
+    }
+
     // Jika kolom kabupaten terisi, perbarui kabupaten aktif
-    if (rawKab && rawKab.length > 1 && !rawKab.toUpperCase().includes("KABUPATEN/KOTA")) {
+    if (rawKab && rawKab.length > 1) {
       currentKabupaten = formatKabupaten(rawKab);
     }
 
-    // Jika kolom sub klaster terisi, perbarui sub klaster aktif
-    if (rawSub && rawSub.length > 1 && !rawSub.toUpperCase().includes("SUB KLASTER")) {
+    // Jika kolom sub klaster terisi, perbarui sub klaster aktif (tidak memfilter kata 'SUB KLASTER')
+    if (rawSub && rawSub.length > 1) {
       currentSubKlaster = rawSub;
     }
 
     // Jika ada narasi upaya, simpan sebagai record data
-    if (rawUpaya && rawUpaya.length > 1 && rawUpaya !== '-' && !rawUpaya.toUpperCase().includes("UPAYA")) {
+    if (rawUpaya && rawUpaya.length > 1 && rawUpaya !== '-') {
       items.push({
         id: "upaya-" + (items.length + 1),
         kabupaten: currentKabupaten || "Kab. Nagekeo",
@@ -1088,6 +1109,282 @@ function parseSheetUpayaKesehatan(ss) {
     data: items,
     by_kabupaten: byKabupaten,
     by_sub_klaster: bySubKlaster
+  };
+}
+
+// ====================================================================
+// MODUL 6: PARSER SHEET DATA KELOMPOK RENTAN
+// ====================================================================
+function parseSheetKelompokRentan(ss) {
+  const sheet = ss.getSheetByName("DATA KELOMPOK RENTAN") || 
+                ss.getSheetByName("KELOMPOK RENTAN") || 
+                findSheetByPattern(ss, ["KELOMPOK RENTAN", "RENTAN", "VULNERABLE"]);
+
+  if (!sheet) {
+    return {
+      tersedia: false,
+      pesan: "Sheet 'DATA KELOMPOK RENTAN' tidak ditemukan.",
+      summary: {
+        total_seluruh_rentan: 0,
+        total_bayi: 0,
+        total_balita: 0,
+        total_ibu_hamil: 0,
+        total_ibu_menyusui: 0,
+        total_lansia: 0,
+        total_disabilitas: 0,
+        total_odgj: 0,
+        total_kabupaten: 0,
+        daftar_kabupaten: [],
+        daftar_tanggal: [],
+        tanggal_terbaru: ""
+      },
+      data_detail: [],
+      by_kabupaten: {},
+      by_variabel: {},
+      tren_harian: []
+    };
+  }
+
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return {
+      tersedia: true,
+      pesan: "Sheet 'DATA KELOMPOK RENTAN' kosong atau belum memiliki data.",
+      summary: {
+        total_seluruh_rentan: 0,
+        total_bayi: 0,
+        total_balita: 0,
+        total_ibu_hamil: 0,
+        total_ibu_menyusui: 0,
+        total_lansia: 0,
+        total_disabilitas: 0,
+        total_odgj: 0,
+        total_kabupaten: 0,
+        daftar_kabupaten: [],
+        daftar_tanggal: [],
+        tanggal_terbaru: ""
+      },
+      data_detail: [],
+      by_kabupaten: {},
+      by_variabel: {},
+      tren_harian: []
+    };
+  }
+
+  // 1. Identifikasi Baris Header dan Kolom Tanggal (Mulai dari Kolom D / Index 3)
+  let headerRowIdx = 0;
+  let colKab = 1;      // Default: Col B (Index 1) = Nama Kabupaten/Kota
+  let colVariabel = 2; // Default: Col C (Index 2) = Variabel
+
+  for (let r = 0; r < Math.min(5, values.length); r++) {
+    const row = values[r];
+    for (let c = 0; c < row.length; c++) {
+      const cell = String(row[c] || '').trim().toUpperCase();
+      if (cell.includes("KABUPATEN") || cell.includes("KOTA")) {
+        headerRowIdx = r;
+        colKab = c;
+      }
+      if (cell.includes("VARIABEL") || cell.includes("KATEGORI") || cell.includes("KELOMPOK")) {
+        colVariabel = c;
+      }
+    }
+  }
+
+  const headerRow = values[headerRowIdx];
+  const dateColMap = [];
+  const dateSet = {};
+
+  // Deteksi kolom tanggal mulai dari kolom setelah variabel
+  for (let c = colVariabel + 1; c < headerRow.length; c++) {
+    const formatted = formatDate(headerRow[c]);
+    if (formatted) {
+      dateColMap.push({ colIdx: c, dateStr: formatted });
+      dateSet[formatted] = true;
+    }
+  }
+
+  const daftarTanggal = Object.keys(dateSet).sort();
+  const latestDateKey = daftarTanggal.length > 0 ? daftarTanggal[daftarTanggal.length - 1] : "";
+
+  // 2. Iterasi Baris Data
+  let currentKab = "";
+  const dataDetail = [];
+  const byKabupaten = {};
+  const byVariabel = {
+    "Bayi": { variabel: "Bayi", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "Balita": { variabel: "Balita", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "Ibu Hamil": { variabel: "Ibu Hamil", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "Ibu Menyusui/Nifas": { variabel: "Ibu Menyusui/Nifas", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "Lansia": { variabel: "Lansia", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "Disabilitas": { variabel: "Disabilitas", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} },
+    "ODGJ": { variabel: "ODGJ", total: 0, persentase: 0, per_kabupaten: {}, harian_total: {} }
+  };
+
+  daftarTanggal.forEach(function(d) {
+    Object.keys(byVariabel).forEach(function(vk) {
+      byVariabel[vk].harian_total[d] = 0;
+    });
+  });
+
+  for (let r = headerRowIdx + 1; r < values.length; r++) {
+    const row = values[r];
+    const rawKab = String(row[colKab] || "").trim();
+    const rawVar = String(row[colVariabel] || "").trim();
+
+    // Lewati baris jika header berulang atau baris total
+    if (rawKab.toUpperCase() === "NAMA KABUPATEN/KOTA" || rawKab.toUpperCase().includes("TOTAL") || rawVar.toUpperCase().includes("TOTAL")) {
+      continue;
+    }
+
+    // Forward-fill Kabupaten jika kolom terisi
+    if (rawKab && rawKab.length > 1) {
+      currentKab = formatKabupaten(rawKab);
+    }
+
+    if (!currentKab || !rawVar) continue;
+
+    // Standardisasi Nama Variabel Kelompok Rentan
+    let standardizedVar = rawVar;
+    const vLower = rawVar.toLowerCase();
+    if (vLower.includes("bayi")) standardizedVar = "Bayi";
+    else if (vLower.includes("balita")) standardizedVar = "Balita";
+    else if (vLower.includes("hamil")) standardizedVar = "Ibu Hamil";
+    else if (vLower.includes("menyusui") || vLower.includes("nifas")) standardizedVar = "Ibu Menyusui/Nifas";
+    else if (vLower.includes("lansia")) standardizedVar = "Lansia";
+    else if (vLower.includes("disabilitas") || vLower.includes("difabel")) standardizedVar = "Disabilitas";
+    else if (vLower.includes("odgj") || vLower.includes("jiwa")) standardizedVar = "ODGJ";
+
+    // Hitung per tanggal dan akumulasi running kumulatif (mendukung delta penyesuaian minus)
+    const harian = {};
+    const kumulatifHarian = {};
+    let runningCumulative = 0;
+
+    dateColMap.forEach(function(item) {
+      const val = parseNum(row[item.colIdx]);
+      harian[item.dateStr] = val;
+      runningCumulative = Math.max(0, runningCumulative + val);
+      kumulatifHarian[item.dateStr] = runningCumulative;
+
+      if (byVariabel[standardizedVar]) {
+        byVariabel[standardizedVar].harian_total[item.dateStr] = (byVariabel[standardizedVar].harian_total[item.dateStr] || 0) + val;
+      }
+    });
+
+    const totalRow = runningCumulative;
+
+    // Grouping by Kabupaten
+    if (!byKabupaten[currentKab]) {
+      byKabupaten[currentKab] = {
+        kabupaten: currentKab,
+        total_rentan: 0,
+        variabel: {}
+      };
+    }
+    byKabupaten[currentKab].variabel[standardizedVar] = {
+      variabel: standardizedVar,
+      total: totalRow,
+      harian: harian,
+      kumulatif_harian: kumulatifHarian
+    };
+    byKabupaten[currentKab].total_rentan += totalRow;
+
+    // Grouping by Variabel
+    if (!byVariabel[standardizedVar]) {
+      byVariabel[standardizedVar] = {
+        variabel: standardizedVar,
+        total: 0,
+        persentase: 0,
+        per_kabupaten: {},
+        harian_total: {}
+      };
+    }
+    byVariabel[standardizedVar].total += totalRow;
+    byVariabel[standardizedVar].per_kabupaten[currentKab] = totalRow;
+
+    dataDetail.push({
+      no: dataDetail.length + 1,
+      kabupaten: currentKab,
+      variabel: standardizedVar,
+      variabel_asli: rawVar,
+      total: totalRow,
+      harian: harian,
+      kumulatif_harian: kumulatifHarian
+    });
+  }
+
+  // 3. Hitung Total Summary & Persentase
+  let totalGrand = 0;
+  Object.values(byVariabel).forEach(function(v) {
+    totalGrand += v.total;
+  });
+
+  Object.values(byVariabel).forEach(function(v) {
+    const pct = totalGrand > 0 ? (v.total / totalGrand) * 100 : 0;
+    v.persentase = Math.round(pct * 10) / 10;
+    v.persentase_formatted = (Math.round(pct * 10) / 10).toFixed(1) + "%";
+  });
+
+  // 4. Bangun Tren Harian
+  let runningTotalGrand = 0;
+  const trenHarian = daftarTanggal.map(function(tgl) {
+    let tglDelta = 0;
+    let tglBayi = 0, tglBalita = 0, tglHamil = 0, tglMenyusui = 0, tglLansia = 0, tglDisabilitas = 0, tglOdgj = 0;
+
+    dataDetail.forEach(function(row) {
+      const v = row.harian[tgl] || 0;
+      tglDelta += v;
+      if (row.variabel === "Bayi") tglBayi += v;
+      else if (row.variabel === "Balita") tglBalita += v;
+      else if (row.variabel === "Ibu Hamil") tglHamil += v;
+      else if (row.variabel === "Ibu Menyusui/Nifas") tglMenyusui += v;
+      else if (row.variabel === "Lansia") tglLansia += v;
+      else if (row.variabel === "Disabilitas") tglDisabilitas += v;
+      else if (row.variabel === "ODGJ") tglOdgj += v;
+    });
+
+    runningTotalGrand = Math.max(0, runningTotalGrand + tglDelta);
+
+    return {
+      tanggal: tgl,
+      penambahan_hari_ini: tglDelta,
+      total_kumulatif: runningTotalGrand,
+      bayi: tglBayi,
+      balita: tglBalita,
+      ibu_hamil: tglHamil,
+      ibu_menyusui: tglMenyusui,
+      lansia: tglLansia,
+      disabilitas: tglDisabilitas,
+      odgj: tglOdgj
+    };
+  });
+
+  const daftarKabupaten = Object.keys(byKabupaten);
+
+  return {
+    tersedia: true,
+    sheet_name: sheet.getName(),
+    total_data: dataDetail.length,
+    daftar_kabupaten: daftarKabupaten,
+    daftar_tanggal: daftarTanggal,
+    tanggal_terbaru: latestDateKey,
+    summary: {
+      total_seluruh_rentan: totalGrand,
+      total_bayi: byVariabel["Bayi"] ? byVariabel["Bayi"].total : 0,
+      total_balita: byVariabel["Balita"] ? byVariabel["Balita"].total : 0,
+      total_ibu_hamil: byVariabel["Ibu Hamil"] ? byVariabel["Ibu Hamil"].total : 0,
+      total_ibu_menyusui: byVariabel["Ibu Menyusui/Nifas"] ? byVariabel["Ibu Menyusui/Nifas"].total : 0,
+      total_lansia: byVariabel["Lansia"] ? byVariabel["Lansia"].total : 0,
+      total_disabilitas: byVariabel["Disabilitas"] ? byVariabel["Disabilitas"].total : 0,
+      total_odgj: byVariabel["ODGJ"] ? byVariabel["ODGJ"].total : 0,
+      total_kabupaten: daftarKabupaten.length,
+      daftar_kabupaten: daftarKabupaten,
+      daftar_tanggal: daftarTanggal,
+      tanggal_terbaru: latestDateKey
+    },
+    by_kabupaten: byKabupaten,
+    by_variabel: byVariabel,
+    tren_harian: trenHarian,
+    data_detail: dataDetail
   };
 }
 
@@ -1180,8 +1477,14 @@ function testDoGet() {
   Logger.log("7. Summary Upaya Kesehatan: " + JSON.stringify(upayaData.summary));
   Logger.log("8. Total Upaya Terinput: " + upayaData.total);
 
-  // 4. Test Full Endpoint Mock
+  // 4. Test Data Kelompok Rentan
+  Logger.log("=== MEMULAI TEST DATA KELOMPOK RENTAN ===");
+  const rentanData = parseSheetKelompokRentan(ss);
+  Logger.log("9. Summary Kelompok Rentan: " + JSON.stringify(rentanData.summary));
+  Logger.log("10. Total Rentan Terdaftar: " + rentanData.summary.total_seluruh_rentan);
+
+  // 5. Test Full Endpoint Mock
   const mockResp = doGet({ parameter: { type: 'all' } });
-  Logger.log("9. Status Output JSON Length: " + mockResp.getContent().length + " chars");
+  Logger.log("11. Status Output JSON Length: " + mockResp.getContent().length + " chars");
   Logger.log("=== TEST SELESAI DENGAN SUKSES ===");
 }

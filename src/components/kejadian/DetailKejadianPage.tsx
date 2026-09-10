@@ -62,6 +62,7 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
+import KelompokRentanTab from './KelompokRentanTab'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -248,7 +249,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'relawan_mobilisasi' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kelompok_rentan' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'relawan_mobilisasi' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
   const [situasiFaskesSubTab, setSituasiFaskesSubTab] = useState<'rs' | 'puskesmas'>('rs')
   const [situasiKabFilter, setSituasiKabFilter] = useState<string>('semua')
   const [situasiTanggalFilter, setSituasiTanggalFilter] = useState<string>('terbaru')
@@ -6022,6 +6023,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </button>
             )}
 
+            {isNttEvent && (
+              <button
+                type="button"
+                onClick={() => setMatrixTab('kelompok_rentan')}
+                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'kelompok_rentan'
+                  ? 'bg-rose-50 text-rose-900 border-rose-400 shadow-sm font-black'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+              >
+                <ShieldAlert className="h-4 w-4 text-rose-600" />
+                Kelompok Rentan
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black">
+                  7 Kategori
+                </span>
+              </button>
+            )}
+
             {!isNttEvent && (
               <button
                 type="button"
@@ -8033,6 +8051,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
             {matrixTab === 'relawan_mobilisasi' && (
               <RelawanMobilisasiTab isNttEvent={isNttEvent} />
+            )}
+
+            {matrixTab === 'kelompok_rentan' && (
+              <KelompokRentanTab isNttEvent={isNttEvent} />
             )}
 
             {false && matrixTab === 'datastudio_kluster' && (

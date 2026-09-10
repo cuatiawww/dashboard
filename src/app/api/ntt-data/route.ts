@@ -481,6 +481,7 @@ export async function GET(request: NextRequest) {
         faskes_terdampak: rawKorbanJson.faskes_terdampak || rawKorbanJson.faskes?.data || [],
         summary_faskes_terdampak: rawKorbanJson.summary_faskes_terdampak || rawKorbanJson.faskes?.summary || null,
         upaya_kesehatan: rawKorbanJson.upaya_kesehatan || null,
+        kelompok_rentan: rawKorbanJson.kelompok_rentan || null,
         tables: {
           situasi_kesehatan: situasiKesehatanTarget,
           analisa_ringkasan_harian: [],
@@ -490,6 +491,7 @@ export async function GET(request: NextRequest) {
           faskes_terdampak: rawKorbanJson.faskes_terdampak || rawKorbanJson.faskes?.data || [],
           master_faskes: masterFaskes,
           upaya_kesehatan: rawKorbanJson.upaya_kesehatan || null,
+          kelompok_rentan: rawKorbanJson.kelompok_rentan || null,
         },
         summary_faskes: summaryFaskes,
       }
