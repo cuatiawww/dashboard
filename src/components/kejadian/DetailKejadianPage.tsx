@@ -286,7 +286,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [showApiSourcesModal, setShowApiSourcesModal] = useState(false)
   const [showNttCsvModal, setShowNttCsvModal] = useState(false)
   const [trendWindowDays, setTrendWindowDays] = useState(7)
-  const [kelompokRentanChartMode, setKelompokRentanChartMode] = useState<'harian' | 'kumulatif'>('harian')
 
   // ── Tenaga Cadangan Kesehatan (TCK) Kemkes ──
   const [tckRelawan, setTckRelawan] = useState<any[]>([])
@@ -2947,35 +2946,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return {
       total,
       values,
-      chartData: [{ label: 'Total terdata' as const, ...values }],
+      pieData: KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category) => ({
+        name: category.label,
+        key: category.key,
+        value: values[category.key] || 0,
+        fill: category.color,
+      })),
     }
   }, [nttApiData?.kelompok_rentan])
-
-  const kelompokRentanDailyData = useMemo(() => {
-    const rows = Array.isArray(nttApiData?.kelompok_rentan?.tren_harian)
-      ? nttApiData.kelompok_rentan.tren_harian
-      : []
-    const cumulative: Record<string, number> = {}
-
-    return rows
-      .map((row: any) => ({ row, dateKey: formatDateISO(row.tanggal || row.date || row.tgl) }))
-      .filter((item: any) => item.dateKey)
-      .sort((a: any, b: any) => a.dateKey.localeCompare(b.dateKey))
-      .map(({ row, dateKey }: any) => {
-        const values = KELOMPOK_RENTAN_CATEGORY_CONFIG.reduce<Record<string, number>>((acc, category) => {
-          const dailyValue = safeParseInt(row[category.dailyKey])
-          cumulative[category.key] = Math.max(0, (cumulative[category.key] || 0) + dailyValue)
-          acc[category.key] = kelompokRentanChartMode === 'kumulatif' ? cumulative[category.key] : dailyValue
-          return acc
-        }, {})
-        const parsedDate = new Date(dateKey)
-        const label = !isNaN(parsedDate.getTime())
-          ? parsedDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
-          : dateKey
-
-        return { date: label, dateKey, ...values }
-      })
-  }, [nttApiData?.kelompok_rentan, kelompokRentanChartMode])
 
   const victimTrendData = useMemo(() => {
     const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
@@ -5700,110 +5678,121 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 </article>
 
-              {/* ─── SECTION 1B: TREN HARIAN KELOMPOK RENTAN ─── */}
+              {/* ─── SECTION 1B: KOMPOSISI KUMULATIF KELOMPOK RENTAN ─── */}
               {isNttEvent && (kelompokRentanTrendAvailable || kelompokRentanComposition.total > 0) && (
-                <article className="rounded-2xl border border-purple-200/80 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
-                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4 border-b border-slate-100">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <ShieldAlert className="h-5 w-5 text-purple-700" />
-                        <h4 className="text-lg sm:text-xl font-black text-slate-900 m-0">
-                          Tren Harian Kelompok Rentan
-                        </h4>
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
+                    {/* Sisi Kiri: Judul, Deskripsi, dan Summary Cards */}
+                    <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-purple-100 text-purple-700 shrink-0">
+                            <ShieldAlert className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg sm:text-xl font-black text-slate-900 leading-snug m-0">
+                              Komposisi Kelompok Rentan
+                            </h4>
+                            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 mb-0">
+                              Distribusi kumulatif populasi prioritas yang terdata di wilayah terdampak.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5 mt-4">
+                          {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category) => {
+                            const value = kelompokRentanComposition.values[category.key] || 0
+                            const percentage = kelompokRentanComposition.total > 0 ? Math.round((value / kelompokRentanComposition.total) * 100) : 0
+                            return (
+                              <div key={category.key} className={`rounded-xl border p-3 ${category.softClass}`}>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                                  <span className="text-[10px] font-black truncate" title={category.label}>{category.label}</span>
+                                </div>
+                                <div className="mt-1 text-lg font-black leading-tight">{value.toLocaleString('id-ID')}</div>
+                                <span className="text-[10px] font-bold opacity-75">{percentage}% dari total</span>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <p className="text-sm text-slate-600 font-normal mt-1.5 mb-0">
-                        Setiap batang mewakili satu tanggal laporan. Warna yang bertumpuk menunjukkan kategori kelompok rentan pada tanggal tersebut.
-                      </p>
+
+                      <div className="rounded-xl bg-purple-50/80 border border-purple-200 p-3.5 text-xs text-purple-950 leading-relaxed font-medium">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-black uppercase tracking-wider text-purple-800">Total Populasi Rentan</span>
+                          <span className="text-lg font-black text-purple-950">{kelompokRentanComposition.total.toLocaleString('id-ID')} Jiwa</span>
+                        </div>
+                        <p className="m-0 mt-1 text-[11px] text-purple-800/80">
+                          Satu orang dihitung sesuai kategori yang tercatat pada laporan kelompok rentan.
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs font-bold">
-                        <button
-                          type="button"
-                          onClick={() => setKelompokRentanChartMode('harian')}
-                          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${kelompokRentanChartMode === 'harian' ? 'bg-purple-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                          Penambahan Harian
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setKelompokRentanChartMode('kumulatif')}
-                          className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${kelompokRentanChartMode === 'kumulatif' ? 'bg-purple-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                          Kumulatif
-                        </button>
+
+                    {/* Sisi Kanan: Donut Chart Proporsi Kumulatif */}
+                    <div className="lg:col-span-8 flex flex-col bg-slate-50/50 rounded-2xl p-4 sm:p-5 border border-slate-200/90">
+                      <div className="flex items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-200/70">
+                        <div>
+                          <span className="text-sm font-black text-slate-900 block">Proporsi Kumulatif per Kategori</span>
+                          <span className="text-[11px] text-slate-500 font-medium">Arahkan kursor ke bagian lingkaran untuk melihat detail.</span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full bg-white border border-purple-200 text-[10px] font-black text-purple-700 shrink-0">
+                          {KELOMPOK_RENTAN_CATEGORY_CONFIG.length} Kategori
+                        </span>
                       </div>
-                      <div className="rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
-                        <span className="block text-[10px] font-black uppercase tracking-wider text-purple-700">Total Terkini</span>
-                        <span className="text-xl font-black text-purple-950">{kelompokRentanComposition.total.toLocaleString('id-ID')} <span className="text-xs font-bold text-purple-700">Jiwa</span></span>
+
+                      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px] gap-4 items-center flex-1">
+                        <div className="relative h-[285px] min-h-[240px]">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                            <PieChart>
+                              <Pie
+                                data={kelompokRentanComposition.pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={72}
+                                outerRadius={112}
+                                paddingAngle={2}
+                                dataKey="value"
+                                nameKey="name"
+                                isAnimationActive={true}
+                                animationDuration={800}
+                                stroke="#ffffff"
+                                strokeWidth={2}
+                              >
+                                {kelompokRentanComposition.pieData.map((entry) => (
+                                  <Cell key={`kelompok-rentan-${entry.key}`} fill={entry.fill} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 600 }}
+                                formatter={(value: any, name: any) => [`${Number(value || 0).toLocaleString('id-ID')} Jiwa`, name]}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Total Rentan</span>
+                            <span className="text-2xl font-black text-slate-900">{kelompokRentanComposition.total.toLocaleString('id-ID')}</span>
+                            <span className="text-[10px] font-bold text-slate-500">Jiwa Terdata</span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category) => {
+                            const value = kelompokRentanComposition.values[category.key] || 0
+                            const percentage = kelompokRentanComposition.total > 0 ? Math.round((value / kelompokRentanComposition.total) * 100) : 0
+                            return (
+                              <div key={category.key} className="flex items-center justify-between gap-2 text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                                  <span className="font-bold text-slate-700 truncate" title={category.label}>{category.label}</span>
+                                </div>
+                                <span className="font-black text-slate-900 shrink-0">{percentage}%</span>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {kelompokRentanDailyData.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-5 items-center pt-4">
-                      <div>
-                        <div className="h-[340px] w-full rounded-xl bg-slate-50 border border-slate-200 px-2 py-3">
-                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                            <BarChart data={kelompokRentanDailyData} margin={{ top: 12, right: 12, left: -8, bottom: 24 }} barCategoryGap="18%">
-                              <CartesianGrid vertical={false} stroke="#e2e8f0" />
-                              <XAxis dataKey="date" stroke="#475569" tickLine={false} tick={{ fontSize: 11, fontWeight: 700 }} interval="preserveStartEnd" />
-                              <YAxis stroke="#475569" tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11, fontWeight: 700 }} tickFormatter={(value) => value >= 1000 ? `${Math.round(value / 1000)}k` : value} />
-                              <Tooltip
-                                cursor={{ fill: 'rgba(148,163,184,0.08)' }}
-                                contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 600 }}
-                                formatter={(value: any, name: any) => [`${Number(value || 0).toLocaleString('id-ID')} Jiwa`, name]}
-                                labelFormatter={(label) => `Tanggal laporan: ${label}`}
-                              />
-                              <Legend verticalAlign="top" height={42} iconType="circle" iconSize={9} wrapperStyle={{ fontSize: '11px', fontWeight: 700 }} />
-                              {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category, index) => (
-                                <Bar
-                                  key={category.key}
-                                  dataKey={category.key}
-                                  stackId="kelompok-rentan-harian"
-                                  fill={category.color}
-                                  radius={index === 0 ? [0, 0, 4, 4] : index === KELOMPOK_RENTAN_CATEGORY_CONFIG.length - 1 ? [4, 4, 0, 0] : 0}
-                                />
-                              ))}
-                              {kelompokRentanDailyData.length > 7 && (
-                                <Brush
-                                  dataKey="date"
-                                  height={22}
-                                  stroke="#7c3aed"
-                                  fill="#f3e8ff"
-                                  startIndex={Math.max(0, kelompokRentanDailyData.length - 7)}
-                                  endIndex={kelompokRentanDailyData.length - 1}
-                                />
-                              )}
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <p className="text-[11px] text-slate-500 font-medium mt-2 mb-0">
-                          {kelompokRentanChartMode === 'harian' ? 'Menampilkan penambahan/koreksi yang tercatat pada setiap laporan harian.' : 'Menampilkan akumulasi berjalan sampai setiap tanggal laporan.'} Arahkan kursor ke segmen warna untuk melihat detail kategori.
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category) => {
-                          const value = kelompokRentanComposition.values[category.key] || 0
-                          const percentage = kelompokRentanComposition.total > 0 ? Math.round((value / kelompokRentanComposition.total) * 100) : 0
-                          return (
-                            <div key={category.key} className={`rounded-xl border px-3 py-2 ${category.softClass}`}>
-                              <div className="flex items-center gap-1.5">
-                                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
-                                <span className="text-[10px] font-black truncate" title={category.label}>{category.label}</span>
-                              </div>
-                              <div className="mt-1 text-sm font-black">{value.toLocaleString('id-ID')}</div>
-                              <div className="text-[10px] font-bold opacity-75">{percentage}% dari total terkini</div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-10 text-center text-sm text-slate-500 font-semibold">
-                      Data tren harian kelompok rentan belum tersedia.
-                    </div>
-                  )}
                 </article>
               )}
 
