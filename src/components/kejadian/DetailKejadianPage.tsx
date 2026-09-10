@@ -191,6 +191,16 @@ const parseSafeDate = (rawDate: any): Date => {
   return new Date()
 }
 
+const KELOMPOK_RENTAN_CATEGORY_CONFIG = [
+  { key: 'Bayi', label: 'Bayi', summaryKey: 'total_bayi', color: '#e11d48', softClass: 'bg-rose-50 text-rose-800 border-rose-200' },
+  { key: 'Balita', label: 'Balita', summaryKey: 'total_balita', color: '#f59e0b', softClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { key: 'Ibu Hamil', label: 'Ibu Hamil', summaryKey: 'total_ibu_hamil', color: '#8b5cf6', softClass: 'bg-violet-50 text-violet-800 border-violet-200' },
+  { key: 'Ibu Menyusui/Nifas', label: 'Ibu Menyusui/Nifas', summaryKey: 'total_ibu_menyusui', color: '#d946ef', softClass: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200' },
+  { key: 'Lansia', label: 'Lansia', summaryKey: 'total_lansia', color: '#2563eb', softClass: 'bg-blue-50 text-blue-800 border-blue-200' },
+  { key: 'Disabilitas', label: 'Disabilitas', summaryKey: 'total_disabilitas', color: '#0d9488', softClass: 'bg-teal-50 text-teal-800 border-teal-200' },
+  { key: 'ODGJ', label: 'ODGJ', summaryKey: 'total_odgj', color: '#0891b2', softClass: 'bg-cyan-50 text-cyan-800 border-cyan-200' },
+] as const
+
 const maskName = (name: string): string => {
   if (!name || name === '-') return '-'
   const parts = name.split(',')
@@ -2923,6 +2933,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   const kelompokRentanTrendAvailable = Object.keys(kelompokRentanTrendByDate).length > 0
 
+  const kelompokRentanComposition = useMemo(() => {
+    const kelompokData = nttApiData?.kelompok_rentan || {}
+    const byVariabel = kelompokData.by_variabel || {}
+    const summary = kelompokData.summary || {}
+    const values = KELOMPOK_RENTAN_CATEGORY_CONFIG.reduce<Record<string, number>>((acc, category) => {
+      acc[category.key] = safeParseInt(byVariabel[category.key]?.total) || safeParseInt(summary[category.summaryKey])
+      return acc
+    }, {})
+    const total = Object.values(values).reduce((sum, value) => sum + value, 0)
+
+    return {
+      total,
+      values,
+      chartData: [{ label: 'Total terdata' as const, ...values }],
+    }
+  }, [nttApiData?.kelompok_rentan])
+
   const victimTrendData = useMemo(() => {
     const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
       ? detail.perkembangan
@@ -5645,6 +5672,82 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </div>
                   </div>
                 </article>
+
+              {/* ─── SECTION 1B: KOMPOSISI KELOMPOK RENTAN ─── */}
+              {isNttEvent && (kelompokRentanTrendAvailable || kelompokRentanComposition.total > 0) && (
+                <article className="rounded-2xl border border-purple-200/80 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 pb-4 border-b border-slate-100">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="h-5 w-5 text-purple-700" />
+                        <h4 className="text-lg sm:text-xl font-black text-slate-900 m-0">
+                          Komposisi Kelompok Rentan Terdata
+                        </h4>
+                      </div>
+                      <p className="text-sm text-slate-600 font-normal mt-1.5 mb-0">
+                        Satu bar menunjukkan seluruh populasi rentan terdata; setiap warna menunjukkan kontribusi satu kategori prioritas.
+                      </p>
+                    </div>
+                    <div className="shrink-0 rounded-xl bg-purple-50 border border-purple-200 px-4 py-2.5">
+                      <span className="block text-[10px] font-black uppercase tracking-wider text-purple-700">Total Kelompok Rentan</span>
+                      <span className="text-xl font-black text-purple-950">{kelompokRentanComposition.total.toLocaleString('id-ID')} <span className="text-xs font-bold text-purple-700">Jiwa</span></span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-5 items-center pt-4">
+                    <div>
+                      <div className="h-[110px] w-full rounded-xl bg-slate-50 border border-slate-200 px-2 py-1">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart
+                            data={kelompokRentanComposition.chartData}
+                            layout="vertical"
+                            margin={{ top: 12, right: 12, left: 8, bottom: 12 }}
+                          >
+                            <CartesianGrid horizontal={false} stroke="#e2e8f0" />
+                            <XAxis type="number" hide domain={[0, 'dataMax']} />
+                            <YAxis type="category" dataKey="label" hide />
+                            <Tooltip
+                              cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                              contentStyle={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: '0 8px 24px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 600 }}
+                              formatter={(value: any, name: any) => [`${Number(value || 0).toLocaleString('id-ID')} Jiwa`, name]}
+                            />
+                            {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category, index) => (
+                              <Bar
+                                key={category.key}
+                                dataKey={category.key}
+                                stackId="kelompok-rentan"
+                                fill={category.color}
+                                barSize={54}
+                                radius={index === 0 ? [10, 0, 0, 10] : index === KELOMPOK_RENTAN_CATEGORY_CONFIG.length - 1 ? [0, 10, 10, 0] : 0}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium mt-2 mb-0">
+                        Arahkan kursor ke segmen warna untuk melihat angka tiap kategori.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {KELOMPOK_RENTAN_CATEGORY_CONFIG.map((category) => {
+                        const value = kelompokRentanComposition.values[category.key] || 0
+                        const percentage = kelompokRentanComposition.total > 0 ? Math.round((value / kelompokRentanComposition.total) * 100) : 0
+                        return (
+                          <div key={category.key} className={`rounded-xl border px-3 py-2 ${category.softClass}`}>
+                            <div className="flex items-center gap-1.5">
+                              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
+                              <span className="text-[10px] font-black truncate" title={category.label}>{category.label}</span>
+                            </div>
+                            <div className="mt-1 text-sm font-black">{value.toLocaleString('id-ID')}</div>
+                            <div className="text-[10px] font-bold opacity-75">{percentage}%</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </article>
+              )}
 
               {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
