@@ -62,7 +62,6 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
-import KelompokRentanTab from './KelompokRentanTab'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -249,7 +248,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [rightTab, setRightTab] = useState<'tenaga' | 'pengungsi' | 'faskes'>('tenaga')
-  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kelompok_rentan' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'relawan_mobilisasi' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
+  const [matrixTab, setMatrixTab] = useState<'faskes' | 'pengungsian' | 'kesehatan' | 'logistik' | 'status_faskes' | 'sumber_daya' | 'sanitasi_kesling' | 'logistik_kesehatan' | 'tck' | 'relawan_mobilisasi' | 'datastudio_kluster' | 'datastudio_penyakit' | 'timeline_log' | 'situasi_faskes' | 'situasi_rs' | 'situasi_puskesmas'>('faskes')
   const [situasiFaskesSubTab, setSituasiFaskesSubTab] = useState<'rs' | 'puskesmas'>('rs')
   const [situasiKabFilter, setSituasiKabFilter] = useState<string>('semua')
   const [situasiTanggalFilter, setSituasiTanggalFilter] = useState<string>('terbaru')
@@ -295,6 +294,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     'Total Pengungsi': true,
     'Total Korban': true,
     'Penduduk Terancam/Terdampak': true,
+    'Kelompok Rentan Terdata': true,
   })
 
   const toggleLine = (dataKey: string) => {
@@ -311,6 +311,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       'Total Pengungsi': dataKey === 'Total Pengungsi',
       'Total Korban': dataKey === 'Total Korban',
       'Penduduk Terancam/Terdampak': dataKey === 'Penduduk Terancam/Terdampak',
+      'Kelompok Rentan Terdata': dataKey === 'Kelompok Rentan Terdata',
     })
   }
 
@@ -321,6 +322,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       'Total Pengungsi': true,
       'Total Korban': true,
       'Penduduk Terancam/Terdampak': true,
+      'Kelompok Rentan Terdata': true,
     })
   }
 
@@ -591,6 +593,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     master_faskes: any[]
     summary_faskes?: any
     summary_korban?: any
+    kelompok_rentan?: any
     dates_available?: string[]
     updated_at?: string | null
     tanggal?: string | null
@@ -606,6 +609,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     master_faskes: [],
     summary_faskes: null,
     summary_korban: null,
+    kelompok_rentan: null,
     dates_available: [],
     updated_at: null,
     tanggal: null,
@@ -685,6 +689,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           master_faskes: Array.isArray(json.tables?.master_faskes) ? json.tables.master_faskes : (Array.isArray(json.data?.master_faskes) ? json.data.master_faskes : []),
           summary_faskes: json.summary_faskes || null,
           summary_korban: json.summary_korban || null,
+          kelompok_rentan: json.kelompok_rentan || json.tables?.kelompok_rentan || null,
           dates_available: Array.isArray(json.dates_available) ? json.dates_available : [],
           updated_at: json.updated_at || (json.tanggal ? `${json.tanggal} 10:01:00` : new Date().toISOString()),
           tanggal: json.tanggal || null,
@@ -2901,6 +2906,23 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
   };
 
   // ── TREND GRAPH GENERATORS ──
+  const kelompokRentanTrendByDate = useMemo(() => {
+    const rows = Array.isArray(nttApiData?.kelompok_rentan?.tren_harian)
+      ? nttApiData.kelompok_rentan.tren_harian
+      : []
+    const byDate: Record<string, number> = {}
+
+    rows.forEach((row: any) => {
+      const dateKey = formatDateISO(row.tanggal || row.date || row.tgl)
+      if (!dateKey) return
+      byDate[dateKey] = safeParseInt(row.total_kumulatif ?? row.total ?? row.total_seluruh_rentan)
+    })
+
+    return byDate
+  }, [nttApiData?.kelompok_rentan])
+
+  const kelompokRentanTrendAvailable = Object.keys(kelompokRentanTrendByDate).length > 0
+
   const victimTrendData = useMemo(() => {
     const list = Array.isArray(detail?.perkembangan) && detail.perkembangan.length > 0
       ? detail.perkembangan
@@ -2911,6 +2933,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const finalHilang = safeParseInt(eventData.hilang);
     const finalPengungsi = safeParseInt(eventData.pengungsi);
     const finalTerdampak = totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak);
+    const finalKelompokRentan = safeParseInt(nttApiData?.kelompok_rentan?.summary?.total_seluruh_rentan)
     const finalKorban = finalMeninggal + finalLuka + finalHilang;
 
     if (isNttEvent) {
@@ -2959,6 +2982,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               'Meninggal': totMen,
               'Luka-luka': totLuka,
               'Hilang': 0,
+              'Kelompok Rentan Terdata': kelompokRentanTrendByDate[dateKey] ?? null,
             }
           })
         }
@@ -3011,6 +3035,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             'Meninggal': lastKnown.meninggal,
             'Luka-luka': lastKnown.luka,
             'Hilang': lastKnown.hilang,
+            'Kelompok Rentan Terdata': kelompokRentanTrendByDate[dateStr] ?? null,
           });
 
           curr.setDate(curr.getDate() + 1);
@@ -3046,10 +3071,11 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         'Meninggal': Math.round(finalMeninggal * factor),
         'Luka-luka': Math.round(finalLuka * factor),
         'Hilang': Math.round(finalHilang * factor),
+        'Kelompok Rentan Terdata': finalKelompokRentan > 0 ? Math.round(finalKelompokRentan * factor) : null,
       });
     });
     return points;
-  }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.timeline_situasi_kesehatan, nttApiData?.situasi_kesehatan]);
+  }, [eventData, detail?.perkembangan, totalPendudukTerancam, isNttEvent, nttApiData?.timeline_situasi_kesehatan, nttApiData?.situasi_kesehatan, nttApiData?.kelompok_rentan, kelompokRentanTrendByDate]);
 
   const faskesTrendData = useMemo(() => {
     // 1. Prioritas NTT: Ikuti tanggal riil laporan collector
@@ -5212,6 +5238,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const meninggalLast = victimLast['Meninggal'] ?? safeParseInt(eventData.meninggal);
           const lukaLast = victimLast['Luka-luka'] ?? (safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan));
           const terdampakLast = victimLast['Penduduk Terancam/Terdampak'] ?? (totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak));
+          const kelompokRentanLast = victimLast['Kelompok Rentan Terdata'] ?? safeParseInt(nttApiData?.kelompok_rentan?.summary?.total_seluruh_rentan);
+          const kelompokRentanPct = terdampakLast > 0 ? Math.round((kelompokRentanLast / terdampakLast) * 100) : 0;
           const totalKorbanLast = victimLast['Total Korban'] ?? (meninggalLast + lukaLast);
 
           const totalTerdampakFaskes = faskesPieBreakdown.reduce((sum, item) => sum + item.terdampak, 0);
@@ -5223,7 +5251,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             : `Seluruh fasilitas kesehatan (${totalMasterFaskes} faskes) di ${displayRegion} terpantau berfungsi normal. Belum ada laporan kerusakan fisik bangunan faskes pada Formulir Lengkap RHA.`;
 
           const korbanNarrative = totalKorbanLast > 0 || terdampakLast > 0
-            ? `Tercatat ${totalKorbanLast.toLocaleString('id-ID')} total korban (${meninggalLast.toLocaleString('id-ID')} meninggal, ${lukaLast.toLocaleString('id-ID')} luka-luka), ${pengungsiLast.toLocaleString('id-ID')} pengungsi, serta ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak.`
+            ? `Tercatat ${totalKorbanLast.toLocaleString('id-ID')} total korban (${meninggalLast.toLocaleString('id-ID')} meninggal, ${lukaLast.toLocaleString('id-ID')} luka-luka), ${pengungsiLast.toLocaleString('id-ID')} pengungsi, serta ${terdampakLast.toLocaleString('id-ID')} jiwa terancam/terdampak. Kelompok rentan terdata: ${kelompokRentanLast.toLocaleString('id-ID')} jiwa.`
             : `Data korban terpantau nihil/stabil dalam periode ini.`;
 
           const penyakitNarrative = dominantDiseaseObj && totalPenyakitCases > 0
@@ -5288,6 +5316,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                           <span className="text-xl sm:text-2xl font-black text-teal-950">{terdampakLast.toLocaleString('id-ID')} <span className="text-xs sm:text-sm font-bold text-teal-700">Jiwa</span></span>
                         </div>
                       </div>
+
+                      {(kelompokRentanTrendAvailable || kelompokRentanLast > 0) && (
+                        <div className="mt-3 p-3.5 rounded-xl bg-purple-50/80 border border-purple-200/80">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <ShieldAlert className="h-4 w-4 text-purple-700" />
+                              <span className="text-xs font-bold uppercase tracking-wider text-purple-900">Kelompok Rentan Terdata</span>
+                            </div>
+                            <span className="text-lg sm:text-xl font-black text-purple-950">{kelompokRentanLast.toLocaleString('id-ID')} <span className="text-[11px] font-bold text-purple-700">Jiwa</span></span>
+                          </div>
+                          <p className="text-[11px] text-purple-800/80 font-medium mt-1 mb-0">
+                            {kelompokRentanPct > 0 ? `${kelompokRentanPct}% dari penduduk terancam/terdampak` : 'Belum ada pembanding populasi terdampak'} · 7 kategori prioritas
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Insight Box di Sisi Kiri */}
@@ -5374,6 +5417,21 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                             <span className="h-2 w-2 rounded-full bg-[#0f766e]"></span>
                             Terdampak
                           </button>
+
+                          {kelompokRentanTrendAvailable && (
+                            <button
+                              type="button"
+                              onClick={() => toggleLine('Kelompok Rentan Terdata')}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                                visibleLines['Kelompok Rentan Terdata'] !== false
+                                  ? 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs font-black'
+                                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through opacity-60'
+                              }`}
+                            >
+                              <span className="h-2 w-2 rounded-full bg-[#7c3aed]"></span>
+                              Kelompok Rentan
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -5506,6 +5564,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                                   dot={{ r: 3 }}
                                   activeDot={{ r: 5 }}
                                   hide={visibleLines['Penduduk Terancam/Terdampak'] === false}
+                                  isAnimationActive={true}
+                                  animationDuration={800}
+                                />
+                              )}
+                              {kelompokRentanTrendAvailable && (trendMetricMode === 'dual' || trendMetricMode === 'penduduk') && (
+                                <Line
+                                  yAxisId="right"
+                                  type="monotone"
+                                  dataKey="Kelompok Rentan Terdata"
+                                  stroke="#7c3aed"
+                                  strokeWidth={2.5}
+                                  strokeDasharray="2 3"
+                                  dot={{ r: 3 }}
+                                  activeDot={{ r: 5 }}
+                                  hide={visibleLines['Kelompok Rentan Terdata'] === false}
+                                  connectNulls={false}
                                   isAnimationActive={true}
                                   animationDuration={800}
                                 />
@@ -6019,23 +6093,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 Situasi Faskes
                 <span className="ml-1 px-2 py-0.5 rounded-full bg-blue-700 text-white text-[10px] font-black">
                   {filteredPasienRs.length + filteredPasienPkm.length} Faskes
-                </span>
-              </button>
-            )}
-
-            {isNttEvent && (
-              <button
-                type="button"
-                onClick={() => setMatrixTab('kelompok_rentan')}
-                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all border duration-200 flex items-center gap-1.5 ${matrixTab === 'kelompok_rentan'
-                  ? 'bg-rose-50 text-rose-900 border-rose-400 shadow-sm font-black'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-              >
-                <ShieldAlert className="h-4 w-4 text-rose-600" />
-                Kelompok Rentan
-                <span className="ml-1 px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black">
-                  7 Kategori
                 </span>
               </button>
             )}
@@ -8051,10 +8108,6 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
             {matrixTab === 'relawan_mobilisasi' && (
               <RelawanMobilisasiTab isNttEvent={isNttEvent} />
-            )}
-
-            {matrixTab === 'kelompok_rentan' && (
-              <KelompokRentanTab isNttEvent={isNttEvent} />
             )}
 
             {false && matrixTab === 'datastudio_kluster' && (
