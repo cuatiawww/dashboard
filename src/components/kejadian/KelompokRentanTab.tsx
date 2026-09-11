@@ -74,9 +74,9 @@ export default function KelompokRentanTab({ isNttEvent = true, selectedDate }: K
     fetchData(false)
   }, [])
 
-  const summary = data?.summary || {}
+  const summaryRaw = data?.summary || {}
   const byKabupaten = data?.by_kabupaten || {}
-  const byVariabel = data?.by_variabel || {}
+  const byVariabelRaw = data?.by_variabel || {}
   const daftarTanggal: string[] = data?.daftar_tanggal || []
   const daftarKabupaten: string[] = data?.daftar_kabupaten || Object.keys(byKabupaten)
 
@@ -84,6 +84,56 @@ export default function KelompokRentanTab({ isNttEvent = true, selectedDate }: K
   const formatNum = (n: number | undefined | null): string => {
     if (n === undefined || n === null || isNaN(n)) return '0'
     return Number(n).toLocaleString('id-ID')
+  }
+
+  // ─── Recalculate totals dari bawah ke atas agar konsisten ────────────────
+  // Hitung total per kabupaten dari penjumlahan semua variabel
+  const recomputedByKab: Record<string, number> = {}
+  const VAR_KEYS = ['Bayi', 'Balita', 'Ibu Hamil', 'Ibu Menyusui/Nifas', 'Lansia', 'Disabilitas', 'ODGJ']
+
+  // Hitung total per variabel dari penjumlahan semua kabupaten
+  const recomputedByVar: Record<string, number> = {}
+  VAR_KEYS.forEach(vk => { recomputedByVar[vk] = 0 })
+
+  Object.keys(byKabupaten).forEach((kab) => {
+    const vars = byKabupaten[kab]?.variabel || {}
+    let kabTotal = 0
+    VAR_KEYS.forEach((vk) => {
+      const varTotal = Math.max(0, Number(vars[vk]?.total || 0))
+      kabTotal += varTotal
+      recomputedByVar[vk] = (recomputedByVar[vk] || 0) + varTotal
+    })
+    recomputedByKab[kab] = kabTotal
+  })
+
+  // Grand total = sum semua kabupaten
+  const grandTotal = Object.values(recomputedByKab).reduce((a, b) => a + b, 0)
+
+  // Gabungkan byVariabel: pakai total recomputed, tapi pakai persentase dari grand total
+  const byVariabel: Record<string, any> = {}
+  VAR_KEYS.forEach((vk) => {
+    const varTotal = recomputedByVar[vk] || 0
+    const pct = grandTotal > 0 ? (varTotal / grandTotal) * 100 : 0
+    byVariabel[vk] = {
+      ...(byVariabelRaw[vk] || {}),
+      variabel: vk,
+      total: varTotal,
+      persentase: Math.round(pct),
+      persentase_formatted: `${Math.round(pct)}%`,
+    }
+  })
+
+  // Summary akhir: pakai grand total recomputed, fields lain tetap dari raw
+  const summary = {
+    ...summaryRaw,
+    total_seluruh_rentan: grandTotal,
+    total_bayi: recomputedByVar['Bayi'] || 0,
+    total_balita: recomputedByVar['Balita'] || 0,
+    total_ibu_hamil: recomputedByVar['Ibu Hamil'] || 0,
+    total_ibu_menyusui: recomputedByVar['Ibu Menyusui/Nifas'] || 0,
+    total_lansia: recomputedByVar['Lansia'] || 0,
+    total_disabilitas: recomputedByVar['Disabilitas'] || 0,
+    total_odgj: recomputedByVar['ODGJ'] || 0,
   }
 
   // 7 Variabel Konfigurasi Visual
@@ -457,7 +507,8 @@ export default function KelompokRentanTab({ isNttEvent = true, selectedDate }: K
           <div className="space-y-3">
             {daftarKabupaten.map((kab) => {
               const kabData = byKabupaten[kab] || {}
-              const totalKab = kabData.total_rentan || 0
+              // Gunakan total recomputed agar sinkron dengan grand total
+              const totalKab = recomputedByKab[kab] || kabData.total_rentan || 0
               const maxTotal = summary.total_seluruh_rentan || 1
               const pctOfTotal = Math.round((totalKab / maxTotal) * 100)
 
@@ -621,7 +672,8 @@ export default function KelompokRentanTab({ isNttEvent = true, selectedDate }: K
                         <td className="py-3 px-3 text-right font-semibold">{formatNum(vMap['Disabilitas']?.total || 0)}</td>
                         <td className="py-3 px-3 text-right font-semibold">{formatNum(vMap['ODGJ']?.total || 0)}</td>
                         <td className="py-3 px-3.5 text-right font-black text-rose-700 bg-rose-50/30 text-sm">
-                          {formatNum(kabData.total_rentan || 0)}
+                          {/* Gunakan recomputedByKab agar sinkron dengan total banner */}
+                          {formatNum(recomputedByKab[kab] || kabData.total_rentan || 0)}
                         </td>
                       </tr>
                     )

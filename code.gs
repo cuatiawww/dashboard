@@ -1324,15 +1324,17 @@ function parseSheetKelompokRentan(ss) {
     v.persentase_formatted = (Math.round(pct * 10) / 10).toFixed(1) + "%";
   });
 
-  // 4. Bangun Tren Harian
-  let runningTotalGrand = 0;
+  // 4. Bangun Tren Harian (Konsisten 100% dengan akumulasi kumulatif per entitas)
   const trenHarian = daftarTanggal.map(function(tgl) {
     let tglDelta = 0;
+    let tglKumulatif = 0;
     let tglBayi = 0, tglBalita = 0, tglHamil = 0, tglMenyusui = 0, tglLansia = 0, tglDisabilitas = 0, tglOdgj = 0;
 
     dataDetail.forEach(function(row) {
       const v = row.harian[tgl] || 0;
+      const k = (row.kumulatif_harian && row.kumulatif_harian[tgl] !== undefined) ? row.kumulatif_harian[tgl] : 0;
       tglDelta += v;
+      tglKumulatif += k;
       if (row.variabel === "Bayi") tglBayi += v;
       else if (row.variabel === "Balita") tglBalita += v;
       else if (row.variabel === "Ibu Hamil") tglHamil += v;
@@ -1342,12 +1344,10 @@ function parseSheetKelompokRentan(ss) {
       else if (row.variabel === "ODGJ") tglOdgj += v;
     });
 
-    runningTotalGrand = Math.max(0, runningTotalGrand + tglDelta);
-
     return {
       tanggal: tgl,
       penambahan_hari_ini: tglDelta,
-      total_kumulatif: runningTotalGrand,
+      total_kumulatif: tglKumulatif,
       bayi: tglBayi,
       balita: tglBalita,
       ibu_hamil: tglHamil,

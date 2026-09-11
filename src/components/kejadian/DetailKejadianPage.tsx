@@ -2917,9 +2917,45 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
   // ── TREND GRAPH GENERATORS ──
   const kelompokRentanTrendByDate = useMemo(() => {
-    const rows = Array.isArray(nttApiData?.kelompok_rentan?.tren_harian)
-      ? nttApiData.kelompok_rentan.tren_harian
+    const rawRentan = nttApiData?.kelompok_rentan
+    let rows = Array.isArray(rawRentan?.tren_harian)
+      ? rawRentan.tren_harian
       : []
+
+    // Fallback: Jika tren_harian kosong dari Apps Script, bangun dari akumulasi delta harian per kabupaten
+    if (rows.length === 0 && rawRentan?.by_kabupaten && Object.keys(rawRentan.by_kabupaten).length > 0) {
+      const allDatesSet = new Set<string>()
+      const VAR_KEYS = ['Bayi', 'Balita', 'Ibu Hamil', 'Ibu Menyusui/Nifas', 'Lansia', 'Disabilitas', 'ODGJ']
+      Object.values(rawRentan.by_kabupaten).forEach((kabData: any) => {
+        const vars = kabData?.variabel || {}
+        Object.values(vars).forEach((varData: any) => {
+          Object.keys(varData?.harian || {}).forEach(dt => allDatesSet.add(dt))
+        })
+      })
+      const sortedDates = Array.from(allDatesSet).sort()
+      const runningPerKabVar: Record<string, Record<string, number>> = {}
+      Object.keys(rawRentan.by_kabupaten).forEach(kab => {
+        runningPerKabVar[kab] = {}
+        VAR_KEYS.forEach(vk => { runningPerKabVar[kab][vk] = 0 })
+      })
+
+      rows = sortedDates.map(dt => {
+        let totalHariIni = 0
+        Object.keys(rawRentan.by_kabupaten).forEach(kab => {
+          const vars = rawRentan.by_kabupaten[kab]?.variabel || {}
+          VAR_KEYS.forEach(vk => {
+            const delta = Number(vars[vk]?.harian?.[dt] ?? 0)
+            runningPerKabVar[kab][vk] = Math.max(0, runningPerKabVar[kab][vk] + delta)
+            totalHariIni += runningPerKabVar[kab][vk]
+          })
+        })
+        return {
+          tanggal: dt,
+          total_kumulatif: totalHariIni
+        }
+      })
+    }
+
     const byDate: Record<string, number> = {}
 
     rows.forEach((row: any) => {
@@ -2982,39 +3018,64 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           dateGroups[dt].push(row)
         })
 
-        const sortedDates = Object.keys(dateGroups).sort()
+        // Gabungkan tanggal dari situasi kesehatan dan tanggal kelompok rentan (hingga tanggal hari ini)
+        const allDateKeys = new Set<string>(Object.keys(dateGroups))
+        const todayIso = new Date().toISOString().slice(0, 10)
+        Object.keys(kelompokRentanTrendByDate).forEach((dt) => {
+          if (dt && dt <= todayIso) {
+            allDateKeys.add(dt)
+          }
+        })
+
+        const sortedDates = Array.from(allDateKeys).sort()
         if (sortedDates.length > 0) {
+          let runningMen = 0
+          let runningLuka = 0
+          let runningPeng = 0
+          let runningPop = 0
+          let lastKnownRentan: number | null = null
+
           return sortedDates.map(dateKey => {
             const rows = dateGroups[dateKey]
-            let totMen = 0
-            let totLuka = 0
-            let totPeng = 0
-            let totPop = 0
+            if (rows && rows.length > 0) {
+              let totMen = 0
+              let totLuka = 0
+              let totPeng = 0
+              let totPop = 0
 
-            rows.forEach(r => {
-              totMen += safeParseInt(r.meninggal)
-              totLuka += (safeParseInt(r.luka_berat) + safeParseInt(r.luka_ringan))
-              totPeng += safeParseInt(r.pengungsi)
-              totPop += safeParseInt(r.populasi_terdampak || r.penduduk_terdampak)
-            })
+              rows.forEach(r => {
+                totMen += safeParseInt(r.meninggal)
+                totLuka += (safeParseInt(r.luka_berat) + safeParseInt(r.luka_ringan))
+                totPeng += safeParseInt(r.pengungsi)
+                totPop += safeParseInt(r.populasi_terdampak || r.penduduk_terdampak)
+              })
+              runningMen = totMen
+              runningLuka = totLuka
+              runningPeng = totPeng
+              runningPop = totPop
+            }
+
+            if (kelompokRentanTrendByDate[dateKey] !== undefined && kelompokRentanTrendByDate[dateKey] !== null) {
+              lastKnownRentan = kelompokRentanTrendByDate[dateKey]
+            }
 
             const dObj = new Date(dateKey)
             const formattedLabel = !isNaN(dObj.getTime())
               ? dObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
               : dateKey
 
-            const totalK = totMen + totLuka
-            const popVal = totPop > 0 ? totPop : finalTerdampak
+            const totalK = runningMen + runningLuka
+            const popVal = runningPop > 0 ? runningPop : finalTerdampak
 
             return {
               date: formattedLabel,
               'Total Korban': totalK,
               'Penduduk Terancam/Terdampak': popVal,
-              'Total Pengungsi': totPeng,
-              'Meninggal': totMen,
-              'Luka-luka': totLuka,
+              'Total Pengungsi': runningPeng,
+              'Meninggal': runningMen,
+              'Luka-luka': runningLuka,
               'Hilang': 0,
-              'Kelompok Rentan Terdata': kelompokRentanTrendByDate[dateKey] ?? null,
+              'Kelompok Rentan Terdata': kelompokRentanTrendByDate[dateKey] ?? lastKnownRentan,
             }
           })
         }
@@ -5270,7 +5331,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
           const meninggalLast = victimLast['Meninggal'] ?? safeParseInt(eventData.meninggal);
           const lukaLast = victimLast['Luka-luka'] ?? (safeParseInt(eventData.luka_berat) + safeParseInt(eventData.luka_ringan));
           const terdampakLast = victimLast['Penduduk Terancam/Terdampak'] ?? (totalPendudukTerancam > 0 ? totalPendudukTerancam : safeParseInt(eventData.penduduk_terdampak));
-          const kelompokRentanLast = victimLast['Kelompok Rentan Terdata'] ?? safeParseInt(nttApiData?.kelompok_rentan?.summary?.total_seluruh_rentan);
+          const officialKelompokRentan = kelompokRentanComposition.total > 0
+            ? kelompokRentanComposition.total
+            : safeParseInt(nttApiData?.kelompok_rentan?.summary?.total_seluruh_rentan);
+          const kelompokRentanLast = officialKelompokRentan > 0
+            ? officialKelompokRentan
+            : (victimLast['Kelompok Rentan Terdata'] ?? 0);
           const kelompokRentanPct = terdampakLast > 0 ? Math.round((kelompokRentanLast / terdampakLast) * 100) : 0;
           const totalKorbanLast = victimLast['Total Korban'] ?? (meninggalLast + lukaLast);
 

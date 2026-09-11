@@ -216,17 +216,102 @@ export async function GET(req: NextRequest) {
       resultByVariabel = filteredVar
     }
 
+    // ─── 5. Recompute summary total dari bawah ke atas ───────────────────────
+    // Tujuan: agar total banner (summary) selalu sinkron dengan penjumlahan per kabupaten/variabel
+    const VAR_KEYS = ['Bayi', 'Balita', 'Ibu Hamil', 'Ibu Menyusui/Nifas', 'Lansia', 'Disabilitas', 'ODGJ']
+    const recomputedByVar: Record<string, number> = {}
+    VAR_KEYS.forEach(vk => { recomputedByVar[vk] = 0 })
+
+    const recomputedByKab: Record<string, number> = {}
+    Object.keys(resultByKabupaten).forEach((kab) => {
+      const vars = resultByKabupaten[kab]?.variabel || {}
+      let kabTotal = 0
+      VAR_KEYS.forEach((vk) => {
+        const varTotal = Math.max(0, Number(vars[vk]?.total || 0))
+        kabTotal += varTotal
+        recomputedByVar[vk] = (recomputedByVar[vk] || 0) + varTotal
+      })
+      recomputedByKab[kab] = kabTotal
+    })
+
+    const grandTotal = Object.values(recomputedByKab).reduce((a, b) => a + b, 0)
+
+    // Rebuild byVariabel dengan total recomputed & persentase dari grand total
+    const recomputedByVariabel: Record<string, any> = {}
+    VAR_KEYS.forEach((vk) => {
+      const varTotal = recomputedByVar[vk] || 0
+      const pct = grandTotal > 0 ? (varTotal / grandTotal) * 100 : 0
+      recomputedByVariabel[vk] = {
+        ...(resultByVariabel[vk] || {}),
+        variabel: vk,
+        total: varTotal,
+        persentase: Math.round(pct * 10) / 10,
+        persentase_formatted: `${Math.round(pct)}%`,
+      }
+    })
+
+    const recomputedSummary = {
+      ...(payload.summary || {}),
+      total_seluruh_rentan: grandTotal,
+      total_bayi: recomputedByVar['Bayi'] || 0,
+      total_balita: recomputedByVar['Balita'] || 0,
+      total_ibu_hamil: recomputedByVar['Ibu Hamil'] || 0,
+      total_ibu_menyusui: recomputedByVar['Ibu Menyusui/Nifas'] || 0,
+      total_lansia: recomputedByVar['Lansia'] || 0,
+      total_disabilitas: recomputedByVar['Disabilitas'] || 0,
+      total_odgj: recomputedByVar['ODGJ'] || 0,
+    }
+
+    // ─── 6. Bangun tren_harian dari akumulasi delta harian per tanggal ────────
+    // Data di Sheet: nilai harian = delta (perubahan). Negatif = berkurang.
+    // Kita accumulate per tanggal (sorted) untuk mendapat total kumulatif per hari.
+    let builtTrenHarian: any[] = payload.tren_harian || []
+    if (builtTrenHarian.length === 0 && Object.keys(resultByKabupaten).length > 0) {
+      // Kumpulkan semua tanggal unik dari semua variabel semua kabupaten
+      const allDatesSet = new Set<string>()
+      Object.values(resultByKabupaten).forEach((kabData: any) => {
+        const vars = kabData?.variabel || {}
+        Object.values(vars).forEach((varData: any) => {
+          Object.keys(varData?.harian || {}).forEach(dt => allDatesSet.add(dt))
+        })
+      })
+      const allDates = Array.from(allDatesSet).sort()
+
+      // Akumulasi kumulatif running per kabupaten per variabel
+      const runningPerKabVar: Record<string, Record<string, number>> = {}
+      Object.keys(resultByKabupaten).forEach((kab) => {
+        runningPerKabVar[kab] = {}
+        VAR_KEYS.forEach(vk => { runningPerKabVar[kab][vk] = 0 })
+      })
+
+      builtTrenHarian = allDates.map((dt) => {
+        let totalHariIni = 0
+        Object.keys(resultByKabupaten).forEach((kab) => {
+          const vars = resultByKabupaten[kab]?.variabel || {}
+          VAR_KEYS.forEach((vk) => {
+            const delta = Number(vars[vk]?.harian?.[dt] ?? 0)
+            runningPerKabVar[kab][vk] = Math.max(0, runningPerKabVar[kab][vk] + delta)
+            totalHariIni += runningPerKabVar[kab][vk]
+          })
+        })
+        return {
+          tanggal: dt,
+          total_kumulatif: totalHariIni,
+        }
+      })
+    }
+
     return NextResponse.json({
       success: true,
       source: payload.source || 'google_spreadsheet_kelompok_rentan',
       updated_at: payload.updated_at || new Date().toISOString(),
-      summary: payload.summary,
-      daftar_kabupaten: payload.daftar_kabupaten || Object.keys(payload.by_kabupaten || {}),
+      summary: recomputedSummary,
+      daftar_kabupaten: payload.daftar_kabupaten || Object.keys(resultByKabupaten),
       daftar_tanggal: payload.daftar_tanggal || [],
       tanggal_terbaru: payload.tanggal_terbaru || '',
       by_kabupaten: resultByKabupaten,
-      by_variabel: resultByVariabel,
-      tren_harian: payload.tren_harian || [],
+      by_variabel: recomputedByVariabel,
+      tren_harian: builtTrenHarian,
       data_detail: payload.data_detail || []
     })
 
