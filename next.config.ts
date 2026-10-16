@@ -47,6 +47,42 @@ const nextConfig: NextConfig = {
           destination: '/dashboard-eoc/gempa-ntt/tv',
         },
         {
+          source: '/dashboard-eoc/karhutla_indonesia',
+          destination: '/dashboard-eoc/karhutla-indonesia',
+        },
+        {
+          source: '/dashboard-eoc/karhutla',
+          destination: '/dashboard-eoc/karhutla-indonesia',
+        },
+        {
+          source: '/dashboard-eoc/karhutla_indonesia/tv',
+          destination: '/dashboard-eoc/karhutla-indonesia/tv',
+        },
+        {
+          source: '/dashboard-eoc/karhutla/tv',
+          destination: '/dashboard-eoc/karhutla-indonesia/tv',
+        },
+        {
+          source: '/karhutla_indonesia',
+          destination: '/karhutla-indonesia',
+        },
+        {
+          source: '/karhutla',
+          destination: '/karhutla-indonesia',
+        },
+        {
+          source: '/karhutla_indonesia/tv',
+          destination: '/dashboard-eoc/karhutla-indonesia/tv',
+        },
+        {
+          source: '/karhutla-indonesia/tv',
+          destination: '/dashboard-eoc/karhutla-indonesia/tv',
+        },
+        {
+          source: '/karhutla/tv',
+          destination: '/dashboard-eoc/karhutla-indonesia/tv',
+        },
+        {
           source: '/detail-kejadian/:jenis/:id',
           destination: '/',
         },

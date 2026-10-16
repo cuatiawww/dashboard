@@ -9,20 +9,21 @@ export default function CookieConsent() {
   const [show, setShow] = useState(false)
   const [userLocationName, setUserLocationName] = useState<string | null>(null)
 
-  // Sembunyikan EWS consent popup khusus pada halaman Gempa NTT
-  const isGempaNtt = Boolean(
+  // Sembunyikan EWS consent popup khusus pada halaman Gempa NTT dan Karhutla
+  const isExcludedRoute = Boolean(
     pathname &&
     (
       pathname.toLowerCase().includes('gempa-ntt') ||
       pathname.toLowerCase().includes('gempa_ntt') ||
       pathname.toLowerCase().includes('prov-ntt') ||
       pathname.toLowerCase().includes('ntt') ||
-      pathname.toLowerCase().includes('gempa')
+      pathname.toLowerCase().includes('gempa') ||
+      pathname.toLowerCase().includes('karhutla')
     )
   )
 
   useEffect(() => {
-    if (isGempaNtt) return
+    if (isExcludedRoute) return
 
     // Check if user already consented
     if (typeof window !== 'undefined') {
@@ -37,9 +38,9 @@ export default function CookieConsent() {
         if (savedName) setUserLocationName(savedName)
       }
     }
-  }, [isGempaNtt])
+  }, [isExcludedRoute])
 
-  if (isGempaNtt) return null
+  if (isExcludedRoute) return null
 
   const handleDecline = () => {
     if (typeof window !== 'undefined') {

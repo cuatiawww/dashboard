@@ -76,6 +76,7 @@ const sidebarMenu: SidebarMenuGroup[] = [
     items: [
       { label: 'DASHBOARD EOC', href: '/', icon: Flame },
       { label: 'GEMPA BUMI PROV. NTT', href: '/gempa-ntt', icon: Activity },
+      { label: 'KARHUTLA INDONESIA', href: process.env.NEXT_PUBLIC_KARHUTLA_PATH || '/karhutla-indonesia', icon: Flame },
       { label: 'UNDUH LAPORAN BENCANA', href: '/unduh-laporan', icon: Download },
       { label: 'INFOGRAFIS AI (PDF)', href: '/infografis-ai', icon: FileText },
     ],
