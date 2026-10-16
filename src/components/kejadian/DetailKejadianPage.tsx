@@ -62,9 +62,9 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
-import KarhutlaMorbiditasSection from './karhutla/KarhutlaMorbiditasSection'
-import KarhutlaIspuHotspotSection from './karhutla/KarhutlaIspuHotspotSection'
-import KarhutlaResourceTabs from './karhutla/KarhutlaResourceTabs'
+import KarhutlaDataPanels from './karhutla/KarhutlaDataPanels'
+import KarhutlaDataMap from './karhutla/KarhutlaDataMap'
+import KarhutlaIspuStrip from './karhutla/KarhutlaIspuStrip'
 import KarhutlaResponSection from './karhutla/KarhutlaResponSection'
 import { useAuthStore } from '@/lib/authStore'
 import {
@@ -2172,6 +2172,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const depth = eventData.kedalaman || ''
     const mmi = eventData.skala_mmi || ''
 
+    if (isKarhutlaEvent) return // karhutla: tidak memakai data seismik/gempa
+
     if (lat === 0 && lng === 0) return
 
     let active = true
@@ -3534,15 +3536,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
       const ispuVal = eventData.ispu_tertinggi
-        ? `${eventData.ispu_tertinggi} ISPU (${eventData.ispu_lokasi || 'Kategori Berbahaya'})`
+        ? `${eventData.ispu_tertinggi} - ${eventData.ispu_lokasi || '-'}`
         : eventData.ispu
           ? `${eventData.ispu} ISPU`
-          : floodHydrology?.weather?.fireWeatherCategory
-            ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
-            : 'Menunggu data API...'
+          : 'Menunggu data API...'
 
       const hotspotVal = eventData.hotspot
-        ? `${eventData.hotspot} Titik (${eventData.kabupaten || '7 Provinsi Prioritas'})`
+        ? `${Number(eventData.hotspot).toLocaleString('id-ID')} titik`
         : eventData.titik_panas
           ? `${eventData.titik_panas} Titik`
           : 'Menunggu data API...'
@@ -3561,10 +3561,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       const windVal = eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : (floodHydrology?.weather?.windSpeed ? `${floodHydrology.weather.windSpeed} km/j` : '18 km/jam')
 
       return [
-        { label: 'Indeks Kualitas Udara (ISPU)', value: ispuVal, icon: Activity, color: 'text-red-600' },
-        { label: 'Sebaran Titik Panas (Hotspot)', value: hotspotVal, icon: Flame, color: 'text-amber-600' },
-        { label: 'Status Episentrum / Bencana', value: statusVal, icon: ShieldAlert, color: 'text-orange-600' },
-        { label: 'Kondisi Cuaca & Angin Dominan', value: `${suhuVal} • ${arahAnginVal} (${windVal})`, icon: Wind, color: 'text-teal-650' }
+        { label: 'ISPU Tertinggi (Stasiun KLHK)', value: ispuVal, icon: Activity, color: 'text-red-600' },
+        { label: 'Titik Panas 24 Jam (NASA FIRMS)', value: hotspotVal, icon: Flame, color: 'text-amber-600' },
+        { label: 'Kab/Kota Terdampak', value: `${eventData.karhutla_ringkasan?.kartu?.kabupaten_terdampak ?? '-'} kab/kota di ${(eventData.karhutla_ringkasan?.provinsi_terdampak || []).length} provinsi`, icon: ShieldAlert, color: 'text-orange-600' },
+        { label: 'Kasus ISPA (Balita)', value: `${Number(eventData.karhutla_ringkasan?.kartu?.kasus_ispa || 0).toLocaleString('id-ID')} (${Number(eventData.karhutla_ringkasan?.kartu?.kasus_ispa_balita || 0).toLocaleString('id-ID')})`, icon: Wind, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -4835,14 +4835,14 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 sm:justify-end shrink-0">
           <span>Terakhir Diperbarui: {formattedDate}</span>
-          <button
+          {!isKarhutlaEvent && (<button
             onClick={() => setShowApiSourcesModal(true)}
             className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-bold text-sky-800 shadow-xs transition hover:bg-sky-100 hover:border-sky-300"
             title="Informasi Sumber Data & Integrasi API Eksternal"
           >
             <Info className="h-3.5 w-3.5 text-sky-700" />
             <span>Sumber Data API</span>
-          </button>
+          </button>)}
           {/* Timeline Log button - Hidden as requested */}
           {/* 
           <button
@@ -5012,8 +5012,10 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 })}
               </div>
 
+              {isKarhutlaEvent && <KarhutlaIspuStrip karhutla={selectedEvent?.karhutla || selectedEvent?.detailData?.karhutla} />}
+
               {/* Col 3: Weather / Air Quality / Seismic Timeline (Expanded Width - Responsive Scroll) */}
-              <div className="col-span-1 md:col-span-2 2xl:col-span-5 flex flex-col justify-between pl-0 2xl:pl-2 min-w-0">
+              <div className={`col-span-1 md:col-span-2 2xl:col-span-5 flex flex-col justify-between pl-0 2xl:pl-2 min-w-0 ${isKarhutlaEvent ? 'hidden' : ''}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-xs font-black text-slate-800 uppercase tracking-wider block truncate">
@@ -5161,7 +5163,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Meninggal</span>
                 </div>
                 <div className={`${isNttEvent || isKarhutlaEvent ? 'border-l' : 'border-x'} border-slate-300/40 px-0.5`}>
-                  <span className="text-base sm:text-lg font-black text-amber-600 block leading-none">{isKarhutlaEvent ? (safeParseInt(eventData.luka_berat) || safeParseInt(breakdown.luka) || 637) : breakdown.luka}</span>
+                  <span className="text-base sm:text-lg font-black text-amber-600 block leading-none">{isKarhutlaEvent ? safeParseInt(eventData.luka_berat) : breakdown.luka}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'Rawat Inap' : 'Luka'}</span>
                 </div>
                 {!(isNttEvent || isKarhutlaEvent) && (
@@ -5188,9 +5190,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 </span>
               </div>
               <div className="text-center flex-1 flex flex-col justify-center items-center">
-                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">FASKES DI AREA</span>
+                <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">{isKarhutlaEvent ? 'KASUS ISPA' : 'FASKES DI AREA'}</span>
                 <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">
-                  {totalFaskes.toLocaleString('id-ID')}
+                  {isKarhutlaEvent ? safeParseInt(eventData.karhutla_ringkasan?.kartu?.kasus_ispa).toLocaleString('id-ID') : totalFaskes.toLocaleString('id-ID')}
                 </span>
                 {!(isNttEvent || isKarhutlaEvent) && (
                   <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${faskesTrendInfo.badgeClass}`}>
@@ -5200,8 +5202,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               {isNttEvent || isKarhutlaEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
-                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{totalFaskes.toLocaleString('id-ID')}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">DISIAGAKAN</span>
+                  <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{isKarhutlaEvent ? safeParseInt(eventData.karhutla_ringkasan?.kartu?.kasus_penyakit_lainnya).toLocaleString('id-ID') : totalFaskes.toLocaleString('id-ID')}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'PENYAKIT LAINNYA' : 'DISIAGAKAN'}</span>
                 </div>
               ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-2 gap-1 text-center shrink-0">
@@ -5241,8 +5243,8 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               </div>
               {isNttEvent || isKarhutlaEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
-                  <span className="text-base sm:text-lg font-black text-blue-900 block leading-none">{(breakdown.pengungsi || safeParseInt(eventData.pengungsi) || (isKarhutlaEvent ? 66605 : 95871)).toLocaleString('id-ID')}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'Balita Terdampak' : 'PENGUNGSI TERDATA'}</span>
+                  <span className="text-base sm:text-lg font-black text-blue-900 block leading-none">{(isKarhutlaEvent ? safeParseInt(eventData.ispa_balita) : (breakdown.pengungsi || safeParseInt(eventData.pengungsi) || 95871)).toLocaleString('id-ID')}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'Kasus ISPA Balita' : 'PENGUNGSI TERDATA'}</span>
                 </div>
               ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
@@ -5301,10 +5303,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             */}
           </div>
           <p className="text-sm sm:text-base text-slate-600 font-normal mb-3">
-            Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, dan rute navigasi darurat
+            {isKarhutlaEvent
+              ? 'Peta data karhutla: choropleth provinsi (pilih indikator), penduduk terdampak per kab/kota, stasiun ISPU, titik panas NASA FIRMS, dan kualitas udara model. Klik objek untuk detail.'
+              : 'Visualisasi geospasial lokasi kejadian, radius terdampak, jaringan fasilitas kesehatan siaga, dan rute navigasi darurat'}
           </p>
 
           <div className="h-[540px] sm:h-[580px] lg:h-[620px] rounded-xl overflow-hidden border border-slate-200 shadow-inner mt-2">
+            {isKarhutlaEvent ? (
+              <KarhutlaDataMap karhutla={selectedEvent?.karhutla || selectedEvent?.detailData?.karhutla} />
+            ) : (
             <DisasterMap
               markers={mapMarkers}
               userScope={mapUserScope}
@@ -5323,6 +5330,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               onSelectRouteSource={setSelectedRouteSource}
               earthquakePoints={earthquakePoints}
             />
+            )}
           </div>
         </div>
       </article>
@@ -5375,25 +5383,19 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs">
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
                   {isKarhutlaEvent
-                    ? 'Analisis Tren & Dinamika Dampak Bencana Asap Karhutla - 7 PROVINSI PRIORITAS'
+                    ? `Analisis Dampak Bencana Asap Karhutla - ${(eventData.karhutla_ringkasan?.provinsi_terdampak || []).length} Provinsi Terdampak`
                     : `Analisis Tren & Dinamika Dampak Bencana - ${displayRegion}`}
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
                   {isKarhutlaEvent
-                    ? 'Visualisasi pergerakan kasus ISPA, indeks kualitas udara (ISPU KLHK), titik panas NASA FIRMS, dan kesiapan operasional faskes siaga asap terverifikasi SIPKK'
+                    ? 'Visualisasi seluruh indikator dari API spreadsheet karhutla dan data dukung (NASA FIRMS, Open-Meteo/CAMS)'
                     : 'Visualisasi pergerakan data dari tanggal kejadian awal hingga perkembangan terkini berdasarkan laporan terverifikasi SIPKK'}
                 </p>
               </div>
 
               {/* ─── SECTION 1: TREN KORBAN & PENDUDUK TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
               {isKarhutlaEvent ? (
-                <KarhutlaMorbiditasSection
-                  eventData={selectedEvent}
-                  onOpenMatrix={() => {
-                    setKabupatenMatrixTab('korban')
-                    setShowKabupatenMatrixModal(true)
-                  }}
-                />
+                <KarhutlaDataPanels karhutla={selectedEvent?.karhutla || selectedEvent?.detailData?.karhutla} />
               ) : (
                 <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
@@ -5890,15 +5892,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
 
               {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
-              {isKarhutlaEvent ? (
-                <KarhutlaIspuHotspotSection
-                  eventData={selectedEvent}
-                  onOpenMatrix={() => {
-                    setKabupatenMatrixTab('faskes_terdampak')
-                    setShowKabupatenMatrixModal(true)
-                  }}
-                />
-              ) : (
+              {isKarhutlaEvent ? null : (
                 <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Status & Kesiapan Faskes */}
@@ -6097,7 +6091,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
 
               {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) ─── */}
-              {showPenyakitSection && (
+              {showPenyakitSection && !isKarhutlaEvent && (
               <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Kasus Penyakit & Epidemiologi */}
@@ -6214,7 +6208,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
 
               {/* ─── KESIMPULAN REKOMENDASI OPERASIONAL ─── */}
-              {!isNttEvent && (
+              {!(isNttEvent || isKarhutlaEvent) && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-md text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 border border-teal-200">
@@ -6291,14 +6285,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         })()}
 
         {/* Matriks Akses Lokasi Terdekat Card */}
-        {isKarhutlaEvent ? (
-          <KarhutlaResourceTabs
-            eventData={selectedEvent}
-            masterFaskesList={effectiveFaskesList}
-            onSelectTarget={handleSelectTarget}
-            selectedTargetName={selectedRouteTarget?.name}
-          />
-        ) : (
+        {isKarhutlaEvent ? null : (
           <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
           <div className="border-b border-slate-100 pb-3.5 mb-2">
             <h4 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
@@ -10746,7 +10733,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
       />
 
       {/* ── MODAL SUMBER DATA API & INTEGRASI REAL-TIME ── */}
-      {showApiSourcesModal && (
+      {showApiSourcesModal && !isKarhutlaEvent && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Modal Header */}

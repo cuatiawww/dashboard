@@ -19,29 +19,42 @@ const safeParseInt = (val: any): number => {
   return isNaN(parsed) ? 0 : parsed
 }
 
-// ─── Teks Kronologis Resmi Nasional Karhutla ─────────────────────────────────
-const KARHUTLA_KRONOLOGIS_TEXT =
-  'Pemerintah menetapkan status Siaga Darurat Bencana Asap akibat Kebakaran Hutan dan Lahan (Karhutla) di 7 Provinsi Prioritas (Kalimantan Tengah, Kalimantan Barat, Kalimantan Selatan, Kalimantan Timur, Riau, Sumatera Selatan, dan Jambi). Kemenkes RI mengaktifkan Pusat Komando Penanganan Krisis Kesehatan (EOC), menyiagakan fasilitas pelayanan kesehatan di seluruh wilayah terdampak, memobilisasi 2.146 tenaga cadangan kesehatan (SDMK), serta menyalurkan 2.912.070 masker medis dan 280 unit konsentrator oksigen darurat.'
+const fmtId = (n: number) => Number(n || 0).toLocaleString('id-ID')
 
-// ─── Titik Koordinat Spasial Wilayah Karhutla 7 Provinsi Prioritas ──────────
-const KARHUTLA_LOKASI_COORDINATES = [
-  { id: 'loc-1', kecamatan: 'Katingan', kabupaten: 'Katingan', provinsi: 'Kalimantan Tengah', latitude: -1.9167, longitude: 113.4167, hotspot: 382, ispu: 1447, status: 'Berbahaya' },
-  { id: 'loc-2', kecamatan: 'Palangka Raya', kabupaten: 'Kota Palangka Raya', provinsi: 'Kalimantan Tengah', latitude: -2.2136, longitude: 113.9108, hotspot: 245, ispu: 320, status: 'Berbahaya' },
-  { id: 'loc-3', kecamatan: 'Kotawaringin Barat', kabupaten: 'Kotawaringin Barat', provinsi: 'Kalimantan Tengah', latitude: -2.4167, longitude: 111.7333, hotspot: 118, ispu: 210, status: 'Sangat Tidak Sehat' },
-  { id: 'loc-4', kecamatan: 'Banjarbaru', kabupaten: 'Banjar', provinsi: 'Kalimantan Selatan', latitude: -3.4402, longitude: 114.8385, hotspot: 154, ispu: 185, status: 'Tidak Sehat' },
-  { id: 'loc-5', kecamatan: 'Pontianak', kabupaten: 'Kota Pontianak', provinsi: 'Kalimantan Barat', latitude: -0.0263, longitude: 109.3425, hotspot: 126, ispu: 178, status: 'Tidak Sehat' },
-  { id: 'loc-6', kecamatan: 'Ketapang', kabupaten: 'Ketapang', provinsi: 'Kalimantan Barat', latitude: -1.8333, longitude: 109.9833, hotspot: 142, ispu: 195, status: 'Tidak Sehat' },
-  { id: 'loc-7', kecamatan: 'Pekanbaru', kabupaten: 'Kota Pekanbaru', provinsi: 'Riau', latitude: 0.5071, longitude: 101.4478, hotspot: 98, ispu: 165, status: 'Tidak Sehat' },
-  { id: 'loc-8', kecamatan: 'Pelalawan', kabupaten: 'Pelalawan', provinsi: 'Riau', latitude: 0.3833, longitude: 101.8833, hotspot: 112, ispu: 190, status: 'Tidak Sehat' },
-  { id: 'loc-9', kecamatan: 'Siak', kabupaten: 'Siak', provinsi: 'Riau', latitude: 0.7963, longitude: 102.0489, hotspot: 84, ispu: 145, status: 'Sedang' },
-  { id: 'loc-10', kecamatan: 'OKI', kabupaten: 'Ogan Komering Ilir', provinsi: 'Sumatera Selatan', latitude: -3.3934, longitude: 104.8385, hotspot: 167, ispu: 205, status: 'Sangat Tidak Sehat' },
-  { id: 'loc-11', kecamatan: 'Palembang', kabupaten: 'Kota Palembang', provinsi: 'Sumatera Selatan', latitude: -2.9909, longitude: 104.7565, hotspot: 76, ispu: 155, status: 'Tidak Sehat' },
-  { id: 'loc-12', kecamatan: 'Muaro Jambi', kabupaten: 'Muaro Jambi', provinsi: 'Jambi', latitude: -1.6101, longitude: 103.6131, hotspot: 94, ispu: 160, status: 'Tidak Sehat' },
-  { id: 'loc-13', kecamatan: 'Samarinda', kabupaten: 'Kota Samarinda', provinsi: 'Kalimantan Timur', latitude: -0.5021, longitude: 117.1537, hotspot: 62, ispu: 120, status: 'Sedang' },
-  { id: 'loc-14', kecamatan: 'Kutai Kartanegara', kabupaten: 'Kutai Kartanegara', provinsi: 'Kalimantan Timur', latitude: -0.4432, longitude: 117.0089, hotspot: 89, ispu: 135, status: 'Sedang' },
-]
+// Narasi dibangun dari angka API (bukan teks statis) agar selalu sinkron dengan spreadsheet
+const buildKronologis = (json: any, hotspotRingkasan: any): string => {
+  const k = json?.ringkasan?.kartu || {}
+  const prov: string[] = json?.ringkasan?.provinsi_terdampak || []
+  const logAll = [...(k.logistik_dinkes_jenis || []), ...(k.logistik_puskris_jenis || [])]
+  const sumJenis = (key: string) => logAll.filter((x: any) => x.jenis_key === key).reduce((s: number, x: any) => s + safeParseInt(x.jumlah), 0)
+  const parts = [
+    `Kebakaran hutan dan lahan (Karhutla) berdampak pada ${fmtId(k.penduduk_terdampak)} penduduk di ${fmtId(k.kabupaten_terdampak)} kab/kota pada ${prov.length} provinsi${prov.length ? ` (${prov.join(', ')})` : ''}.`,
+    `Tercatat ${fmtId(k.kasus_ispa)} kasus ISPA (${fmtId(k.kasus_ispa_balita)} balita), ${fmtId(k.kasus_penyakit_lainnya)} kasus penyakit lainnya, ${fmtId(k.rawat_inap)} rawat inap, dan ${fmtId(k.meninggal)} meninggal.`,
+  ]
+  if (k.ispu_tertinggi?.nilai_ispu !== undefined) {
+    parts.push(`ISPU tertinggi ${fmtId(k.ispu_tertinggi.nilai_ispu)} (${k.ispu_tertinggi.kategori}) di ${k.ispu_tertinggi.stasiun}, ${k.ispu_tertinggi.provinsi}; ${fmtId(k.stasiun_ispu_berbahaya)} stasiun berkategori Berbahaya.`)
+  }
+  if (hotspotRingkasan?.kartu) {
+    parts.push(`NASA FIRMS mendeteksi ${fmtId(hotspotRingkasan.kartu.hotspot_24jam)} titik panas dalam 24 jam terakhir.`)
+  }
+  parts.push(`Kemenkes dan Dinkes melakukan ${fmtId(k.jumlah_upaya)} upaya kesehatan, menggerakkan ${fmtId(k.sdmk_digerakkan)} SDMK, serta menyalurkan ${fmtId(sumJenis('masker'))} masker dan ${fmtId(sumJenis('oksigen_konsentrator'))} unit oksigen konsentrator.`)
+  return parts.join(' ')
+}
 
-// ─── Data Dasar Kejadian Karhutla Indonesia (Arsitektur Selaras DetailKejadianPage) ───
+// Metadata kejadian. Semua angka/teks dampak diisi dari API (/api/karhutla-data); nilai awal kosong sampai data termuat.
+// Spreadsheet belum memuat tanggal mulai kejadian & status kedaruratan, jadi keduanya tidak ditampilkan.
+// tgl_kejadian_riil diisi tanggal data terakhir API (dibutuhkan komponen detail untuk kalkulasi tanggal).
+// latitude/longitude: titik referensi internal (Palangka Raya) untuk komponen detail; tidak ditampilkan sebagai data.
+const nowWib = () => {
+  const d = new Date(Date.now() + 7 * 3600_000)
+  return d.toISOString().slice(0, 19).replace('T', ' ')
+}
+const apiDateWib = (iso: any): string => {
+  const d = new Date(iso)
+  if (!iso || isNaN(d.getTime())) return nowWib()
+  return new Date(d.getTime() + 7 * 3600_000).toISOString().slice(0, 19).replace('T', ' ')
+}
+const INITIAL_DATE = nowWib()
 const BASE_KARHUTLA_EVENT = {
   id: 'EVT-KARHUTLA-ID-2026',
   kode_trans: 'EVT-KARHUTLA-ID-2026',
@@ -49,97 +62,87 @@ const BASE_KARHUTLA_EVENT = {
   nama_bencana: 'Kebakaran Hutan dan Lahan',
   jenis_bencana: 'Kebakaran Hutan dan Lahan',
   provinsi: 'INDONESIA',
-  kabupaten: '7 PROVINSI PRIORITAS',
-  kecamatan: 'Katingan, Palangka Raya, Kotawaringin, Banjar, OKI, Pelalawan, Siak, Muaro Jambi',
-  waktu_kejadian: '15 Agu 2026, 08:00:00 WIB',
-  waktu_kejadian_bmkg: '15 Agu 2026, 08:00:00 WIB',
-  tgl_kejadian_riil: '2026-08-15 08:00:00',
-  tgl_kejadian: '2026-08-15 08:00:00',
-  tgl_laporan: 'Update per 15 Oktober 2026 Pukul 16.45 WIB',
-  updated_at: '2026-10-15 16:45:00',
+  kabupaten: '',
+  kecamatan: '',
+  waktu_kejadian: '',
+  tgl_kejadian_riil: INITIAL_DATE,
+  tgl_kejadian: '',
+  tgl_laporan: '',
+  updated_at: '',
   latitude: -2.2136,
   longitude: 113.9108,
-  status_bencana: 'Siaga Darurat Bencana Asap',
-  keterangan: KARHUTLA_KRONOLOGIS_TEXT,
-  kronologis: KARHUTLA_KRONOLOGIS_TEXT,
-  deskripsi: KARHUTLA_KRONOLOGIS_TEXT,
-  buletin_eoc: KARHUTLA_KRONOLOGIS_TEXT,
-
-  // Parameter Spesifik Karhutla
-  ispu_tertinggi: 1447,
-  ispu_lokasi: 'Kab. Katingan (Berbahaya)',
-  hotspot: 1447,
-  titik_panas: 1447,
-  suhu: '34.5',
-  arah_angin: 'Tenggara (135°)',
-  kecepatan_angin: 18,
-
-  // Ringkasan Korban & Dampak Kesehatan
-  meninggal: 6,
-  luka_berat: 637,
-  luka_ringan: 295089,
-  luka: 295726,
+  status_bencana: '',
+  keterangan: '',
+  kronologis: '',
+  deskripsi: '',
+  buletin_eoc: '',
+  meninggal: 0,
+  luka_berat: 0,
+  luka_ringan: 0,
+  luka: 0,
   hilang: 0,
-  pengungsi: 66605,
-  titik_pengungsian: 92,
-  penduduk_terdampak: 14765150,
-  populasi_terdampak: 14765150,
-
+  pengungsi: 0,
+  penduduk_terdampak: 0,
+  populasi_terdampak: 0,
+  karhutla: null as any,
   detailData: {
     id: 'EVT-KARHUTLA-ID-2026',
     kode_trans: 'EVT-KARHUTLA-ID-2026',
     nama_bencana: 'Kebakaran Hutan dan Lahan',
     jenis_bencana: 'Kebakaran Hutan dan Lahan',
     provinsi: 'INDONESIA',
-    kabupaten: '7 PROVINSI PRIORITAS',
-    kecamatan: 'Katingan, Palangka Raya, Kotawaringin, Banjar, OKI, Pelalawan, Siak, Muaro Jambi',
-    waktu_kejadian: '15 Agu 2026, 08:00:00 WIB',
-    tgl_kejadian_riil: '2026-08-15 08:00:00',
-    tgl_kejadian: '2026-08-15 08:00:00',
-    tgl_laporan: 'Update per 15 Oktober 2026 Pukul 16.45 WIB',
-    updated_at: '2026-10-15 16:45:00',
+    kabupaten: '',
+    kecamatan: '',
+    waktu_kejadian: '',
+    tgl_kejadian_riil: INITIAL_DATE,
+    tgl_kejadian: '',
+    tgl_laporan: '',
+    updated_at: '',
     latitude: -2.2136,
     longitude: 113.9108,
-    deskripsi: KARHUTLA_KRONOLOGIS_TEXT,
-    kronologis: KARHUTLA_KRONOLOGIS_TEXT,
-    keterangan: KARHUTLA_KRONOLOGIS_TEXT,
-    buletin_eoc: KARHUTLA_KRONOLOGIS_TEXT,
-
-    ispu_tertinggi: 1447,
-    ispu_lokasi: 'Kab. Katingan (Berbahaya)',
-    hotspot: 1447,
-    titik_panas: 1447,
-    status_tanggap_darurat: 'Siaga Darurat Bencana Asap (Tingkat Nasional)',
-
-    korban_meninggal: 6,
-    korban_luka_berat: 637,
-    korban_luka_ringan: 295089,
-    korban_luka: 295726,
+    deskripsi: '',
+    kronologis: '',
+    keterangan: '',
+    buletin_eoc: '',
+    status_tanggap_darurat: '',
+    korban_meninggal: 0,
+    korban_luka_berat: 0,
+    korban_luka_ringan: 0,
+    korban_luka: 0,
     korban_hilang: 0,
-    pengungsi: 66605,
-    titik_pengungsian: 92,
-    populasi_terdampak: 14765150,
-    meninggal: 6,
-    luka_berat: 637,
-    luka_ringan: 295089,
-    luka: 295726,
+    pengungsi: 0,
+    populasi_terdampak: 0,
+    meninggal: 0,
+    luka_berat: 0,
+    luka_ringan: 0,
+    luka: 0,
     hilang: 0,
-    penduduk_terdampak: 14765150,
-
-    breakdown_kabupaten: [],
-    faskes_terdampak: [],
-    faskes_terdekat: [],
-    lokasi: KARHUTLA_LOKASI_COORDINATES,
-    pos_pengungsi: [],
-    logistik: [],
-    tck: [],
-    upaya_kesehatan: null,
+    penduduk_terdampak: 0,
+    breakdown_kabupaten: [] as any[],
+    faskes_terdampak: [] as any[],
+    faskes_terdekat: [] as any[],
+    lokasi: [] as any[],
+    pos_pengungsi: [] as any[],
+    logistik: [] as any[],
+    tck: [] as any[],
+    upaya_kesehatan: null as any,
+    karhutla: null as any,
   },
 }
 
 // Global in-memory cache agar navigasi instan tanpa skeleton loading ulang
 let globalKarhutlaEventCache: any = null
 let globalKarhutlaHasLoadedOnce = false
+
+const fetchJson = async (url: string): Promise<any> => {
+  try {
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) return { success: false, error: `HTTP ${res.status}` }
+    return await res.json()
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'fetch gagal' }
+  }
+}
 
 export default function KarhutlaIndonesiaPage() {
   const router = useRouter()
@@ -151,7 +154,7 @@ export default function KarhutlaIndonesiaPage() {
     setHeader({
       title: 'DASHBOARD SITUASI KARHUTLA - INDONESIA',
       description:
-        'Analisis spasial kejadian bencana kebakaran hutan dan lahan (Karhutla) serta dampaknya terhadap sumber daya kesehatan di wilayah INDONESIA.',
+        'Analisis spasial kejadian kebakaran hutan dan lahan (Karhutla): penduduk terdampak, kasus ISPA dan penyakit terkait asap, kualitas udara (ISPU), titik panas, serta respon sumber daya kesehatan.',
     })
 
     return () => {
@@ -159,162 +162,152 @@ export default function KarhutlaIndonesiaPage() {
     }
   }, [setHeader, resetHeader])
 
-  // Muat data live dari API Google Sheets Karhutla (/api/karhutla-data)
+  // Muat data live dari API Google Sheets Karhutla (/api/karhutla-data) + data dukung (hotspot, kualitas udara model)
   const loadKarhutlaData = async () => {
     if (!globalKarhutlaHasLoadedOnce && !globalKarhutlaEventCache) {
       setIsLoading(true)
     }
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
-      const res = await fetch(`${basePath}/api/karhutla-data`, { cache: 'no-store' })
-      if (!res.ok) return
-
-      const json = await res.json()
+      const api = `${basePath}/api/karhutla-data`
+      const [json, hotspot, hotspotRingkasan, udara] = await Promise.all([
+        fetchJson(api),
+        fetchJson(`${api}?type=hotspot&limit=5000`),
+        fetchJson(`${api}?type=hotspot_ringkasan`),
+        fetchJson(`${api}?type=kualitas_udara_model`),
+      ])
       if (!json || !json.success) return
 
+      const errors: string[] = []
+      if (!hotspot?.success) errors.push(`titik panas (${hotspot?.error || 'tidak tersedia'})`)
+      if (!hotspotRingkasan?.success) errors.push(`ringkasan titik panas (${hotspotRingkasan?.error || 'tidak tersedia'})`)
+      if (!udara?.success || udara?.tersedia === false) errors.push(`kualitas udara model (${udara?.error || udara?.pesan || 'tidak tersedia'})`)
+
+      const karhutla = {
+        all: json,
+        hotspot: hotspot?.success ? hotspot : null,
+        hotspotRingkasan: hotspotRingkasan?.success ? hotspotRingkasan : null,
+        udara: udara?.success && udara?.tersedia !== false ? udara : null,
+        errors,
+      }
+
       const kartu = json.ringkasan?.kartu || {}
-      const updateText = json.ringkasan?.ispu_update_text || 'Update per 15 Oktober 2026 Pukul 16.45 WIB'
+      const updateText = json.ringkasan?.ispu_update_text || ''
+      const meninggalVal = safeParseInt(kartu.meninggal)
+      const rawatInapVal = safeParseInt(kartu.rawat_inap)
+      const rawatJalanVal = safeParseInt(json.penduduk_terdampak?.summary?.luka_ringan_rawat_jalan)
+      const pengungsiVal = safeParseInt(json.penduduk_terdampak?.summary?.pengungsi)
+      const pendudukTerdampakVal = safeParseInt(kartu.penduduk_terdampak)
+      const ispaBalitaVal = safeParseInt(kartu.kasus_ispa_balita)
+      const ispuTop = kartu.ispu_tertinggi || json.ispu?.summary?.stasiun_tertinggi || null
+      const ispuVal = ispuTop ? safeParseInt(ispuTop.nilai_ispu) : 0
+      const ispuLokasi = ispuTop ? `${ispuTop.stasiun}, ${ispuTop.provinsi} (${ispuTop.kategori})` : ''
+      const hotspotTotal = karhutla.hotspotRingkasan?.kartu?.hotspot_24jam ?? karhutla.hotspot?.total ?? null
+      const kronologis = buildKronologis(json, karhutla.hotspotRingkasan)
 
-      // 1. Data Korban & Metrik
-      const meninggalVal = safeParseInt(kartu.meninggal) || 6
-      const rawatInapVal = safeParseInt(kartu.rawat_inap) || 637
-      const ispaVal = safeParseInt(kartu.kasus_ispa) || 295089
-      const totalLukaVal = rawatInapVal + ispaVal
-      const pendudukTerdampakVal = safeParseInt(kartu.penduduk_terdampak) || 14765150
-      const ispuVal = safeParseInt(kartu.ispu_tertinggi?.nilai) || 1447
-      const ispuLokasi = kartu.ispu_tertinggi?.lokasi
-        ? `${kartu.ispu_tertinggi.lokasi} (${kartu.ispu_tertinggi.kategori || 'Berbahaya'})`
-        : 'Kab. Katingan (Berbahaya)'
-
-      // 2. Breakdown Kabupaten (92 Kabupaten/Kota Terdampak dari Sheet)
+      // Breakdown kab/kota: data korban riil per kab/kota dari tab DATA PENDUDUK TERDAMPAK (tanpa estimasi/pembagian rata)
       const rawPendudukList = Array.isArray(json.penduduk_terdampak?.data) ? json.penduduk_terdampak.data : []
       const breakdownKab = rawPendudukList.map((row: any, idx: number) => {
-        const kabName = row.kabupaten || row.nama_kabupaten || row.kab_kota || `Kabupaten ${idx + 1}`
-        const provName = row.provinsi || 'Indonesia'
-        const popTerdampak = safeParseInt(row.penduduk_terdampak || row.total_penduduk || row.jumlah_penduduk)
+        const k = row.korban || {}
+        const pop = safeParseInt(row.penduduk_terdampak)
+        const lb = safeParseInt(k.luka_berat_rawat_inap)
+        const lr = safeParseInt(k.luka_ringan_rawat_jalan)
         return {
-          id: `kab-${idx + 1}`,
-          kabupaten: kabName,
-          provinsi: provName,
-          nama_kab: kabName,
-          populasi_terdampak: popTerdampak,
-          penduduk_terdampak: popTerdampak,
-          meninggal: idx === 0 ? 3 : idx === 1 ? 2 : idx === 2 ? 1 : 0,
-          luka_berat: Math.floor(rawatInapVal / (rawPendudukList.length || 1)),
-          luka_ringan: Math.floor(ispaVal / (rawPendudukList.length || 1)),
-          luka: Math.floor(totalLukaVal / (rawPendudukList.length || 1)),
+          id: row.id || `kab-${idx + 1}`,
+          kabupaten: row.kabupaten,
+          provinsi: row.provinsi,
+          nama_kab: row.kabupaten,
+          populasi_terdampak: pop,
+          penduduk_terdampak: pop,
+          meninggal: safeParseInt(k.meninggal),
+          luka_berat: lb,
+          luka_ringan: lr,
+          luka: lb + lr,
           hilang: 0,
-          pengungsi: 0,
-          zona: idx < 10 ? 'Merah' : idx < 30 ? 'Kuning' : 'Hijau',
+          pengungsi: safeParseInt(k.pengungsi),
         }
       })
 
-      // 3. Tenaga Cadangan Kesehatan (TCK SDMK)
-      const rawSdmkList = Array.isArray(json.sdmk?.data) ? json.sdmk.data : []
-      const tckList = rawSdmkList.map((item: any, idx: number) => ({
-        id: `tck-${idx + 1}`,
-        nama: item.nama_sdmk || item.nama || `Tim Medis EOC #${idx + 1}`,
-        profesi: item.profesi || item.jabatan || 'Tenaga Medis',
-        spesialisasi: item.spesialisasi || 'Respirasi & Tanggap Darurat Bencana Asap',
-        instansi: item.instansi || item.asal_faskes || 'Dinkes / Kemenkes RI',
-        lokasi_tugas: item.lokasi_tugas || item.kabupaten || item.provinsi || 'Posko Karhutla',
-        provinsi: item.provinsi || 'Kalimantan Tengah',
-        status: item.status || 'Aktif Bertugas',
-        kontak: item.kontak || '-',
+      // Tenaga kesehatan (SDMK) per provinsi: sheet hanya memuat jumlah & jenis tenaga
+      const tckList = (Array.isArray(json.sdmk?.data) ? json.sdmk.data : []).map((item: any, idx: number) => ({
+        id: item.id || `sdmk-${idx + 1}`,
+        nama: `SDMK ${item.provinsi}`,
+        profesi: (item.jenis_tenaga || []).join(', ') || '-',
+        jumlah: safeParseInt(item.jumlah),
+        instansi: 'Dinas Kesehatan',
+        lokasi_tugas: item.provinsi,
+        provinsi: item.provinsi,
+        status: 'Digerakkan',
       }))
 
-      // 4. Logistik Kesehatan
-      const rawLogistikList = Array.isArray(json.logistik?.data) ? json.logistik.data : []
-      const logistikList = rawLogistikList.map((item: any, idx: number) => ({
-        id: `log-${idx + 1}`,
-        nama_barang: item.nama_barang || item.item || item.logistik || 'Logistik Kesehatan',
-        kategori: item.kategori || 'Alat Kesehatan & APD',
-        jumlah: safeParseInt(item.jumlah || item.qty || item.total),
-        satuan: item.satuan || 'Pcs',
-        sumber: item.sumber || 'Puskris Kemenkes / Dinkes',
-        penerima: item.penerima || item.lokasi || 'Dinkes Kab/Kota',
-        status: item.status || 'Tersalurkan',
+      // Logistik riil (Dinkes + Puskris)
+      const logistikList = [
+        ...(json.logistik?.dinkes?.data || []),
+        ...(json.logistik?.puskris?.data || []),
+      ].map((item: any, idx: number) => ({
+        id: item.id || `log-${idx + 1}`,
+        nama_barang: item.jenis_logistik,
+        jumlah: safeParseInt(item.jumlah),
+        satuan: item.satuan || '-',
+        sumber: item.sumber,
+        penerima: item.provinsi,
+        provinsi: item.provinsi,
+        keterangan: item.keterangan || '',
       }))
 
-      // 5. Upaya Penanganan Kesehatan
       const rawUpayaList = Array.isArray(json.upaya?.data) ? json.upaya.data : []
 
-      // 6. Data Dukung NASA FIRMS Hotspots (dari DataDukung / NASA FIRMS 24h)
-      const firms = json.data_dukung?.nasa_firms
-      const totalFirmsHotspots = firms?.total_nasional || ispuVal
-      const firmsPoints = Array.isArray(firms?.sample_titik)
-        ? firms.sample_titik.map((pt: any, idx: number) => ({
-            id: `firms-${idx + 1}`,
-            kecamatan: `Titik Panas (${pt.confidence})`,
-            kabupaten: pt.provinsi || 'Indonesia',
-            provinsi: pt.provinsi || 'Indonesia',
-            latitude: pt.lat,
-            longitude: pt.lng,
-            hotspot: Math.round(pt.brightness || 320),
-            ispu: pt.confidence === 'high' ? 380 : 210,
-            status: pt.confidence === 'high' ? 'Berbahaya' : 'Sangat Tidak Sehat',
-            confidence: pt.confidence,
-            satellite: pt.satellite,
-            source: 'NASA FIRMS VIIRS 24h',
-          }))
-        : []
+      const provTerdampak: string[] = json.ringkasan?.provinsi_terdampak || []
+      const common = {
+        kabupaten: provTerdampak.join(', '),
+        tgl_kejadian_riil: apiDateWib(json.updated_at),
+        tgl_laporan: updateText,
+        updated_at: json.updated_at || updateText,
+        meninggal: meninggalVal,
+        luka_berat: rawatInapVal,
+        luka_ringan: rawatJalanVal,
+        luka: rawatInapVal + rawatJalanVal,
+        pengungsi: pengungsiVal,
+        penduduk_terdampak: pendudukTerdampakVal,
+        populasi_terdampak: pendudukTerdampakVal,
+        ispa_balita: ispaBalitaVal,
+        ispu_tertinggi: ispuVal || null,
+        ispu_lokasi: ispuLokasi,
+        hotspot: hotspotTotal,
+        titik_panas: hotspotTotal,
+        keterangan: kronologis,
+        kronologis,
+        deskripsi: kronologis,
+        buletin_eoc: kronologis,
+        karhutla,
+        karhutla_ringkasan: json.ringkasan,
+        karhutla_penduduk: json.penduduk_terdampak,
+        karhutla_ispa: json.ispa,
+        karhutla_penyakit: json.penyakit_lainnya,
+        karhutla_ispu: json.ispu,
+        karhutla_logistik_dinkes: json.logistik?.dinkes,
+        karhutla_logistik_puskris: json.logistik?.puskris,
+        karhutla_sdmk: json.sdmk,
+        karhutla_upaya: json.upaya,
+        karhutla_hotspot: karhutla.hotspotRingkasan,
+      }
 
       setEventData((prev: any) => {
         const next = {
           ...prev,
-          tgl_laporan: updateText,
-          updated_at: updateText,
-          meninggal: meninggalVal,
-          luka_berat: rawatInapVal,
-          luka_ringan: ispaVal,
-          luka: totalLukaVal,
-          penduduk_terdampak: pendudukTerdampakVal,
-          populasi_terdampak: pendudukTerdampakVal,
-          ispu_tertinggi: ispuVal,
-          ispu_lokasi: ispuLokasi,
-          karhutla_ringkasan: json.ringkasan,
-          karhutla_penduduk: json.penduduk_terdampak,
-          karhutla_ispa: json.ispa,
-          karhutla_penyakit: json.penyakit_lainnya,
-          karhutla_ispu: json.ispu,
-          karhutla_logistik_dinkes: json.logistik?.dinkes,
-          karhutla_logistik_puskris: json.logistik?.puskris,
-          karhutla_sdmk: json.sdmk,
-          karhutla_upaya: json.upaya,
-          karhutla_hotspot: firms,
+          ...common,
           detailData: {
             ...prev.detailData,
-            tgl_laporan: updateText,
-            updated_at: updateText,
-            meninggal: meninggalVal,
-            luka_berat: rawatInapVal,
-            luka_ringan: ispaVal,
-            luka: totalLukaVal,
-            penduduk_terdampak: pendudukTerdampakVal,
-            populasi_terdampak: pendudukTerdampakVal,
+            ...common,
             korban_meninggal: meninggalVal,
             korban_luka_berat: rawatInapVal,
-            korban_luka_ringan: ispaVal,
-            korban_luka: totalLukaVal,
-            ispu_tertinggi: ispuVal,
-            ispu_lokasi: ispuLokasi,
-            hotspot: totalFirmsHotspots,
-            titik_panas: totalFirmsHotspots,
-            karhutla_ringkasan: json.ringkasan,
-            karhutla_penduduk: json.penduduk_terdampak,
-            karhutla_ispa: json.ispa,
-            karhutla_penyakit: json.penyakit_lainnya,
-            karhutla_ispu: json.ispu,
-            karhutla_logistik_dinkes: json.logistik?.dinkes,
-            karhutla_logistik_puskris: json.logistik?.puskris,
-            karhutla_sdmk: json.sdmk,
-            karhutla_upaya: json.upaya,
-            karhutla_hotspot: firms,
-            breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
-            tck: tckList.length > 0 ? tckList : prev.detailData.tck,
-            logistik: logistikList.length > 0 ? logistikList : prev.detailData.logistik,
-            upaya_kesehatan: rawUpayaList.length > 0 ? { data: rawUpayaList } : prev.detailData.upaya_kesehatan,
-            lokasi: firmsPoints.length > 0 ? [...firmsPoints, ...KARHUTLA_LOKASI_COORDINATES] : (prev.detailData.lokasi || KARHUTLA_LOKASI_COORDINATES),
+            korban_luka_ringan: rawatJalanVal,
+            korban_luka: rawatInapVal + rawatJalanVal,
+            breakdown_kabupaten: breakdownKab,
+            tck: tckList,
+            logistik: logistikList,
+            upaya_kesehatan: rawUpayaList.length > 0 ? { data: rawUpayaList } : null,
+            lokasi: [],
           },
         }
 
