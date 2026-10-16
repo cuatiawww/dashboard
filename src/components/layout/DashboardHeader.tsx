@@ -444,10 +444,19 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
   }
   const initials = getInitials(initialName)
 
-  const isGempaNttRoute =
-    pathname === '/gempa-ntt' ||
-    pathname === '/dashboard-eoc/gempa-ntt' ||
-    pathname?.includes('gempa-ntt')
+  const isGempaNttRoute = Boolean(
+    pathname &&
+    (
+      pathname.includes('gempa-ntt') ||
+      pathname.includes('gempa_ntt') ||
+      pathname.includes('prov-ntt') ||
+      pathname.includes('karhutla') ||
+      pathname === '/gempa-ntt' ||
+      pathname === '/dashboard-eoc/gempa-ntt' ||
+      pathname === '/karhutla-indonesia' ||
+      pathname === '/dashboard-eoc/karhutla-indonesia'
+    )
+  )
 
   useEffect(() => {
     const onClickOutside = (event: MouseEvent) => {
@@ -472,12 +481,12 @@ export default function DashboardHeader({ onToggleSidebar }: DashboardHeaderProp
       <div className="relative flex min-h-[118px] items-stretch overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-95"
-          style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/${(pathname === '/gempa-ntt' || pathname === '/dashboard-eoc/gempa-ntt' || pathname?.includes('gempa-ntt')) ? 'bg header_ntt.webp' : 'bg header.png'}')` }}
+          style={{ backgroundImage: `url('${process.env.NEXT_PUBLIC_BASE_PATH || ''}/${isGempaNttRoute ? 'bg header_ntt.webp' : 'bg header.png'}')` }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/82 to-white/92" />
         <div className="relative grid w-full max-w-full gap-4 sm:gap-5 px-4 py-4 md:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="flex min-w-0 items-center gap-4">
-            {!(pathname === '/gempa-ntt' || pathname === '/dashboard-eoc/gempa-ntt' || pathname?.includes('gempa-ntt')) && (
+            {!isGempaNttRoute && (
               <button
                 type="button"
                 aria-label="Buka menu"

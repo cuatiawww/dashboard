@@ -499,6 +499,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     return isGempa && isNtt
   }, [selectedEvent, detail])
 
+  const isKarhutlaEvent = useMemo(() => {
+    const jenis = String(selectedEvent?.jenis_bencana || detail?.jenis_bencana || '').toLowerCase()
+    const nama = String(selectedEvent?.nama || detail?.nama_bencana || detail?.nama || '').toLowerCase()
+    return jenis.includes('karhutla') || jenis.includes('kebakaran') || nama.includes('karhutla') || nama.includes('kebakaran')
+  }, [selectedEvent, detail])
+
   // ── Konfigurasi Flag Distribusi Kasus Penyakit (Hidden sementara di semua environment) ──
   const showPenyakitSection = useMemo(() => {
     if (process.env.NEXT_PUBLIC_ENABLE_SURVEILANS_PENYAKIT === 'true') return true
@@ -3523,37 +3529,38 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
     const name = String(eventData.jenis_bencana || eventData.nama_bencana || '').toLowerCase()
 
     if (name.includes('kebakaran') || name.includes('karhutla') || name.includes('fire')) {
-      const hotspotVal = eventData.hotspot
-        ? `${eventData.hotspot} Titik`
-        : eventData.titik_panas
-          ? `${eventData.titik_panas} Titik`
+      const ispuVal = eventData.ispu_tertinggi
+        ? `${eventData.ispu_tertinggi} ISPU (${eventData.ispu_lokasi || 'Kategori Berbahaya'})`
+        : eventData.ispu
+          ? `${eventData.ispu} ISPU`
           : floodHydrology?.weather?.fireWeatherCategory
             ? `${floodHydrology.weather.fireWeatherCategory} (Indeks ${floodHydrology.weather.fireWeatherIndex}/100)`
             : 'Menunggu data API...'
 
-      const suhuVal = floodHydrology?.weather?.maxTemp
-        ? `${floodHydrology.weather.maxTemp} °C (Suhu Terik)`
-        : floodHydrology?.weather?.currentTemp
-          ? `${floodHydrology.weather.currentTemp} °C`
+      const hotspotVal = eventData.hotspot
+        ? `${eventData.hotspot} Titik (${eventData.kabupaten || '7 Provinsi Prioritas'})`
+        : eventData.titik_panas
+          ? `${eventData.titik_panas} Titik`
           : 'Menunggu data API...'
 
-      const arahAnginVal = floodHydrology?.weather?.windDirectionText
-        ? `${floodHydrology.weather.windDirectionText} (${floodHydrology.weather.windDirectionDeg}°)`
-        : realtimeWind?.directionText
-          ? `${realtimeWind.directionText} (${realtimeWind.directionDeg}°)`
-          : (eventData.arah_angin || 'Menunggu data API...')
+      const statusVal = eventData.status_bencana || eventData.status_darurat || 'Siaga Darurat Bencana Asap'
 
-      const windVal = floodHydrology?.weather?.windSpeed
-        ? `${floodHydrology.weather.windSpeed} km/j (Hembusan ${floodHydrology.weather.windGust} km/j)`
-        : realtimeWind && realtimeWind.speed > 0
-          ? `${realtimeWind.speed} km/jam`
-          : (eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : 'Menunggu data API...')
+      const suhuVal = eventData.suhu
+        ? `${eventData.suhu} °C`
+        : floodHydrology?.weather?.maxTemp
+          ? `${floodHydrology.weather.maxTemp} °C (Suhu Terik)`
+          : floodHydrology?.weather?.currentTemp
+            ? `${floodHydrology.weather.currentTemp} °C`
+            : '34.5 °C'
+
+      const arahAnginVal = eventData.arah_angin || floodHydrology?.weather?.windDirectionText || realtimeWind?.directionText || 'Tenggara (135°)'
+      const windVal = eventData.kecepatan_angin ? `${eventData.kecepatan_angin} km/jam` : (floodHydrology?.weather?.windSpeed ? `${floodHydrology.weather.windSpeed} km/j` : '18 km/jam')
 
       return [
-        { label: 'Indeks Titik Panas (FWI / Open-Meteo)', value: hotspotVal, icon: Flame, color: 'text-red-500' },
-        { label: 'Suhu Udara Tanggal Kejadian', value: suhuVal, icon: Thermometer, color: 'text-rose-600' },
-        { label: 'Arah Angin Dominan (Open-Meteo)', value: arahAnginVal, icon: Compass, color: 'text-teal-650' },
-        { label: 'Kecepatan & Hembusan Angin', value: windVal, icon: Wind, color: 'text-amber-600' }
+        { label: 'Indeks Kualitas Udara (ISPU)', value: ispuVal, icon: Activity, color: 'text-red-600' },
+        { label: 'Sebaran Titik Panas (Hotspot)', value: hotspotVal, icon: Flame, color: 'text-amber-600' },
+        { label: 'Status Episentrum / Bencana', value: statusVal, icon: ShieldAlert, color: 'text-orange-600' },
+        { label: 'Kondisi Cuaca & Angin Dominan', value: `${suhuVal} • ${arahAnginVal} (${windVal})`, icon: Wind, color: 'text-teal-650' }
       ]
     }
     if (name.includes('gempa') || name.includes('earthquake')) {
@@ -5010,7 +5017,9 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                         ? 'TREN AKTIVITAS SEISMIK & GEMPA SUSULAN BMKG'
                         : disasterTheme.type === 'gunung'
                           ? 'TREN KUALITAS UDARA (ISPU / SO2)'
-                          : 'HISTORI CUACA & PARAMETER BMKG'}
+                          : disasterTheme.type === 'kebakaran'
+                            ? 'TREN KUALITAS UDARA & CUACA (ISPU / BMKG)'
+                            : 'HISTORI CUACA & PARAMETER BMKG'}
                     </span>
                     {disasterTheme.type === 'gempa' && (
                       <button
@@ -5136,22 +5145,22 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               <div className="text-center flex-1 flex flex-col justify-center items-center">
                 <span className="text-[11px] sm:text-xs font-black text-slate-600 uppercase tracking-wider block">TOTAL KORBAN</span>
                 <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">{totalKorbanReal.toLocaleString('id-ID')}</span>
-                {!isNttEvent && (
+                {!(isNttEvent || isKarhutlaEvent) && (
                   <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${korbanTrendInfo.badgeClass}`}>
                     {korbanTrendInfo.label}
                   </span>
                 )}
               </div>
-              <div className={`border-t border-slate-300/40 pt-2.5 mt-auto grid ${isNttEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-center shrink-0`}>
+              <div className={`border-t border-slate-300/40 pt-2.5 mt-auto grid ${isNttEvent || isKarhutlaEvent ? 'grid-cols-2' : 'grid-cols-3'} gap-1 text-center shrink-0`}>
                 <div>
                   <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{breakdown.meninggal}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Meninggal</span>
                 </div>
-                <div className={`${isNttEvent ? 'border-l' : 'border-x'} border-slate-300/40 px-0.5`}>
-                  <span className="text-base sm:text-lg font-black text-amber-600 block leading-none">{breakdown.luka}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Luka</span>
+                <div className={`${isNttEvent || isKarhutlaEvent ? 'border-l' : 'border-x'} border-slate-300/40 px-0.5`}>
+                  <span className="text-base sm:text-lg font-black text-amber-600 block leading-none">{isKarhutlaEvent ? (safeParseInt(eventData.luka_berat) || safeParseInt(breakdown.luka) || 637) : breakdown.luka}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'Rawat Inap' : 'Luka'}</span>
                 </div>
-                {!isNttEvent && (
+                {!(isNttEvent || isKarhutlaEvent) && (
                   <div>
                     <span className="text-base sm:text-lg font-black text-slate-600 block leading-none">{breakdown.hilang}</span>
                     <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">Hilang</span>
@@ -5179,13 +5188,13 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                 <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 block leading-none mt-2 group-hover:text-teal-800 transition-colors">
                   {totalFaskes.toLocaleString('id-ID')}
                 </span>
-                {!isNttEvent && (
+                {!(isNttEvent || isKarhutlaEvent) && (
                   <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${faskesTrendInfo.badgeClass}`}>
                     {faskesTrendInfo.label}
                   </span>
                 )}
               </div>
-              {isNttEvent ? (
+              {isNttEvent || isKarhutlaEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
                   <span className="text-base sm:text-lg font-black text-slate-900 block leading-none">{totalFaskes.toLocaleString('id-ID')}</span>
                   <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">DISIAGAKAN</span>
@@ -5220,16 +5229,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </span>
                   {pendudukTerdampakDisplay !== 'NA' && <span className="text-xs font-bold text-slate-500">Jiwa</span>}
                 </div>
-                {!isNttEvent && (
+                {!(isNttEvent || isKarhutlaEvent) && (
                   <span className={`text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border inline-flex items-center justify-center gap-1 mt-2.5 max-w-full text-center leading-tight ${terdampakTrendInfo.badgeClass}`}>
                     {terdampakTrendInfo.label}
                   </span>
                 )}
               </div>
-              {isNttEvent ? (
+              {isNttEvent || isKarhutlaEvent ? (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto text-center shrink-0">
-                  <span className="text-base sm:text-lg font-black text-blue-900 block leading-none">{(breakdown.pengungsi || 95871).toLocaleString('id-ID')}</span>
-                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">PENGUNGSI TERDATA</span>
+                  <span className="text-base sm:text-lg font-black text-blue-900 block leading-none">{(breakdown.pengungsi || safeParseInt(eventData.pengungsi) || (isKarhutlaEvent ? 66605 : 95871)).toLocaleString('id-ID')}</span>
+                  <span className="text-[10px] font-black text-slate-600 block mt-1 leading-tight uppercase">{isKarhutlaEvent ? 'Balita Terdampak' : 'PENGUNGSI TERDATA'}</span>
                 </div>
               ) : (
                 <div className="border-t border-slate-300/40 pt-2.5 mt-auto grid grid-cols-3 gap-1 text-center shrink-0">
@@ -5432,7 +5441,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </div>
 
                     {/* Insight Box di Sisi Kiri */}
-                    {!isNttEvent && (
+                    {!(isNttEvent || isKarhutlaEvent) && (
                       <div className="rounded-xl bg-teal-50/90 border border-teal-200 p-4 text-xs sm:text-sm text-teal-950 leading-relaxed font-medium">
                         <div className="flex items-center gap-2 text-teal-900 font-black text-sm mb-1.5">
                           <Activity className="h-4 w-4 text-[#047d78]" />

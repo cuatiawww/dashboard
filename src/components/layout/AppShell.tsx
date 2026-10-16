@@ -65,7 +65,8 @@ export default function AppShell({ children }: AppShellProps) {
       pathname.toLowerCase().includes('gempa_ntt') ||
       pathname.toLowerCase().includes('prov-ntt') ||
       pathname.toLowerCase().includes('ntt') ||
-      pathname.toLowerCase().includes('gempa')
+      pathname.toLowerCase().includes('gempa') ||
+      pathname.toLowerCase().includes('karhutla')
     )
   )
 
