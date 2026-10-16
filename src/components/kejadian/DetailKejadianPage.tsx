@@ -62,6 +62,10 @@ import TimelineCalendarModal from './TimelineCalendarModal'
 import NttCsvManagerModal from './NttCsvManagerModal'
 import BmkgSeismicDetailModal from './BmkgSeismicDetailModal'
 import RelawanMobilisasiTab from './RelawanMobilisasiTab'
+import KarhutlaMorbiditasSection from './karhutla/KarhutlaMorbiditasSection'
+import KarhutlaIspuHotspotSection from './karhutla/KarhutlaIspuHotspotSection'
+import KarhutlaResourceTabs from './karhutla/KarhutlaResourceTabs'
+import KarhutlaResponSection from './karhutla/KarhutlaResponSection'
 import { useAuthStore } from '@/lib/authStore'
 import {
   ResponsiveContainer,
@@ -5370,15 +5374,28 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               {/* ── Section Header ── */}
               <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-2xs">
                 <h3 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
-                  Analisis Tren &amp; Dinamika Dampak Bencana - {displayRegion}
+                  {isKarhutlaEvent
+                    ? 'Analisis Tren & Dinamika Dampak Bencana Asap Karhutla - 7 PROVINSI PRIORITAS'
+                    : `Analisis Tren & Dinamika Dampak Bencana - ${displayRegion}`}
                 </h3>
                 <p className="text-sm sm:text-base text-slate-600 font-normal mt-1.5 mb-0">
-                  Visualisasi pergerakan data dari tanggal kejadian awal hingga perkembangan terkini berdasarkan laporan terverifikasi SIPKK
+                  {isKarhutlaEvent
+                    ? 'Visualisasi pergerakan kasus ISPA, indeks kualitas udara (ISPU KLHK), titik panas NASA FIRMS, dan kesiapan operasional faskes siaga asap terverifikasi SIPKK'
+                    : 'Visualisasi pergerakan data dari tanggal kejadian awal hingga perkembangan terkini berdasarkan laporan terverifikasi SIPKK'}
                 </p>
               </div>
 
               {/* ─── SECTION 1: TREN KORBAN & PENDUDUK TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
-              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
+              {isKarhutlaEvent ? (
+                <KarhutlaMorbiditasSection
+                  eventData={selectedEvent}
+                  onOpenMatrix={() => {
+                    setKabupatenMatrixTab('korban')
+                    setShowKabupatenMatrixModal(true)
+                  }}
+                />
+              ) : (
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
                   {/* Sisi Kiri (30% / 4 cols): Judul Besar, Deskripsi Jelas, Quick Stat Cards, & Insight Box */}
                   <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
@@ -5752,6 +5769,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                     </div>
                   </div>
                 </article>
+              )}
 
               {/* ─── SECTION 1B: KOMPOSISI KUMULATIF KELOMPOK RENTAN ─── */}
               {isNttEvent && (kelompokRentanTrendAvailable || kelompokRentanComposition.total > 0) && (
@@ -5872,7 +5890,16 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
               )}
 
               {/* ─── SECTION 2: PROPORSI FASKES TERDAMPAK (30% KIRI - 70% KANAN) ─── */}
-              <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
+              {isKarhutlaEvent ? (
+                <KarhutlaIspuHotspotSection
+                  eventData={selectedEvent}
+                  onOpenMatrix={() => {
+                    setKabupatenMatrixTab('faskes_terdampak')
+                    setShowKabupatenMatrixModal(true)
+                  }}
+                />
+              ) : (
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:shadow-xs transition-all">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-stretch">
                   {/* Sisi Kiri (4 cols / ~33%): Ringkasan Status & Kesiapan Faskes */}
                   <div className="lg:col-span-4 flex flex-col justify-between space-y-4">
@@ -6067,6 +6094,7 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
                   </div>
                 </div>
               </article>
+              )}
 
               {/* ─── SECTION 3: DISTRIBUSI KASUS PENYAKIT BENCANA (Tampil di Vercel/Staging Dev, Hidden di Server Atas/Production) ─── */}
               {showPenyakitSection && (
@@ -6263,7 +6291,15 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
         })()}
 
         {/* Matriks Akses Lokasi Terdekat Card */}
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
+        {isKarhutlaEvent ? (
+          <KarhutlaResourceTabs
+            eventData={selectedEvent}
+            masterFaskesList={effectiveFaskesList}
+            onSelectTarget={handleSelectTarget}
+            selectedTargetName={selectedRouteTarget?.name}
+          />
+        ) : (
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-[0_6px_18px_rgba(20,120,116,0.03)] space-y-4">
           <div className="border-b border-slate-100 pb-3.5 mb-2">
             <h4 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
               Peta Akses &amp; Status Sumber Daya Kesehatan - {displayRegion}
@@ -8630,9 +8666,12 @@ export default function DetailKejadianPage({ selectedEvent, onBack, onDetailLoad
             )}
           </div>
         </article>
+        )}
 
         {/* 3. Dynamic EOC Actions & Response Card (Inputted from Laporan Kejadian Formulir Lengkap) */}
-        {(() => {
+        {isKarhutlaEvent ? (
+          <KarhutlaResponSection eventData={selectedEvent} />
+        ) : (() => {
           const rawBantuan = stripHtmlText(eventData.bantuan || eventData.bantuan_diterima)
           const rawBantuanDiperlukan = stripHtmlText(eventData.bantuan_diperlukan)
           const rawEmt = eventData.mobilisasi_emt
