@@ -172,13 +172,43 @@ function doGet(e) {
         payload.source = 'google_spreadsheet_karhutla_all';
         break;
 
+      // ── Integrasi Data Dukung (DataDukung.gs) ──
+      case 'hotspot':
+      case 'hotspots':
+        if (typeof handleHotspot === 'function') {
+          payload = withPaging(handleHotspot(ss, filters, p), filters);
+        } else {
+          payload = withPaging(parseSheetHotspotFirms(ss, filters), filters);
+        }
+        payload.source = 'nasa_firms_hotspot';
+        break;
+
+      case 'hotspot_ringkasan':
+        if (typeof handleHotspotRingkasan === 'function') {
+          payload = handleHotspotRingkasan(ss, filters, p);
+        } else {
+          payload = parseSheetHotspotRingkasan(ss, filters);
+        }
+        payload.source = 'nasa_firms_hotspot_ringkasan';
+        break;
+
+      case 'kualitas_udara_model':
+      case 'air_quality_model':
+        if (typeof handleKualitasUdaraModel === 'function') {
+          payload = withPaging(handleKualitasUdaraModel(ss, filters, p), filters);
+        } else {
+          payload = withPaging(parseSheetKualitasUdaraModel(ss, filters), filters);
+        }
+        payload.source = 'open_meteo_cams_air_quality';
+        break;
+
       default:
         return createJsonResponse({
           success: false,
           code: 400,
           error: "Parameter type tidak dikenal: '" + type + "'.",
           available_types: ['all', 'ringkasan', 'penduduk_terdampak', 'ispa', 'penyakit_lainnya', 'ispu',
-            'logistik', 'logistik_dinkes', 'logistik_puskris', 'sdmk', 'upaya', 'meta']
+            'logistik', 'logistik_dinkes', 'logistik_puskris', 'sdmk', 'upaya', 'meta', 'hotspot', 'hotspot_ringkasan', 'kualitas_udara_model']
         });
     }
 
@@ -939,7 +969,7 @@ function createJsonResponse(data) {
 // TEST DARI EDITOR (Run > testDoGet), lihat Execution log
 // ====================================================================
 function testDoGet() {
-  const types = ['meta', 'ringkasan', 'penduduk_terdampak', 'ispa', 'penyakit_lainnya', 'ispu', 'logistik', 'sdmk', 'upaya', 'all'];
+  const types = ['meta', 'ringkasan', 'penduduk_terdampak', 'ispa', 'penyakit_lainnya', 'ispu', 'logistik', 'sdmk', 'upaya', 'all', 'hotspot_ringkasan'];
   types.forEach(function (t) {
     const resp = doGet({ parameter: { type: t, nocache: 'true' } });
     const body = JSON.parse(resp.getContent());
@@ -948,4 +978,56 @@ function testDoGet() {
   });
   const f = doGet({ parameter: { type: 'penduduk_terdampak', provinsi: 'Riau', limit: '5', nocache: 'true' } });
   Logger.log('filter Riau limit 5 -> ' + f.getContent().slice(0, 500));
+}
+
+// ====================================================================
+// FALLBACK PARSER DATA DUKUNG (jika DataDukung.gs belum menyediakan handler langsung)
+// ====================================================================
+function parseSheetHotspotFirms(ss, f) {
+  const sheet = ss.getSheetByName('HOTSPOT_FIRMS') || ss.getSheetByName('DATA_HOTSPOT_FIRMS');
+  if (!sheet) return { success: false, total: 0, data: [], message: 'Tab HOTSPOT_FIRMS belum dibuat. Jalankan runAllFetchers() atau setupTriggers() di editor.' };
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return { success: true, total: 0, data: [] };
+  const headers = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const item = {};
+    headers.forEach(function (h, idx) { item[h] = row[idx]; });
+    if (f && f.provinsi && f.provinsi.length > 0) {
+      const match = f.provinsi.some(function (pv) { return String(item.provinsi || '').toLowerCase().indexOf(pv.toLowerCase()) > -1; });
+      if (!match) continue;
+    }
+    rows.push(item);
+  }
+  return { success: true, total: rows.length, data: rows };
+}
+
+function parseSheetHotspotRingkasan(ss, f) {
+  const sheet = ss.getSheetByName('HOTSPOT_RINGKASAN');
+  if (!sheet) return { success: false, ringkasan: {}, message: 'Tab HOTSPOT_RINGKASAN belum dibuat. Jalankan runAllFetchers().' };
+  const values = sheet.getDataRange().getValues();
+  const summary = {};
+  for (let i = 1; i < values.length; i++) {
+    const k = String(values[i][0] || '').trim();
+    const v = Number(values[i][1] || 0);
+    if (k) summary[k] = v;
+  }
+  return { success: true, ringkasan: summary };
+}
+
+function parseSheetKualitasUdaraModel(ss, f) {
+  const sheet = ss.getSheetByName('KUALITAS_UDARA_MODEL');
+  if (!sheet) return { success: false, total: 0, data: [], message: 'Tab KUALITAS_UDARA_MODEL belum dibuat. Jalankan runAllFetchers().' };
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return { success: true, total: 0, data: [] };
+  const headers = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const item = {};
+    headers.forEach(function (h, idx) { item[h] = row[idx]; });
+    rows.push(item);
+  }
+  return { success: true, total: rows.length, data: rows };
 }

@@ -239,6 +239,26 @@ export default function KarhutlaIndonesiaPage() {
       // 5. Upaya Penanganan Kesehatan
       const rawUpayaList = Array.isArray(json.upaya?.data) ? json.upaya.data : []
 
+      // 6. Data Dukung NASA FIRMS Hotspots (dari DataDukung / NASA FIRMS 24h)
+      const firms = json.data_dukung?.nasa_firms
+      const totalFirmsHotspots = firms?.total_nasional || ispuVal
+      const firmsPoints = Array.isArray(firms?.sample_titik)
+        ? firms.sample_titik.map((pt: any, idx: number) => ({
+            id: `firms-${idx + 1}`,
+            kecamatan: `Titik Panas (${pt.confidence})`,
+            kabupaten: pt.provinsi || 'Indonesia',
+            provinsi: pt.provinsi || 'Indonesia',
+            latitude: pt.lat,
+            longitude: pt.lng,
+            hotspot: Math.round(pt.brightness || 320),
+            ispu: pt.confidence === 'high' ? 380 : 210,
+            status: pt.confidence === 'high' ? 'Berbahaya' : 'Sangat Tidak Sehat',
+            confidence: pt.confidence,
+            satellite: pt.satellite,
+            source: 'NASA FIRMS VIIRS 24h',
+          }))
+        : []
+
       setEventData((prev: any) => {
         const next = {
           ...prev,
@@ -252,8 +272,8 @@ export default function KarhutlaIndonesiaPage() {
           populasi_terdampak: pendudukTerdampakVal,
           ispu_tertinggi: ispuVal,
           ispu_lokasi: ispuLokasi,
-          hotspot: ispuVal,
-          titik_panas: ispuVal,
+          hotspot: totalFirmsHotspots,
+          titik_panas: totalFirmsHotspots,
           detailData: {
             ...prev.detailData,
             tgl_laporan: updateText,
@@ -270,13 +290,13 @@ export default function KarhutlaIndonesiaPage() {
             korban_luka: totalLukaVal,
             ispu_tertinggi: ispuVal,
             ispu_lokasi: ispuLokasi,
-            hotspot: ispuVal,
-            titik_panas: ispuVal,
+            hotspot: totalFirmsHotspots,
+            titik_panas: totalFirmsHotspots,
             breakdown_kabupaten: breakdownKab.length > 0 ? breakdownKab : prev.detailData.breakdown_kabupaten,
             tck: tckList.length > 0 ? tckList : prev.detailData.tck,
             logistik: logistikList.length > 0 ? logistikList : prev.detailData.logistik,
             upaya_kesehatan: rawUpayaList.length > 0 ? { data: rawUpayaList } : prev.detailData.upaya_kesehatan,
-            lokasi: prev.detailData.lokasi || KARHUTLA_LOKASI_COORDINATES,
+            lokasi: firmsPoints.length > 0 ? [...firmsPoints, ...KARHUTLA_LOKASI_COORDINATES] : (prev.detailData.lokasi || KARHUTLA_LOKASI_COORDINATES),
           },
         }
 
